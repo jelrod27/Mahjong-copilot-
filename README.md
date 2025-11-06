@@ -15,37 +15,49 @@ A comprehensive mobile learning platform that teaches users how to play mahjong 
 
 ### Prerequisites
 
-- Flutter SDK (>=3.0.0)
+- Node.js (>=18.0.0)
+- npm or yarn
+- React Native CLI
 - Firebase project configured
 - iOS 14.0+ or Android API 26+
+- Xcode (for iOS development)
+- Android Studio (for Android development)
 
 ### Installation
 
 1. Clone the repository
 2. Install dependencies:
    ```bash
-   flutter pub get
+   npm install
    ```
 
 3. Configure Firebase:
    - Add `google-services.json` to `android/app/`
-   - Add `GoogleService-Info.plist` to `ios/Runner/`
+   - Add `GoogleService-Info.plist` to `ios/`
 
-4. Run the app:
+4. For iOS, install pods:
    ```bash
-   flutter run
+   cd ios && pod install && cd ..
+   ```
+
+5. Run the app:
+   ```bash
+   # Android
+   npm run android
+   
+   # iOS
+   npm run ios
    ```
 
 ## Project Structure
 
 ```
-lib/
-├── main.dart
-├── core/
-│   ├── theme/
-│   ├── constants/
-│   ├── utils/
-│   └── services/
+src/
+├── App.tsx
+├── components/
+│   └── mahjong-tiles/
+├── constants/
+├── services/
 ├── features/
 │   ├── auth/
 │   ├── learn/
@@ -54,18 +66,33 @@ lib/
 │   ├── progress/
 │   └── settings/
 ├── models/
-├── widgets/
-│   └── mahjong_tiles/
-└── providers/
+├── navigation/
+├── store/
+│   ├── actions/
+│   ├── reducers/
+│   └── types/
+├── theme/
+└── utils/
 ```
 
 ## Development
 
-This project follows Flutter best practices:
-- Provider for state management
+This project follows React Native best practices:
+- Redux for state management
+- TypeScript for type safety
 - Feature-based folder structure
 - Clean architecture principles
 - Comprehensive error handling
+
+## Technology Stack
+
+- **Framework**: React Native 0.73.0
+- **Language**: TypeScript
+- **State Management**: Redux with Redux Thunk
+- **Navigation**: React Navigation
+- **Firebase**: @react-native-firebase
+- **Storage**: AsyncStorage
+- **SVG**: react-native-svg
 
 ## Documentation
 

@@ -10,7 +10,7 @@ Use this checklist to track your setup progress:
 - [ ] Enabled Email/Password authentication
 - [ ] Created Firestore database
 - [ ] Set up security rules
-- [ ] Updated `firebase_options.dart` with real values
+- [ ] Installed React Native Firebase packages (`npm install`)
 - [ ] Tested authentication (sign up works)
 
 ## ✅ Assets
@@ -19,7 +19,7 @@ Use this checklist to track your setup progress:
 - [ ] Created app icon (1024x1024px)
 - [ ] Generated launcher icons for Android/iOS
 - [ ] Created splash screen image
-- [ ] Generated splash screen
+- [ ] Configured splash screen
 - [ ] Created/found sound effects (5 sounds)
 - [ ] Placed sounds in `assets/sounds/`
 
@@ -58,4 +58,3 @@ Use this checklist to track your setup progress:
 ---
 
 **Current Status**: ⬜ Not Started | 🟡 In Progress | ✅ Complete
-

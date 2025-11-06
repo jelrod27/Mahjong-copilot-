@@ -1,54 +1,72 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
+# OSX
 .DS_Store
-.atom/
-.buildlog/
-.history
-.svn/
-migrate_working_dir/
 
-# IntelliJ related
+# Xcode
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata
+*.xccheckout
+*.moved-aside
+DerivedData
+*.hmap
+*.ipa
+*.xcuserstate
+project.xcworkspace
+
+# Android/IntelliJ
+build/
+.idea
+.gradle
+local.properties
 *.iml
-*.ipr
-*.iws
-.idea/
+*.hprof
+.cxx/
+*.apk
+*.ap_
+*.aab
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# node.js
+node_modules/
+npm-debug.log
+yarn-error.log
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-.pub-cache/
-.pub/
-/build/
+# fastlane
+**/fastlane/report.xml
+**/fastlane/Preview.html
+**/fastlane/screenshots
+**/fastlane/test_output
 
-# Symbolication related
-app.*.symbols
+# Bundle artifact
+*.jsbundle
 
-# Obfuscation related
-app.*.map.json
+# CocoaPods
+/ios/Pods/
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+# Temporary files created by Metro to check the health of the file watcher
+.metro-health-check*
 
 # Firebase
 google-services.json
 GoogleService-Info.plist
-firebase_options.dart
 
 # Environment variables
 .env
 .env.local
 
+# TypeScript
+*.tsbuildinfo
+
+# Testing
+coverage/
+
+# Misc
+.vscode/
+.idea/
+*.log

@@ -23,9 +23,9 @@
    - Bundle ID: `com.mahjonglearning.app`
    - Download `GoogleService-Info.plist`
 
-2. Place `GoogleService-Info.plist` in `ios/Runner/` directory
+2. Place `GoogleService-Info.plist` in `ios/` directory
 
-3. The `Podfile` is already configured for Firebase
+3. React Native Firebase packages are already configured in `package.json`
 
 ## Firestore Database Structure
 
@@ -147,7 +147,7 @@ service cloud.firestore {
 
 After setting up Firebase:
 1. Replace placeholder values in configuration files
-2. Run `flutter pub get`
+2. Run `npm install`
 3. For iOS: Run `cd ios && pod install && cd ..`
 4. Test authentication flow
 

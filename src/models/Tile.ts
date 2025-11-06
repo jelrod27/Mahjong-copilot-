@@ -179,3 +179,38 @@ export class TileFactory {
   }
 }
 
+// JSON conversion helpers
+export const tileToJson = (tile: Tile): Record<string, any> => {
+  return {
+    id: tile.id,
+    suit: tile.suit,
+    type: tile.type,
+    number: tile.number,
+    wind: tile.wind,
+    dragon: tile.dragon,
+    flower: tile.flower,
+    season: tile.season,
+    nameEnglish: tile.nameEnglish,
+    nameChinese: tile.nameChinese,
+    nameJapanese: tile.nameJapanese,
+    assetPath: tile.assetPath,
+  };
+};
+
+export const tileFromJson = (json: Record<string, any>): Tile => {
+  return {
+    id: json.id as string,
+    suit: json.suit as TileSuit,
+    type: json.type as TileType,
+    number: json.number as number | undefined,
+    wind: json.wind as WindTile | undefined,
+    dragon: json.dragon as DragonTile | undefined,
+    flower: json.flower as string | undefined,
+    season: json.season as string | undefined,
+    nameEnglish: json.nameEnglish as string,
+    nameChinese: json.nameChinese as string,
+    nameJapanese: json.nameJapanese as string,
+    assetPath: json.assetPath as string,
+  };
+};
+

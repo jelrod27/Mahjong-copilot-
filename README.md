@@ -67,6 +67,13 @@ This project follows Flutter best practices:
 - Clean architecture principles
 - Comprehensive error handling
 
+## Documentation
+
+- [Setup Guide](SETUP_GUIDE.md) - Complete setup instructions
+- [Firebase Setup](FIREBASE_SETUP.md) - Firebase configuration guide
+- [Implementation Summary](IMPLEMENTATION_SUMMARY.md) - What's been implemented
+- [Quick Reference](QUICK_REFERENCE.md) - Common commands and fixes
+
 ## License
 
 [Add your license here]

@@ -8,7 +8,7 @@ import {RootState} from '../store/reducers/rootReducer';
 
 // Import screens
 import HomeScreen from '../features/home/HomeScreen';
-import LearnScreen from '../features/learn/LearnScreen';
+import LearnNavigator from './LearnNavigator';
 import PracticeScreen from '../features/practice/PracticeScreen';
 import ReferenceScreen from '../features/reference/ReferenceScreen';
 import ProgressScreen from '../features/progress/ProgressScreen';
@@ -44,12 +44,13 @@ const MainNavigation: React.FC = () => {
       />
       <Tab.Screen
         name="Learn"
-        component={LearnScreen}
+        component={LearnNavigator}
         options={{
           tabBarIcon: ({color, size}) => (
             <Icon name="menu-book" size={size} color={color} />
           ),
           title: getLocalizedString('nav_learn', locale),
+          headerShown: false, // LearnNavigator handles its own headers
         }}
       />
       <Tab.Screen

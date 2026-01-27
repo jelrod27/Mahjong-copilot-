@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -7,28 +7,44 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
+import {useNavigation, useFocusEffect} from '@react-navigation/native';
+import {StackNavigationProp} from '@react-navigation/stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {AppColors, AppRadius, AppSpacing} from '../../theme/appTheme';
 import {Level1, Lesson} from '../../content/level1';
+import {LearnStackParamList} from '../../navigation/LearnNavigator';
 
-// Props for navigation (would come from React Navigation in real app)
-interface LearnScreenProps {
-  onLessonPress?: (lesson: Lesson) => void;
-}
+type LearnScreenNavigationProp = StackNavigationProp<LearnStackParamList, 'LearnHome'>;
 
-const LearnScreen: React.FC<LearnScreenProps> = ({onLessonPress}) => {
+const COMPLETED_LESSONS_KEY = '@mahjong_completed_lessons';
+
+const LearnScreen: React.FC = () => {
+  const navigation = useNavigation<LearnScreenNavigationProp>();
   const [completedLessons, setCompletedLessons] = useState<string[]>([]);
   const level = Level1;
+
+  // Load completed lessons from storage
+  useFocusEffect(
+    useCallback(() => {
+      loadCompletedLessons();
+    }, [])
+  );
+
+  const loadCompletedLessons = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(COMPLETED_LESSONS_KEY);
+      if (stored) {
+        setCompletedLessons(JSON.parse(stored));
+      }
+    } catch (error) {
+      console.error('Failed to load completed lessons:', error);
+    }
+  };
 
   const progress = (completedLessons.length / level.lessons.length) * 100;
 
   const handleLessonPress = (lesson: Lesson) => {
-    if (onLessonPress) {
-      onLessonPress(lesson);
-    }
-    // For demo: mark as completed when pressed
-    if (!completedLessons.includes(lesson.id)) {
-      setCompletedLessons([...completedLessons, lesson.id]);
-    }
+    navigation.navigate('Lesson', {lesson});
   };
 
   const isLessonUnlocked = (index: number) => {
@@ -109,12 +125,12 @@ const LearnScreen: React.FC<LearnScreenProps> = ({onLessonPress}) => {
                   
                   {/* Lesson meta */}
                   <View style={styles.lessonMeta}>
-                    {lesson.tiles && (
+                    {lesson.tiles && lesson.tiles.length > 0 && (
                       <View style={styles.metaTag}>
                         <Text style={styles.metaText}>🀄 {lesson.tiles.length} tiles</Text>
                       </View>
                     )}
-                    {lesson.quiz && (
+                    {lesson.quiz && lesson.quiz.length > 0 && (
                       <View style={styles.metaTag}>
                         <Text style={styles.metaText}>❓ {lesson.quiz.length} quiz</Text>
                       </View>
@@ -134,6 +150,17 @@ const LearnScreen: React.FC<LearnScreenProps> = ({onLessonPress}) => {
             );
           })}
         </View>
+
+        {/* Completion celebration */}
+        {completedLessons.length === level.lessons.length && (
+          <View style={styles.celebrationContainer}>
+            <Text style={styles.celebrationEmoji}>🎉</Text>
+            <Text style={styles.celebrationTitle}>Level Complete!</Text>
+            <Text style={styles.celebrationText}>
+              You've mastered all the tiles. Ready for Level 2?
+            </Text>
+          </View>
+        )}
 
         {/* Bottom padding */}
         <View style={{height: 40}} />
@@ -288,6 +315,28 @@ const styles = StyleSheet.create({
   },
   lock: {
     fontSize: 18,
+  },
+  celebrationContainer: {
+    margin: AppSpacing.md,
+    padding: AppSpacing.xl,
+    backgroundColor: '#FEF3C7',
+    borderRadius: AppRadius.lg,
+    alignItems: 'center',
+  },
+  celebrationEmoji: {
+    fontSize: 48,
+    marginBottom: AppSpacing.sm,
+  },
+  celebrationTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: AppColors.textPrimary,
+    marginBottom: AppSpacing.xs,
+  },
+  celebrationText: {
+    fontSize: 16,
+    color: AppColors.textSecondary,
+    textAlign: 'center',
   },
 });
 

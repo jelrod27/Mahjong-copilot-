@@ -6,26 +6,27 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
-  Dimensions,
+  Alert,
 } from 'react-native';
+import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
+import {StackNavigationProp} from '@react-navigation/stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {AppColors, AppRadius, AppSpacing} from '../../theme/appTheme';
 import {Lesson, QuizQuestion} from '../../content/level1';
-import {MahjongTile, TileHand} from '../../components/MahjongTile';
+import {MahjongTile} from '../../components/MahjongTile';
 import {getTileById} from '../../models/Tile';
+import {LearnStackParamList} from '../../navigation/LearnNavigator';
 
-const {width: SCREEN_WIDTH} = Dimensions.get('window');
+type LessonScreenRouteProp = RouteProp<LearnStackParamList, 'Lesson'>;
+type LessonScreenNavigationProp = StackNavigationProp<LearnStackParamList, 'Lesson'>;
 
-interface LessonScreenProps {
-  lesson: Lesson;
-  onComplete: () => void;
-  onBack: () => void;
-}
+const COMPLETED_LESSONS_KEY = '@mahjong_completed_lessons';
 
-const LessonScreen: React.FC<LessonScreenProps> = ({
-  lesson,
-  onComplete,
-  onBack,
-}) => {
+const LessonScreen: React.FC = () => {
+  const navigation = useNavigation<LessonScreenNavigationProp>();
+  const route = useRoute<LessonScreenRouteProp>();
+  const {lesson} = route.params;
+
   const [currentSection, setCurrentSection] = useState<'content' | 'quiz'>('content');
   const [quizIndex, setQuizIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -36,8 +37,40 @@ const LessonScreen: React.FC<LessonScreenProps> = ({
   const currentQuiz = lesson.quiz?.[quizIndex];
   const isLastQuiz = quizIndex === (lesson.quiz?.length || 0) - 1;
 
+  const markLessonComplete = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(COMPLETED_LESSONS_KEY);
+      const completed: string[] = stored ? JSON.parse(stored) : [];
+      if (!completed.includes(lesson.id)) {
+        completed.push(lesson.id);
+        await AsyncStorage.setItem(COMPLETED_LESSONS_KEY, JSON.stringify(completed));
+      }
+    } catch (error) {
+      console.error('Failed to mark lesson complete:', error);
+    }
+  };
+
+  const handleComplete = async () => {
+    await markLessonComplete();
+    
+    if (hasQuiz) {
+      const score = Math.round((correctAnswers / (lesson.quiz?.length || 1)) * 100);
+      Alert.alert(
+        '🎉 Lesson Complete!',
+        `You scored ${score}% (${correctAnswers}/${lesson.quiz?.length} correct)`,
+        [{text: 'Continue', onPress: () => navigation.goBack()}]
+      );
+    } else {
+      Alert.alert(
+        '✓ Lesson Complete!',
+        'Great job! On to the next lesson.',
+        [{text: 'Continue', onPress: () => navigation.goBack()}]
+      );
+    }
+  };
+
   const handleAnswerSelect = (answer: string) => {
-    if (selectedAnswer) return; // Already answered
+    if (selectedAnswer) return;
     setSelectedAnswer(answer);
     setShowExplanation(true);
     if (answer === currentQuiz?.correctAnswer) {
@@ -47,7 +80,7 @@ const LessonScreen: React.FC<LessonScreenProps> = ({
 
   const handleNextQuiz = () => {
     if (isLastQuiz) {
-      onComplete();
+      handleComplete();
     } else {
       setQuizIndex(prev => prev + 1);
       setSelectedAnswer(null);
@@ -92,7 +125,7 @@ const LessonScreen: React.FC<LessonScreenProps> = ({
         <View style={styles.tilesSection}>
           <Text style={styles.tilesSectionTitle}>Tiles in this lesson:</Text>
           <View style={styles.tilesGrid}>
-            {lesson.tiles.map((tileId, index) => {
+            {lesson.tiles.map((tileId) => {
               const tile = getTileById(tileId);
               if (!tile) return null;
               return (
@@ -120,7 +153,7 @@ const LessonScreen: React.FC<LessonScreenProps> = ({
         ) : (
           <TouchableOpacity 
             style={styles.primaryButton}
-            onPress={onComplete}
+            onPress={handleComplete}
           >
             <Text style={styles.primaryButtonText}>
               Complete Lesson ✓
@@ -137,107 +170,109 @@ const LessonScreen: React.FC<LessonScreenProps> = ({
   const renderQuiz = () => {
     if (!currentQuiz) return null;
 
-    return (
-      <View style={styles.quizContainer}>
-        {/* Progress */}
-        <View style={styles.quizProgress}>
-          <Text style={styles.quizProgressText}>
-            Question {quizIndex + 1} of {lesson.quiz?.length}
-          </Text>
-          <View style={styles.quizProgressBar}>
-            <View 
-              style={[
-                styles.quizProgressFill, 
-                {width: `${((quizIndex + 1) / (lesson.quiz?.length || 1)) * 100}%`}
-              ]} 
-            />
-          </View>
-        </View>
+    const questionTile = currentQuiz.tileId ? getTileById(currentQuiz.tileId) : null;
 
-        {/* Question */}
-        <View style={styles.questionContainer}>
-          <Text style={styles.questionText}>{currentQuiz.question}</Text>
-          
-          {/* Show tile if question references one */}
-          {currentQuiz.tileId && (
-            <View style={styles.questionTile}>
-              {getTileById(currentQuiz.tileId) && (
+    return (
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <View style={styles.quizContainer}>
+          {/* Progress */}
+          <View style={styles.quizProgress}>
+            <Text style={styles.quizProgressText}>
+              Question {quizIndex + 1} of {lesson.quiz?.length}
+            </Text>
+            <View style={styles.quizProgressBar}>
+              <View 
+                style={[
+                  styles.quizProgressFill, 
+                  {width: `${((quizIndex + 1) / (lesson.quiz?.length || 1)) * 100}%`}
+                ]} 
+              />
+            </View>
+          </View>
+
+          {/* Question */}
+          <View style={styles.questionContainer}>
+            <Text style={styles.questionText}>{currentQuiz.question}</Text>
+            
+            {/* Show tile if question references one */}
+            {questionTile && (
+              <View style={styles.questionTile}>
                 <MahjongTile 
-                  tile={getTileById(currentQuiz.tileId)!} 
+                  tile={questionTile} 
                   width={80} 
                   height={120}
                 />
-              )}
+              </View>
+            )}
+          </View>
+
+          {/* Answer options */}
+          <View style={styles.optionsContainer}>
+            {currentQuiz.options.map((option, index) => {
+              const isSelected = selectedAnswer === option;
+              const isCorrect = option === currentQuiz.correctAnswer;
+              const showResult = showExplanation;
+
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.optionButton,
+                    isSelected && styles.optionButtonSelected,
+                    showResult && isCorrect && styles.optionButtonCorrect,
+                    showResult && isSelected && !isCorrect && styles.optionButtonWrong,
+                  ]}
+                  onPress={() => handleAnswerSelect(option)}
+                  disabled={showExplanation}
+                >
+                  <Text style={[
+                    styles.optionText,
+                    isSelected && styles.optionTextSelected,
+                    showResult && isCorrect && styles.optionTextCorrect,
+                  ]}>
+                    {option}
+                  </Text>
+                  {showResult && isCorrect && (
+                    <Text style={styles.checkIcon}>✓</Text>
+                  )}
+                  {showResult && isSelected && !isCorrect && (
+                    <Text style={styles.wrongIcon}>✗</Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Explanation */}
+          {showExplanation && (
+            <View style={[
+              styles.explanationContainer,
+              selectedAnswer === currentQuiz.correctAnswer 
+                ? styles.explanationCorrect 
+                : styles.explanationWrong
+            ]}>
+              <Text style={styles.explanationTitle}>
+                {selectedAnswer === currentQuiz.correctAnswer ? '✓ Correct!' : '✗ Not quite'}
+              </Text>
+              <Text style={styles.explanationText}>
+                {currentQuiz.explanation}
+              </Text>
             </View>
           )}
+
+          {/* Next button */}
+          {showExplanation && (
+            <TouchableOpacity 
+              style={styles.nextButton}
+              onPress={handleNextQuiz}
+            >
+              <Text style={styles.nextButtonText}>
+                {isLastQuiz ? 'Complete Lesson' : 'Next Question →'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
-
-        {/* Answer options */}
-        <View style={styles.optionsContainer}>
-          {currentQuiz.options.map((option, index) => {
-            const isSelected = selectedAnswer === option;
-            const isCorrect = option === currentQuiz.correctAnswer;
-            const showResult = showExplanation;
-
-            return (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.optionButton,
-                  isSelected && styles.optionButtonSelected,
-                  showResult && isCorrect && styles.optionButtonCorrect,
-                  showResult && isSelected && !isCorrect && styles.optionButtonWrong,
-                ]}
-                onPress={() => handleAnswerSelect(option)}
-                disabled={showExplanation}
-              >
-                <Text style={[
-                  styles.optionText,
-                  isSelected && styles.optionTextSelected,
-                  showResult && isCorrect && styles.optionTextCorrect,
-                ]}>
-                  {option}
-                </Text>
-                {showResult && isCorrect && (
-                  <Text style={styles.checkIcon}>✓</Text>
-                )}
-                {showResult && isSelected && !isCorrect && (
-                  <Text style={styles.wrongIcon}>✗</Text>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* Explanation */}
-        {showExplanation && (
-          <View style={[
-            styles.explanationContainer,
-            selectedAnswer === currentQuiz.correctAnswer 
-              ? styles.explanationCorrect 
-              : styles.explanationWrong
-          ]}>
-            <Text style={styles.explanationTitle}>
-              {selectedAnswer === currentQuiz.correctAnswer ? '✓ Correct!' : '✗ Not quite'}
-            </Text>
-            <Text style={styles.explanationText}>
-              {currentQuiz.explanation}
-            </Text>
-          </View>
-        )}
-
-        {/* Next button */}
-        {showExplanation && (
-          <TouchableOpacity 
-            style={styles.nextButton}
-            onPress={handleNextQuiz}
-          >
-            <Text style={styles.nextButtonText}>
-              {isLastQuiz ? 'Complete Lesson' : 'Next Question'}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      </ScrollView>
     );
   };
 
@@ -245,13 +280,18 @@ const LessonScreen: React.FC<LessonScreenProps> = ({
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backButtonText}>‹ Back</Text>
         </TouchableOpacity>
         <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>{lesson.title}</Text>
-          <Text style={styles.headerSubtitle}>{lesson.subtitle}</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>{lesson.title}</Text>
+          <Text style={styles.headerSubtitle} numberOfLines={1}>{lesson.subtitle}</Text>
         </View>
+        {currentSection === 'quiz' && (
+          <View style={styles.scoreIndicator}>
+            <Text style={styles.scoreText}>{correctAnswers}/{quizIndex + 1}</Text>
+          </View>
+        )}
       </View>
 
       {/* Content or Quiz */}
@@ -275,6 +315,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginRight: AppSpacing.md,
+    paddingVertical: AppSpacing.xs,
   },
   backButtonText: {
     fontSize: 18,
@@ -293,6 +334,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: AppColors.textSecondary,
   },
+  scoreIndicator: {
+    backgroundColor: AppColors.primaryGreen,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  scoreText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
   scrollView: {
     flex: 1,
   },
@@ -300,8 +352,8 @@ const styles = StyleSheet.create({
     padding: AppSpacing.lg,
   },
   paragraph: {
-    fontSize: 16,
-    lineHeight: 26,
+    fontSize: 17,
+    lineHeight: 28,
     color: AppColors.textPrimary,
     marginBottom: AppSpacing.md,
   },
@@ -363,7 +415,6 @@ const styles = StyleSheet.create({
   },
   // Quiz styles
   quizContainer: {
-    flex: 1,
     padding: AppSpacing.lg,
   },
   quizProgress: {

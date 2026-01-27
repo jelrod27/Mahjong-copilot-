@@ -179,6 +179,55 @@ export class TileFactory {
   }
 }
 
+// Tile lookup cache
+let _allTiles: Tile[] | null = null;
+let _tileMap: Map<string, Tile> | null = null;
+
+/**
+ * Get a tile by a simplified ID format used in lessons
+ * Formats: "dot-5", "bamboo-1", "character-9", "wind-east", "dragon-red", etc.
+ */
+export const getTileById = (simpleId: string): Tile | undefined => {
+  if (!_allTiles) {
+    _allTiles = TileFactory.getAllTiles();
+  }
+  if (!_tileMap) {
+    _tileMap = new Map();
+    _allTiles.forEach(tile => {
+      // Create simple lookup keys
+      if (tile.number) {
+        // Suit tiles: dot-1, bamboo-5, character-9
+        _tileMap!.set(`${tile.suit}-${tile.number}`, tile);
+      } else if (tile.wind) {
+        // Wind tiles: wind-east, wind-south
+        _tileMap!.set(`wind-${tile.wind}`, tile);
+      } else if (tile.dragon) {
+        // Dragon tiles: dragon-red, dragon-green
+        _tileMap!.set(`dragon-${tile.dragon}`, tile);
+      } else if (tile.flower) {
+        // Flower tiles: flower-1, flower-2
+        const flowerNum = ['Plum', 'Orchid', 'Chrysanthemum', 'Bamboo'].indexOf(tile.flower) + 1;
+        _tileMap!.set(`flower-${flowerNum}`, tile);
+      } else if (tile.season) {
+        // Season tiles: season-1, season-2
+        const seasonNum = ['Spring', 'Summer', 'Autumn', 'Winter'].indexOf(tile.season) + 1;
+        _tileMap!.set(`season-${seasonNum}`, tile);
+      }
+    });
+  }
+  return _tileMap.get(simpleId);
+};
+
+/**
+ * Get all tiles (cached)
+ */
+export const getAllTiles = (): Tile[] => {
+  if (!_allTiles) {
+    _allTiles = TileFactory.getAllTiles();
+  }
+  return _allTiles;
+};
+
 // JSON conversion helpers
 export const tileToJson = (tile: Tile): Record<string, any> => {
   return {

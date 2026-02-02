@@ -14,7 +14,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {AppColors, AppRadius, AppSpacing} from '../../theme/appTheme';
 import {Lesson, QuizQuestion} from '../../content/level1';
 import {MahjongTile} from '../../components/MahjongTile';
-import {getTileById} from '../../models/Tile';
+import {SetBuilder} from '../../components/SetBuilder';
+import {getTileById, Tile} from '../../models/Tile';
 import {LearnStackParamList} from '../../navigation/LearnNavigator';
 
 type LessonScreenRouteProp = RouteProp<LearnStackParamList, 'Lesson'>;
@@ -27,11 +28,12 @@ const LessonScreen: React.FC = () => {
   const route = useRoute<LessonScreenRouteProp>();
   const {lesson} = route.params;
 
-  const [currentSection, setCurrentSection] = useState<'content' | 'quiz'>('content');
+  const [currentSection, setCurrentSection] = useState<'content' | 'quiz' | 'interactive'>('content');
   const [quizIndex, setQuizIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [correctAnswers, setCorrectAnswers] = useState(0);
+  const [setBuilderCompleted, setSetBuilderCompleted] = useState(false);
 
   const hasQuiz = lesson.quiz && lesson.quiz.length > 0;
   const currentQuiz = lesson.quiz?.[quizIndex];
@@ -136,6 +138,20 @@ const LessonScreen: React.FC = () => {
               );
             })}
           </View>
+        </View>
+      )}
+
+      {/* Interactive component button */}
+      {lesson.interactiveType === 'set-builder' && (
+        <View style={styles.actionContainer}>
+          <TouchableOpacity 
+            style={styles.primaryButton}
+            onPress={() => setCurrentSection('interactive')}
+          >
+            <Text style={styles.primaryButtonText}>
+              Try Set Builder 🧩
+            </Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -276,6 +292,53 @@ const LessonScreen: React.FC = () => {
     );
   };
 
+  // Render interactive set builder
+  const renderInteractive = () => {
+    if (lesson.interactiveType !== 'set-builder' || !lesson.interactiveData?.availableTileIds) {
+      return null;
+    }
+
+    const availableTiles = lesson.interactiveData.availableTileIds
+      .map(id => getTileById(id))
+      .filter((tile): tile is Tile => tile !== undefined);
+
+    return (
+      <View style={styles.container}>
+        <View style={styles.interactiveHeader}>
+          <TouchableOpacity 
+            onPress={() => setCurrentSection('content')} 
+            style={styles.backButton}
+          >
+            <Text style={styles.backButtonText}>‹ Back to Lesson</Text>
+          </TouchableOpacity>
+          <Text style={styles.interactiveTitle}>Set Builder Practice</Text>
+        </View>
+        
+        <SetBuilder
+          availableTiles={availableTiles}
+          onValidSet={(tiles, setType) => {
+            setSetBuilderCompleted(true);
+          }}
+        />
+        
+        {setBuilderCompleted && (
+          <View style={styles.completionBanner}>
+            <Text style={styles.completionText}>🎉 You've built valid sets!</Text>
+            <TouchableOpacity 
+              style={styles.completeButton}
+              onPress={() => {
+                setCurrentSection('content');
+                handleComplete();
+              }}
+            >
+              <Text style={styles.completeButtonText}>Complete Lesson</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -294,8 +357,10 @@ const LessonScreen: React.FC = () => {
         )}
       </View>
 
-      {/* Content or Quiz */}
-      {currentSection === 'content' ? renderContent() : renderQuiz()}
+      {/* Content, Quiz, or Interactive */}
+      {currentSection === 'content' && renderContent()}
+      {currentSection === 'quiz' && renderQuiz()}
+      {currentSection === 'interactive' && renderInteractive()}
     </SafeAreaView>
   );
 };
@@ -529,6 +594,47 @@ const styles = StyleSheet.create({
   nextButtonText: {
     color: '#FFFFFF',
     fontSize: 17,
+    fontWeight: '600',
+  },
+  // Interactive styles
+  interactiveHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: AppSpacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  interactiveTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '700',
+    color: AppColors.textPrimary,
+    textAlign: 'center',
+    marginRight: 60, // Balance with back button
+  },
+  completionBanner: {
+    backgroundColor: '#F0FDF4',
+    padding: AppSpacing.md,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#22C55E',
+  },
+  completionText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#22C55E',
+    marginBottom: AppSpacing.sm,
+  },
+  completeButton: {
+    backgroundColor: '#22C55E',
+    paddingHorizontal: AppSpacing.lg,
+    paddingVertical: AppSpacing.md,
+    borderRadius: AppRadius.md,
+  },
+  completeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '600',
   },
 });

@@ -1,0 +1,19 @@
+flutter_native_splash:
+  color: "#2D5016"
+  image: assets/images/splash.png
+  
+  # Android
+  android: true
+  android_12: true
+  android_12_image: assets/images/splash.png
+  
+  # iOS
+  ios: true
+  ios_content_mode: "scaleAspectFit"
+  
+  # Web (optional)
+  web: false
+  
+  # Remove existing splash screens
+  remove_after_generation: true
+

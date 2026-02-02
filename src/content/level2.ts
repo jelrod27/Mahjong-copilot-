@@ -197,21 +197,35 @@ export const Level2: Level = {
       content: [
         "Time to practice building sets!",
         "",
-        "Look at the tiles shown and identify what sets you can make.",
+        "Tap tiles to select them, then tap 'Check Set' to validate.",
         "",
-        "Example hand:",
-        "• 1-2-3 of Dots = 1 Chow",
-        "• Three 7-Bamboo = 1 Pung",
-        "• Two East Winds = potential pair",
-        "• Two more tiles to organize",
+        "Try building:",
+        "• A PUNG (3 identical tiles)",
+        "• A CHOW (3 consecutive suit tiles)",
+        "• A KONG (4 identical tiles)",
+        "• A PAIR (2 identical tiles)",
         "",
         "Tips:",
         "• Look for Pungs first (easiest to spot)",
         "• Then look for Chows (sequences)",
-        "• Whatever's left might become your pair",
-        "• Honor tiles can only be Pungs/Kongs"
+        "• Honor tiles can only be Pungs/Kongs (not Chows)",
+        "• Only suit tiles can form Chows"
       ],
-      tiles: ["dot-1", "dot-2", "dot-3", "bamboo-7", "bamboo-7", "bamboo-7", "wind-east", "wind-east"]
+      interactiveType: 'set-builder',
+      interactiveData: {
+        availableTileIds: [
+          // Dots 1-9
+          "dot-1", "dot-2", "dot-3", "dot-4", "dot-5", "dot-6", "dot-7", "dot-8", "dot-9",
+          // Bamboo 1-9
+          "bamboo-1", "bamboo-2", "bamboo-3", "bamboo-4", "bamboo-5", "bamboo-6", "bamboo-7", "bamboo-8", "bamboo-9",
+          // Characters 1-9
+          "character-1", "character-2", "character-3", "character-4", "character-5", "character-6", "character-7", "character-8", "character-9",
+          // Winds
+          "wind-east", "wind-south", "wind-west", "wind-north",
+          // Dragons
+          "dragon-red", "dragon-green", "dragon-white",
+        ]
+      }
     },
 
     // LESSON 7: Winning Hand Structure

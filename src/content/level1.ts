@@ -8,6 +8,11 @@ export interface Lesson {
   content: string[];
   tiles?: string[]; // tile IDs to display
   quiz?: QuizQuestion[];
+  interactiveType?: 'set-builder' | 'tile-recognition' | null;
+  interactiveData?: {
+    targetSetType?: 'pung' | 'chow' | 'kong' | 'pair';
+    availableTileIds?: string[];
+  };
 }
 
 export interface QuizQuestion {

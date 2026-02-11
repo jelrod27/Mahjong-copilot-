@@ -1,67 +1,73 @@
-name: mahjong_learning_app
-description: A comprehensive mobile learning platform for mahjong
+name: mahjong_app
+description: A Hong Kong Mahjong learning and multiplayer game with 70s retro-modern design.
 publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: '>=3.2.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  flutter_localizations:
-    sdk: flutter
 
   # State Management
-  provider: ^6.1.1
+  flutter_riverpod: ^2.4.10
+  riverpod_annotation: ^2.3.4
 
-  # Firebase
-  firebase_core: ^2.24.2
-  firebase_auth: ^4.15.3
-  cloud_firestore: ^4.13.6
-  firebase_analytics: ^10.7.4
-  firebase_crashlytics: ^3.4.9
+  # Backend
+  supabase_flutter: ^2.3.0
 
-  # Storage
-  shared_preferences: ^2.2.2
-
-  # SVG Rendering
-  flutter_svg: ^2.0.9
-
-  # HTTP
-  http: ^1.1.2
-
-  # Crash Reporting
-  sentry_flutter: ^7.15.0
-
-  # Sound Effects (add this)
-  audioplayers: ^5.2.1
+  # Navigation
+  go_router: ^13.0.0
 
   # UI
-  cupertino_icons: ^1.0.6
+  flutter_svg: ^2.0.9
+  google_fonts: ^6.1.0
+
+  # Animations
+  rive: ^0.12.0
+  flutter_animate: ^4.5.0
+  lottie: ^3.0.0
+
+  # Audio
+  audioplayers: ^5.2.1
+
+  # Utilities
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.8.1
+  uuid: ^4.3.1
+  equatable: ^2.0.5
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.1
-  # Launcher Icons (add this)
-  flutter_launcher_icons: ^0.13.1
-  # Native Splash (add this)
-  flutter_native_splash: ^2.3.10
+  flutter_lints: ^3.0.0
+  build_runner: ^2.4.8
+  freezed: ^2.4.6
+  json_serializable: ^6.7.1
+  riverpod_generator: ^2.3.9
+  mocktail: ^1.0.1
 
 flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/
     - assets/tiles/
     - assets/sounds/
+    - assets/images/
+    - assets/fonts/
     - assets/icons/
+    - assets/animations/
 
   fonts:
-    - family: NotoSansSC
+    - family: Righteous
       fonts:
-        - asset: assets/fonts/NotoSansSC-Regular.ttf
-    - family: NotoSansJP
+        - asset: assets/fonts/Righteous-Regular.ttf
+    - family: FredokaOne
       fonts:
-        - asset: assets/fonts/NotoSansJP-Regular.ttf
+        - asset: assets/fonts/FredokaOne-Regular.ttf
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/Nunito-Regular.ttf
+        - asset: assets/fonts/Nunito-Bold.ttf
+          weight: 700

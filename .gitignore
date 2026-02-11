@@ -1,8 +1,33 @@
-# OSX
-.DS_Store
+# Flutter/Dart
+*.dart.js
+*.js_
+*.js.deps
+*.js.map
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+pubspec.lock
 
-# Xcode
+# Generated files
+*.g.dart
+*.freezed.dart
+
+# Build outputs
 build/
+/android/app/debug
+/android/app/profile
+/android/app/release
+*.apk
+*.aab
+*.ipa
+
+# iOS
+/ios/Flutter/
+/ios/Pods/
+/ios/.symlinks/
 *.pbxuser
 !default.pbxuser
 *.mode1v3
@@ -16,57 +41,56 @@ xcuserdata
 *.moved-aside
 DerivedData
 *.hmap
-*.ipa
 *.xcuserstate
 project.xcworkspace
 
-# Android/IntelliJ
-build/
-.idea
-.gradle
+# Android
+.gradle/
 local.properties
-*.iml
 *.hprof
 .cxx/
-*.apk
 *.ap_
-*.aab
 
-# node.js
-node_modules/
-npm-debug.log
-yarn-error.log
+# IDE
+.idea/
+*.iml
+.vscode/
 
-# fastlane
-**/fastlane/report.xml
-**/fastlane/Preview.html
-**/fastlane/screenshots
-**/fastlane/test_output
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
 
-# Bundle artifact
-*.jsbundle
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# CocoaPods
-/ios/Pods/
-
-# Temporary files created by Metro to check the health of the file watcher
-.metro-health-check*
-
-# Firebase
-google-services.json
-GoogleService-Info.plist
-
-# Environment variables
+# Environment
 .env
 .env.local
+.env.*.local
 
-# TypeScript
-*.tsbuildinfo
+# Supabase
+supabase/.temp/
 
-# Testing
+# Coverage
 coverage/
 
 # Misc
-.vscode/
-.idea/
 *.log
+*.swp
+*.swo
+*~
+npm-debug.log
+yarn-error.log
+
+# Claude plans (local)
+.claude/plans/
+
+# Node.js / TypeScript
+node_modules/
+dist/
+*.tsbuildinfo
+.pnpm-store/

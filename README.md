@@ -1,4 +1,4 @@
-what # Hong Kong Mahjong
+# Hong Kong Mahjong
 
 A cross-platform mobile mahjong game built with Flutter, featuring real-time multiplayer and a 70s retro-modern design.
 

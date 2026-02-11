@@ -184,7 +184,7 @@ export function findClosedKans(hand: TileId[]): Meld[] {
   }
 
   const results: Meld[] = [];
-  for (const [_, tiles] of counts) {
+  for (const [, tiles] of counts) {
     if (tiles.length === 4) {
       results.push({
         type: 'closedKan',

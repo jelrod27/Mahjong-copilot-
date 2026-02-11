@@ -550,7 +550,7 @@ export function checkSanshokuDoujun(ctx: YakuCheckContext): boolean {
 
   // For each starting value (0-6 within suit), check if same sequence in all 3 suits
   for (let val = 0; val <= 6; val++) {
-    let hasSuits = [false, false, false];
+    const hasSuits = [false, false, false];
     for (const seq of sequences) {
       const first = seq.tiles[0]!;
       if (isSuited(first) && valueOf(first) === val + 1) {
@@ -570,7 +570,7 @@ export function checkSanshokuDoukou(ctx: YakuCheckContext): boolean {
 
   // For each value 1-9, check if same triplet in all 3 suits
   for (let val = 1; val <= 9; val++) {
-    let hasSuits = [false, false, false];
+    const hasSuits = [false, false, false];
     for (const tri of triplets) {
       const t = tri.tiles[0]!;
       if (isSuited(t) && valueOf(t) === val) {

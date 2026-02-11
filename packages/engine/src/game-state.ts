@@ -376,7 +376,7 @@ export function resolveCallWindow(
 
   if (winners.length === 0) {
     // All pass — mark temporary furiten for players who could have called ron
-    let newState = markTemporaryFuriten(state);
+    const newState = markTemporaryFuriten(state);
 
     // Advance to next player's draw
     const nextPlayer = ((discarderId + 1) % 4) as PlayerId;
@@ -424,7 +424,7 @@ function applyMeldCall(state: GameState, call: PendingCall): GameState {
 
   // Remove called tiles from hand (excluding the discard tile which comes from the table)
   const tilesToRemove = call.meld.tiles.filter((t) => t !== discardTile);
-  let newClosed = [...player.hand.closed];
+  const newClosed = [...player.hand.closed];
   for (const t of tilesToRemove) {
     const idx = newClosed.indexOf(t);
     if (idx !== -1) newClosed.splice(idx, 1);
@@ -465,7 +465,7 @@ function applyMeldCall(state: GameState, call: PendingCall): GameState {
     }
     newPlayers[discarderId] = { ...discarder, discards: newDiscards };
 
-    let newState: GameState = {
+    const newState: GameState = {
       ...state,
       phase: GamePhase.KanProcess,
       players: newPlayers,
@@ -511,7 +511,7 @@ function applyMeldCall(state: GameState, call: PendingCall): GameState {
   }
   newPlayers[discarderId] = { ...discarder, discards: newDiscards };
 
-  let newState: GameState = {
+  const newState: GameState = {
     ...state,
     phase: GamePhase.PlayerDiscard, // Caller must discard
     players: newPlayers,
@@ -656,7 +656,7 @@ export function declareClosedKan(state: GameState, tiles: TileId[]): GameState |
   const types = tiles.map(tileIdToType);
   if (!types.every((t) => t === types[0])) return null;
 
-  let newClosed = [...player.hand.closed];
+  const newClosed = [...player.hand.closed];
   for (const t of tiles) {
     const idx = newClosed.indexOf(t);
     if (idx === -1) return null;

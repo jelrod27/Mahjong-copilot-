@@ -66,7 +66,14 @@ GoogleService-Info.plist
 # Testing
 coverage/
 
+# Next.js
+.next/
+out/
+
 # Misc
 .vscode/
 .idea/
 *.log
+
+# Lock files (use npm ci in CI)
+package-lock.json

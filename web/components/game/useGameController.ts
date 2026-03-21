@@ -8,6 +8,7 @@ import { getAvailableClaims } from '@/engine/claiming';
 import { isWinningHand } from '@/engine/winDetection';
 import { calculateScore } from '@/engine/scoring';
 import { AvailableClaim, ScoringContext, ScoringResult } from '@/engine/types';
+import { getAIDecision, getAIClaimDecision } from '@/engine/ai';
 
 const HUMAN_ID = 'human-player';
 const AI_DRAW_DELAY = 600;
@@ -232,12 +233,12 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
         processingRef.current = false;
         if (!afterDraw) return;
 
-        // Check if AI can win after drawing
+        // After draw, use AI decision (may declare win, kong, or proceed to discard)
         if (afterDraw.phase === GamePhase.PLAYING && afterDraw.turnPhase === 'discard') {
-          const aiPlayer = afterDraw.players[afterDraw.currentPlayerIndex];
-          if (isWinningHand(aiPlayer.hand)) {
+          const decision = getAIDecision(afterDraw, afterDraw.currentPlayerIndex);
+          if (decision.action.type === 'DECLARE_WIN' || decision.action.type === 'DECLARE_KONG') {
             setTimeout(() => {
-              doAction(currentPlayer.id, { type: 'DECLARE_WIN' });
+              doAction(currentPlayer.id, decision.action);
             }, 300);
             return;
           }
@@ -246,26 +247,34 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
       return () => { clearTimeout(timer); processingRef.current = false; };
     }
 
-    // AI needs to discard
+    // AI needs to discard — use AI decision engine
     if (game.turnPhase === 'discard') {
       processingRef.current = true;
       const timer = setTimeout(() => {
-        const hand = game.players[game.currentPlayerIndex].hand;
-        const nonBonusTiles = hand.filter(t => t.type !== TileType.BONUS);
-        const randomTile = nonBonusTiles[Math.floor(Math.random() * nonBonusTiles.length)] || hand[0];
-        doAction(currentPlayer.id, { type: 'DISCARD', tile: randomTile });
+        const decision = getAIDecision(game, game.currentPlayerIndex);
+        doAction(currentPlayer.id, decision.action);
         processingRef.current = false;
       }, AI_DISCARD_DELAY);
       return () => { clearTimeout(timer); processingRef.current = false; };
     }
 
-    // AI in claim phase — for easy AI, always pass
+    // AI in claim phase — use AI claim decision
     if (game.turnPhase === 'claim' && game.lastDiscardedBy !== currentPlayer.id) {
       processingRef.current = true;
       const timer = setTimeout(() => {
-        doAction(currentPlayer.id, { type: 'PASS' });
+        const discarderIndex = game.players.findIndex(p => p.id === game.lastDiscardedBy);
+        if (game.lastDiscardedTile && discarderIndex !== -1) {
+          const claims = getAvailableClaims(
+            game.lastDiscardedTile, currentPlayer, game.currentPlayerIndex,
+            discarderIndex, game.players.length
+          );
+          const decision = getAIClaimDecision(game, game.currentPlayerIndex, claims);
+          doAction(currentPlayer.id, decision.action);
+        } else {
+          doAction(currentPlayer.id, { type: 'PASS' });
+        }
         processingRef.current = false;
-      }, 300);
+      }, 400);
       return () => { clearTimeout(timer); processingRef.current = false; };
     }
   }, [game?.currentPlayerIndex, game?.turnPhase, game?.phase, doAction]);

@@ -30,6 +30,23 @@ const config: Config = {
         },
         success: "#2E7D32",
         error: "#B71C1C",
+        retro: {
+          bg: "#1a1a2e",
+          bgLight: "#16213e",
+          panel: "#0f3460",
+          border: "#e94560",
+          accent: "#e94560",
+          gold: "#f0c040",
+          green: "#00d474",
+          cyan: "#53d8fb",
+          text: "#e0e0e0",
+          textDim: "#7a7a8e",
+          white: "#f5f5f5",
+        },
+      },
+      fontFamily: {
+        retro: ['"VT323"', 'monospace'],
+        pixel: ['"Press Start 2P"', 'monospace'],
       },
       spacing: {
         xs: "4px",

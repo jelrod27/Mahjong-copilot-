@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,4 +12,81 @@ body {
 .dark body {
   background-color: #121212;
   color: #ffffff;
+}
+
+/* Retro utility classes */
+@layer components {
+  .retro-panel {
+    @apply bg-retro-panel border-2 border-retro-border rounded-sm;
+  }
+
+  .retro-btn {
+    @apply font-retro text-lg px-4 py-2 border-2 border-retro-border text-retro-text
+           transition-all duration-100 cursor-pointer select-none;
+    box-shadow: 3px 3px 0 #000, inset 1px 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  .retro-btn:hover {
+    @apply brightness-110;
+  }
+
+  .retro-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 #000, inset 1px 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  .retro-btn:disabled {
+    @apply opacity-40 cursor-not-allowed;
+  }
+
+  .retro-btn-accent {
+    @apply retro-btn bg-retro-accent text-white;
+  }
+
+  .retro-btn-green {
+    @apply retro-btn bg-retro-green text-black;
+  }
+
+  .retro-btn-gold {
+    @apply retro-btn bg-retro-gold text-black;
+  }
+}
+
+@layer utilities {
+  .retro-glow {
+    text-shadow: 0 0 8px currentColor;
+  }
+
+  .retro-glow-strong {
+    text-shadow: 0 0 4px currentColor, 0 0 12px currentColor;
+  }
+
+  .retro-scanline {
+    background-image: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 1px,
+      rgba(0, 0, 0, 0.06) 1px,
+      rgba(0, 0, 0, 0.06) 2px
+    );
+  }
+}
+
+/* Tile animations */
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 0 4px #f0c040; }
+  50% { box-shadow: 0 0 12px #f0c040, 0 0 20px #f0c04060; }
+}
+
+.animate-pulse-gold {
+  animation: pulse-gold 1.5s ease-in-out infinite;
+}
+
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.animate-blink {
+  animation: blink-cursor 1s step-end infinite;
 }

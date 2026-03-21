@@ -8,6 +8,7 @@ interface RetroTileProps {
   showBack?: boolean;
   isSelected?: boolean;
   isLastDiscarded?: boolean;
+  isNewlyDrawn?: boolean;
   onClick?: () => void;
   disabled?: boolean;
 }
@@ -61,7 +62,7 @@ function getSuitLabel(tile: Tile): string {
 
 export default function RetroTile({
   tile, size = 'md', showBack = false, isSelected = false,
-  isLastDiscarded = false, onClick, disabled = false,
+  isLastDiscarded = false, isNewlyDrawn = false, onClick, disabled = false,
 }: RetroTileProps) {
   const { w, h } = SIZES[size];
   const suitColor = SUIT_COLORS[tile.suit] || '#a1a1aa';
@@ -89,6 +90,7 @@ export default function RetroTile({
         flex flex-col rounded-sm border-2 overflow-hidden transition-all duration-100
         ${isSelected ? 'border-retro-cyan -translate-y-2 shadow-[0_0_10px_#53d8fb60]' : 'border-retro-textDim'}
         ${isLastDiscarded ? 'animate-pulse-gold' : ''}
+        ${isNewlyDrawn ? 'animate-tile-draw' : ''}
       `}
       style={{ width: w, height: h, backgroundColor: '#FFF8E1' }}
     >

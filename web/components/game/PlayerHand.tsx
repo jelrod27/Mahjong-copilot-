@@ -24,6 +24,7 @@ export default function PlayerHand({
               tile={tile}
               size="lg"
               isSelected={tile.id === selectedTileId}
+              isNewlyDrawn={isLastDrawn}
               onClick={() => onTileSelect(tile)}
               disabled={disabled}
             />

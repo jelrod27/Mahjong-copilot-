@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { GameState } from '@/models/GameState';
 import { ScoringResult } from '@/engine/types';
 import RetroTile from './RetroTile';
@@ -20,9 +21,37 @@ export default function GameOverScreen({
     : null;
   const isDraw = !winner;
 
+  const [showContent, setShowContent] = useState(false);
+  const [displayedPoints, setDisplayedPoints] = useState(0);
+  const targetPoints = scoringResult?.totalPoints ?? 0;
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowContent(true), 300);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Score counter animation
+  useEffect(() => {
+    if (!showContent || targetPoints === 0) return;
+    const duration = 1000;
+    const steps = 20;
+    const increment = targetPoints / steps;
+    let current = 0;
+    const interval = setInterval(() => {
+      current += increment;
+      if (current >= targetPoints) {
+        setDisplayedPoints(targetPoints);
+        clearInterval(interval);
+      } else {
+        setDisplayedPoints(Math.floor(current));
+      }
+    }, duration / steps);
+    return () => clearInterval(interval);
+  }, [showContent, targetPoints]);
+
   return (
     <div className="fixed inset-0 bg-black/80 z-40 flex items-center justify-center p-4">
-      <div className="retro-panel p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div className={`retro-panel p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto ${showContent ? 'animate-slide-up' : 'opacity-0'}`}>
         {/* Header */}
         <div className="text-center mb-4">
           <div className="font-retro text-retro-accent text-sm">
@@ -54,7 +83,9 @@ export default function GameOverScreen({
             <div className="font-pixel text-xs text-retro-cyan mb-2">WINNING HAND</div>
             <div className="flex flex-wrap gap-0.5 justify-center mb-2">
               {winner.hand.map(tile => (
-                <RetroTile key={tile.id} tile={tile} size="sm" />
+                <div key={tile.id} className="animate-tile-win">
+                  <RetroTile tile={tile} size="sm" />
+                </div>
               ))}
             </div>
             {winner.melds.length > 0 && (
@@ -89,7 +120,7 @@ export default function GameOverScreen({
               </div>
               <div className="flex justify-between font-retro text-lg">
                 <span className="text-retro-green">Points</span>
-                <span className="text-retro-green retro-glow-strong">{scoringResult.totalPoints}</span>
+                <span className="text-retro-green retro-glow-strong">{displayedPoints}</span>
               </div>
               {scoringResult.handName && (
                 <div className="text-center font-pixel text-xs text-retro-accent mt-1">

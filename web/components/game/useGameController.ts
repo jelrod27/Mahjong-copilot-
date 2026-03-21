@@ -9,6 +9,7 @@ import { isWinningHand } from '@/engine/winDetection';
 import { calculateScore } from '@/engine/scoring';
 import { AvailableClaim, ScoringContext, ScoringResult } from '@/engine/types';
 import { getAIDecision, getAIClaimDecision } from '@/engine/ai';
+import soundManager from '@/lib/soundManager';
 
 const HUMAN_ID = 'human-player';
 const AI_DRAW_DELAY = 600;
@@ -97,6 +98,7 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
     if (!tile) return;
     doAction(HUMAN_ID, { type: 'DISCARD', tile });
     setSelectedTileId(undefined);
+    soundManager.play('tilePlace');
   }, [selectedTileId, humanIndex, doAction]);
 
   const declareKong = useCallback(() => {
@@ -128,12 +130,14 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
     doAction(HUMAN_ID, { type: 'CLAIM', claimType, tilesFromHand });
     setClaimOptions([]);
     setClaimTimer(0);
+    soundManager.play(claimType === 'win' ? 'win' : 'claim');
   }, [doAction]);
 
   const pass = useCallback(() => {
     doAction(HUMAN_ID, { type: 'PASS' });
     setClaimOptions([]);
     setClaimTimer(0);
+    soundManager.play('pass');
   }, [doAction]);
 
   // === Computed state ===
@@ -173,6 +177,7 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
 
     const timer = setTimeout(() => {
       doAction(HUMAN_ID, { type: 'DRAW' });
+      soundManager.play('tileDraw');
     }, 300);
     return () => clearTimeout(timer);
   }, [game?.turnPhase, game?.currentPlayerIndex, game?.phase, humanIndex, doAction]);
@@ -195,6 +200,7 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
     if (claims.length > 0) {
       setClaimOptions(claims);
       setClaimTimer(CLAIM_TIMEOUT);
+      soundManager.play('turnAlert');
     } else {
       // Human has no claims — auto-pass
       doAction(HUMAN_ID, { type: 'PASS' });
@@ -285,6 +291,8 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
 
     const winner = game.players.find(p => p.id === game.winnerId);
     if (!winner || !game.winningTile) return;
+
+    soundManager.play('win');
 
     try {
       const context: ScoringContext = {

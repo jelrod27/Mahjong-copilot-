@@ -1,0 +1,132 @@
+'use client';
+
+import { Tile, TileType, TileSuit, WindTile, DragonTile } from '@/models/Tile';
+
+interface RetroTileProps {
+  tile: Tile;
+  size?: 'sm' | 'md' | 'lg';
+  showBack?: boolean;
+  isSelected?: boolean;
+  isLastDiscarded?: boolean;
+  onClick?: () => void;
+  disabled?: boolean;
+}
+
+const SIZES = {
+  sm: { w: 32, h: 48 },
+  md: { w: 44, h: 66 },
+  lg: { w: 56, h: 84 },
+};
+
+const SUIT_COLORS: Record<string, string> = {
+  [TileSuit.BAMBOO]: '#4CAF50',
+  [TileSuit.CHARACTER]: '#ef4444',
+  [TileSuit.DOT]: '#3b82f6',
+  [TileSuit.WIND]: '#a1a1aa',
+  [TileSuit.DRAGON]: '#a1a1aa',
+  [TileSuit.FLOWER]: '#f0c040',
+  [TileSuit.SEASON]: '#f0c040',
+};
+
+function getSymbol(tile: Tile): string {
+  if (tile.type === TileType.SUIT) return tile.number?.toString() || '';
+  if (tile.type === TileType.HONOR) {
+    if (tile.wind) {
+      const symbols: Record<WindTile, string> = {
+        [WindTile.EAST]: '東', [WindTile.SOUTH]: '南',
+        [WindTile.WEST]: '西', [WindTile.NORTH]: '北',
+      };
+      return symbols[tile.wind] || '';
+    }
+    if (tile.dragon) {
+      const symbols: Record<DragonTile, string> = {
+        [DragonTile.RED]: '中', [DragonTile.GREEN]: '發', [DragonTile.WHITE]: '白',
+      };
+      return symbols[tile.dragon] || '';
+    }
+  }
+  if (tile.type === TileType.BONUS) return tile.flower || tile.season || '';
+  return '';
+}
+
+function getSuitLabel(tile: Tile): string {
+  if (tile.type === TileType.SUIT) {
+    const labels: Record<string, string> = {
+      [TileSuit.BAMBOO]: '索', [TileSuit.CHARACTER]: '萬', [TileSuit.DOT]: '筒',
+    };
+    return labels[tile.suit] || '';
+  }
+  return '';
+}
+
+export default function RetroTile({
+  tile, size = 'md', showBack = false, isSelected = false,
+  isLastDiscarded = false, onClick, disabled = false,
+}: RetroTileProps) {
+  const { w, h } = SIZES[size];
+  const suitColor = SUIT_COLORS[tile.suit] || '#a1a1aa';
+
+  if (showBack) {
+    const backContent = (
+      <div
+        className="flex items-center justify-center border-2 border-retro-textDim rounded-sm"
+        style={{
+          width: w, height: h,
+          background: 'repeating-linear-gradient(45deg, #0f3460, #0f3460 3px, #16213e 3px, #16213e 6px)',
+        }}
+      >
+        <span className="text-retro-textDim" style={{ fontSize: w * 0.3 }}>?</span>
+      </div>
+    );
+    return onClick ? (
+      <button onClick={onClick} disabled={disabled} type="button">{backContent}</button>
+    ) : backContent;
+  }
+
+  const tileContent = (
+    <div
+      className={`
+        flex flex-col rounded-sm border-2 overflow-hidden transition-all duration-100
+        ${isSelected ? 'border-retro-cyan -translate-y-2 shadow-[0_0_10px_#53d8fb60]' : 'border-retro-textDim'}
+        ${isLastDiscarded ? 'animate-pulse-gold' : ''}
+      `}
+      style={{ width: w, height: h, backgroundColor: '#FFF8E1' }}
+    >
+      {/* Suit color bar */}
+      <div className="h-1 w-full" style={{ backgroundColor: suitColor }} />
+
+      {/* Symbol */}
+      <div className="flex flex-col flex-1 items-center justify-center">
+        <span
+          className="font-bold leading-none"
+          style={{ fontSize: w * 0.4, color: suitColor }}
+        >
+          {getSymbol(tile)}
+        </span>
+        {size !== 'sm' && (
+          <span
+            className="leading-none text-gray-500"
+            style={{ fontSize: w * 0.22 }}
+          >
+            {getSuitLabel(tile)}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        type="button"
+        className="transition-transform duration-100"
+      >
+        {tileContent}
+      </button>
+    );
+  }
+
+  return tileContent;
+}

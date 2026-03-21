@@ -5,25 +5,26 @@
 @tailwind utilities;
 
 body {
-  background-color: #f5f5f5;
-  color: #212121;
-}
-
-.dark body {
-  background-color: #121212;
-  color: #ffffff;
+  background-color: #1a1a2e;
+  color: #e0e0e0;
 }
 
 /* Retro utility classes */
 @layer components {
   .retro-panel {
-    @apply bg-retro-panel border-2 border-retro-border rounded-sm;
+    @apply bg-retro-panel border-2 border-retro-border rounded-lg;
+  }
+
+  .retro-card {
+    @apply rounded-lg border border-retro-border/30 p-4;
+    background: rgba(15, 52, 96, 0.7);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
 
   .retro-btn {
     @apply font-retro text-lg px-4 py-2 border-2 border-retro-border text-retro-text
-           transition-all duration-100 cursor-pointer select-none;
-    box-shadow: 3px 3px 0 #000, inset 1px 1px 0 rgba(255, 255, 255, 0.15);
+           rounded-md transition-all duration-100 cursor-pointer select-none;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
   }
 
   .retro-btn:hover {
@@ -31,8 +32,8 @@ body {
   }
 
   .retro-btn:active {
-    transform: translate(2px, 2px);
-    box-shadow: 1px 1px 0 #000, inset 1px 1px 0 rgba(255, 255, 255, 0.15);
+    transform: translate(1px, 1px);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   }
 
   .retro-btn:disabled {
@@ -49,6 +50,20 @@ body {
 
   .retro-btn-gold {
     @apply retro-btn bg-retro-gold text-black;
+  }
+
+  .retro-input {
+    @apply bg-retro-bgLight border border-retro-border/40 rounded-lg text-retro-text
+           font-retro text-lg p-3 w-full outline-none transition-colors;
+  }
+
+  .retro-input:focus {
+    @apply border-retro-cyan;
+    box-shadow: 0 0 8px rgba(83, 216, 251, 0.2);
+  }
+
+  .retro-input::placeholder {
+    @apply text-retro-textDim;
   }
 }
 

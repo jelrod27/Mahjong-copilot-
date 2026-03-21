@@ -3,8 +3,8 @@ import "./globals.css";
 import StoreProvider from "@/store/provider";
 
 export const metadata: Metadata = {
-  title: "Mahjong Learning App",
-  description: "Learn to play Mahjong with interactive lessons and quizzes",
+  title: "16 Bit Mahjong",
+  description: "Learn and play Hong Kong Mahjong",
 };
 
 export const viewport: Viewport = {
@@ -19,7 +19,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-surface antialiased">
+      <body className="min-h-screen bg-retro-bg text-retro-text font-retro antialiased">
         <StoreProvider>
           {children}
         </StoreProvider>

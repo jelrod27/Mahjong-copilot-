@@ -7,7 +7,7 @@ export default function MainLayout({
 }) {
   return (
     <>
-      <main className="pb-16 max-w-lg mx-auto min-h-screen bg-white">
+      <main className="pb-16 max-w-lg mx-auto min-h-screen bg-retro-bg">
         {children}
       </main>
       <BottomNav />

@@ -14,12 +14,13 @@ interface ActionBarProps {
   onPass: () => void;
   turnPhase: TurnPhase;
   isHumanTurn: boolean;
+  claimTimer?: number;
 }
 
 export default function ActionBar({
   canDiscard, canDeclareKong, canDeclareWin, hasClaimOptions,
   onDiscard, onKong, onWin, onClaim, onPass,
-  turnPhase, isHumanTurn,
+  turnPhase, isHumanTurn, claimTimer = 0,
 }: ActionBarProps) {
   // During discard phase (human's turn)
   if (turnPhase === 'discard' && isHumanTurn) {
@@ -48,23 +49,34 @@ export default function ActionBar({
 
   // During claim phase (opponent discarded)
   if (turnPhase === 'claim' && hasClaimOptions) {
+    const timerPct = claimTimer > 0 ? (claimTimer / 10000) * 100 : 0;
+    const timerColor = timerPct > 50 ? 'bg-retro-cyan' : timerPct > 20 ? 'bg-retro-gold' : 'bg-retro-accent';
     return (
-      <div className="flex items-center justify-center gap-2 py-2">
-        <button className="retro-btn-green" onClick={() => onClaim('win')}>
-          [ WIN ]
-        </button>
-        <button className="retro-btn-gold" onClick={() => onClaim('kong')}>
-          [ KONG ]
-        </button>
-        <button className="retro-btn-gold" onClick={() => onClaim('pung')}>
-          [ PUNG ]
-        </button>
-        <button className="retro-btn" onClick={() => onClaim('chow')}>
-          [ CHOW ]
-        </button>
-        <button className="retro-btn bg-retro-bgLight" onClick={onPass}>
-          [ PASS ]
-        </button>
+      <div className="space-y-1 py-2">
+        {/* Claim timer bar */}
+        <div className="h-1 bg-retro-bgLight rounded-full mx-4">
+          <div
+            className={`h-full rounded-full transition-all duration-100 ${timerColor}`}
+            style={{ width: `${timerPct}%` }}
+          />
+        </div>
+        <div className="flex items-center justify-center gap-2">
+          <button className="retro-btn-green" onClick={() => onClaim('win')}>
+            [ WIN ]
+          </button>
+          <button className="retro-btn-gold" onClick={() => onClaim('kong')}>
+            [ KONG ]
+          </button>
+          <button className="retro-btn-gold" onClick={() => onClaim('pung')}>
+            [ PUNG ]
+          </button>
+          <button className="retro-btn" onClick={() => onClaim('chow')}>
+            [ CHOW ]
+          </button>
+          <button className="retro-btn bg-retro-bgLight" onClick={onPass}>
+            [ PASS ]
+          </button>
+        </div>
       </div>
     );
   }

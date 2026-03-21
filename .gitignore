@@ -75,5 +75,5 @@ out/
 .idea/
 *.log
 
-# Lock files (use npm ci in CI)
-package-lock.json
+# Lock files — only ignore root RN lockfile (web/ lockfile is committed for CI/Vercel)
+/package-lock.json

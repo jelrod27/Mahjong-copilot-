@@ -1,33 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { initializeGame } from '@/engine/turnManager';
-import { GameState } from '@/models/GameState';
-import { Tile } from '@/models/Tile';
+import { useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { ClaimType } from '@/models/GameState';
+import { AvailableClaim } from '@/engine/types';
+import useGameController from '@/components/game/useGameController';
 import GameBoard from '@/components/game/GameBoard';
+import GameOverScreen from '@/components/game/GameOverScreen';
+import ClaimChoiceModal from '@/components/game/ClaimChoiceModal';
 
 export default function GameContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const difficulty = (searchParams.get('difficulty') || 'easy') as 'easy' | 'medium' | 'hard';
 
-  const [gameState, setGameState] = useState<GameState | null>(null);
-  const [selectedTileId, setSelectedTileId] = useState<string | undefined>();
+  const controller = useGameController(difficulty);
+  const [pendingClaim, setPendingClaim] = useState<AvailableClaim | null>(null);
 
-  useEffect(() => {
-    const state = initializeGame({
-      playerNames: ['You', 'West AI', 'North AI', 'East AI'],
-      aiPlayers: [
-        { index: 1, difficulty },
-        { index: 2, difficulty },
-        { index: 3, difficulty },
-      ],
-      humanPlayerId: 'human-player',
-    });
-    setGameState(state);
-  }, [difficulty]);
-
-  if (!gameState) {
+  if (!controller.game) {
     return (
       <div className="h-screen flex items-center justify-center">
         <div className="font-pixel text-retro-cyan retro-glow text-sm">
@@ -37,28 +27,64 @@ export default function GameContent() {
     );
   }
 
-  const handleTileSelect = (tile: Tile) => {
-    setSelectedTileId(prev => prev === tile.id ? undefined : tile.id);
+  const handleClaim = (claimType: string) => {
+    const claim = controller.claimOptions.find(c => c.claimType === claimType);
+    if (!claim) return;
+
+    // If there are multiple tile combinations, show picker
+    if (claim.tilesFromHand.length > 1) {
+      setPendingClaim(claim);
+      return;
+    }
+
+    controller.submitClaim(
+      claimType as ClaimType,
+      claim.tilesFromHand[0] || []
+    );
   };
 
-  // Placeholder handlers — will be wired in PR 2
-  const handleDiscard = () => {};
-  const handleKong = () => {};
-  const handleWin = () => {};
-  const handleClaim = () => {};
-  const handlePass = () => {};
+  const handleClaimSelect = (claimType: ClaimType, tilesFromHand: any) => {
+    controller.submitClaim(claimType, tilesFromHand);
+    setPendingClaim(null);
+  };
 
   return (
-    <GameBoard
-      gameState={gameState}
-      humanPlayerId="human-player"
-      selectedTileId={selectedTileId}
-      onTileSelect={handleTileSelect}
-      onDiscard={handleDiscard}
-      onKong={handleKong}
-      onWin={handleWin}
-      onClaim={handleClaim}
-      onPass={handlePass}
-    />
+    <>
+      <GameBoard
+        gameState={controller.game}
+        humanPlayerId="human-player"
+        selectedTileId={controller.selectedTileId}
+        onTileSelect={controller.selectTile}
+        onDiscard={controller.discardSelected}
+        onKong={controller.declareKong}
+        onWin={controller.declareWin}
+        onClaim={handleClaim}
+        onPass={controller.pass}
+        canDeclareKong={controller.canDeclareKong}
+        canDeclareWin={controller.canDeclareWin}
+        hasClaimOptions={controller.claimOptions.length > 0}
+        claimTimer={controller.claimTimer}
+      />
+
+      {/* Claim choice modal */}
+      {pendingClaim && controller.game.lastDiscardedTile && (
+        <ClaimChoiceModal
+          claim={pendingClaim}
+          discardedTile={controller.game.lastDiscardedTile}
+          onSelect={handleClaimSelect}
+          onCancel={() => { setPendingClaim(null); controller.pass(); }}
+        />
+      )}
+
+      {/* Game over screen */}
+      {controller.isGameOver && (
+        <GameOverScreen
+          gameState={controller.game}
+          scoringResult={controller.scoringResult}
+          onPlayAgain={() => controller.startNewGame(difficulty)}
+          onBackToMenu={() => router.push('/play')}
+        />
+      )}
+    </>
   );
 }

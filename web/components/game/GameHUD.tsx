@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { Player } from '@/models/GameState';
 import { WindTile } from '@/models/Tile';
 import { TurnPhase } from '@/models/GameState';
+import soundManager from '@/lib/soundManager';
 
 interface GameHUDProps {
   wallCount: number;
@@ -24,11 +26,27 @@ const PHASE_LABELS: Record<TurnPhase, string> = {
 export default function GameHUD({
   wallCount, prevailingWind, currentPlayerIndex, players, turnPhase,
 }: GameHUDProps) {
+  const [soundOn, setSoundOn] = useState(soundManager.isEnabled());
+
+  const toggleSound = () => {
+    const next = !soundOn;
+    setSoundOn(next);
+    soundManager.setEnabled(next);
+    if (next) soundManager.play('tilePlace');
+  };
+
   return (
     <div className="retro-panel p-2 font-retro text-sm">
-      {/* Title bar */}
-      <div className="text-retro-accent text-xs font-pixel mb-1">
-        ╔══ GAME ══╗
+      {/* Title bar with sound toggle */}
+      <div className="flex justify-between items-center mb-1">
+        <span className="text-retro-accent text-xs font-pixel">╔══ GAME ══╗</span>
+        <button
+          onClick={toggleSound}
+          className="text-xs px-1 hover:text-retro-cyan transition-colors"
+          title={soundOn ? 'Mute' : 'Unmute'}
+        >
+          {soundOn ? '🔊' : '🔇'}
+        </button>
       </div>
 
       {/* Wind & Wall */}

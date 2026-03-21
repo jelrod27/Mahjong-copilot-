@@ -90,3 +90,56 @@ body {
 .animate-blink {
   animation: blink-cursor 1s step-end infinite;
 }
+
+/* Tile action animations */
+@keyframes tile-draw {
+  0% { opacity: 0; transform: translateY(-12px) scale(0.9); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes tile-discard {
+  0% { opacity: 1; transform: scale(1); }
+  50% { transform: scale(0.85); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes tile-claim {
+  0% { box-shadow: 0 0 0 transparent; }
+  30% { box-shadow: 0 0 16px #00d474, 0 0 32px #00d47440; }
+  100% { box-shadow: 0 0 0 transparent; }
+}
+
+@keyframes tile-win {
+  0%, 100% { box-shadow: 0 0 4px #f0c040; transform: scale(1); }
+  50% { box-shadow: 0 0 20px #f0c040, 0 0 40px #f0c04060; transform: scale(1.05); }
+}
+
+@keyframes slide-up {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes type-in {
+  0% { width: 0; }
+  100% { width: 100%; }
+}
+
+.animate-tile-draw {
+  animation: tile-draw 0.3s ease-out;
+}
+
+.animate-tile-discard {
+  animation: tile-discard 0.25s ease-in-out;
+}
+
+.animate-tile-claim {
+  animation: tile-claim 0.5s ease-out;
+}
+
+.animate-tile-win {
+  animation: tile-win 1.2s ease-in-out infinite;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}

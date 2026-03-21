@@ -25,8 +25,8 @@ const SUIT_COLORS: Record<string, string> = {
   [TileSuit.DOT]: '#3b82f6',
   [TileSuit.WIND]: '#a1a1aa',
   [TileSuit.DRAGON]: '#a1a1aa',
-  [TileSuit.FLOWER]: '#f0c040',
-  [TileSuit.SEASON]: '#f0c040',
+  [TileSuit.FLOWER]: '#f5b731',
+  [TileSuit.SEASON]: '#f5b731',
 };
 
 function getSymbol(tile: Tile): string {
@@ -73,7 +73,7 @@ export default function RetroTile({
         className="flex items-center justify-center border-2 border-retro-textDim rounded-sm"
         style={{
           width: w, height: h,
-          background: 'repeating-linear-gradient(45deg, #0f3460, #0f3460 3px, #16213e 3px, #16213e 6px)',
+          background: 'repeating-linear-gradient(45deg, #2a2240, #2a2240 3px, #1c1829 3px, #1c1829 6px)',
         }}
       >
         <span className="text-retro-textDim" style={{ fontSize: w * 0.3 }}>?</span>
@@ -88,7 +88,7 @@ export default function RetroTile({
     <div
       className={`
         flex flex-col rounded-sm border-2 overflow-hidden transition-all duration-100
-        ${isSelected ? 'border-retro-cyan -translate-y-2 shadow-[0_0_10px_#53d8fb60]' : 'border-retro-textDim'}
+        ${isSelected ? 'border-retro-cyan -translate-y-2 shadow-[0_0_10px_#45b7d160]' : 'border-retro-textDim'}
         ${isLastDiscarded ? 'animate-pulse-gold' : ''}
         ${isNewlyDrawn ? 'animate-tile-draw' : ''}
       `}

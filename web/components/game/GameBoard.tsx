@@ -54,7 +54,7 @@ export default function GameBoard({
     <div
       className="h-screen w-full flex flex-col"
       style={{
-        background: 'radial-gradient(ellipse at center, #1a3a2a 0%, #0d1f17 50%, #1a1a2e 100%)',
+        background: 'radial-gradient(ellipse at center, #1e2a22 0%, #0f1610 50%, #110e1a 100%)',
       }}
     >
       {/* Top row: HUD + Top opponent */}

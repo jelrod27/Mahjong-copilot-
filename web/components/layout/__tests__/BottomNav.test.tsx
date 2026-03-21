@@ -14,10 +14,11 @@ vi.mock('next/link', () => ({
 import BottomNav from '../BottomNav';
 
 describe('BottomNav', () => {
-  it('renders all 6 navigation tabs', () => {
+  it('renders all 7 navigation tabs', () => {
     render(<BottomNav />);
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('Learn')).toBeInTheDocument();
+    expect(screen.getByText('Play')).toBeInTheDocument();
     expect(screen.getByText('Practice')).toBeInTheDocument();
     expect(screen.getByText('Reference')).toBeInTheDocument();
     expect(screen.getByText('Progress')).toBeInTheDocument();
@@ -39,8 +40,8 @@ describe('BottomNav', () => {
   it('highlights active tab based on pathname', () => {
     render(<BottomNav />);
     const learnLink = screen.getByText('Learn').closest('a');
-    expect(learnLink?.className).toContain('text-mahjong-green');
+    expect(learnLink?.className).toContain('text-retro-cyan');
     const homeLink = screen.getByText('Home').closest('a');
-    expect(homeLink?.className).toContain('text-gray-400');
+    expect(homeLink?.className).toContain('text-retro-textDim');
   });
 });

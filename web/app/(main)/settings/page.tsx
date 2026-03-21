@@ -3,9 +3,14 @@ import { Settings } from 'lucide-react';
 export default function SettingsPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
-      <Settings size={48} className="text-gray-300 mb-4" />
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Settings</h1>
-      <p className="text-gray-500">Coming soon. Customize your experience.</p>
+      <Settings size={48} className="text-retro-textDim mb-4" />
+      <h1 className="font-pixel text-sm text-retro-cyan retro-glow mb-3">Settings</h1>
+      <p className="text-retro-textDim font-retro text-lg">Coming soon. Customize your experience.</p>
+      <div className="mt-6 font-retro text-retro-textDim/50 text-sm">
+        ╔═══════════════════╗<br />
+        ║&nbsp; UNDER CONSTRUCTION &nbsp;║<br />
+        ╚═══════════════════╝
+      </div>
     </div>
   );
 }

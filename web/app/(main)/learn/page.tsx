@@ -23,24 +23,24 @@ export default function LearnPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       {/* Header */}
-      <div className="bg-mahjong-green px-6 pt-8 pb-6 rounded-b-2xl">
-        <p className="text-xs font-bold text-mahjong-gold tracking-[1.5px] mb-1">
+      <div className="bg-gradient-to-b from-retro-panel to-retro-bg px-6 pt-8 pb-6 rounded-b-2xl">
+        <p className="font-pixel text-[10px] text-retro-gold tracking-[1.5px] mb-1">
           LEVEL {level.id}
         </p>
-        <h1 className="text-[28px] font-bold text-white mb-2">{level.title}</h1>
-        <p className="text-base text-white/85 mb-4">{level.description}</p>
+        <h1 className="font-pixel text-lg text-retro-white mb-2">{level.title}</h1>
+        <p className="text-base text-retro-text/80 font-retro mb-4">{level.description}</p>
 
         {/* Progress Bar */}
         <div className="mt-2">
-          <div className="h-2 bg-white/30 rounded-full overflow-hidden">
+          <div className="h-2 bg-retro-bgLight rounded-full overflow-hidden">
             <div
-              className="h-full bg-mahjong-gold rounded-full transition-all duration-500"
+              className="h-full bg-retro-gold rounded-full transition-all duration-500"
               style={{ width: `${progress}%` }}
             />
           </div>
-          <p className="mt-2 text-sm text-white/90 font-semibold">
+          <p className="mt-2 text-sm text-retro-text/80 font-retro">
             {completedLessons.length}/{level.lessons.length} lessons
           </p>
         </div>
@@ -56,10 +56,8 @@ export default function LearnPage() {
             <Link
               key={lesson.id}
               href={`/learn/${lesson.id}`}
-              className={`flex items-center rounded-xl p-4 mb-2 shadow-md ${
-                isCompleted
-                  ? 'bg-green-50 border border-mahjong-green'
-                  : 'bg-white'
+              className={`flex items-center retro-card p-4 mb-3 transition-colors ${
+                isCompleted ? 'border-retro-green/50' : 'hover:border-retro-cyan/50'
               }`}
             >
               <LessonCard
@@ -72,7 +70,7 @@ export default function LearnPage() {
           ) : (
             <div
               key={lesson.id}
-              className="flex items-center bg-gray-100 rounded-xl p-4 mb-2 opacity-70"
+              className="flex items-center retro-card p-4 mb-3 opacity-50"
             >
               <LessonCard
                 index={index}
@@ -87,10 +85,10 @@ export default function LearnPage() {
 
       {/* Completion */}
       {completedLessons.length === level.lessons.length && (
-        <div className="mx-4 p-8 bg-amber-50 rounded-xl text-center mb-8">
+        <div className="mx-4 retro-card p-8 text-center mb-8 border-retro-gold">
           <p className="text-5xl mb-2">🎉</p>
-          <p className="text-xl font-bold text-gray-900 mb-1">Level Complete!</p>
-          <p className="text-base text-gray-500">
+          <p className="font-pixel text-sm text-retro-gold retro-glow mb-1">Level Complete!</p>
+          <p className="text-base text-retro-textDim font-retro">
             You&apos;ve mastered all the tiles. Ready for Level 2?
           </p>
         </div>
@@ -116,16 +114,16 @@ function LessonCard({
       <div
         className={`w-11 h-11 rounded-full flex items-center justify-center mr-4 shrink-0 ${
           isCompleted
-            ? 'bg-mahjong-green'
+            ? 'bg-retro-green'
             : !isUnlocked
-              ? 'bg-gray-300'
-              : 'bg-mahjong-green'
+              ? 'bg-retro-textDim/30'
+              : 'bg-retro-cyan'
         }`}
       >
         {isCompleted ? (
-          <span className="text-xl font-bold text-white">✓</span>
+          <span className="text-xl font-bold text-black">✓</span>
         ) : (
-          <span className={`text-lg font-bold ${!isUnlocked ? 'text-gray-400' : 'text-white'}`}>
+          <span className={`text-lg font-bold font-retro ${!isUnlocked ? 'text-retro-textDim' : 'text-black'}`}>
             {index + 1}
           </span>
         )}
@@ -133,20 +131,20 @@ function LessonCard({
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className={`text-[17px] font-semibold mb-0.5 ${!isUnlocked ? 'text-gray-400' : 'text-gray-900'}`}>
+        <p className={`text-[17px] font-retro mb-0.5 ${!isUnlocked ? 'text-retro-textDim' : 'text-retro-text'}`}>
           {lesson.title}
         </p>
-        <p className={`text-sm mb-1.5 ${!isUnlocked ? 'text-gray-300' : 'text-gray-500'}`}>
+        <p className={`text-sm font-retro mb-1.5 ${!isUnlocked ? 'text-retro-textDim/50' : 'text-retro-textDim'}`}>
           {lesson.subtitle}
         </p>
         <div className="flex gap-2">
           {lesson.tiles && lesson.tiles.length > 0 && (
-            <span className="text-xs text-gray-500 bg-black/5 px-2 py-0.5 rounded">
+            <span className="text-xs text-retro-textDim bg-retro-bgLight px-2 py-0.5 rounded font-retro">
               🀄 {lesson.tiles.length} tiles
             </span>
           )}
           {lesson.quiz && lesson.quiz.length > 0 && (
-            <span className="text-xs text-gray-500 bg-black/5 px-2 py-0.5 rounded">
+            <span className="text-xs text-retro-textDim bg-retro-bgLight px-2 py-0.5 rounded font-retro">
               ❓ {lesson.quiz.length} quiz
             </span>
           )}
@@ -156,7 +154,7 @@ function LessonCard({
       {/* Arrow / Lock */}
       <div className="ml-2">
         {isUnlocked ? (
-          <span className="text-3xl text-mahjong-green font-light">›</span>
+          <span className="text-3xl text-retro-cyan font-light">›</span>
         ) : (
           <span className="text-lg">🔒</span>
         )}

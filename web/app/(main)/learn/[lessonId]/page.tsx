@@ -28,7 +28,7 @@ export default function LessonPage() {
   if (!lesson) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p className="text-gray-500">Lesson not found</p>
+        <p className="text-retro-textDim font-retro">Lesson not found</p>
       </div>
     );
   }
@@ -85,16 +85,16 @@ export default function LessonPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen flex flex-col">
       {/* Completion Modal */}
       {showCompletionModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 text-center max-w-sm w-full">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="retro-card p-8 text-center max-w-sm w-full border-2 border-retro-gold rounded-xl animate-slide-up">
             <p className="text-4xl mb-3">{hasQuiz ? '🎉' : '✓'}</p>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Lesson Complete!</h2>
-            <p className="text-gray-500 mb-6">{completionMessage}</p>
+            <h2 className="font-pixel text-sm text-retro-gold retro-glow mb-2">Lesson Complete!</h2>
+            <p className="text-retro-textDim font-retro mb-6">{completionMessage}</p>
             <button
-              className="w-full py-3 bg-mahjong-green text-white rounded-xl font-semibold"
+              className="retro-btn-green w-full py-3 text-lg"
               onClick={() => router.push('/learn')}
             >
               Continue
@@ -104,20 +104,20 @@ export default function LessonPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center p-4 border-b border-gray-200 bg-white">
+      <div className="flex items-center p-4 border-b border-retro-border/20 bg-retro-bgLight">
         <button
           onClick={() => currentSection !== 'content' ? setCurrentSection('content') : router.push('/learn')}
-          className="mr-4 text-lg text-mahjong-green font-semibold"
+          className="mr-4 text-lg text-retro-cyan font-retro hover:retro-glow transition-all"
         >
           ‹ Back
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-lg font-bold text-gray-900 truncate">{lesson.title}</p>
-          <p className="text-sm text-gray-500 truncate">{lesson.subtitle}</p>
+          <p className="text-lg font-retro text-retro-text truncate">{lesson.title}</p>
+          <p className="text-sm text-retro-textDim font-retro truncate">{lesson.subtitle}</p>
         </div>
         {currentSection === 'quiz' && (
-          <div className="bg-mahjong-green px-3 py-1.5 rounded-full">
-            <span className="text-white font-bold text-sm">{correctAnswers}/{quizIndex + 1}</span>
+          <div className="bg-retro-green px-3 py-1.5 rounded-full">
+            <span className="text-black font-bold text-sm font-retro">{correctAnswers}/{quizIndex + 1}</span>
           </div>
         )}
       </div>
@@ -129,11 +129,11 @@ export default function LessonPage() {
             {lesson.content.map((paragraph, index) => (
               <p
                 key={index}
-                className={`text-[17px] leading-7 text-gray-900 mb-4
+                className={`text-lg leading-8 text-retro-text font-retro mb-4
                   ${paragraph === '' ? 'mb-1' : ''}
                   ${paragraph.startsWith('•') ? 'pl-4' : ''}
-                  ${paragraph.startsWith('⚠️') ? 'bg-amber-50 p-2 rounded' : ''}
-                  ${paragraph.startsWith('🎉') ? 'text-xl font-semibold' : ''}
+                  ${paragraph.startsWith('⚠️') ? 'bg-retro-panel/50 border-l-2 border-retro-gold p-3 rounded-lg' : ''}
+                  ${paragraph.startsWith('🎉') ? 'text-xl text-retro-gold' : ''}
                 `}
               >
                 {paragraph}
@@ -143,8 +143,8 @@ export default function LessonPage() {
 
           {/* Tiles display */}
           {lesson.tiles && lesson.tiles.length > 0 && (
-            <div className="px-6 py-4 bg-gray-50">
-              <h3 className="text-base font-semibold text-gray-900 mb-4">Tiles in this lesson:</h3>
+            <div className="px-6 py-4 bg-retro-bgLight/50">
+              <h3 className="font-pixel text-xs text-retro-cyan mb-4">TILES IN THIS LESSON</h3>
               <div className="flex flex-wrap justify-center gap-4">
                 {lesson.tiles.map((tileId) => {
                   const tile = getTileById(tileId);
@@ -152,7 +152,7 @@ export default function LessonPage() {
                   return (
                     <div key={tileId} className="text-center">
                       <MahjongTile tile={tile} width={55} height={80} />
-                      <p className="mt-1 text-[11px] text-gray-500 max-w-[60px]">{tile.nameEnglish}</p>
+                      <p className="mt-1 text-[11px] text-retro-textDim font-retro max-w-[60px]">{tile.nameEnglish}</p>
                     </div>
                   );
                 })}
@@ -164,7 +164,7 @@ export default function LessonPage() {
           {lesson.interactiveType === 'set-builder' && (
             <div className="p-6">
               <button
-                className="w-full py-4 bg-mahjong-green text-white rounded-xl text-[17px] font-semibold"
+                className="retro-btn-gold w-full py-4 text-lg"
                 onClick={() => setCurrentSection('interactive')}
               >
                 Try Set Builder 🧩
@@ -176,14 +176,14 @@ export default function LessonPage() {
           <div className="p-6">
             {hasQuiz ? (
               <button
-                className="w-full py-4 bg-mahjong-green text-white rounded-xl text-[17px] font-semibold"
+                className="retro-btn-green w-full py-4 text-lg"
                 onClick={handleStartQuiz}
               >
                 Take Quiz ({lesson.quiz?.length} questions)
               </button>
             ) : (
               <button
-                className="w-full py-4 bg-mahjong-green text-white rounded-xl text-[17px] font-semibold"
+                className="retro-btn-green w-full py-4 text-lg"
                 onClick={handleComplete}
               >
                 Complete Lesson ✓
@@ -198,12 +198,12 @@ export default function LessonPage() {
         <div className="flex-1 overflow-y-auto p-6">
           {/* Progress */}
           <div className="mb-6">
-            <p className="text-sm text-gray-500 mb-2">
+            <p className="text-sm text-retro-textDim font-retro mb-2">
               Question {quizIndex + 1} of {lesson.quiz?.length}
             </p>
-            <div className="h-1.5 bg-gray-200 rounded-full">
+            <div className="h-1.5 bg-retro-bgLight rounded-full">
               <div
-                className="h-full bg-mahjong-green rounded-full transition-all"
+                className="h-full bg-retro-cyan rounded-full transition-all"
                 style={{ width: `${((quizIndex + 1) / (lesson.quiz?.length || 1)) * 100}%` }}
               />
             </div>
@@ -211,7 +211,7 @@ export default function LessonPage() {
 
           {/* Question */}
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 leading-7">{currentQuiz.question}</h2>
+            <h2 className="text-xl font-retro text-retro-text leading-7">{currentQuiz.question}</h2>
             {currentQuiz.tileId && (() => {
               const tile = getTileById(currentQuiz.tileId);
               return tile ? (
@@ -232,23 +232,21 @@ export default function LessonPage() {
               return (
                 <button
                   key={index}
-                  className={`w-full flex items-center justify-between p-4 rounded-md border-2 text-left
-                    ${!showResult && !isSelected ? 'bg-white border-gray-200' : ''}
-                    ${!showResult && isSelected ? 'bg-green-50 border-mahjong-green' : ''}
-                    ${showResult && isCorrect ? 'bg-green-50 border-green-500' : ''}
-                    ${showResult && isSelected && !isCorrect ? 'bg-red-50 border-red-500' : ''}
-                    ${showResult && !isCorrect && !isSelected ? 'bg-white border-gray-200' : ''}
+                  className={`w-full flex items-center justify-between p-4 rounded-lg border-2 text-left font-retro text-lg transition-colors
+                    ${!showResult && !isSelected ? 'bg-retro-bgLight border-retro-border/30 text-retro-text' : ''}
+                    ${!showResult && isSelected ? 'bg-retro-cyan/10 border-retro-cyan text-retro-text' : ''}
+                    ${showResult && isCorrect ? 'bg-retro-green/10 border-retro-green text-retro-text' : ''}
+                    ${showResult && isSelected && !isCorrect ? 'bg-retro-accent/10 border-retro-accent text-retro-text' : ''}
+                    ${showResult && !isCorrect && !isSelected ? 'bg-retro-bgLight border-retro-border/20 text-retro-textDim' : ''}
                   `}
                   onClick={() => handleAnswerSelect(option)}
                   disabled={showExplanation}
                 >
-                  <span className={`text-base ${
-                    showResult && isCorrect ? 'text-green-500 font-semibold' : 'text-gray-900'
-                  } ${isSelected && !showResult ? 'font-semibold' : ''}`}>
+                  <span className={showResult && isCorrect ? 'text-retro-green' : ''}>
                     {option}
                   </span>
-                  {showResult && isCorrect && <span className="text-xl text-green-500 font-bold">✓</span>}
-                  {showResult && isSelected && !isCorrect && <span className="text-xl text-red-500 font-bold">✗</span>}
+                  {showResult && isCorrect && <span className="text-xl text-retro-green font-bold">✓</span>}
+                  {showResult && isSelected && !isCorrect && <span className="text-xl text-retro-accent font-bold">✗</span>}
                 </button>
               );
             })}
@@ -256,22 +254,22 @@ export default function LessonPage() {
 
           {/* Explanation */}
           {showExplanation && (
-            <div className={`mt-6 p-4 rounded-md border-l-4 ${
+            <div className={`mt-6 retro-card p-4 border-l-4 ${
               selectedAnswer === currentQuiz.correctAnswer
-                ? 'bg-green-50 border-green-500'
-                : 'bg-red-50 border-red-500'
+                ? 'border-retro-green'
+                : 'border-retro-accent'
             }`}>
-              <p className="text-base font-bold mb-1">
+              <p className="font-retro text-lg font-bold mb-1 text-retro-text">
                 {selectedAnswer === currentQuiz.correctAnswer ? '✓ Correct!' : '✗ Not quite'}
               </p>
-              <p className="text-[15px] text-gray-900 leading-relaxed">{currentQuiz.explanation}</p>
+              <p className="font-retro text-base text-retro-text/80 leading-relaxed">{currentQuiz.explanation}</p>
             </div>
           )}
 
           {/* Next button */}
           {showExplanation && (
             <button
-              className="w-full mt-6 py-4 bg-mahjong-green text-white rounded-xl text-[17px] font-semibold"
+              className="retro-btn-green w-full mt-6 py-4 text-lg"
               onClick={handleNextQuiz}
             >
               {isLastQuiz ? 'Complete Lesson' : 'Next Question →'}
@@ -283,15 +281,15 @@ export default function LessonPage() {
       {/* Interactive Section */}
       {currentSection === 'interactive' && lesson.interactiveType === 'set-builder' && lesson.interactiveData?.availableTileIds && (
         <div className="flex-1 flex flex-col">
-          <div className="flex items-center p-4 border-b border-gray-200 bg-white">
+          <div className="flex items-center p-4 border-b border-retro-border/20 bg-retro-bgLight">
             <button
               onClick={() => setCurrentSection('content')}
-              className="mr-4 text-lg text-mahjong-green font-semibold"
+              className="mr-4 text-lg text-retro-cyan font-retro"
             >
               ‹ Back to Lesson
             </button>
-            <h2 className="flex-1 text-lg font-bold text-gray-900 text-center mr-16">
-              Set Builder Practice
+            <h2 className="flex-1 font-pixel text-xs text-retro-gold text-center mr-16">
+              SET BUILDER PRACTICE
             </h2>
           </div>
 
@@ -305,10 +303,10 @@ export default function LessonPage() {
           />
 
           {setBuilderCompleted && (
-            <div className="bg-green-50 p-4 text-center border-t border-green-500">
-              <p className="text-lg font-semibold text-green-500 mb-2">🎉 You&apos;ve built valid sets!</p>
+            <div className="retro-card p-4 text-center border-t-2 border-retro-green mx-4 mb-4">
+              <p className="text-lg font-retro text-retro-green mb-2">🎉 You&apos;ve built valid sets!</p>
               <button
-                className="bg-green-500 text-white px-6 py-3 rounded-md font-semibold"
+                className="retro-btn-green px-6 py-3"
                 onClick={() => {
                   setCurrentSection('content');
                   handleComplete();

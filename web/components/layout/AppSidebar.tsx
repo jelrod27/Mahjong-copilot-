@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, User } from "lucide-react";
 import {
@@ -68,9 +69,11 @@ export function AppSidebar() {
         {user ? (
           <div className="flex items-center gap-3">
             {user.photoUrl ? (
-              <img
+              <Image
                 src={user.photoUrl}
-                alt=""
+                alt={user.displayName || "User"}
+                width={32}
+                height={32}
                 className="w-8 h-8 rounded-sm border border-retro-border/30"
               />
             ) : (

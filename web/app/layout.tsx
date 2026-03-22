@@ -1,6 +1,26 @@
 import type { Metadata, Viewport } from "next";
+import { Inter, VT323, Press_Start_2P } from "next/font/google";
 import "./globals.css";
 import StoreProvider from "@/store/provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
+
+const vt323 = VT323({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-retro",
+});
+
+const pressStart2P = Press_Start_2P({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-pixel",
+});
 
 export const metadata: Metadata = {
   title: "16 Bit Mahjong",
@@ -18,10 +38,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-retro-bg text-retro-text font-retro antialiased">
+    <html lang="en" className={cn(inter.variable, vt323.variable, pressStart2P.variable)}>
+      <body className="min-h-screen bg-retro-bg text-retro-text font-sans antialiased">
         <StoreProvider>
-          {children}
+          <TooltipProvider>
+            {children}
+          </TooltipProvider>
         </StoreProvider>
       </body>
     </html>

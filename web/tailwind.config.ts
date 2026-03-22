@@ -45,6 +45,7 @@ const config: Config = {
         },
       },
       fontFamily: {
+        sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         retro: ['"Chakra Petch"', 'sans-serif'],
         pixel: ['"Orbitron"', 'sans-serif'],
       },

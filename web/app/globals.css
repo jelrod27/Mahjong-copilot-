@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700&display=swap');
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
@@ -6,8 +7,8 @@
 @tailwind utilities;
 
 body {
-  background-color: #1a1a2e;
-  color: #e0e0e0;
+  background-color: #110e1a;
+  color: #ede4d3;
 }
 
 /* Retro utility classes */
@@ -18,7 +19,7 @@ body {
 
   .retro-card {
     @apply rounded-lg border border-retro-border/30 p-4;
-    background: rgba(15, 52, 96, 0.7);
+    background: rgba(42, 34, 64, 0.7);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
 
@@ -60,7 +61,7 @@ body {
 
   .retro-input:focus {
     @apply border-retro-cyan;
-    box-shadow: 0 0 8px rgba(83, 216, 251, 0.2);
+    box-shadow: 0 0 8px rgba(69, 183, 209, 0.25);
   }
 
   .retro-input::placeholder {
@@ -90,8 +91,8 @@ body {
 
 /* Tile animations */
 @keyframes pulse-gold {
-  0%, 100% { box-shadow: 0 0 4px #f0c040; }
-  50% { box-shadow: 0 0 12px #f0c040, 0 0 20px #f0c04060; }
+  0%, 100% { box-shadow: 0 0 4px #f5b731; }
+  50% { box-shadow: 0 0 12px #f5b731, 0 0 20px #f5b73160; }
 }
 
 .animate-pulse-gold {
@@ -121,13 +122,13 @@ body {
 
 @keyframes tile-claim {
   0% { box-shadow: 0 0 0 transparent; }
-  30% { box-shadow: 0 0 16px #00d474, 0 0 32px #00d47440; }
+  30% { box-shadow: 0 0 16px #2ed8a3, 0 0 32px #2ed8a340; }
   100% { box-shadow: 0 0 0 transparent; }
 }
 
 @keyframes tile-win {
-  0%, 100% { box-shadow: 0 0 4px #f0c040; transform: scale(1); }
-  50% { box-shadow: 0 0 20px #f0c040, 0 0 40px #f0c04060; transform: scale(1.05); }
+  0%, 100% { box-shadow: 0 0 4px #f5b731; transform: scale(1); }
+  50% { box-shadow: 0 0 20px #f5b731, 0 0 40px #f5b73160; transform: scale(1.05); }
 }
 
 @keyframes slide-up {

@@ -54,6 +54,8 @@ export default function GameContent() {
         gameState={controller.game}
         humanPlayerId="human-player"
         selectedTileId={controller.selectedTileId}
+        suggestedTileId={controller.suggestedTileId}
+        tutorAdvice={controller.tutorAdvice}
         onTileSelect={controller.selectTile}
         onDiscard={controller.discardSelected}
         onKong={controller.declareKong}

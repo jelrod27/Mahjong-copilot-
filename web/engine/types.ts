@@ -1,5 +1,5 @@
 import { Tile, WindTile } from '@/models/Tile';
-import { ClaimType, MeldInfo, TurnPhase } from '@/models/GameState';
+import { MeldInfo, TurnPhase } from '@/models/GameState';
 
 /** Action that can be submitted to the turn manager */
 export type GameAction =
@@ -11,6 +11,14 @@ export type GameAction =
   | { type: 'PASS' };
 
 /** Result of evaluating available claims after a discard */
+export type ClaimType = 'chow' | 'pung' | 'kong' | 'win';
+
+export interface TutorAdvice {
+  message: string;
+  type: 'discard' | 'claim' | 'general';
+  suggestedTileId?: string;
+}
+
 export interface AvailableClaim {
   playerId: string;
   claimType: ClaimType;

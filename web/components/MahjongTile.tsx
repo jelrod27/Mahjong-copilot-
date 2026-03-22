@@ -8,6 +8,7 @@ interface MahjongTileProps {
   height?: number;
   showBack?: boolean;
   isSelected?: boolean;
+  isSuggested?: boolean;
   onPress?: () => void;
   borderColor?: string;
 }
@@ -61,6 +62,7 @@ export const MahjongTile: React.FC<MahjongTileProps> = ({
   height = 90,
   showBack = false,
   isSelected = false,
+  isSuggested = false,
   onPress,
 }) => {
   const suitColor = getSuitColor(tile.suit);
@@ -68,6 +70,7 @@ export const MahjongTile: React.FC<MahjongTileProps> = ({
   const containerClass = `
     relative inline-flex flex-col overflow-hidden rounded-sm
     ${isSelected ? 'scale-105 z-10' : 'hover:scale-102'}
+    ${isSuggested && !isSelected ? 'ring-2 ring-retro-gold animate-pulse-gold' : ''}
     transition-all duration-200 ease-out cursor-pointer group
   `;
 
@@ -98,7 +101,9 @@ export const MahjongTile: React.FC<MahjongTileProps> = ({
         backgroundColor: tileFaceColor,
         boxShadow: isSelected 
           ? `0 6px 0 0 ${tileSideColor}, 6px 6px 0 0 rgba(0,0,0,0.4), 0 0 15px rgba(245, 183, 49, 0.4)`
-          : `0 4px 0 0 ${tileSideColor}, 4px 4px 0 0 rgba(0,0,0,0.3)`,
+          : isSuggested 
+            ? `0 4px 0 0 ${tileSideColor}, 4px 4px 0 0 rgba(245, 183, 49, 0.4)`
+            : `0 4px 0 0 ${tileSideColor}, 4px 4px 0 0 rgba(0,0,0,0.3)`,
         transform: isSelected ? 'translateY(-2px)' : 'none'
       }}
     >
@@ -136,6 +141,10 @@ export const MahjongTile: React.FC<MahjongTileProps> = ({
       {/* Selection border highlight */}
       {isSelected && (
         <div className="absolute inset-0 border-2 border-retro-gold/50 rounded-sm animate-pulse-gold pointer-events-none" />
+      )}
+      {/* Suggestion highlight when not selected */}
+      {isSuggested && !isSelected && (
+        <div className="absolute inset-0 border-2 border-retro-cyan/40 rounded-sm pointer-events-none" />
       )}
     </div>
   );

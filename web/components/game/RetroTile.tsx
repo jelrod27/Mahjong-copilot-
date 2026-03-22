@@ -7,6 +7,7 @@ interface RetroTileProps {
   size?: 'sm' | 'md' | 'lg';
   showBack?: boolean;
   isSelected?: boolean;
+  isSuggested?: boolean;
   isLastDiscarded?: boolean;
   isNewlyDrawn?: boolean;
   onClick?: () => void;
@@ -61,7 +62,7 @@ function getSuitLabel(tile: Tile): string {
 }
 
 export default function RetroTile({
-  tile, size = 'md', showBack = false, isSelected = false,
+  tile, size = 'md', showBack = false, isSelected = false, isSuggested = false,
   isLastDiscarded = false, isNewlyDrawn = false, onClick, disabled = false,
 }: RetroTileProps) {
   const { w, h } = SIZES[size];
@@ -88,9 +89,10 @@ export default function RetroTile({
     <div
       className={`
         flex flex-col rounded-sm border-2 overflow-hidden transition-all duration-100
-        ${isSelected ? 'border-retro-cyan -translate-y-2 shadow-[0_0_10px_#45b7d160]' : 'border-retro-textDim'}
+        ${isSelected ? 'border-retro-cyan -translate-y-2 shadow-[0_0_10px_#45b7d160]' : isSuggested ? 'border-retro-gold shadow-[0_0_10px_#f5b73160]' : 'border-retro-textDim'}
         ${isLastDiscarded ? 'animate-pulse-gold' : ''}
         ${isNewlyDrawn ? 'animate-tile-draw' : ''}
+        ${isSuggested && !isSelected ? 'animate-pulse-gold' : ''}
       `}
       style={{ width: w, height: h, backgroundColor: '#FFF8E1' }}
     >

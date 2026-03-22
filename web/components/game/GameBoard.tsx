@@ -8,11 +8,15 @@ import DiscardPool from './DiscardPool';
 import GameHUD from './GameHUD';
 import ActionBar from './ActionBar';
 import ExposedMelds from './ExposedMelds';
+import TutorPanel from './TutorPanel';
+import { TutorAdvice } from '@/engine/types';
 
 interface GameBoardProps {
   gameState: GameState;
   humanPlayerId: string;
   selectedTileId?: string;
+  suggestedTileId?: string;
+  tutorAdvice?: TutorAdvice | null;
   onTileSelect: (tile: Tile) => void;
   onDiscard: () => void;
   onKong: () => void;
@@ -26,7 +30,7 @@ interface GameBoardProps {
 }
 
 export default function GameBoard({
-  gameState, humanPlayerId, selectedTileId,
+  gameState, humanPlayerId, selectedTileId, suggestedTileId, tutorAdvice,
   onTileSelect, onDiscard, onKong, onWin, onClaim, onPass,
   canDeclareKong: canKongProp, canDeclareWin: canWinProp,
   hasClaimOptions: hasClaimsProp, claimTimer,
@@ -113,6 +117,13 @@ export default function GameBoard({
               lastDiscardedTile={gameState.lastDiscardedTile}
             />
           </div>
+
+          {/* Tutor Advice */}
+          {tutorAdvice && (
+            <div className="w-full max-w-md">
+              <TutorPanel advice={tutorAdvice} />
+            </div>
+          )}
         </div>
 
         {/* Right opponent */}
@@ -163,6 +174,7 @@ export default function GameBoard({
           <PlayerHand
             tiles={humanPlayer.hand}
             selectedTileId={selectedTileId}
+            suggestedTileId={suggestedTileId}
             onTileSelect={onTileSelect}
             lastDrawnTileId={gameState.lastDrawnTile?.id}
             disabled={!isHumanTurn || gameState.turnPhase !== 'discard'}

@@ -11,6 +11,14 @@ export type GameAction =
   | { type: 'PASS' };
 
 /** Result of evaluating available claims after a discard */
+export type ClaimType = 'chow' | 'pung' | 'kong' | 'win';
+
+export interface TutorAdvice {
+  message: string;
+  type: 'discard' | 'claim' | 'general';
+  suggestedTileId?: string;
+}
+
 export interface AvailableClaim {
   playerId: string;
   claimType: ClaimType;

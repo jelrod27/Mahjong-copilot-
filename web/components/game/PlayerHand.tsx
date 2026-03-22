@@ -6,13 +6,14 @@ import RetroTile from './RetroTile';
 interface PlayerHandProps {
   tiles: Tile[];
   selectedTileId?: string;
+  suggestedTileId?: string;
   onTileSelect: (tile: Tile) => void;
   lastDrawnTileId?: string;
   disabled?: boolean;
 }
 
 export default function PlayerHand({
-  tiles, selectedTileId, onTileSelect, lastDrawnTileId, disabled = false,
+  tiles, selectedTileId, suggestedTileId, onTileSelect, lastDrawnTileId, disabled = false,
 }: PlayerHandProps) {
   return (
     <div className="flex items-end justify-center gap-0.5 flex-wrap">
@@ -24,6 +25,7 @@ export default function PlayerHand({
               tile={tile}
               size="lg"
               isSelected={tile.id === selectedTileId}
+              isSuggested={tile.id === suggestedTileId}
               isNewlyDrawn={isLastDrawn}
               onClick={() => onTileSelect(tile)}
               disabled={disabled}

@@ -45,6 +45,7 @@ const config: Config = {
         },
       },
       fontFamily: {
+        sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         retro: ['"VT323"', 'monospace'],
         pixel: ['"Press Start 2P"', 'monospace'],
       },

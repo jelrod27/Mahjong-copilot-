@@ -2,25 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, BookOpen, Dice5, Library, TrendingUp, Settings, Swords } from 'lucide-react';
-
-const tabs = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/learn', label: 'Learn', icon: BookOpen },
-  { href: '/play', label: 'Play', icon: Swords },
-  { href: '/practice', label: 'Practice', icon: Dice5 },
-  { href: '/reference', label: 'Reference', icon: Library },
-  { href: '/progress', label: 'Progress', icon: TrendingUp },
-  { href: '/settings', label: 'Settings', icon: Settings },
-];
+import { navItems } from '@/constants/navItems';
 
 export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-retro-bgLight border-t border-retro-border/30 z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-retro-bgLight border-t border-retro-border/30 z-50 md:hidden">
       <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
-        {tabs.map(({ href, label, icon: Icon }) => {
+        {navItems.map(({ href, label, icon: Icon }) => {
           const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href);
           return (
             <Link

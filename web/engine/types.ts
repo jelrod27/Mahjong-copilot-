@@ -1,5 +1,5 @@
 import { Tile, WindTile } from '@/models/Tile';
-import { ClaimType, MeldInfo, TurnPhase } from '@/models/GameState';
+import { MeldInfo, TurnPhase } from '@/models/GameState';
 
 /** Action that can be submitted to the turn manager */
 export type GameAction =

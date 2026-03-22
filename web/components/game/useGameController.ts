@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, GamePhase, ClaimType } from '@/models/GameState';
 import { Tile, TileType, tilesMatch } from '@/models/Tile';
-import { initializeGame, applyAction, GameOptions } from '@/engine/turnManager';
+import { initializeGame, applyAction } from '@/engine/turnManager';
 import { getAvailableClaims } from '@/engine/claiming';
 import { isWinningHand } from '@/engine/winDetection';
 import { calculateScore } from '@/engine/scoring';
@@ -93,8 +93,62 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
   }, [initialDifficulty, startNewGame]);
 
   const currentDelays = DELAYS[difficulty];
+  const humanIndex = game?.players.findIndex(p => p.id === HUMAN_ID) ?? 0;
+  const isHumanTurn = game?.currentPlayerIndex === humanIndex;
+  const isGameOver = game?.phase === GamePhase.FINISHED;
 
-  // ... (keep existing human action functions but update pass/submitClaim to clear tutor)
+  // Apply an action and update state
+  const doAction = useCallback((playerId: string, action: any): GameState | null => {
+    const current = gameRef.current;
+    if (!current || current.phase !== GamePhase.PLAYING) return null;
+    const next = applyAction(current, playerId, action);
+    if (next) {
+      setGame(next);
+      gameRef.current = next;
+    }
+    return next;
+  }, []);
+
+  // === Human actions ===
+
+  const selectTile = useCallback((tile: Tile) => {
+    setSelectedTileId(prev => prev === tile.id ? undefined : tile.id);
+  }, []);
+
+  const discardSelected = useCallback(() => {
+    const current = gameRef.current;
+    if (!current || current.turnPhase !== 'discard' || current.currentPlayerIndex !== humanIndex) return;
+    const tile = current.players[humanIndex].hand.find(t => t.id === selectedTileId);
+    if (!tile) return;
+    doAction(HUMAN_ID, { type: 'DISCARD', tile });
+    setSelectedTileId(undefined);
+    soundManager.play('tilePlace');
+  }, [selectedTileId, humanIndex, doAction]);
+
+  const declareKong = useCallback(() => {
+    const current = gameRef.current;
+    if (!current || current.turnPhase !== 'discard' || current.currentPlayerIndex !== humanIndex) return;
+    // Find a tile the player has 4 of
+    const hand = current.players[humanIndex].hand;
+    const counts = new Map<string, Tile[]>();
+    for (const t of hand) {
+      const key = `${t.suit}_${t.number ?? t.wind ?? t.dragon}`;
+      const arr = counts.get(key) || [];
+      arr.push(t);
+      counts.set(key, arr);
+    }
+    const entries = Array.from(counts.values());
+    for (const tiles of entries) {
+      if (tiles.length === 4) {
+        doAction(HUMAN_ID, { type: 'DECLARE_KONG', tile: tiles[0] });
+        return;
+      }
+    }
+  }, [humanIndex, doAction]);
+
+  const declareWin = useCallback(() => {
+    doAction(HUMAN_ID, { type: 'DECLARE_WIN' });
+  }, [doAction]);
 
   const submitClaim = useCallback((claimType: ClaimType, tilesFromHand: Tile[]) => {
     doAction(HUMAN_ID, { type: 'CLAIM', claimType, tilesFromHand });
@@ -113,6 +167,35 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
     setSuggestedTileId(undefined);
     soundManager.play('pass');
   }, [doAction]);
+
+  // === Computed state ===
+
+  const canDeclareKong = (() => {
+    if (!game || game.turnPhase !== 'discard' || game.currentPlayerIndex !== humanIndex) return false;
+    const hand = game.players[humanIndex].hand;
+    const counts = new Map<string, number>();
+    for (const t of hand) {
+      const key = `${t.suit}_${t.number ?? t.wind ?? t.dragon}`;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    const vals = Array.from(counts.values());
+    for (const c of vals) {
+      if (c === 4) return true;
+    }
+    // Check add-to-pung
+    const melds = game.players[humanIndex].melds;
+    for (const meld of melds) {
+      if (meld.type === 'pung') {
+        if (hand.some(t => tilesMatch(t, meld.tiles[0]))) return true;
+      }
+    }
+    return false;
+  })();
+
+  const canDeclareWin = (() => {
+    if (!game || game.turnPhase !== 'discard' || game.currentPlayerIndex !== humanIndex) return false;
+    return isWinningHand(game.players[humanIndex].hand);
+  })();
 
   // === Tutor Calculation Hook ===
   useEffect(() => {
@@ -135,6 +218,19 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
       setSuggestedTileId(undefined);
     }
   }, [game?.turnPhase, game?.currentPlayerIndex, game?.phase, claimOptions, difficulty, humanIndex]);
+
+  // === Auto-draw for human ===
+  useEffect(() => {
+    if (!game || game.phase !== GamePhase.PLAYING) return;
+    if (game.currentPlayerIndex !== humanIndex) return;
+    if (game.turnPhase !== 'draw') return;
+
+    const timer = setTimeout(() => {
+      doAction(HUMAN_ID, { type: 'DRAW' });
+      soundManager.play('tileDraw');
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [game?.turnPhase, game?.currentPlayerIndex, game?.phase, humanIndex, doAction]);
 
   // === AI turn processing with dynamic delays ===
   useEffect(() => {
@@ -236,14 +332,21 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
     }
   }, [game?.turnPhase, game?.lastDiscardedTile?.id, game?.lastDiscardedBy, humanIndex, doAction, difficulty, preClaimPause]);
 
-  return {
-    game, selectedTileId, suggestedTileId, tutorAdvice, claimOptions, claimTimer,
-    isGameOver, scoringResult,
-    selectTile, discardSelected, declareKong, declareWin,
-    submitClaim, pass, startNewGame,
-    canDeclareKong, canDeclareWin,
-  };
-}
+  // === Claim countdown ===
+  useEffect(() => {
+    if (claimTimer <= 0 || claimOptions.length === 0) return;
+    const interval = setInterval(() => {
+      setClaimTimer(prev => {
+        if (prev <= 100) {
+          // Time's up — auto-pass
+          pass();
+          return 0;
+        }
+        return prev - 100;
+      });
+    }, 100);
+    return () => clearInterval(interval);
+  }, [claimTimer > 0, claimOptions.length, pass]);
 
   // === Scoring on game over ===
   useEffect(() => {
@@ -271,7 +374,7 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
   }, [game?.phase, game?.winnerId]);
 
   return {
-    game, selectedTileId, claimOptions, claimTimer,
+    game, selectedTileId, suggestedTileId, tutorAdvice, claimOptions, claimTimer,
     isGameOver, scoringResult,
     selectTile, discardSelected, declareKong, declareWin,
     submitClaim, pass, startNewGame,

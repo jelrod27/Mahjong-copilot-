@@ -6,7 +6,7 @@ import { Tile, TileType, tileKey } from '@/models/Tile';
 import { GameState } from '@/models/GameState';
 import { AvailableClaim, TutorAdvice } from './types';
 import { calculateShanten, isWinningHand } from './winDetection';
-import { tileDiscardPriority, tileDangerScore, isSafeTile } from './aiUtils';
+import { tileDiscardPriority, tileDangerScore, isSafeTile } from './ai/aiUtils';
 
 /**
  * Get the best move advice for the current player.

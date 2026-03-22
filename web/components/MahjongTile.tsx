@@ -66,44 +66,77 @@ export const MahjongTile: React.FC<MahjongTileProps> = ({
   const suitColor = getSuitColor(tile.suit);
 
   const containerClass = `
-    inline-flex flex-col overflow-hidden rounded-md
-    ${isSelected ? 'ring-2 ring-mahjong-green shadow-lg shadow-mahjong-green/30' : ''}
-    border-2 ${isSelected ? 'border-mahjong-green' : 'border-tile-border'}
-    transition-all duration-150
+    relative inline-flex flex-col overflow-hidden rounded-sm
+    ${isSelected ? 'scale-105 z-10' : 'hover:scale-102'}
+    transition-all duration-200 ease-out cursor-pointer group
   `;
+
+  // 3D Block effect colors
+  const tileFaceColor = '#f7f0e3'; // retro-white
+  const tileSideColor = '#d3c9b5';
+  const tileEdgeColor = '#ede4d3';
 
   const content = showBack ? (
     <div
-      className="flex items-center justify-center bg-mahjong-green"
-      style={{ width, height }}
+      className="flex items-center justify-center bg-retro-green relative border-2 border-retro-green/30"
+      style={{ 
+        width, 
+        height,
+        boxShadow: `0 4px 0 0 #1a7a5a, 4px 4px 0 0 #125a42`
+      }}
     >
-      <span style={{ fontSize: width * 0.4 }}>🀄</span>
+      {/* Shine effect */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none" />
+      <span className="retro-glow-strong" style={{ fontSize: width * 0.4 }}>🀄</span>
     </div>
   ) : (
     <div
-      className="flex flex-col bg-tile-bg"
-      style={{ width, height }}
+      className="flex flex-col relative"
+      style={{ 
+        width, 
+        height,
+        backgroundColor: tileFaceColor,
+        boxShadow: isSelected 
+          ? `0 6px 0 0 ${tileSideColor}, 6px 6px 0 0 rgba(0,0,0,0.4), 0 0 15px rgba(245, 183, 49, 0.4)`
+          : `0 4px 0 0 ${tileSideColor}, 4px 4px 0 0 rgba(0,0,0,0.3)`,
+        transform: isSelected ? 'translateY(-2px)' : 'none'
+      }}
     >
-      {/* Suit color indicator */}
-      <div className="h-1 w-full" style={{ backgroundColor: suitColor }} />
+      {/* Top highlighting edge */}
+      <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ backgroundColor: tileEdgeColor }} />
+      
+      {/* Gloss overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/5 pointer-events-none" />
+
+      {/* Suit color indicator (refined) */}
+      <div className="h-1.5 w-full opacity-80" style={{ backgroundColor: suitColor }} />
 
       {/* Tile content */}
-      <div className="flex flex-1 flex-col items-center justify-center p-1">
+      <div className="flex flex-1 flex-col items-center justify-center p-1.5 z-10">
         <span
-          className="font-bold leading-none"
-          style={{ fontSize: width * 0.35, color: suitColor }}
+          className="font-bold leading-none drop-shadow-sm"
+          style={{ 
+            fontSize: width * 0.38, 
+            color: suitColor,
+            fontFamily: 'system-ui' // Modern clean feel for the symbol itself
+          }}
         >
           {buildTextSymbol(tile)}
         </span>
         {width > 50 && (
           <span
-            className="mt-1 text-center text-gray-500 leading-tight line-clamp-2"
-            style={{ fontSize: width * 0.12, maxWidth: width - 8 }}
+            className="mt-1.5 text-center text-retro-textDim font-retro leading-tight line-clamp-2 uppercase tracking-tighter"
+            style={{ fontSize: width * 0.14, maxWidth: width - 12 }}
           >
             {tile.nameEnglish}
           </span>
         )}
       </div>
+
+      {/* Selection border highlight */}
+      {isSelected && (
+        <div className="absolute inset-0 border-2 border-retro-gold/50 rounded-sm animate-pulse-gold pointer-events-none" />
+      )}
     </div>
   );
 

@@ -213,12 +213,66 @@ body {
   }
 }
 
-/* Neo-retro card style */
+/* Neo-retro card style — Modern Fusion */
 @layer components {
   .neo-retro-card {
-    @apply rounded-sm border-2 p-4;
-    border-color: rgba(233, 69, 96, 0.3);
-    background: rgba(15, 52, 96, 0.7);
-    box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+    @apply rounded-sm border border-retro-border/20 p-4 transition-all duration-300;
+    background: linear-gradient(135deg, rgba(28, 24, 41, 0.8) 0%, rgba(42, 34, 64, 0.6) 100%);
+    backdrop-filter: blur(8px);
+    box-shadow: 6px 6px 0px 0px rgba(0, 0, 0, 0.4);
+  }
+
+  .neo-retro-card:hover {
+    @apply border-retro-border/40;
+    box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 0.5);
+    transform: translate(-2px, -2px);
+  }
+
+  .retro-panel {
+    @apply bg-retro-bgLight/40 backdrop-blur-md border border-retro-border/10 rounded-lg;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  .glass-panel {
+    @apply bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl;
+  }
+
+  /* Refined Retro Buttons */
+  .retro-btn-modern {
+    @apply relative font-pixel text-[10px] tracking-wider px-4 py-2 border-2 border-retro-border/50 
+           text-retro-text rounded-sm transition-all duration-200 overflow-hidden;
+    background: linear-gradient(180deg, rgba(232, 56, 79, 0.1) 0%, rgba(0, 0, 0, 0.2) 100%);
+  }
+
+  .retro-btn-modern::before {
+    content: '';
+    @apply absolute inset-0 bg-white/5 opacity-0 transition-opacity duration-200;
+  }
+
+  .retro-btn-modern:hover {
+    @apply border-retro-border scale-[1.02];
+    box-shadow: 0 0 15px rgba(232, 56, 79, 0.3);
+  }
+
+  .retro-btn-modern:hover::before {
+    @apply opacity-100;
+  }
+
+  .retro-btn-modern:active {
+    @apply scale-[0.98] translate-y-px;
+  }
+}
+
+@layer utilities {
+  .text-glow-retro {
+    text-shadow: 0 0 10px rgba(232, 56, 79, 0.5), 0 0 20px rgba(232, 56, 79, 0.2);
+  }
+
+  .text-glow-cyan {
+    text-shadow: 0 0 10px rgba(69, 183, 209, 0.5), 0 0 20px rgba(69, 183, 209, 0.2);
+  }
+
+  .text-glow-gold {
+    text-shadow: 0 0 10px rgba(245, 183, 49, 0.5), 0 0 20px rgba(245, 183, 49, 0.2);
   }
 }

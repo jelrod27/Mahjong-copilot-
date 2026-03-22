@@ -51,11 +51,11 @@ export function AppSidebar() {
                   <SidebarMenuItem key={href}>
                     <SidebarMenuButton
                       isActive={isActive}
-                      className="h-10"
+                      className="h-10 text-retro-text hover:text-retro-accent transition-colors"
                       render={<Link href={href} />}
                     >
-                      <Icon size={18} />
-                      <span>{label}</span>
+                      <Icon size={18} className={isActive ? "text-retro-accent" : ""} />
+                      <span className="font-medium">{label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -64,8 +64,8 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      {user && (
-        <SidebarFooter className="p-3 border-t border-retro-border/20">
+      <SidebarFooter className="p-4 border-t border-retro-border/10 bg-retro-bgLight/50 backdrop-blur-sm">
+        {user ? (
           <div className="flex items-center gap-3">
             {user.photoUrl ? (
               <img
@@ -79,11 +79,11 @@ export function AppSidebar() {
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-retro-text truncate">
+              <p className="text-sm text-retro-text font-medium truncate">
                 {user.displayName || user.email}
               </p>
               {user.displayName && (
-                <p className="text-xs text-retro-textDim truncate">
+                <p className="text-[10px] text-retro-textDim truncate font-mono uppercase">
                   {user.email}
                 </p>
               )}
@@ -96,8 +96,15 @@ export function AppSidebar() {
               <LogOut size={16} />
             </button>
           </div>
-        </SidebarFooter>
-      )}
+        ) : (
+          <Link
+            href="/login"
+            className="flex items-center justify-center gap-2 h-10 w-full rounded-sm border-2 border-retro-border/50 bg-retro-accent/10 text-retro-text text-sm font-pixel tracking-tighter hover:bg-retro-accent/20 hover:border-retro-border transition-all"
+          >
+            SIGN IN
+          </Link>
+        )}
+      </SidebarFooter>
     </Sidebar>
   );
 }

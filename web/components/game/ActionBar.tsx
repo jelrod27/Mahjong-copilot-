@@ -7,6 +7,7 @@ interface ActionBarProps {
   canDeclareKong: boolean;
   canDeclareWin: boolean;
   hasClaimOptions: boolean;
+  availableClaimTypes?: string[];
   onDiscard: () => void;
   onKong: () => void;
   onWin: () => void;
@@ -19,6 +20,7 @@ interface ActionBarProps {
 
 export default function ActionBar({
   canDiscard, canDeclareKong, canDeclareWin, hasClaimOptions,
+  availableClaimTypes = [],
   onDiscard, onKong, onWin, onClaim, onPass,
   turnPhase, isHumanTurn, claimTimer = 0,
 }: ActionBarProps) {
@@ -51,6 +53,7 @@ export default function ActionBar({
   if (turnPhase === 'claim' && hasClaimOptions) {
     const timerPct = claimTimer > 0 ? (claimTimer / 10000) * 100 : 0;
     const timerColor = timerPct > 50 ? 'bg-retro-cyan' : timerPct > 20 ? 'bg-retro-gold' : 'bg-retro-accent';
+    const hasClaim = (type: string) => availableClaimTypes.length === 0 || availableClaimTypes.includes(type);
     return (
       <div className="space-y-1 py-2">
         {/* Claim timer bar */}
@@ -60,19 +63,27 @@ export default function ActionBar({
             style={{ width: `${timerPct}%` }}
           />
         </div>
-        <div className="flex items-center justify-center gap-2">
-          <button className="retro-btn-green" onClick={() => onClaim('win')}>
-            [ WIN ]
-          </button>
-          <button className="retro-btn-gold" onClick={() => onClaim('kong')}>
-            [ KONG ]
-          </button>
-          <button className="retro-btn-gold" onClick={() => onClaim('pung')}>
-            [ PUNG ]
-          </button>
-          <button className="retro-btn" onClick={() => onClaim('chow')}>
-            [ CHOW ]
-          </button>
+        <div className="flex items-center justify-center gap-2 animate-pulse-subtle">
+          {hasClaim('win') && (
+            <button className="retro-btn-green shadow-[0_0_12px_rgba(0,255,100,0.4)]" onClick={() => onClaim('win')}>
+              [ WIN ]
+            </button>
+          )}
+          {hasClaim('kong') && (
+            <button className="retro-btn-gold shadow-[0_0_12px_rgba(255,215,0,0.4)]" onClick={() => onClaim('kong')}>
+              [ KONG ]
+            </button>
+          )}
+          {hasClaim('pung') && (
+            <button className="retro-btn-gold shadow-[0_0_12px_rgba(255,215,0,0.4)]" onClick={() => onClaim('pung')}>
+              [ PUNG ]
+            </button>
+          )}
+          {hasClaim('chow') && (
+            <button className="retro-btn shadow-[0_0_8px_rgba(83,216,251,0.3)]" onClick={() => onClaim('chow')}>
+              [ CHOW ]
+            </button>
+          )}
           <button className="retro-btn bg-retro-bgLight" onClick={onPass}>
             [ PASS ]
           </button>

@@ -26,6 +26,7 @@ interface GameBoardProps {
   canDeclareKong?: boolean;
   canDeclareWin?: boolean;
   hasClaimOptions?: boolean;
+  availableClaimTypes?: string[];
   claimTimer?: number;
 }
 
@@ -33,7 +34,7 @@ export default function GameBoard({
   gameState, humanPlayerId, selectedTileId, suggestedTileId, tutorAdvice,
   onTileSelect, onDiscard, onKong, onWin, onClaim, onPass,
   canDeclareKong: canKongProp, canDeclareWin: canWinProp,
-  hasClaimOptions: hasClaimsProp, claimTimer,
+  hasClaimOptions: hasClaimsProp, availableClaimTypes, claimTimer,
 }: GameBoardProps) {
   const humanIndex = gameState.players.findIndex(p => p.id === humanPlayerId);
   const humanPlayer = gameState.players[humanIndex];
@@ -151,6 +152,7 @@ export default function GameBoard({
           onPass={onPass}
           turnPhase={gameState.turnPhase}
           isHumanTurn={isHumanTurn}
+          availableClaimTypes={availableClaimTypes}
           claimTimer={claimTimer}
         />
 

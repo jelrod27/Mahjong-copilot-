@@ -65,6 +65,7 @@ export default function GameContent() {
         canDeclareKong={controller.canDeclareKong}
         canDeclareWin={controller.canDeclareWin}
         hasClaimOptions={controller.claimOptions.length > 0}
+        availableClaimTypes={controller.claimOptions.map(c => c.claimType)}
         claimTimer={controller.claimTimer}
       />
 

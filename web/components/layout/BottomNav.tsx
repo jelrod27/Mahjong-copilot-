@@ -8,7 +8,7 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-retro-bgLight border-t border-retro-border/30 z-50 md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 bg-retro-bgLight border-t border-retro-border/30 z-50 lg:hidden">
       <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
         {navItems.map(({ href, label, icon: Icon }) => {
           const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href);

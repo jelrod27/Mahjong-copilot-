@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, GamePhase, ClaimType, gameStateFromJson } from '@/models/GameState';
-import { Tile, TileType, tileFromJson } from '@/models/Tile';
+import { Tile, TileType, tileFromJson, tileKey } from '@/models/Tile';
 import { AvailableClaim, ScoringContext, ScoringResult } from '@/engine/types';
 import { getAvailableClaims } from '@/engine/claiming';
 import { isWinningHand } from '@/engine/winDetection';
@@ -71,7 +71,7 @@ export default function useMultiplayerGame(
         const lastDiscarderIndex = state.players.findIndex(p => p.id === state.lastDiscardedBy);
         const claims = getAvailableClaims(
           state.lastDiscardedTile,
-          player.hand,
+          player,
           playerIndex,
           lastDiscarderIndex,
           state.players.length,
@@ -161,7 +161,7 @@ export default function useMultiplayerGame(
     const result = await submitMove(roomId, {
       type: 'DISCARD',
       playerId,
-      tile: { id: tile.id, tileKey: tile.tileKey },
+      tile: { id: tile.id, tileKey: tileKey(tile) },
     });
 
     if (result.success) {
@@ -198,7 +198,7 @@ export default function useMultiplayerGame(
       type: 'CLAIM',
       playerId,
       claimType,
-      tilesFromHand: tilesFromHand.map(t => ({ id: t.id, tileKey: t.tileKey })),
+      tilesFromHand: tilesFromHand.map(t => ({ id: t.id, tileKey: tileKey(t) })),
     });
   }, [game, playerId, roomId]);
 
@@ -224,7 +224,7 @@ export default function useMultiplayerGame(
     game.currentPlayerIndex === game.players.indexOf(humanPlayer) &&
     game.turnPhase === 'discard' &&
     humanPlayer.hand.some(t => {
-      const count = humanPlayer.hand.filter(h => h.tileKey === t.tileKey).length;
+      const count = humanPlayer.hand.filter(h => tileKey(h) === tileKey(t)).length;
       return count >= 4;
     })
   );

@@ -35,7 +35,7 @@ export async function middleware(request: NextRequest) {
   const isPublicPath = publicPaths.some((p) => pathname.startsWith(p));
   
   // Define routes that REQUIRE authentication
-  const protectedPaths = ["/settings", "/account", "/profile"];
+  const protectedPaths = ["/settings", "/account", "/profile", "/multiplayer"];
   const isProtectedPath = protectedPaths.some((p) => pathname.startsWith(p));
 
   // Redirect unauthenticated users ONLY if they try to access a protected path

@@ -1,16 +1,154 @@
-import { Dice5 } from 'lucide-react';
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { ClaimType } from '@/models/GameState';
+import { AvailableClaim } from '@/engine/types';
+import useGameController from '@/components/game/useGameController';
+import GameBoard from '@/components/game/GameBoard';
+import GameOverScreen from '@/components/game/GameOverScreen';
+import ClaimChoiceModal from '@/components/game/ClaimChoiceModal';
+import HintOverlay, { computeHints } from '@/components/game/HintOverlay';
 
 export default function PracticePage() {
+  const router = useRouter();
+  const [started, setStarted] = useState(false);
+  const [showHints, setShowHints] = useState(true);
+
+  if (!started) {
+    return <PracticeSetup onStart={() => setStarted(true)} />;
+  }
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
-      <Dice5 size={48} className="text-retro-textDim mb-4" />
-      <h1 className="font-pixel text-sm text-retro-cyan retro-glow mb-3">Practice Mode</h1>
-      <p className="text-retro-textDim font-retro text-lg">Coming soon. Complete the learning path first!</p>
-      <div className="mt-6 font-retro text-retro-textDim/50 text-sm">
-        ╔═══════════════════╗<br />
-        ║&nbsp; UNDER CONSTRUCTION &nbsp;║<br />
-        ╚═══════════════════╝
+    <PracticeGame
+      showHints={showHints}
+      onToggleHints={() => setShowHints(h => !h)}
+      onBack={() => router.push('/practice')}
+    />
+  );
+}
+
+function PracticeSetup({ onStart }: { onStart: () => void }) {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6">
+      <div className="retro-card p-8 max-w-sm w-full text-center">
+        <p className="font-pixel text-[10px] text-retro-cyan tracking-[1.5px] mb-2">
+          PRACTICE MODE
+        </p>
+        <h1 className="font-pixel text-sm text-retro-gold retro-glow mb-4">
+          Play with Hints
+        </h1>
+        <p className="text-retro-text/80 font-retro text-base mb-6 leading-relaxed">
+          Play against Easy AI with a hint overlay that shows you safe tiles,
+          how close you are to winning, and strategic advice.
+        </p>
+        <div className="space-y-3">
+          <div className="retro-card p-3 text-left">
+            <p className="text-sm font-retro text-retro-cyan mb-1">What you&apos;ll see:</p>
+            <ul className="text-sm font-retro text-retro-textDim space-y-1">
+              <li>&#8226; Shanten count (distance to win)</li>
+              <li>&#8226; Safe tile indicators</li>
+              <li>&#8226; Tutor advice on each turn</li>
+            </ul>
+          </div>
+          <button
+            className="retro-btn-green w-full py-4 text-lg"
+            onClick={onStart}
+          >
+            Start Practice
+          </button>
+        </div>
       </div>
     </div>
+  );
+}
+
+function PracticeGame({
+  showHints,
+  onToggleHints,
+  onBack,
+}: {
+  showHints: boolean;
+  onToggleHints: () => void;
+  onBack: () => void;
+}) {
+  const controller = useGameController('easy');
+  const [pendingClaim, setPendingClaim] = useState<AvailableClaim | null>(null);
+
+  if (!controller.game) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="font-pixel text-retro-cyan retro-glow text-sm">
+          DEALING TILES<span className="animate-blink">...</span>
+        </div>
+      </div>
+    );
+  }
+
+  const humanIndex = controller.game.players.findIndex(p => p.id === 'human-player');
+
+  const handleClaim = (claimType: string) => {
+    const claim = controller.claimOptions.find(c => c.claimType === claimType);
+    if (!claim) return;
+    if (claim.tilesFromHand.length > 1) {
+      setPendingClaim(claim);
+      return;
+    }
+    controller.submitClaim(claimType as ClaimType, claim.tilesFromHand[0] || []);
+  };
+
+  const handleClaimSelect = (claimType: ClaimType, tilesFromHand: any) => {
+    controller.submitClaim(claimType, tilesFromHand);
+    setPendingClaim(null);
+  };
+
+  return (
+    <>
+      <GameBoard
+        gameState={controller.game}
+        humanPlayerId="human-player"
+        selectedTileId={controller.selectedTileId}
+        suggestedTileId={controller.suggestedTileId}
+        tutorAdvice={controller.tutorAdvice}
+        onTileSelect={controller.selectTile}
+        onDiscard={controller.discardSelected}
+        onKong={controller.declareKong}
+        onWin={controller.declareWin}
+        onClaim={handleClaim}
+        onPass={controller.pass}
+        canDeclareKong={controller.canDeclareKong}
+        canDeclareWin={controller.canDeclareWin}
+        hasClaimOptions={controller.claimOptions.length > 0}
+        claimTimer={controller.claimTimer}
+      />
+
+      {/* Hint overlay */}
+      <HintOverlay
+        game={controller.game}
+        humanPlayerIndex={humanIndex >= 0 ? humanIndex : 0}
+        showHints={showHints}
+        onToggle={onToggleHints}
+      />
+
+      {/* Claim choice modal */}
+      {pendingClaim && controller.game.lastDiscardedTile && (
+        <ClaimChoiceModal
+          claim={pendingClaim}
+          discardedTile={controller.game.lastDiscardedTile}
+          onSelect={handleClaimSelect}
+          onCancel={() => { setPendingClaim(null); controller.pass(); }}
+        />
+      )}
+
+      {/* Game over screen */}
+      {controller.isGameOver && (
+        <GameOverScreen
+          gameState={controller.game}
+          scoringResult={controller.scoringResult}
+          onPlayAgain={() => controller.startNewGame('easy')}
+          onBackToMenu={onBack}
+        />
+      )}
+    </>
   );
 }

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Level1, Lesson, QuizQuestion } from '@/content/level1';
+import { getLevelById, Lesson, QuizQuestion } from '@/content';
 import { MahjongTile } from '@/components/MahjongTile';
 import { SetBuilder } from '@/components/SetBuilder';
 import { getTileById, Tile } from '@/models/Tile';
@@ -12,9 +12,11 @@ const COMPLETED_LESSONS_KEY = '@mahjong_completed_lessons';
 export default function LessonPage() {
   const params = useParams();
   const router = useRouter();
+  const levelId = Number(params.levelId);
   const lessonId = params.lessonId as string;
 
-  const lesson = Level1.lessons.find(l => l.id === lessonId);
+  const level = getLevelById(levelId);
+  const lesson = level?.lessons.find(l => l.id === lessonId);
 
   const [currentSection, setCurrentSection] = useState<'content' | 'quiz' | 'interactive'>('content');
   const [quizIndex, setQuizIndex] = useState(0);
@@ -84,6 +86,8 @@ export default function LessonPage() {
     setCorrectAnswers(0);
   };
 
+  const backToLevel = `/learn/${levelId}`;
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Completion Modal */}
@@ -95,7 +99,7 @@ export default function LessonPage() {
             <p className="text-retro-textDim font-retro mb-6">{completionMessage}</p>
             <button
               className="retro-btn-green w-full py-3 text-lg"
-              onClick={() => router.push('/learn')}
+              onClick={() => router.push(backToLevel)}
             >
               Continue
             </button>
@@ -106,7 +110,7 @@ export default function LessonPage() {
       {/* Header */}
       <div className="flex items-center p-4 border-b border-retro-border/20 bg-retro-bgLight">
         <button
-          onClick={() => currentSection !== 'content' ? setCurrentSection('content') : router.push('/learn')}
+          onClick={() => currentSection !== 'content' ? setCurrentSection('content') : router.push(backToLevel)}
           className="mr-4 text-lg text-retro-cyan font-retro hover:retro-glow transition-all"
         >
           ‹ Back

@@ -108,6 +108,15 @@ body {
   animation: blink-cursor 1s step-end infinite;
 }
 
+.animate-pulse-subtle {
+  animation: pulse-subtle 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}
+
 /* Tile action animations */
 @keyframes tile-draw {
   0% { opacity: 0; transform: translateY(-12px) scale(0.9); }

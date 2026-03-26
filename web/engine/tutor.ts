@@ -20,7 +20,7 @@ export function getTutorAdvice(gameState: GameState, playerIndex: number, availa
     if (winClaim) {
       return {
         type: 'claim',
-        message: "You can win! Claim this tile to complete your hand and end the game.",
+        message: "You can win! Press the [ WIN ] button below to claim this tile and end the game.",
       };
     }
 
@@ -28,7 +28,7 @@ export function getTutorAdvice(gameState: GameState, playerIndex: number, availa
     if (pungClaim) {
       return {
         type: 'claim',
-        message: "Claiming this Pung will complete a set of three identical tiles. It's a fast way to build your hand.",
+        message: "You can claim a Pung! Press [ PUNG ] below to take this tile and complete a set of three.",
       };
     }
 
@@ -36,7 +36,7 @@ export function getTutorAdvice(gameState: GameState, playerIndex: number, availa
     if (chowClaim) {
       return {
         type: 'claim',
-        message: "This Chow completes a sequence of three tiles. Chows are common but only allowed from the player on your left.",
+        message: "You can claim a Chow! Press [ CHOW ] below to take this tile and complete a sequence.",
       };
     }
   }

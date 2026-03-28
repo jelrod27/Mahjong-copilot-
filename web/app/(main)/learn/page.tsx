@@ -1,18 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+
 import Link from 'next/link';
 import { AllLevels } from '@/content';
+import useCompletedLessons from '@/hooks/useCompletedLessons';
 
-const COMPLETED_LESSONS_KEY = '@mahjong_completed_lessons';
 
 export default function LearnPage() {
-  const [completedLessons, setCompletedLessons] = useState<string[]>([]);
+  const { completedLessons } = useCompletedLessons();
 
-  useEffect(() => {
-    const stored = localStorage.getItem(COMPLETED_LESSONS_KEY);
-    if (stored) setCompletedLessons(JSON.parse(stored));
-  }, []);
 
   const isLevelUnlocked = (levelIndex: number) => {
     if (levelIndex === 0) return true;

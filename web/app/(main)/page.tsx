@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Level1 } from '@/content/level1';
 import { MahjongTile } from '@/components/MahjongTile';
 import { getAllTiles } from '@/models/Tile';
+import useCompletedLessons from '@/hooks/useCompletedLessons';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -17,19 +18,14 @@ import {
   Layers,
 } from 'lucide-react';
 
-const COMPLETED_LESSONS_KEY = '@mahjong_completed_lessons';
-
 export default function HomePage() {
-  const [completedLessons, setCompletedLessons] = useState<string[]>([]);
+  const { completedLessons } = useCompletedLessons();
   const [randomTile, setRandomTile] = useState(() => {
     const tiles = getAllTiles();
     return tiles[Math.floor(Math.random() * tiles.length)];
   });
 
   useEffect(() => {
-    const stored = localStorage.getItem(COMPLETED_LESSONS_KEY);
-    if (stored) setCompletedLessons(JSON.parse(stored));
-
     const tiles = getAllTiles();
     setRandomTile(tiles[Math.floor(Math.random() * tiles.length)]);
   }, []);

@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getLevelById } from '@/content';
+import useCompletedLessons from '@/hooks/useCompletedLessons';
 
-const COMPLETED_LESSONS_KEY = '@mahjong_completed_lessons';
 
 export default function LevelPage() {
   const params = useParams();
@@ -13,12 +13,8 @@ export default function LevelPage() {
   const levelId = Number(params.levelId);
   const level = getLevelById(levelId);
 
-  const [completedLessons, setCompletedLessons] = useState<string[]>([]);
+  const { completedLessons } = useCompletedLessons();
 
-  useEffect(() => {
-    const stored = localStorage.getItem(COMPLETED_LESSONS_KEY);
-    if (stored) setCompletedLessons(JSON.parse(stored));
-  }, []);
 
   if (!level) {
     return (

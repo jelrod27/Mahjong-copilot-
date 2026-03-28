@@ -6,8 +6,8 @@ import { getLevelById, Lesson, QuizQuestion } from '@/content';
 import { MahjongTile } from '@/components/MahjongTile';
 import { SetBuilder } from '@/components/SetBuilder';
 import { getTileById, Tile } from '@/models/Tile';
+import useCompletedLessons from '@/hooks/useCompletedLessons';
 
-const COMPLETED_LESSONS_KEY = '@mahjong_completed_lessons';
 
 export default function LessonPage() {
   const params = useParams();
@@ -17,6 +17,8 @@ export default function LessonPage() {
 
   const level = getLevelById(levelId);
   const lesson = level?.lessons.find(l => l.id === lessonId);
+
+  const { markComplete } = useCompletedLessons();
 
   const [currentSection, setCurrentSection] = useState<'content' | 'quiz' | 'interactive'>('content');
   const [quizIndex, setQuizIndex] = useState(0);
@@ -40,12 +42,7 @@ export default function LessonPage() {
   const isLastQuiz = quizIndex === (lesson.quiz?.length || 0) - 1;
 
   const markLessonComplete = () => {
-    const stored = localStorage.getItem(COMPLETED_LESSONS_KEY);
-    const completed: string[] = stored ? JSON.parse(stored) : [];
-    if (!completed.includes(lesson.id)) {
-      completed.push(lesson.id);
-      localStorage.setItem(COMPLETED_LESSONS_KEY, JSON.stringify(completed));
-    }
+    markComplete(lesson.id);
   };
 
   const handleComplete = () => {

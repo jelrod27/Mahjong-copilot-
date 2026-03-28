@@ -2,12 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ClaimType } from '@/models/GameState';
-import { Tile } from '@/models/Tile';
-import { AvailableClaim } from '@/engine/types';
 import { createClient } from '@/lib/supabase/client';
 import { getRoomPlayers, leaveRoom, RoomPlayer } from '@/lib/multiplayer/roomService';
 import useMultiplayerGame from '@/hooks/useMultiplayerGame';
+import useClaimHandler from '@/hooks/useClaimHandler';
 import GameBoard from '@/components/game/GameBoard';
 import GameOverScreen from '@/components/game/GameOverScreen';
 import ClaimChoiceModal from '@/components/game/ClaimChoiceModal';
@@ -25,22 +23,18 @@ export default function MultiplayerGamePage() {
   const [isHost, setIsHost] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
 
-  // Get current user
   useEffect(() => {
-    const getUser = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id);
-    };
-    getUser();
+    });
   }, []);
 
-  // Poll room state before game starts
   useEffect(() => {
     if (gameStarted || !userId) return;
 
+    const supabase = createClient();
     const fetchRoom = async () => {
-      const supabase = createClient();
       const { data: room } = await supabase
         .from('rooms')
         .select('code, host_id, status')
@@ -50,9 +44,7 @@ export default function MultiplayerGamePage() {
       if (room) {
         setRoomCode(room.code);
         setIsHost(room.host_id === userId);
-        if (room.status === 'playing') {
-          setGameStarted(true);
-        }
+        if (room.status === 'playing') setGameStarted(true);
       }
 
       const roomPlayers = await getRoomPlayers(roomId);
@@ -95,7 +87,11 @@ export default function MultiplayerGamePage() {
 function ActiveGame({ roomId, playerId }: { roomId: string; playerId: string }) {
   const router = useRouter();
   const controller = useMultiplayerGame(roomId, playerId);
-  const [pendingClaim, setPendingClaim] = useState<AvailableClaim | null>(null);
+  const { pendingClaim, handleClaim, handleClaimSelect, cancelClaim } = useClaimHandler({
+    claimOptions: controller.claimOptions,
+    submitClaim: controller.submitClaim,
+    pass: controller.pass,
+  });
 
   if (!controller.game) {
     return (
@@ -107,21 +103,6 @@ function ActiveGame({ roomId, playerId }: { roomId: string; playerId: string }) 
       </div>
     );
   }
-
-  const handleClaim = (claimType: ClaimType) => {
-    const claim = controller.claimOptions.find(c => c.claimType === claimType);
-    if (!claim) return;
-    if (claim.tilesFromHand.length > 1) {
-      setPendingClaim(claim);
-      return;
-    }
-    controller.submitClaim(claimType, claim.tilesFromHand[0] || []);
-  };
-
-  const handleClaimSelect = (claimType: ClaimType, tilesFromHand: Tile[]) => {
-    controller.submitClaim(claimType, tilesFromHand);
-    setPendingClaim(null);
-  };
 
   return (
     <>
@@ -140,6 +121,7 @@ function ActiveGame({ roomId, playerId }: { roomId: string; playerId: string }) 
         canDeclareKong={controller.canDeclareKong}
         canDeclareWin={controller.canDeclareWin}
         hasClaimOptions={controller.claimOptions.length > 0}
+        availableClaimTypes={controller.claimOptions.map(c => c.claimType)}
         claimTimer={controller.claimTimer}
       />
 
@@ -148,7 +130,7 @@ function ActiveGame({ roomId, playerId }: { roomId: string; playerId: string }) 
           claim={pendingClaim}
           discardedTile={controller.game.lastDiscardedTile}
           onSelect={handleClaimSelect}
-          onCancel={() => { setPendingClaim(null); controller.pass(); }}
+          onCancel={cancelClaim}
         />
       )}
 

@@ -2,10 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ClaimType } from '@/models/GameState';
-import { Tile } from '@/models/Tile';
-import { AvailableClaim } from '@/engine/types';
 import useGameController from '@/components/game/useGameController';
+import useClaimHandler from '@/hooks/useClaimHandler';
 import GameBoard from '@/components/game/GameBoard';
 import GameOverScreen from '@/components/game/GameOverScreen';
 import ClaimChoiceModal from '@/components/game/ClaimChoiceModal';
@@ -74,7 +72,11 @@ function PracticeGame({
   onBack: () => void;
 }) {
   const controller = useGameController('easy');
-  const [pendingClaim, setPendingClaim] = useState<AvailableClaim | null>(null);
+  const { pendingClaim, handleClaim, handleClaimSelect, cancelClaim } = useClaimHandler({
+    claimOptions: controller.claimOptions,
+    submitClaim: controller.submitClaim,
+    pass: controller.pass,
+  });
 
   if (!controller.game) {
     return (
@@ -87,21 +89,6 @@ function PracticeGame({
   }
 
   const humanIndex = controller.game.players.findIndex(p => p.id === 'human-player');
-
-  const handleClaim = (claimType: ClaimType) => {
-    const claim = controller.claimOptions.find(c => c.claimType === claimType);
-    if (!claim) return;
-    if (claim.tilesFromHand.length > 1) {
-      setPendingClaim(claim);
-      return;
-    }
-    controller.submitClaim(claimType, claim.tilesFromHand[0] || []);
-  };
-
-  const handleClaimSelect = (claimType: ClaimType, tilesFromHand: Tile[]) => {
-    controller.submitClaim(claimType, tilesFromHand);
-    setPendingClaim(null);
-  };
 
   return (
     <>
@@ -124,7 +111,6 @@ function PracticeGame({
         claimTimer={controller.claimTimer}
       />
 
-      {/* Hint overlay */}
       <HintOverlay
         game={controller.game}
         humanPlayerIndex={humanIndex >= 0 ? humanIndex : 0}
@@ -132,17 +118,15 @@ function PracticeGame({
         onToggle={onToggleHints}
       />
 
-      {/* Claim choice modal */}
       {pendingClaim && controller.game.lastDiscardedTile && (
         <ClaimChoiceModal
           claim={pendingClaim}
           discardedTile={controller.game.lastDiscardedTile}
           onSelect={handleClaimSelect}
-          onCancel={() => { setPendingClaim(null); controller.pass(); }}
+          onCancel={cancelClaim}
         />
       )}
 
-      {/* Game over screen */}
       {controller.isGameOver && (
         <GameOverScreen
           gameState={controller.game}

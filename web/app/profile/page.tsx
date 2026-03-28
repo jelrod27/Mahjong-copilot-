@@ -32,23 +32,17 @@ export default function ProfilePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Fetch profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+      const [{ data: profileData }, { data: matchData }] = await Promise.all([
+        supabase.from('profiles')
+          .select('display_name, elo_rating, games_played, games_won, placement_games_remaining')
+          .eq('id', user.id).single(),
+        supabase.from('match_history')
+          .select('id, elo_before, elo_after, elo_change, placement, created_at')
+          .eq('player_id', user.id)
+          .order('created_at', { ascending: false }).limit(20),
+      ]);
 
       if (profileData) setProfile(profileData);
-
-      // Fetch match history
-      const { data: matchData } = await supabase
-        .from('match_history')
-        .select('*')
-        .eq('player_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
       if (matchData) setMatches(matchData);
       setLoading(false);
     };

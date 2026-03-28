@@ -1,30 +1,30 @@
 'use client';
 
-import { TurnPhase } from '@/models/GameState';
+import { TurnPhase, ClaimType } from '@/models/GameState';
 
 interface ActionBarProps {
   canDiscard: boolean;
   canDeclareKong: boolean;
   canDeclareWin: boolean;
   hasClaimOptions: boolean;
-  availableClaimTypes?: string[];
+  availableClaimTypes?: ClaimType[];
   onDiscard: () => void;
   onKong: () => void;
   onWin: () => void;
-  onClaim: (claimType: string) => void;
+  onClaim: (claimType: ClaimType) => void;
   onPass: () => void;
   turnPhase: TurnPhase;
   isHumanTurn: boolean;
   claimTimer?: number;
+  claimTimeout?: number;
 }
 
 export default function ActionBar({
   canDiscard, canDeclareKong, canDeclareWin, hasClaimOptions,
   availableClaimTypes = [],
   onDiscard, onKong, onWin, onClaim, onPass,
-  turnPhase, isHumanTurn, claimTimer = 0,
+  turnPhase, isHumanTurn, claimTimer = 0, claimTimeout = 10000,
 }: ActionBarProps) {
-  // During discard phase (human's turn)
   if (turnPhase === 'discard' && isHumanTurn) {
     return (
       <div className="flex items-center justify-center gap-2 py-2">
@@ -49,14 +49,12 @@ export default function ActionBar({
     );
   }
 
-  // During claim phase (opponent discarded)
   if (turnPhase === 'claim' && hasClaimOptions) {
-    const timerPct = claimTimer > 0 ? (claimTimer / 10000) * 100 : 0;
+    const timerPct = claimTimer > 0 ? (claimTimer / claimTimeout) * 100 : 0;
     const timerColor = timerPct > 50 ? 'bg-retro-cyan' : timerPct > 20 ? 'bg-retro-gold' : 'bg-retro-accent';
-    const hasClaim = (type: string) => availableClaimTypes.length === 0 || availableClaimTypes.includes(type);
+    const hasClaim = (type: ClaimType) => availableClaimTypes.length === 0 || availableClaimTypes.includes(type);
     return (
       <div className="space-y-1 py-2">
-        {/* Claim timer bar */}
         <div className="h-1 bg-retro-bgLight rounded-full mx-4">
           <div
             className={`h-full rounded-full transition-all duration-100 ${timerColor}`}
@@ -92,7 +90,6 @@ export default function ActionBar({
     );
   }
 
-  // Waiting for opponent
   if (!isHumanTurn) {
     return (
       <div className="flex items-center justify-center py-2">

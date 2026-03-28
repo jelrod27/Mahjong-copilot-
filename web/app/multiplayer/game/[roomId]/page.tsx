@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ClaimType } from '@/models/GameState';
+import { Tile } from '@/models/Tile';
 import { AvailableClaim } from '@/engine/types';
 import { createClient } from '@/lib/supabase/client';
 import { getRoomPlayers, leaveRoom, RoomPlayer } from '@/lib/multiplayer/roomService';
@@ -107,17 +108,17 @@ function ActiveGame({ roomId, playerId }: { roomId: string; playerId: string }) 
     );
   }
 
-  const handleClaim = (claimType: string) => {
+  const handleClaim = (claimType: ClaimType) => {
     const claim = controller.claimOptions.find(c => c.claimType === claimType);
     if (!claim) return;
     if (claim.tilesFromHand.length > 1) {
       setPendingClaim(claim);
       return;
     }
-    controller.submitClaim(claimType as ClaimType, claim.tilesFromHand[0] || []);
+    controller.submitClaim(claimType, claim.tilesFromHand[0] || []);
   };
 
-  const handleClaimSelect = (claimType: ClaimType, tilesFromHand: any) => {
+  const handleClaimSelect = (claimType: ClaimType, tilesFromHand: Tile[]) => {
     controller.submitClaim(claimType, tilesFromHand);
     setPendingClaim(null);
   };

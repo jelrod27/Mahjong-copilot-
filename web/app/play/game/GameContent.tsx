@@ -1,5 +1,6 @@
 'use client';
 
+import { Tile } from '@/models/Tile';
 import { useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ClaimType } from '@/models/GameState';
@@ -27,7 +28,7 @@ export default function GameContent() {
     );
   }
 
-  const handleClaim = (claimType: string) => {
+  const handleClaim = (claimType: ClaimType) => {
     const claim = controller.claimOptions.find(c => c.claimType === claimType);
     if (!claim) return;
 
@@ -38,12 +39,12 @@ export default function GameContent() {
     }
 
     controller.submitClaim(
-      claimType as ClaimType,
+      claimType,
       claim.tilesFromHand[0] || []
     );
   };
 
-  const handleClaimSelect = (claimType: ClaimType, tilesFromHand: any) => {
+  const handleClaimSelect = (claimType: ClaimType, tilesFromHand: Tile[]) => {
     controller.submitClaim(claimType, tilesFromHand);
     setPendingClaim(null);
   };

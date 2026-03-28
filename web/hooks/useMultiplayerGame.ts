@@ -1,17 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { GameState, GamePhase, ClaimType, gameStateFromJson } from '@/models/GameState';
-import { Tile, TileType, tileFromJson, tileKey } from '@/models/Tile';
+import { Tile, TileType, tileKey } from '@/models/Tile';
 import { AvailableClaim, ScoringContext, ScoringResult } from '@/engine/types';
 import { getAvailableClaims } from '@/engine/claiming';
 import { isWinningHand } from '@/engine/winDetection';
 import { calculateScore } from '@/engine/scoring';
-import { GameController, TutorAdvice } from '@/components/game/useGameController';
+import { GameController } from '@/components/game/useGameController';
 import { joinGameChannel, leaveChannel, GameEvent } from '@/lib/supabase/realtime';
 import { submitMove, getGameState } from '@/lib/multiplayer/gameService';
 
-const CLAIM_TIMEOUT = 15000; // 15 seconds for claims in multiplayer
+const CLAIM_TIMEOUT = 15000;
 
 /**
  * Multiplayer game hook — matches the GameController interface
@@ -25,7 +25,6 @@ export default function useMultiplayerGame(
   const [selectedTileId, setSelectedTileId] = useState<string | undefined>();
   const [claimOptions, setClaimOptions] = useState<AvailableClaim[]>([]);
   const [claimTimer, setClaimTimer] = useState(0);
-  const [isGameOver, setIsGameOver] = useState(false);
   const [scoringResult, setScoringResult] = useState<ScoringResult | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'reconnecting' | 'disconnected'>('connecting');
 
@@ -33,37 +32,64 @@ export default function useMultiplayerGame(
   const claimTimerRef = useRef<NodeJS.Timeout | null>(null);
   const stateVersionRef = useRef(0);
 
-  // Reconstruct game state from filtered server state
+  const clearClaimTimer = useCallback(() => {
+    if (claimTimerRef.current) {
+      clearInterval(claimTimerRef.current);
+      claimTimerRef.current = null;
+    }
+    setClaimOptions([]);
+    setClaimTimer(0);
+  }, []);
+
+  const startClaimTimer = useCallback(() => {
+    clearClaimTimer();
+    setClaimTimer(CLAIM_TIMEOUT);
+    const startTime = Date.now();
+    claimTimerRef.current = setInterval(() => {
+      const remaining = Math.max(0, CLAIM_TIMEOUT - (Date.now() - startTime));
+      setClaimTimer(remaining);
+      if (remaining <= 0) {
+        clearClaimTimer();
+        submitMove(roomId, { type: 'PASS', playerId });
+      }
+    }, 100);
+  }, [roomId, playerId, clearClaimTimer]);
+
   const applyServerState = useCallback((serverState: any, version: number) => {
-    if (version <= stateVersionRef.current) return; // Stale update
+    if (version <= stateVersionRef.current) return;
     stateVersionRef.current = version;
 
-    // The server sends filtered state — other players' hands are { count: N }
-    // We need to handle this gracefully in the UI
-    const state = reconstructState(serverState, playerId);
+    // Preprocess filtered state: replace hidden hands with empty arrays for gameStateFromJson
+    const preprocessed = {
+      ...serverState,
+      wall: Array.isArray(serverState.wall) ? serverState.wall : [],
+      deadWall: Array.isArray(serverState.deadWall) ? serverState.deadWall : [],
+      players: (serverState.players || []).map((p: any) => ({
+        ...p,
+        hand: Array.isArray(p.hand) ? p.hand : [],
+      })),
+    };
+
+    const state = gameStateFromJson(preprocessed);
     setGame(state);
 
-    // Check game over
     if (state.phase === GamePhase.FINISHED) {
-      setIsGameOver(true);
       if (state.winnerId && state.winningTile) {
         const winner = state.players.find(p => p.id === state.winnerId);
         if (winner) {
-          const context: ScoringContext = {
+          const result = calculateScore(winner.hand, winner.melds, {
             winningTile: state.winningTile,
             isSelfDrawn: state.isSelfDrawn || false,
             seatWind: winner.seatWind,
             prevailingWind: state.prevailingWind,
             isConcealed: winner.melds.every(m => m.isConcealed),
             flowers: winner.flowers,
-          };
-          const result = calculateScore(winner.hand, winner.melds, context);
+          });
           setScoringResult(result);
         }
       }
     }
 
-    // Check for claim options if it's claim phase and we're not the current player
     if (state.turnPhase === 'claim' && state.lastDiscardedTile && state.lastDiscardedBy !== playerId) {
       const playerIndex = state.players.findIndex(p => p.id === playerId);
       const player = state.players[playerIndex];
@@ -82,9 +108,16 @@ export default function useMultiplayerGame(
     } else {
       setClaimOptions([]);
     }
-  }, [playerId]);
+  }, [playerId, startClaimTimer, clearClaimTimer]);
 
-  // Join game channel on mount
+  const fetchLatestState = useCallback(async () => {
+    const result = await getGameState(roomId);
+    if (result.state) {
+      applyServerState(result.state, result.version);
+      setConnectionStatus('connected');
+    }
+  }, [roomId, applyServerState]);
+
   useEffect(() => {
     const channel = joinGameChannel(
       roomId,
@@ -94,60 +127,24 @@ export default function useMultiplayerGame(
             applyServerState(event.state, event.version);
             break;
           case 'game-started':
-            // Fetch initial state
             fetchLatestState();
             break;
           case 'game-finished':
-            setIsGameOver(true);
             break;
         }
       },
-      () => {
-        setConnectionStatus('connected');
-      },
+      () => setConnectionStatus('connected'),
     );
 
     channelRef.current = channel;
     setConnectionStatus('connecting');
-
-    // Fetch current state on join
     fetchLatestState();
 
     return () => {
-      if (channelRef.current) {
-        leaveChannel(channelRef.current);
-      }
-      if (claimTimerRef.current) {
-        clearInterval(claimTimerRef.current);
-      }
+      if (channelRef.current) leaveChannel(channelRef.current);
+      clearClaimTimer();
     };
-  }, [roomId, applyServerState]);
-
-  const fetchLatestState = async () => {
-    const result = await getGameState(roomId);
-    if (result.state) {
-      applyServerState(result.state, result.version);
-      setConnectionStatus('connected');
-    }
-  };
-
-  const startClaimTimer = () => {
-    if (claimTimerRef.current) clearInterval(claimTimerRef.current);
-    setClaimTimer(CLAIM_TIMEOUT);
-    const startTime = Date.now();
-    claimTimerRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const remaining = Math.max(0, CLAIM_TIMEOUT - elapsed);
-      setClaimTimer(remaining);
-      if (remaining <= 0) {
-        if (claimTimerRef.current) clearInterval(claimTimerRef.current);
-        // Auto-pass on timeout
-        handlePass();
-      }
-    }, 100);
-  };
-
-  // === Player Actions (send to server) ===
+  }, [roomId, applyServerState, fetchLatestState, clearClaimTimer]);
 
   const selectTile = useCallback((tile: Tile) => {
     setSelectedTileId(prev => prev === tile.id ? undefined : tile.id);
@@ -157,87 +154,70 @@ export default function useMultiplayerGame(
     if (!game || !selectedTileId) return;
     const tile = game.players.find(p => p.id === playerId)?.hand.find(t => t.id === selectedTileId);
     if (!tile) return;
-
     const result = await submitMove(roomId, {
       type: 'DISCARD',
       playerId,
       tile: { id: tile.id, tileKey: tileKey(tile) },
     });
-
-    if (result.success) {
-      setSelectedTileId(undefined);
-    }
+    if (result.success) setSelectedTileId(undefined);
   }, [game, selectedTileId, playerId, roomId]);
 
   const declareKong = useCallback(async () => {
     if (!game) return;
-
-    await submitMove(roomId, {
-      type: 'DECLARE_KONG',
-      playerId,
-    });
+    await submitMove(roomId, { type: 'DECLARE_KONG', playerId });
   }, [game, playerId, roomId]);
 
   const declareWin = useCallback(async () => {
     if (!game) return;
-
-    await submitMove(roomId, {
-      type: 'DECLARE_WIN',
-      playerId,
-    });
+    await submitMove(roomId, { type: 'DECLARE_WIN', playerId });
   }, [game, playerId, roomId]);
 
   const submitClaimAction = useCallback(async (claimType: ClaimType, tilesFromHand: Tile[]) => {
     if (!game) return;
-
-    if (claimTimerRef.current) clearInterval(claimTimerRef.current);
-    setClaimOptions([]);
-    setClaimTimer(0);
-
+    clearClaimTimer();
     await submitMove(roomId, {
       type: 'CLAIM',
       playerId,
       claimType,
       tilesFromHand: tilesFromHand.map(t => ({ id: t.id, tileKey: tileKey(t) })),
     });
-  }, [game, playerId, roomId]);
+  }, [game, playerId, roomId, clearClaimTimer]);
 
   const handlePass = useCallback(async () => {
-    if (claimTimerRef.current) clearInterval(claimTimerRef.current);
-    setClaimOptions([]);
-    setClaimTimer(0);
-
-    await submitMove(roomId, {
-      type: 'PASS',
-      playerId,
-    });
-  }, [playerId, roomId]);
+    clearClaimTimer();
+    await submitMove(roomId, { type: 'PASS', playerId });
+  }, [playerId, roomId, clearClaimTimer]);
 
   const startNewGame = useCallback(() => {
-    // In multiplayer, "new game" means going back to lobby
-    // The host creates a new room
+    // In multiplayer, return to lobby — host creates a new room
   }, []);
 
-  // Compute derived state
+  // Derive game-over and computed state via useMemo
+  const isGameOver = game?.phase === GamePhase.FINISHED;
+
   const humanPlayer = game?.players.find(p => p.id === playerId);
-  const canDeclareKong = !!(game && humanPlayer &&
-    game.currentPlayerIndex === game.players.indexOf(humanPlayer) &&
-    game.turnPhase === 'discard' &&
-    humanPlayer.hand.some(t => {
+
+  const canDeclareKong = useMemo(() => {
+    if (!game || !humanPlayer) return false;
+    if (game.currentPlayerIndex !== game.players.indexOf(humanPlayer)) return false;
+    if (game.turnPhase !== 'discard') return false;
+    return humanPlayer.hand.some(t => {
       const count = humanPlayer.hand.filter(h => tileKey(h) === tileKey(t)).length;
       return count >= 4;
-    })
-  );
-  const canDeclareWin = !!(game && humanPlayer &&
-    game.currentPlayerIndex === game.players.indexOf(humanPlayer) &&
-    game.turnPhase === 'discard' &&
-    isWinningHand(humanPlayer.hand)
-  );
+    });
+  }, [game, humanPlayer]);
+
+  const canDeclareWin = useMemo(() => {
+    if (!game || !humanPlayer) return false;
+    if (game.currentPlayerIndex !== game.players.indexOf(humanPlayer)) return false;
+    if (game.turnPhase !== 'discard') return false;
+    return isWinningHand(humanPlayer.hand);
+  }, [game, humanPlayer]);
 
   return {
     game,
     selectedTileId,
-    suggestedTileId: undefined, // No tutor in multiplayer
+    suggestedTileId: undefined,
     tutorAdvice: null,
     claimOptions,
     claimTimer,
@@ -253,77 +233,5 @@ export default function useMultiplayerGame(
     canDeclareKong,
     canDeclareWin,
     connectionStatus,
-  };
-}
-
-/**
- * Reconstruct a GameState-like object from filtered server state.
- * Other players' hands come as { count: N } instead of tile arrays.
- * Wall comes as { count: N } instead of tile array.
- */
-function reconstructState(serverState: any, myPlayerId: string): GameState {
-  // For the requesting player, hand is full tiles
-  // For others, hand is { count: N } — we create placeholder tiles
-  const players = serverState.players.map((p: any) => {
-    if (p.id === myPlayerId || Array.isArray(p.hand)) {
-      // Full hand available — deserialize normally
-      return {
-        ...p,
-        hand: Array.isArray(p.hand) ? p.hand.map((t: any) => tileFromJson(t)) : [],
-        melds: (p.melds || []).map((m: any) => ({
-          ...m,
-          tiles: (m.tiles || []).map((t: any) => tileFromJson(t)),
-        })),
-        flowers: (p.flowers || []).map((t: any) => tileFromJson(t)),
-      };
-    }
-    // Hidden hand — create empty array (UI shows tile backs based on count)
-    return {
-      ...p,
-      hand: [], // GameBoard uses OpponentHand which shows tile backs
-      _hiddenHandCount: p.hand?.count || 0,
-      melds: (p.melds || []).map((m: any) => ({
-        ...m,
-        tiles: (m.tiles || []).map((t: any) => tileFromJson(t)),
-      })),
-      flowers: (p.flowers || []).map((t: any) => tileFromJson(t)),
-    };
-  });
-
-  return {
-    id: serverState.id,
-    variant: serverState.variant || 'Hong Kong Mahjong',
-    phase: serverState.phase as GamePhase,
-    turnPhase: serverState.turnPhase || 'draw',
-    players,
-    currentPlayerIndex: serverState.currentPlayerIndex || 0,
-    wall: [], // Hidden from client
-    deadWall: [],
-    discardPile: (serverState.discardPile || []).map((t: any) => tileFromJson(t)),
-    playerDiscards: serverState.playerDiscards
-      ? Object.fromEntries(
-          Object.entries(serverState.playerDiscards as Record<string, any[]>).map(
-            ([k, v]) => [k, v.map((t: any) => tileFromJson(t))]
-          )
-        )
-      : {},
-    lastDrawnTile: serverState.lastDrawnTile ? tileFromJson(serverState.lastDrawnTile) : undefined,
-    lastDiscardedTile: serverState.lastDiscardedTile ? tileFromJson(serverState.lastDiscardedTile) : undefined,
-    lastDiscardedBy: serverState.lastDiscardedBy,
-    lastAction: serverState.lastAction,
-    pendingClaims: (serverState.pendingClaims || []).map((c: any) => ({
-      ...c,
-      tiles: (c.tiles || []).map((t: any) => tileFromJson(t)),
-    })),
-    prevailingWind: serverState.prevailingWind,
-    winnerId: serverState.winnerId,
-    winningTile: serverState.winningTile ? tileFromJson(serverState.winningTile) : undefined,
-    isSelfDrawn: serverState.isSelfDrawn,
-    finalScores: serverState.finalScores || {},
-    createdAt: new Date(serverState.createdAt),
-    finishedAt: serverState.finishedAt ? new Date(serverState.finishedAt) : undefined,
-    turnHistory: serverState.turnHistory || [],
-    turnTimeLimit: serverState.turnTimeLimit || 20,
-    turnStartedAt: serverState.turnStartedAt ? new Date(serverState.turnStartedAt) : undefined,
   };
 }

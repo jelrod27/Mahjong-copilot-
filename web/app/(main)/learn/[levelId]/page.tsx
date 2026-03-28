@@ -28,7 +28,8 @@ export default function LevelPage() {
     );
   }
 
-  const progress = (completedLessons.filter(id => id.startsWith(`${levelId}-`)).length / level.lessons.length) * 100;
+  const completedInLevel = completedLessons.filter(id => id.startsWith(`${levelId}-`)).length;
+  const progress = (completedInLevel / level.lessons.length) * 100;
 
   const isLessonUnlocked = (index: number) => {
     if (index === 0) return true;
@@ -60,7 +61,7 @@ export default function LevelPage() {
             />
           </div>
           <p className="mt-2 text-sm text-retro-text/80 font-retro">
-            {completedLessons.filter(id => id.startsWith(`${levelId}-`)).length}/{level.lessons.length} lessons
+            {completedInLevel}/{level.lessons.length} lessons
           </p>
         </div>
       </div>
@@ -103,7 +104,7 @@ export default function LevelPage() {
       </div>
 
       {/* Completion */}
-      {completedLessons.filter(id => id.startsWith(`${levelId}-`)).length === level.lessons.length && (
+      {completedInLevel === level.lessons.length && (
         <div className="mx-4 retro-card p-8 text-center mb-8 border-retro-gold">
           <p className="text-5xl mb-2">🎉</p>
           <p className="font-pixel text-sm text-retro-gold retro-glow mb-1">Level Complete!</p>

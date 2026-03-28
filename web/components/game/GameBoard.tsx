@@ -1,6 +1,6 @@
 'use client';
 
-import { GameState } from '@/models/GameState';
+import { GameState, ClaimType } from '@/models/GameState';
 import { Tile } from '@/models/Tile';
 import PlayerHand from './PlayerHand';
 import OpponentHand from './OpponentHand';
@@ -21,12 +21,12 @@ interface GameBoardProps {
   onDiscard: () => void;
   onKong: () => void;
   onWin: () => void;
-  onClaim: (claimType: string) => void;
+  onClaim: (claimType: ClaimType) => void;
   onPass: () => void;
   canDeclareKong?: boolean;
   canDeclareWin?: boolean;
   hasClaimOptions?: boolean;
-  availableClaimTypes?: string[];
+  availableClaimTypes?: ClaimType[];
   claimTimer?: number;
 }
 

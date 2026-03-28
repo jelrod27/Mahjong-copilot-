@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ClaimType } from '@/models/GameState';
+import { Tile } from '@/models/Tile';
 import { AvailableClaim } from '@/engine/types';
 import useGameController from '@/components/game/useGameController';
 import GameBoard from '@/components/game/GameBoard';
 import GameOverScreen from '@/components/game/GameOverScreen';
 import ClaimChoiceModal from '@/components/game/ClaimChoiceModal';
-import HintOverlay, { computeHints } from '@/components/game/HintOverlay';
+import HintOverlay from '@/components/game/HintOverlay';
 
 export default function PracticePage() {
   const router = useRouter();
@@ -87,17 +88,17 @@ function PracticeGame({
 
   const humanIndex = controller.game.players.findIndex(p => p.id === 'human-player');
 
-  const handleClaim = (claimType: string) => {
+  const handleClaim = (claimType: ClaimType) => {
     const claim = controller.claimOptions.find(c => c.claimType === claimType);
     if (!claim) return;
     if (claim.tilesFromHand.length > 1) {
       setPendingClaim(claim);
       return;
     }
-    controller.submitClaim(claimType as ClaimType, claim.tilesFromHand[0] || []);
+    controller.submitClaim(claimType, claim.tilesFromHand[0] || []);
   };
 
-  const handleClaimSelect = (claimType: ClaimType, tilesFromHand: any) => {
+  const handleClaimSelect = (claimType: ClaimType, tilesFromHand: Tile[]) => {
     controller.submitClaim(claimType, tilesFromHand);
     setPendingClaim(null);
   };

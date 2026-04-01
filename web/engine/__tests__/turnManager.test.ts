@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { initializeGame, applyAction, GameOptions } from '../turnManager';
-import { GamePhase } from '@/models/GameState';
-import { TileType } from '@/models/Tile';
+import { GamePhase, GameState, Player } from '@/models/GameState';
+import { TileType, WindTile } from '@/models/Tile';
+import { dot, bam, char, windTile, makePlayer } from './testHelpers';
 
 const defaultOptions: GameOptions = {
   playerNames: ['Human', 'AI 1', 'AI 2', 'AI 3'],
@@ -145,5 +146,210 @@ describe('applyAction - PASS', () => {
     const state = initializeGame(defaultOptions);
     const result = applyAction(state, 'human-1', { type: 'PASS' });
     expect(result).toBeNull();
+  });
+});
+
+describe('claim phase - currentPlayerIndex tracking', () => {
+  it('handleDiscard sets currentPlayerIndex to first claimer, not discarder', () => {
+    // Build a discard-phase state where AI 1 (index 1) can pung a dot-5 discard
+    const discardState: GameState = {
+      id: 'test-claim',
+      variant: 'Hong Kong Mahjong',
+      phase: GamePhase.PLAYING,
+      turnPhase: 'discard',
+      currentPlayerIndex: 0,
+      players: [
+        makePlayer({
+          id: 'human-1', name: 'Human', isAI: false, seatWind: WindTile.EAST,
+          hand: [dot(1,1), dot(2,1), dot(3,1), dot(4,1), dot(5,1), dot(6,1), dot(7,1),
+                 dot(8,1), dot(9,1), bam(1,1), bam(2,1), bam(3,1), bam(4,1), bam(5,1)],
+        }),
+        makePlayer({
+          id: 'ai_1', name: 'AI 1', isAI: true, seatWind: WindTile.SOUTH,
+          hand: [dot(5,2), dot(5,3), bam(1,2), bam(2,2), bam(3,2), bam(4,2),
+                 bam(5,2), bam(6,1), bam(7,1), bam(8,1), bam(9,1), char(1,1), char(2,1)],
+        }),
+        makePlayer({
+          id: 'ai_2', name: 'AI 2', isAI: true, seatWind: WindTile.WEST,
+          hand: [char(1,2), char(2,2), char(3,1), char(4,1), char(5,1), char(6,1),
+                 char(7,1), char(8,1), char(9,1), dot(1,2), dot(2,2), dot(3,2), dot(4,2)],
+        }),
+        makePlayer({
+          id: 'ai_3', name: 'AI 3', isAI: true, seatWind: WindTile.NORTH,
+          hand: [char(1,3), char(2,3), char(3,2), char(4,2), char(5,2), char(6,2),
+                 char(7,2), char(8,2), char(9,2), dot(1,3), dot(2,3), dot(3,3), dot(4,3)],
+        }),
+      ],
+      wall: Array.from({ length: 50 }, (_, i) => bam(1, 100 + i)),
+      deadWall: Array.from({ length: 14 }, (_, i) => char(1, 100 + i)),
+      discardPile: [],
+      playerDiscards: { 'human-1': [], 'ai_1': [], 'ai_2': [], 'ai_3': [] },
+      lastDiscardedTile: undefined,
+      lastDiscardedBy: undefined,
+      lastAction: undefined,
+      pendingClaims: [],
+      prevailingWind: WindTile.EAST,
+      finalScores: {},
+      createdAt: new Date(),
+      turnHistory: [],
+      turnTimeLimit: 20,
+    };
+
+    const afterDiscard = applyAction(discardState, 'human-1', { type: 'DISCARD', tile: dot(5, 1) });
+    expect(afterDiscard).not.toBeNull();
+    expect(afterDiscard!.turnPhase).toBe('claim');
+    // Critical: currentPlayerIndex must NOT be 0 (the discarder) — that causes deadlock
+    expect(afterDiscard!.currentPlayerIndex).not.toBe(0);
+    // Should be AI 1 (index 1) — first player in turn order who can claim
+    expect(afterDiscard!.currentPlayerIndex).toBe(1);
+  });
+});
+
+describe('claim phase - pass cycling', () => {
+  it('first pass advances to next player but stays in claim phase', () => {
+    // State: human discarded dot-5, AI 1 (index 1) is current claimer
+    const discardedTile = dot(5, 1);
+    const claimState: GameState = {
+      id: 'test-pass',
+      variant: 'Hong Kong Mahjong',
+      phase: GamePhase.PLAYING,
+      turnPhase: 'claim',
+      currentPlayerIndex: 1, // AI 1's turn to decide
+      players: [
+        makePlayer({ id: 'human-1', name: 'Human', isAI: false, seatWind: WindTile.EAST,
+          hand: [dot(1,1), dot(2,1), dot(3,1), dot(4,1), dot(6,1), dot(7,1),
+                 dot(8,1), dot(9,1), bam(1,1), bam(2,1), bam(3,1), bam(4,1), bam(5,1)] }),
+        makePlayer({ id: 'ai_1', name: 'AI 1', isAI: true, seatWind: WindTile.SOUTH,
+          hand: [dot(5,2), dot(5,3), bam(1,2), bam(2,2), bam(3,2), bam(4,2),
+                 bam(5,2), bam(6,1), bam(7,1), bam(8,1), bam(9,1), char(1,1), char(2,1)] }),
+        makePlayer({ id: 'ai_2', name: 'AI 2', isAI: true, seatWind: WindTile.WEST,
+          hand: [char(1,2), char(2,2), char(3,1), char(4,1), char(5,1), char(6,1),
+                 char(7,1), char(8,1), char(9,1), dot(1,2), dot(2,2), dot(3,2), dot(4,2)] }),
+        makePlayer({ id: 'ai_3', name: 'AI 3', isAI: true, seatWind: WindTile.NORTH,
+          hand: [char(1,3), char(2,3), char(3,2), char(4,2), char(5,2), char(6,2),
+                 char(7,2), char(8,2), char(9,2), dot(1,3), dot(2,3), dot(3,3), dot(4,3)] }),
+      ],
+      wall: Array.from({ length: 50 }, (_, i) => bam(1, 100 + i)),
+      deadWall: Array.from({ length: 14 }, (_, i) => char(1, 100 + i)),
+      discardPile: [discardedTile],
+      playerDiscards: { 'human-1': [discardedTile], 'ai_1': [], 'ai_2': [], 'ai_3': [] },
+      lastDiscardedTile: discardedTile,
+      lastDiscardedBy: 'human-1',
+      lastAction: undefined,
+      pendingClaims: [],
+      prevailingWind: WindTile.EAST,
+      finalScores: {},
+      createdAt: new Date(),
+      turnHistory: [],
+      turnTimeLimit: 20,
+    };
+
+    // AI 1 passes — should advance to AI 2, stay in claim phase
+    const afterPass = applyAction(claimState, 'ai_1', { type: 'PASS' });
+    expect(afterPass).not.toBeNull();
+    expect(afterPass!.turnPhase).toBe('claim');
+    expect(afterPass!.currentPlayerIndex).toBe(2);
+  });
+});
+
+describe('claim phase - all pass ends claim', () => {
+  it('all non-discarder players passing ends claim phase and advances to draw', () => {
+    const discardedTile = dot(5, 1);
+    const claimState: GameState = {
+      id: 'test-allpass',
+      variant: 'Hong Kong Mahjong',
+      phase: GamePhase.PLAYING,
+      turnPhase: 'claim',
+      currentPlayerIndex: 1,
+      players: [
+        makePlayer({ id: 'human-1', name: 'Human', isAI: false, seatWind: WindTile.EAST,
+          hand: [dot(1,1), dot(2,1), dot(3,1), dot(4,1), dot(6,1), dot(7,1),
+                 dot(8,1), dot(9,1), bam(1,1), bam(2,1), bam(3,1), bam(4,1), bam(5,1)] }),
+        makePlayer({ id: 'ai_1', name: 'AI 1', isAI: true, seatWind: WindTile.SOUTH,
+          hand: [dot(5,2), dot(5,3), bam(1,2), bam(2,2), bam(3,2), bam(4,2),
+                 bam(5,2), bam(6,1), bam(7,1), bam(8,1), bam(9,1), char(1,1), char(2,1)] }),
+        makePlayer({ id: 'ai_2', name: 'AI 2', isAI: true, seatWind: WindTile.WEST,
+          hand: [char(1,2), char(2,2), char(3,1), char(4,1), char(5,1), char(6,1),
+                 char(7,1), char(8,1), char(9,1), dot(1,2), dot(2,2), dot(3,2), dot(4,2)] }),
+        makePlayer({ id: 'ai_3', name: 'AI 3', isAI: true, seatWind: WindTile.NORTH,
+          hand: [char(1,3), char(2,3), char(3,2), char(4,2), char(5,2), char(6,2),
+                 char(7,2), char(8,2), char(9,2), dot(1,3), dot(2,3), dot(3,3), dot(4,3)] }),
+      ],
+      wall: Array.from({ length: 50 }, (_, i) => bam(1, 100 + i)),
+      deadWall: Array.from({ length: 14 }, (_, i) => char(1, 100 + i)),
+      discardPile: [discardedTile],
+      playerDiscards: { 'human-1': [discardedTile], 'ai_1': [], 'ai_2': [], 'ai_3': [] },
+      lastDiscardedTile: discardedTile,
+      lastDiscardedBy: 'human-1',
+      lastAction: undefined,
+      pendingClaims: [],
+      prevailingWind: WindTile.EAST,
+      finalScores: {},
+      createdAt: new Date(),
+      turnHistory: [],
+      turnTimeLimit: 20,
+    };
+
+    // All three non-discarder players pass sequentially
+    let state = applyAction(claimState, 'ai_1', { type: 'PASS' })!;
+    expect(state.turnPhase).toBe('claim');
+    expect(state.currentPlayerIndex).toBe(2);
+
+    state = applyAction(state, 'ai_2', { type: 'PASS' })!;
+    expect(state.turnPhase).toBe('claim');
+    expect(state.currentPlayerIndex).toBe(3);
+
+    state = applyAction(state, 'ai_3', { type: 'PASS' })!;
+    // After all pass, should advance to draw phase for next player after discarder
+    expect(state.turnPhase).toBe('draw');
+    expect(state.currentPlayerIndex).toBe(1);
+  });
+});
+
+describe('claim phase - claim ends cycle', () => {
+  it('a claim mid-cycle ends claim phase immediately', () => {
+    const discardedTile = dot(5, 1);
+    const claimState: GameState = {
+      id: 'test-claim-mid',
+      variant: 'Hong Kong Mahjong',
+      phase: GamePhase.PLAYING,
+      turnPhase: 'claim',
+      currentPlayerIndex: 1,
+      players: [
+        makePlayer({ id: 'human-1', name: 'Human', isAI: false, seatWind: WindTile.EAST,
+          hand: [dot(1,1), dot(2,1), dot(3,1), dot(4,1), dot(6,1), dot(7,1),
+                 dot(8,1), dot(9,1), bam(1,1), bam(2,1), bam(3,1), bam(4,1), bam(5,1)] }),
+        makePlayer({ id: 'ai_1', name: 'AI 1', isAI: true, seatWind: WindTile.SOUTH,
+          hand: [dot(5,2), dot(5,3), bam(1,2), bam(2,2), bam(3,2), bam(4,2),
+                 bam(5,2), bam(6,1), bam(7,1), bam(8,1), bam(9,1), char(1,1), char(2,1)] }),
+        makePlayer({ id: 'ai_2', name: 'AI 2', isAI: true, seatWind: WindTile.WEST,
+          hand: [char(1,2), char(2,2), char(3,1), char(4,1), char(5,1), char(6,1),
+                 char(7,1), char(8,1), char(9,1), dot(1,2), dot(2,2), dot(3,2), dot(4,2)] }),
+        makePlayer({ id: 'ai_3', name: 'AI 3', isAI: true, seatWind: WindTile.NORTH,
+          hand: [char(1,3), char(2,3), char(3,2), char(4,2), char(5,2), char(6,2),
+                 char(7,2), char(8,2), char(9,2), dot(1,3), dot(2,3), dot(3,3), dot(4,3)] }),
+      ],
+      wall: Array.from({ length: 50 }, (_, i) => bam(1, 100 + i)),
+      deadWall: Array.from({ length: 14 }, (_, i) => char(1, 100 + i)),
+      discardPile: [discardedTile],
+      playerDiscards: { 'human-1': [discardedTile], 'ai_1': [], 'ai_2': [], 'ai_3': [] },
+      lastDiscardedTile: discardedTile,
+      lastDiscardedBy: 'human-1',
+      lastAction: undefined,
+      pendingClaims: [],
+      prevailingWind: WindTile.EAST,
+      finalScores: {},
+      createdAt: new Date(),
+      turnHistory: [],
+      turnTimeLimit: 20,
+    };
+
+    // AI 1 claims pung (has two dot-5 tiles)
+    const afterClaim = applyAction(claimState, 'ai_1', {
+      type: 'CLAIM', claimType: 'pung', tilesFromHand: [dot(5, 2), dot(5, 3)],
+    });
+    expect(afterClaim).not.toBeNull();
+    expect(afterClaim!.turnPhase).toBe('discard');
+    expect(afterClaim!.currentPlayerIndex).toBe(1);
   });
 });

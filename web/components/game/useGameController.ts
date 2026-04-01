@@ -301,6 +301,8 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
       setPreClaimPause(false);
       return;
     }
+    // Only show claim UI when it's the human's turn to decide
+    if (game.currentPlayerIndex !== humanIndex) return;
     // Don't show claims if human was the discarder
     if (game.lastDiscardedBy === HUMAN_ID) return;
 

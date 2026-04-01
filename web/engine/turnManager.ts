@@ -179,7 +179,7 @@ function handleFlowerDraw(state: GameState, playerIndex: number, flowerTile: Til
 
   // Draw replacement from dead wall
   if (state.deadWall.length === 0 && state.wall.length === 0) {
-    return { ...state, players: newPlayers };
+    return handleWallExhaustion({ ...state, players: newPlayers });
   }
 
   const replacementSource = state.deadWall.length > 0 ? 'deadWall' : 'wall';
@@ -244,9 +244,7 @@ function handleDiscard(state: GameState, playerIndex: number, tile: Tile): GameS
     turnHistory: [...state.turnHistory, turn],
     turnPhase: claims.length > 0 ? 'claim' : 'draw',
     pendingClaims: [],
-    currentPlayerIndex: claims.length > 0
-      ? state.currentPlayerIndex  // keep current until claims resolved
-      : (playerIndex + 1) % state.players.length,
+    currentPlayerIndex: (playerIndex + 1) % state.players.length,
     turnStartedAt: new Date(),
   };
 
@@ -458,16 +456,33 @@ function handleClaim(
 function handlePass(state: GameState, playerIndex: number): GameState | null {
   if (state.turnPhase !== 'claim') return null;
 
-  // Record that this player passed
-  // In a full implementation, track who has passed and resolve when all pass
-  // For now, advance to next player's draw
   const discarderIndex = state.players.findIndex(p => p.id === state.lastDiscardedBy);
-  const nextPlayer = (discarderIndex + 1) % state.players.length;
 
+  // Find next non-discarder player in turn order who hasn't been visited yet
+  let nextIndex = (playerIndex + 1) % state.players.length;
+  let checked = 0;
+  while (nextIndex === discarderIndex && checked < state.players.length) {
+    nextIndex = (nextIndex + 1) % state.players.length;
+    checked++;
+  }
+
+  // If we wrapped back to the current player or the discarder's next player,
+  // all non-discarder players have had their chance — end claim phase
+  if (nextIndex === (discarderIndex + 1) % state.players.length) {
+    return {
+      ...state,
+      currentPlayerIndex: (discarderIndex + 1) % state.players.length,
+      turnPhase: 'draw',
+      pendingClaims: [],
+      turnStartedAt: new Date(),
+    };
+  }
+
+  // Advance to next claimer, stay in claim phase
   return {
     ...state,
-    currentPlayerIndex: nextPlayer,
-    turnPhase: 'draw',
+    currentPlayerIndex: nextIndex,
+    turnPhase: 'claim',
     pendingClaims: [],
     turnStartedAt: new Date(),
   };

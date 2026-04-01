@@ -135,3 +135,15 @@ describe('calculateScore', () => {
     expect(result.totalPoints).toBe(256);
   });
 });
+
+  it('awards all chows fan (+1) when all melds are chows', () => {
+    const hand = buildChowHand();
+    const ctx = baseContext({
+      winningTile: hand[13],
+      seatWind: WindTile.SOUTH, // different from pair wind to avoid seat wind fan
+      prevailingWind: WindTile.WEST, // different from pair wind
+      flowers: [flowerTile('Plum', 1)], // has flowers to avoid No Flowers fan
+    });
+    const result = calculateScore(hand.slice(0, 13), [], ctx);
+    expect(result.fans.some(f => f.name === 'All Chows')).toBe(true);
+  });

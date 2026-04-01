@@ -106,6 +106,11 @@ function evaluateFans(
     fans.push({ name: 'All Pungs', fan: 3, description: 'All melds are pungs or kongs' });
   }
 
+  // === All Chows ===
+  if (realMelds.length >= 4 && realMelds.every(m => m.type === 'chow')) {
+    fans.push({ name: 'All Chows', fan: 1, description: 'All melds are chows' });
+  }
+
   // === Dragon pungs ===
   for (const meld of realMelds) {
     if ((meld.type === 'pung' || meld.type === 'kong') && meld.tiles[0].suit === TileSuit.DRAGON) {

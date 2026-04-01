@@ -188,6 +188,8 @@ describe('claim phase - currentPlayerIndex tracking', () => {
       lastDiscardedBy: undefined,
       lastAction: undefined,
       pendingClaims: [],
+      claimablePlayers: [],
+      passedPlayers: [],
       prevailingWind: WindTile.EAST,
       finalScores: {},
       createdAt: new Date(),
@@ -237,6 +239,8 @@ describe('claim phase - pass cycling', () => {
       lastDiscardedBy: 'human-1',
       lastAction: undefined,
       pendingClaims: [],
+      claimablePlayers: ['ai_1', 'ai_2', 'ai_3'],
+      passedPlayers: [],
       prevailingWind: WindTile.EAST,
       finalScores: {},
       createdAt: new Date(),
@@ -283,6 +287,8 @@ describe('claim phase - all pass ends claim', () => {
       lastDiscardedBy: 'human-1',
       lastAction: undefined,
       pendingClaims: [],
+      claimablePlayers: ['ai_1', 'ai_2', 'ai_3'],
+      passedPlayers: [],
       prevailingWind: WindTile.EAST,
       finalScores: {},
       createdAt: new Date(),
@@ -337,6 +343,8 @@ describe('claim phase - claim ends cycle', () => {
       lastDiscardedBy: 'human-1',
       lastAction: undefined,
       pendingClaims: [],
+      claimablePlayers: ['ai_1', 'ai_2', 'ai_3'],
+      passedPlayers: [],
       prevailingWind: WindTile.EAST,
       finalScores: {},
       createdAt: new Date(),
@@ -344,12 +352,184 @@ describe('claim phase - claim ends cycle', () => {
       turnTimeLimit: 20,
     };
 
-    // AI 1 claims pung (has two dot-5 tiles)
-    const afterClaim = applyAction(claimState, 'ai_1', {
+    // AI 1 claims pung — claim is deferred until all players have acted
+    let state2 = applyAction(claimState, 'ai_1', {
       type: 'CLAIM', claimType: 'pung', tilesFromHand: [dot(5, 2), dot(5, 3)],
+    })!;
+    // Claim is pending, advances to next claimer
+    expect(state2.turnPhase).toBe('claim');
+    expect(state2.currentPlayerIndex).toBe(2);
+
+    // AI 2 and AI 3 pass
+    state2 = applyAction(state2, 'ai_2', { type: 'PASS' })!;
+    state2 = applyAction(state2, 'ai_3', { type: 'PASS' })!;
+
+    // Now all have acted — pung claim should be resolved
+    expect(state2.turnPhase).toBe('discard');
+    expect(state2.currentPlayerIndex).toBe(1);
+  });
+});
+
+describe('claim phase - priority resolution', () => {
+  it('higher priority claim wins over lower priority even when lower claims first', () => {
+    // Human discards dot-5
+    // AI 1 (index 1) can pung (priority 2)
+    // AI 3 (index 3) can also pung (priority 2, but farther from discarder)
+    // AI 2 (index 2) has a winning hand with dot-5 (priority 4 — should win)
+    const discardedTile = dot(5, 1);
+
+    // Build AI 2 a hand that wins with dot-5:
+    // 1-2-3 dot, 4-5-6 dot, 7-8-9 dot, 1-2-3 bam + pair of char-1 = winning with dot-5 in chow
+    // Actually simpler: give AI 2 a hand where adding dot-5 completes a win
+    // 4 pungs + need dot-5 for the pair
+    const ai2WinHand = [
+      dot(1,4), dot(1,2), dot(1,3),   // pung of 1-dot
+      bam(2,3), bam(2,4), bam(2,2),   // pung of 2-bamboo
+      char(3,4), char(3,3), char(3,2), // pung of 3-char
+      char(7,4), char(7,3), char(7,2), // pung of 7-char
+      dot(5,4),                         // needs dot-5 for pair → win
+    ];
+
+    const claimState: GameState = {
+      id: 'test-priority',
+      variant: 'Hong Kong Mahjong',
+      phase: GamePhase.PLAYING,
+      turnPhase: 'claim',
+      currentPlayerIndex: 1, // AI 1 gets first chance
+      players: [
+        makePlayer({ id: 'human-1', name: 'Human', isAI: false, seatWind: WindTile.EAST,
+          hand: [dot(6,1), dot(7,1), dot(8,1), dot(9,1), bam(1,1), bam(2,1),
+                 bam(3,1), bam(4,1), bam(5,1), bam(6,1), bam(7,1), bam(8,1), bam(9,1)] }),
+        makePlayer({ id: 'ai_1', name: 'AI 1', isAI: true, seatWind: WindTile.SOUTH,
+          hand: [dot(5,2), dot(5,3), char(1,1), char(2,1), char(3,1), char(4,1),
+                 char(5,1), char(6,1), char(8,1), char(9,1), bam(1,2), bam(2,2), bam(3,2)] }),
+        makePlayer({ id: 'ai_2', name: 'AI 2', isAI: true, seatWind: WindTile.WEST,
+          hand: ai2WinHand }),
+        makePlayer({ id: 'ai_3', name: 'AI 3', isAI: true, seatWind: WindTile.NORTH,
+          hand: [char(1,3), char(2,3), char(3,3), char(4,2), char(5,2), char(6,2),
+                 char(7,5), char(8,2), char(9,2), dot(1,5), dot(2,2), dot(3,2), dot(4,2)] }),
+      ],
+      wall: Array.from({ length: 50 }, (_, i) => bam(1, 100 + i)),
+      deadWall: Array.from({ length: 14 }, (_, i) => char(1, 100 + i)),
+      discardPile: [discardedTile],
+      playerDiscards: { 'human-1': [discardedTile], 'ai_1': [], 'ai_2': [], 'ai_3': [] },
+      lastDiscardedTile: discardedTile,
+      lastDiscardedBy: 'human-1',
+      lastAction: undefined,
+      pendingClaims: [],
+      claimablePlayers: ['ai_1', 'ai_2', 'ai_3'],
+      passedPlayers: [],
+      prevailingWind: WindTile.EAST,
+      finalScores: {},
+      createdAt: new Date(),
+      turnHistory: [],
+      turnTimeLimit: 20,
+    };
+
+    // AI 1 claims pung (lower priority)
+    let state = applyAction(claimState, 'ai_1', {
+      type: 'CLAIM', claimType: 'pung', tilesFromHand: [dot(5, 2), dot(5, 3)],
+    })!;
+
+    // If resolveClaims is working, AI 1's pung should NOT be immediately applied
+    // because AI 2 hasn't had a chance to claim win yet.
+    // The state should still be in claim phase, advancing to AI 2
+    expect(state.turnPhase).toBe('claim');
+    expect(state.currentPlayerIndex).toBe(2);
+
+    // AI 2 claims win (higher priority)
+    state = applyAction(state, 'ai_2', {
+      type: 'CLAIM', claimType: 'win', tilesFromHand: [],
+    })!;
+    // Still in claim phase — AI 3 hasn't acted yet
+    expect(state.turnPhase).toBe('claim');
+
+    // AI 3 passes
+    state = applyAction(state, 'ai_3', { type: 'PASS' })!;
+
+    // Now all have acted — win should take priority over pung
+    expect(state.phase).toBe(GamePhase.FINISHED);
+    expect(state.winnerId).toBe('ai_2');
+  });
+});
+
+describe('robbing the kong', () => {
+  it('allows another player to win when a player adds to an existing pung', () => {
+    // AI 1 has an exposed pung of dot-5 and a dot-5 in hand to add
+    // AI 2 has a tenpai hand that needs dot-5 to win
+    const ai2TenpaiHand = [
+      dot(1,4), dot(1,2), dot(1,3),   // pung
+      bam(2,3), bam(2,4), bam(2,2),   // pung
+      char(3,4), char(3,3), char(3,2), // pung
+      char(7,4), char(7,3), char(7,2), // pung
+      dot(5,4),                         // needs dot-5 for pair
+    ];
+
+    const kongState: GameState = {
+      id: 'test-rob-kong',
+      variant: 'Hong Kong Mahjong',
+      phase: GamePhase.PLAYING,
+      turnPhase: 'discard', // AI 1 just drew, about to declare kong
+      currentPlayerIndex: 1,
+      players: [
+        makePlayer({ id: 'human-1', name: 'Human', isAI: false, seatWind: WindTile.EAST,
+          hand: [dot(6,1), dot(7,1), dot(8,1), dot(9,1), bam(1,1), bam(2,1),
+                 bam(3,1), bam(4,1), bam(5,1), bam(6,1), bam(7,1), bam(8,1), bam(9,1)] }),
+        makePlayer({ id: 'ai_1', name: 'AI 1', isAI: true, seatWind: WindTile.SOUTH,
+          hand: [dot(5,2), char(1,1), char(2,1), char(3,1), char(4,1), char(5,1),
+                 char(6,1), char(8,1), char(9,1), bam(1,2), bam(2,2), bam(3,2), bam(4,2), bam(5,2)],
+          melds: [{ tiles: [dot(5,1), dot(5,3), dot(5,5)], type: 'pung', isConcealed: false }],
+        }),
+        makePlayer({ id: 'ai_2', name: 'AI 2', isAI: true, seatWind: WindTile.WEST,
+          hand: ai2TenpaiHand }),
+        makePlayer({ id: 'ai_3', name: 'AI 3', isAI: true, seatWind: WindTile.NORTH,
+          hand: [char(1,3), char(2,3), char(3,3), char(4,2), char(5,2), char(6,2),
+                 char(7,5), char(8,2), char(9,2), dot(1,5), dot(2,2), dot(3,2), dot(4,2)] }),
+      ],
+      wall: Array.from({ length: 50 }, (_, i) => bam(1, 100 + i)),
+      deadWall: Array.from({ length: 14 }, (_, i) => char(1, 100 + i)),
+      discardPile: [],
+      playerDiscards: { 'human-1': [], 'ai_1': [], 'ai_2': [], 'ai_3': [] },
+      lastDiscardedTile: undefined,
+      lastDiscardedBy: undefined,
+      lastAction: undefined,
+      pendingClaims: [],
+      claimablePlayers: [],
+      passedPlayers: [],
+      prevailingWind: WindTile.EAST,
+      finalScores: {},
+      createdAt: new Date(),
+      turnHistory: [],
+      turnTimeLimit: 20,
+    };
+
+    // AI 1 declares kong (adds dot-5 to existing pung)
+    const afterKong = applyAction(kongState, 'ai_1', { type: 'DECLARE_KONG', tile: dot(5, 2) });
+    expect(afterKong).not.toBeNull();
+
+    // Should enter claim phase for robbing the kong (not go straight to discard)
+    expect(afterKong!.turnPhase).toBe('claim');
+    expect(afterKong!.lastDiscardedTile).toBeDefined();
+
+    // AI 2 can claim win (robbing the kong)
+    const afterWin = applyAction(afterKong!, 'ai_2', {
+      type: 'CLAIM', claimType: 'win', tilesFromHand: [],
     });
-    expect(afterClaim).not.toBeNull();
-    expect(afterClaim!.turnPhase).toBe('discard');
-    expect(afterClaim!.currentPlayerIndex).toBe(1);
+    // After all players acted, the win should resolve
+    // (other players need to pass first in the deferred model)
+    if (afterWin && afterWin.turnPhase === 'claim') {
+      // Human and AI 3 pass
+      let state = afterWin;
+      if (state.currentPlayerIndex === 0) state = applyAction(state, 'human-1', { type: 'PASS' })!;
+      if (state.turnPhase === 'claim') state = applyAction(state, 'ai_3', { type: 'PASS' })!;
+      if (state.turnPhase === 'claim' && state.currentPlayerIndex === 0) state = applyAction(state, 'human-1', { type: 'PASS' })!;
+      expect(state.phase).toBe(GamePhase.FINISHED);
+      expect(state.winnerId).toBe('ai_2');
+    } else {
+      // Direct resolution
+      expect(afterWin).not.toBeNull();
+      expect(afterWin!.phase).toBe(GamePhase.FINISHED);
+      expect(afterWin!.winnerId).toBe('ai_2');
+    }
   });
 });

@@ -71,6 +71,8 @@ export interface GameState {
   lastDiscardedBy?: string;
   lastAction?: PlayerAction;
   pendingClaims: ClaimRequest[];
+  claimablePlayers: string[];
+  passedPlayers: string[];
   prevailingWind: WindTile;
   winnerId?: string;
   winningTile?: Tile;
@@ -112,6 +114,8 @@ export const gameStateToJson = (gameState: GameState): Record<string, any> => {
       ...c,
       tiles: c.tiles.map(t => tileToJson(t)),
     })),
+    claimablePlayers: gameState.claimablePlayers,
+    passedPlayers: gameState.passedPlayers,
     createdAt: gameState.createdAt.toISOString(),
     finishedAt: gameState.finishedAt ? gameState.finishedAt.toISOString() : undefined,
     turnStartedAt: gameState.turnStartedAt ? gameState.turnStartedAt.toISOString() : undefined,
@@ -143,6 +147,8 @@ export const gameStateFromJson = (json: Record<string, any>): GameState => {
       ...c,
       tiles: c.tiles?.map((t: any) => tileFromJson(t)) ?? [],
     })) ?? [],
+    claimablePlayers: (json.claimablePlayers as string[]) ?? [],
+    passedPlayers: (json.passedPlayers as string[]) ?? [],
     prevailingWind: (json.prevailingWind as WindTile) ?? WindTile.EAST,
     winnerId: json.winnerId as string | undefined,
     winningTile: json.winningTile ? tileFromJson(json.winningTile) : undefined,

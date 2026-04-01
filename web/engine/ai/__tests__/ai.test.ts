@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { getAIDecision, getAIClaimDecision } from '../index';
+import { getMediumDiscard } from '../mediumAI';
+import { getHardDiscard } from '../hardAI';
 import { initializeGame } from '../../turnManager';
 import { applyAction } from '../../turnManager';
 import { getAvailableClaims } from '../../claiming';
 import { GamePhase } from '@/models/GameState';
 import {
-  dot, bam, char, windTile, dragonTile, makePlayer, buildAllPungsHand,
+  dot, bam, char, windTile, dragonTile, flowerTile, makePlayer, buildAllPungsHand,
 } from '../../__tests__/testHelpers';
 import { WindTile, DragonTile, TileType } from '@/models/Tile';
 
@@ -163,5 +165,49 @@ describe('AI Integration', () => {
         }
       }
     }
+  });
+});
+
+describe('Medium AI - bonus tile edge case', () => {
+  it('evaluates shanten correctly when hand has many bonus tiles', () => {
+    // Create a player with 11 non-bonus + 3 bonus tiles (14 total after draw)
+    // After filtering bonus and removing 1 for discard: only 10 non-bonus tiles
+    // The bug: all tiles skipped because testHand.length < 13
+    const player = makePlayer({
+      id: 'ai_1', name: 'AI 1', isAI: true, aiDifficulty: 'medium',
+      hand: [
+        dot(1,1), dot(2,1), dot(3,1), dot(4,1), dot(5,1),
+        bam(1,1), bam(2,1), bam(3,1), bam(4,1), bam(5,1),
+        char(1,1),
+        // 3 bonus tiles
+        flowerTile('Plum', 1), flowerTile('Orchid', 2), flowerTile('Chrysanthemum', 3),
+      ],
+      flowers: [],
+    });
+
+    const fakeState = {
+      id: 'test',
+      variant: 'Hong Kong Mahjong',
+      phase: GamePhase.PLAYING,
+      turnPhase: 'discard',
+      currentPlayerIndex: 0,
+      players: [player],
+      wall: [],
+      deadWall: [],
+      discardPile: [],
+      playerDiscards: {},
+      pendingClaims: [],
+      prevailingWind: WindTile.EAST,
+      finalScores: {},
+      createdAt: new Date(),
+      turnHistory: [],
+      turnTimeLimit: 20,
+    };
+
+    const decision = getMediumDiscard(fakeState, 0);
+    // Should produce a valid DISCARD (not DECLARE_WIN)
+    expect(decision.action.type).toBe('DISCARD');
+    // The reasoning should show an actual shanten value, not Infinity
+    expect(decision.reasoning).not.toContain('Infinity');
   });
 });

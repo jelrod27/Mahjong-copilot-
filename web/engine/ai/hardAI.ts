@@ -58,7 +58,7 @@ export function getHardDiscard(gameState: GameState, playerIndex: number): AIDec
   for (const tile of nonBonus) {
     const remaining = hand.filter(t => t.id !== tile.id);
     const testHand = remaining.filter(t => t.type !== TileType.BONUS).slice(0, 13);
-    if (testHand.length < 13) continue;
+    if (testHand.length === 0) continue;
 
     const shanten = calculateShanten(testHand);
     const danger = tileDangerScore(tile, gameState, playerIndex);

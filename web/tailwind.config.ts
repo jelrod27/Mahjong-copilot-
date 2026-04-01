@@ -40,7 +40,7 @@ const config: Config = {
           green: "#2ed8a3",
           cyan: "#45b7d1",
           text: "#ede4d3",
-          textDim: "#6e6460",
+          textDim: "#958a84",
           white: "#f7f0e3",
         },
       },

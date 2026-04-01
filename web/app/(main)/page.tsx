@@ -20,10 +20,7 @@ import {
 
 export default function HomePage() {
   const { completedLessons } = useCompletedLessons();
-  const [randomTile, setRandomTile] = useState(() => {
-    const tiles = getAllTiles();
-    return tiles[Math.floor(Math.random() * tiles.length)];
-  });
+  const [randomTile, setRandomTile] = useState<ReturnType<typeof getAllTiles>[0] | null>(null);
 
   useEffect(() => {
     const tiles = getAllTiles();
@@ -34,12 +31,14 @@ export default function HomePage() {
   const level1Progress = (completedLessons.length / totalLessons) * 100;
   const overallProgress = level1Progress;
 
-  const getGreeting = () => {
+  const [greeting, setGreeting] = useState('Welcome');
+
+  useEffect(() => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
-  };
+    if (hour < 12) setGreeting('Good morning');
+    else if (hour < 17) setGreeting('Good afternoon');
+    else setGreeting('Good evening');
+  }, []);
 
   const getMotivationalText = () => {
     if (completedLessons.length === 0) return "Ready to learn mahjong? Let's start with the basics.";
@@ -48,11 +47,11 @@ export default function HomePage() {
     return "You're making progress. Keep it up!";
   };
 
-  const tileDescription = randomTile.number
+  const tileDescription = randomTile?.number
     ? `${randomTile.suit} suit, number ${randomTile.number}`
-    : randomTile.wind
+    : randomTile?.wind
       ? `${randomTile.wind} wind tile`
-      : randomTile.dragon
+      : randomTile?.dragon
         ? `${randomTile.dragon} dragon`
         : 'Bonus tile';
 
@@ -62,7 +61,7 @@ export default function HomePage() {
       <div className="relative overflow-hidden p-6 rounded-lg bg-retro-bgLight/30 border border-retro-border/10 backdrop-blur-sm shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)]">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <p className="text-xs text-retro-textDim font-mono uppercase tracking-[0.2em] mb-1">{getGreeting()}</p>
+            <p className="text-xs text-retro-textDim font-mono uppercase tracking-[0.2em] mb-1">{greeting}</p>
             <h1 className="font-pixel text-xl md:text-2xl text-retro-gold text-glow-gold mb-2">
               16 BIT MAHJONG
             </h1>
@@ -195,13 +194,13 @@ export default function HomePage() {
           </h2>
           <Card className="flex flex-col items-center text-center p-8 bg-gradient-to-b from-retro-bgLight/40 to-transparent border-retro-border/10">
             <div className="mb-6 hover:rotate-3 transition-transform cursor-help">
-              <MahjongTile tile={randomTile} width={90} height={126} />
+              {randomTile && <MahjongTile tile={randomTile} width={90} height={126} />}
             </div>
             <p className="text-2xl font-medium text-retro-text mb-1 font-sans">
-              {randomTile.nameEnglish}
+              {randomTile?.nameEnglish ?? ''}
             </p>
             <p className="text-3xl text-retro-gold font-retro mb-4 text-glow-gold">
-              {randomTile.nameChinese}
+              {randomTile?.nameChinese ?? ''}
             </p>
             <Badge variant="secondary" className="bg-retro-panel/50 border-retro-border/20 text-retro-textDim text-[10px] uppercase font-mono tracking-widest px-3 py-1">
               {tileDescription}

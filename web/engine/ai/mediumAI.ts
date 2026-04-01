@@ -51,7 +51,7 @@ export function getMediumDiscard(gameState: GameState, playerIndex: number): AID
     const remaining = hand.filter(t => t.id !== tile.id);
     // calculateShanten expects 13 tiles
     const testHand = remaining.filter(t => t.type !== TileType.BONUS).slice(0, 13);
-    if (testHand.length < 13) continue;
+    if (testHand.length === 0) continue;
 
     const shanten = calculateShanten(testHand);
     const priority = tileDiscardPriority(tile);

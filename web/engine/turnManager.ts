@@ -83,6 +83,8 @@ export function initializeGame(options: GameOptions): GameState {
     playerDiscards: Object.fromEntries(players.map(p => [p.id, []])),
     prevailingWind: WindTile.EAST,
     pendingClaims: [],
+    claimablePlayers: [],
+    passedPlayers: [],
     finalScores: {},
     createdAt: new Date(),
     turnHistory: [],
@@ -244,6 +246,10 @@ function handleDiscard(state: GameState, playerIndex: number, tile: Tile): GameS
     turnHistory: [...state.turnHistory, turn],
     turnPhase: claims.length > 0 ? 'claim' : 'draw',
     pendingClaims: [],
+    claimablePlayers: claims.length > 0
+      ? getClaimablePlayerIds(playerIndex, state.players)
+      : [],
+    passedPlayers: [],
     currentPlayerIndex: (playerIndex + 1) % state.players.length,
     turnStartedAt: new Date(),
   };
@@ -312,16 +318,45 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
       m => m.type === 'pung' && tilesMatch(m.tiles[0], tile)
     );
     if (pungMeldIndex !== -1) {
+      const kongTile = matchingInHand[0];
+
+      // Check if any other player can win with the kong tile (robbing the kong)
+      const robbingClaims: { playerId: string }[] = [];
+      for (let i = 0; i < state.players.length; i++) {
+        if (i === playerIndex) continue;
+        const otherHand = [...state.players[i].hand, kongTile];
+        if (isWinningHand(otherHand)) {
+          robbingClaims.push({ playerId: state.players[i].id });
+        }
+      }
+
+      if (robbingClaims.length > 0) {
+        // Enter claim phase for robbing the kong
+        // The kong tile acts as the "discarded" tile for claim purposes
+        // Store the kong state so it can be reverted if someone wins
+        return {
+          ...state,
+          turnPhase: 'claim',
+          lastDiscardedTile: kongTile,
+          lastDiscardedBy: player.id,
+          claimablePlayers: getClaimablePlayerIds(playerIndex, state.players),
+          passedPlayers: [],
+          pendingClaims: [],
+          currentPlayerIndex: (playerIndex + 1) % state.players.length,
+        };
+      }
+
+      // No one can rob — proceed with kong normally
       const newPlayers = [...state.players];
       const newMelds = [...newPlayers[playerIndex].melds];
       newMelds[pungMeldIndex] = {
         ...newMelds[pungMeldIndex],
-        tiles: [...newMelds[pungMeldIndex].tiles, matchingInHand[0]],
+        tiles: [...newMelds[pungMeldIndex].tiles, kongTile],
         type: 'kong',
       };
       newPlayers[playerIndex] = {
         ...newPlayers[playerIndex],
-        hand: newPlayers[playerIndex].hand.filter(t => t.id !== matchingInHand[0].id),
+        hand: newPlayers[playerIndex].hand.filter(t => t.id !== kongTile.id),
         melds: newMelds,
       };
 
@@ -364,10 +399,92 @@ function handleClaim(
   if (claimType === 'win') {
     const handWithTile = [...player.hand, discardedTile];
     if (!isWinningHand(handWithTile)) return null;
+  } else {
+    // Validate tiles from hand exist
+    for (const t of tilesFromHand) {
+      if (!player.hand.find(h => h.id === t.id)) return null;
+    }
+    const meldTiles = [...tilesFromHand, discardedTile];
+    // Validate meld formation
+    if (claimType === 'chow') {
+      const sorted = meldTiles.sort((a, b) => (a.number || 0) - (b.number || 0));
+      if (sorted.length !== 3) return null;
+      if (sorted.some(t => t.type !== TileType.SUIT)) return null;
+      if (sorted.some(t => t.suit !== sorted[0].suit)) return null;
+      if (sorted[1].number !== sorted[0].number! + 1 || sorted[2].number !== sorted[1].number! + 1) return null;
+    } else if (claimType === 'pung') {
+      if (meldTiles.length !== 3) return null;
+      if (!meldTiles.every(t => tilesMatch(t, meldTiles[0]))) return null;
+    } else if (claimType === 'kong') {
+      if (meldTiles.length !== 4) return null;
+      if (!meldTiles.every(t => tilesMatch(t, meldTiles[0]))) return null;
+    } else {
+      return null;
+    }
+  }
 
-    // Remove tile from discard pile
+  // Store the claim as pending
+  const newPending: ClaimRequest = {
+    playerId: player.id,
+    claimType,
+    tiles: tilesFromHand,
+  };
+  const updatedPending = [...state.pendingClaims, newPending];
+
+  // Check if all claimable players have now acted (claimed or passed)
+  const actedPlayerIds = new Set([
+    ...state.passedPlayers,
+    ...updatedPending.map(c => c.playerId),
+  ]);
+  const allActed = state.claimablePlayers.length > 0 &&
+    state.claimablePlayers.every(id => actedPlayerIds.has(id));
+
+  if (!allActed) {
+    // More players still need to decide — advance to next claimer
+    const discarderIndex = state.players.findIndex(p => p.id === state.lastDiscardedBy);
+    let nextIndex = (playerIndex + 1) % state.players.length;
+    while (nextIndex === discarderIndex || actedPlayerIds.has(state.players[nextIndex].id)) {
+      nextIndex = (nextIndex + 1) % state.players.length;
+      if (nextIndex === playerIndex) break; // safety
+    }
+    return {
+      ...state,
+      pendingClaims: updatedPending,
+      currentPlayerIndex: nextIndex,
+      turnPhase: 'claim',
+      turnStartedAt: new Date(),
+    };
+  }
+
+  // All players have acted — resolve claims by priority
+  return resolveAndApplyClaim(state, updatedPending);
+}
+
+function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameState {
+  const discardedTile = state.lastDiscardedTile!;
+
+  // Build priority map and resolve
+  const priorityMap: Record<ClaimType, number> = { win: 4, kong: 3, pung: 2, chow: 1 };
+  const discarderIndex = state.players.findIndex(p => p.id === state.lastDiscardedBy);
+
+  // Sort by priority desc, then by distance from discarder asc
+  const sorted = [...claims].sort((a, b) => {
+    const priDiff = priorityMap[b.claimType] - priorityMap[a.claimType];
+    if (priDiff !== 0) return priDiff;
+    const idxA = state.players.findIndex(p => p.id === a.playerId);
+    const idxB = state.players.findIndex(p => p.id === b.playerId);
+    const distA = ((idxA - discarderIndex) + state.players.length) % state.players.length;
+    const distB = ((idxB - discarderIndex) + state.players.length) % state.players.length;
+    return distA - distB;
+  });
+
+  const winner = sorted[0];
+  const winnerIndex = state.players.findIndex(p => p.id === winner.playerId);
+  const player = state.players[winnerIndex];
+
+  // Apply the winning claim
+  if (winner.claimType === 'win') {
     const newDiscardPile = state.discardPile.filter(t => t.id !== discardedTile.id);
-
     return {
       ...state,
       discardPile: newDiscardPile,
@@ -376,69 +493,48 @@ function handleClaim(
       winningTile: discardedTile,
       isSelfDrawn: false,
       finishedAt: new Date(),
+      pendingClaims: [],
+      claimablePlayers: [],
+      passedPlayers: [],
     };
   }
 
-  // Validate tiles from hand exist
-  for (const t of tilesFromHand) {
-    if (!player.hand.find(h => h.id === t.id)) return null;
-  }
-
+  const tilesFromHand = winner.tiles;
   const meldTiles = [...tilesFromHand, discardedTile];
+  const meldType = winner.claimType === 'chow' ? 'chow' : winner.claimType === 'pung' ? 'pung' : 'kong';
 
-  // Validate meld
-  let meldType: 'chow' | 'pung' | 'kong';
-  if (claimType === 'chow') {
-    meldType = 'chow';
-    const sorted = meldTiles.sort((a, b) => (a.number || 0) - (b.number || 0));
-    if (sorted.length !== 3) return null;
-    if (sorted.some(t => t.type !== TileType.SUIT)) return null;
-    if (sorted.some(t => t.suit !== sorted[0].suit)) return null;
-    if (sorted[1].number !== sorted[0].number! + 1 || sorted[2].number !== sorted[1].number! + 1) return null;
-  } else if (claimType === 'pung') {
-    meldType = 'pung';
-    if (meldTiles.length !== 3) return null;
-    if (!meldTiles.every(t => tilesMatch(t, meldTiles[0]))) return null;
-  } else if (claimType === 'kong') {
-    meldType = 'kong';
-    if (meldTiles.length !== 4) return null;
-    if (!meldTiles.every(t => tilesMatch(t, meldTiles[0]))) return null;
-  } else {
-    return null;
-  }
-
-  // Apply the claim
   const newPlayers = [...state.players];
-  newPlayers[playerIndex] = {
-    ...newPlayers[playerIndex],
-    hand: newPlayers[playerIndex].hand.filter(t => !tilesFromHand.find(h => h.id === t.id)),
+  newPlayers[winnerIndex] = {
+    ...newPlayers[winnerIndex],
+    hand: newPlayers[winnerIndex].hand.filter(t => !tilesFromHand.find(h => h.id === t.id)),
     melds: [
-      ...newPlayers[playerIndex].melds,
+      ...newPlayers[winnerIndex].melds,
       { tiles: meldTiles, type: meldType, isConcealed: false },
     ],
   };
 
-  // Remove from discard pile
   const newDiscardPile = state.discardPile.filter(t => t.id !== discardedTile.id);
 
   let newState: GameState = {
     ...state,
     players: newPlayers,
     discardPile: newDiscardPile,
-    currentPlayerIndex: playerIndex,
+    currentPlayerIndex: winnerIndex,
     pendingClaims: [],
-    turnPhase: claimType === 'kong' ? 'draw' : 'discard', // kong gets replacement draw
+    claimablePlayers: [],
+    passedPlayers: [],
+    turnPhase: winner.claimType === 'kong' ? 'draw' : 'discard',
     turnStartedAt: new Date(),
   };
 
   // Kong: draw replacement tile
-  if (claimType === 'kong') {
+  if (winner.claimType === 'kong') {
     const sourceWall = newState.deadWall.length > 0 ? 'deadWall' : 'wall';
     if ((newState[sourceWall] as Tile[]).length > 0) {
       const replacement = (newState[sourceWall] as Tile[])[0];
-      newPlayers[playerIndex] = {
-        ...newPlayers[playerIndex],
-        hand: [...newPlayers[playerIndex].hand, replacement],
+      newPlayers[winnerIndex] = {
+        ...newPlayers[winnerIndex],
+        hand: [...newPlayers[winnerIndex].hand, replacement],
       };
       newState = {
         ...newState,
@@ -456,34 +552,47 @@ function handleClaim(
 function handlePass(state: GameState, playerIndex: number): GameState | null {
   if (state.turnPhase !== 'claim') return null;
 
+  const playerId = state.players[playerIndex].id;
+  const newPassedPlayers = [...state.passedPlayers, playerId];
   const discarderIndex = state.players.findIndex(p => p.id === state.lastDiscardedBy);
 
-  // Find next non-discarder player in turn order who hasn't been visited yet
-  let nextIndex = (playerIndex + 1) % state.players.length;
-  let checked = 0;
-  while (nextIndex === discarderIndex && checked < state.players.length) {
-    nextIndex = (nextIndex + 1) % state.players.length;
-    checked++;
-  }
+  // Check if all claimable players have now acted
+  const actedPlayerIds = new Set([
+    ...newPassedPlayers,
+    ...state.pendingClaims.map(c => c.playerId),
+  ]);
+  const allActed = state.claimablePlayers.length > 0 &&
+    state.claimablePlayers.every(id => actedPlayerIds.has(id));
 
-  // If we wrapped back to the current player or the discarder's next player,
-  // all non-discarder players have had their chance — end claim phase
-  if (nextIndex === (discarderIndex + 1) % state.players.length) {
+  if (allActed) {
+    // Everyone has acted — resolve any pending claims or end claim phase
+    if (state.pendingClaims.length > 0) {
+      return resolveAndApplyClaim({ ...state, passedPlayers: newPassedPlayers }, state.pendingClaims);
+    }
     return {
       ...state,
       currentPlayerIndex: (discarderIndex + 1) % state.players.length,
       turnPhase: 'draw',
       pendingClaims: [],
+      claimablePlayers: [],
+      passedPlayers: [],
       turnStartedAt: new Date(),
     };
   }
 
-  // Advance to next claimer, stay in claim phase
+  // Find next non-discarder player who hasn't acted yet
+  let nextIndex = (playerIndex + 1) % state.players.length;
+  let checked = 0;
+  while ((nextIndex === discarderIndex || actedPlayerIds.has(state.players[nextIndex].id)) && checked < state.players.length) {
+    nextIndex = (nextIndex + 1) % state.players.length;
+    checked++;
+  }
+
   return {
     ...state,
     currentPlayerIndex: nextIndex,
     turnPhase: 'claim',
-    pendingClaims: [],
+    passedPlayers: newPassedPlayers,
     turnStartedAt: new Date(),
   };
 }
@@ -500,6 +609,15 @@ function handleWallExhaustion(state: GameState): GameState {
 // ============================================
 // Helpers
 // ============================================
+
+function getClaimablePlayerIds(discarderIndex: number, players: Player[]): string[] {
+  const ids: string[] = [];
+  for (let i = 1; i < players.length; i++) {
+    const idx = (discarderIndex + i) % players.length;
+    ids.push(players[idx].id);
+  }
+  return ids;
+}
 
 function getAllClaims(
   state: GameState,

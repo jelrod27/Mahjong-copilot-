@@ -23,8 +23,29 @@ const pressStart2P = Press_Start_2P({
 });
 
 export const metadata: Metadata = {
-  title: "16 Bit Mahjong",
-  description: "Learn and play Hong Kong Mahjong",
+  title: {
+    default: "16 Bit Mahjong — Learn & Play Hong Kong Mahjong",
+    template: "%s | 16 Bit Mahjong",
+  },
+  description: "Master Hong Kong Mahjong with interactive lessons, quizzes, and AI opponents. Free retro-styled mahjong learning platform.",
+  metadataBase: new URL("https://16bitmahjong.co"),
+  openGraph: {
+    title: "16 Bit Mahjong — Learn & Play Hong Kong Mahjong",
+    description: "Master Hong Kong Mahjong with interactive lessons, quizzes, and AI opponents.",
+    url: "https://16bitmahjong.co",
+    siteName: "16 Bit Mahjong",
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "16 Bit Mahjong",
+    description: "Master Hong Kong Mahjong with interactive lessons, quizzes, and AI opponents.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export const viewport: Viewport = {

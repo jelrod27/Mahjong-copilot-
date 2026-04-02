@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, notFound } from 'next/navigation';
 import { getLevelById } from '@/content';
 import useCompletedLessons from '@/hooks/useCompletedLessons';
 
@@ -16,13 +16,7 @@ export default function LevelPage() {
   const { completedLessons } = useCompletedLessons();
 
 
-  if (!level) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-retro-textDim font-retro">Level not found</p>
-      </div>
-    );
-  }
+  if (!level) notFound();
 
   const completedInLevel = completedLessons.filter(id => id.startsWith(`${levelId}-`)).length;
   const progress = (completedInLevel / level.lessons.length) * 100;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, notFound } from 'next/navigation';
 import { getLevelById, Lesson, QuizQuestion } from '@/content';
 import { MahjongTile } from '@/components/MahjongTile';
 import { SetBuilder } from '@/components/SetBuilder';
@@ -29,13 +29,7 @@ export default function LessonPage() {
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [completionMessage, setCompletionMessage] = useState('');
 
-  if (!lesson) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-retro-textDim font-retro">Lesson not found</p>
-      </div>
-    );
-  }
+  if (!lesson) notFound();
 
   const hasQuiz = lesson.quiz && lesson.quiz.length > 0;
   const currentQuiz = lesson.quiz?.[quizIndex];

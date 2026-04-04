@@ -101,6 +101,7 @@ application_default_credentials.json
 # Playwright stored auth sessions (can hold cookies / tokens)
 **/playwright/.auth/
 playwright/.auth/
+web/.auth/
 # Local npm auth (use CI secrets instead; commit .npmrc only if it has zero tokens)
 .npmrc.local
 

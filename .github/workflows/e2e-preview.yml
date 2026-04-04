@@ -1,8 +1,10 @@
 # Browser tests against the Vercel preview URL after a preview deployment succeeds.
 #
 # Requires: Vercel project linked to this repo with GitHub integration (Deployments API).
-# Optional repo secret: VERCEL_AUTOMATION_BYPASS_SECRET — if "Deployment Protection" is on,
-#   add the same value in Vercel → Project → Settings → Deployment Protection → Protection Bypass.
+# If the preview returns 401 (Vercel Deployment Protection), you must add GitHub secret
+# VERCEL_AUTOMATION_BYPASS_SECRET — same value as Vercel → Deployment Protection →
+# Protection Bypass for Automation. The workflow fails fast with instructions when it detects 401
+# and the secret is missing.
 #
 # Manual run: Actions → "E2E (Vercel preview)" → Run workflow → paste preview base URL.
 name: E2E (Vercel preview)
@@ -78,6 +80,26 @@ jobs:
       - name: Install Playwright Chromium
         working-directory: web
         run: npx playwright install --with-deps chromium
+
+      - name: Detect deployment protection on preview
+        id: protection
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.base_url }}
+        run: |
+          set -euo pipefail
+          CODE=$(curl -sS -o /dev/null -w "%{http_code}" "${PREVIEW_URL}/" || echo "000")
+          echo "http_code=${CODE}" >> "${GITHUB_OUTPUT}"
+          echo "Probe GET ${PREVIEW_URL}/ => HTTP ${CODE}"
+
+      - name: Require bypass secret when preview returns 401
+        if: steps.protection.outputs.http_code == '401'
+        env:
+          BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          if [ -z "${BYPASS}" ]; then
+            echo "::error::Preview returns 401 (Vercel Deployment Protection). Add repository secret VERCEL_AUTOMATION_BYPASS_SECRET with the Protection Bypass for Automation value from Vercel (Project → Settings → Deployment Protection)."
+            exit 1
+          fi
 
       - name: Run Playwright against preview
         working-directory: web

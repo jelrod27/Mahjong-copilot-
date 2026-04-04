@@ -1,4 +1,7 @@
+import path from 'path';
 import { defineConfig, devices } from '@playwright/test';
+
+const storageStatePath = path.join(__dirname, '.auth', 'storage-state.json');
 
 /** Dedicated port so local runs do not attach to an unrelated app on :3000. */
 const PORT = Number(process.env.PLAYWRIGHT_PORT) || 3100;
@@ -32,6 +35,7 @@ function playwrightSupabaseEnv(): Record<string, string> {
 }
 
 export default defineConfig({
+  globalSetup: require.resolve('./playwright.global-setup.ts'),
   testDir: './e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -42,6 +46,7 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   use: {
     baseURL,
+    storageState: storageStatePath,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: process.env.CI ? 'retain-on-failure' : 'off',

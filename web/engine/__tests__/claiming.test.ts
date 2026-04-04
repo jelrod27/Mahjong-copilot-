@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { isSameTile, isPung, isChow, isKong, isPair, getAvailableClaims, resolveClaims } from '../claiming';
+import {
+  isSameTile,
+  isPung,
+  isChow,
+  isKong,
+  isPair,
+  getAvailableClaims,
+  getBestClaimSubmission,
+  resolveClaims,
+} from '../claiming';
 import { dot, bam, char, windTile, dragonTile, makePlayer, buildAllPungsHand } from './testHelpers';
 import { WindTile, DragonTile } from '@/models/Tile';
 
@@ -145,5 +154,21 @@ describe('resolveClaims', () => {
 
   it('returns null for empty claims', () => {
     expect(resolveClaims([], 0, 4, playerIndexMap)).toBeNull();
+  });
+});
+
+describe('getBestClaimSubmission', () => {
+  it('prefers win over pung', () => {
+    const hand = [dot(1, 1), dot(1, 2)];
+    const claims = [
+      { playerId: 'h', claimType: 'pung' as const, tilesFromHand: [hand], priority: 2 },
+      { playerId: 'h', claimType: 'win' as const, tilesFromHand: [[dot(2, 1)]], priority: 4 },
+    ];
+    const best = getBestClaimSubmission(claims);
+    expect(best?.claimType).toBe('win');
+  });
+
+  it('returns null for empty list', () => {
+    expect(getBestClaimSubmission([])).toBeNull();
   });
 });

@@ -7,6 +7,7 @@ import { GameState } from '@/models/GameState';
 import { AvailableClaim, TutorAdvice } from './types';
 import { calculateShanten, isWinningHand } from './winDetection';
 import { tileDiscardPriority, tileDangerScore, isSafeTile } from './ai/aiUtils';
+import { getBestClaimSubmission } from './claiming';
 
 /**
  * Get the best move advice for the current player.
@@ -16,27 +17,17 @@ export function getTutorAdvice(gameState: GameState, playerIndex: number, availa
   
   // 1. Claim Phase Advice
   if (gameState.turnPhase === 'claim' && availableClaims.length > 0) {
-    const winClaim = availableClaims.find(c => c.claimType === 'win');
-    if (winClaim) {
-      return {
-        type: 'claim',
-        message: "You can win! Press the [ WIN ] button below to claim this tile and end the game.",
+    const best = getBestClaimSubmission(availableClaims);
+    if (best) {
+      const lines: Record<string, string> = {
+        win: 'You can win on the highlighted discard. Press [ WIN! ] or [ CLAIM ] below.',
+        kong: 'You can take the highlighted discard as a Kong. Press [ CLAIM ] below.',
+        pung: 'You can take the highlighted discard as a Pung. Press [ CLAIM ] below.',
+        chow: 'You can take the highlighted discard as a Chow. Press [ CLAIM ] below.',
       };
-    }
-
-    const pungClaim = availableClaims.find(c => c.claimType === 'pung');
-    if (pungClaim) {
       return {
         type: 'claim',
-        message: "You can claim a Pung! Press [ PUNG ] below to take this tile and complete a set of three.",
-      };
-    }
-
-    const chowClaim = availableClaims.find(c => c.claimType === 'chow');
-    if (chowClaim) {
-      return {
-        type: 'claim',
-        message: "You can claim a Chow! Press [ CHOW ] below to take this tile and complete a sequence.",
+        message: lines[best.claimType] ?? 'Press [ CLAIM ] to take the highlighted discard.',
       };
     }
   }

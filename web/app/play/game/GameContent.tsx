@@ -5,7 +5,6 @@ import useGameController from '@/components/game/useGameController';
 import useClaimHandler from '@/hooks/useClaimHandler';
 import GameBoard from '@/components/game/GameBoard';
 import GameOverScreen from '@/components/game/GameOverScreen';
-import ClaimChoiceModal from '@/components/game/ClaimChoiceModal';
 
 export default function GameContent() {
   const searchParams = useSearchParams();
@@ -13,7 +12,7 @@ export default function GameContent() {
   const difficulty = (searchParams.get('difficulty') || 'easy') as 'easy' | 'medium' | 'hard';
 
   const controller = useGameController(difficulty);
-  const { pendingClaim, handleClaim, handleClaimSelect, cancelClaim } = useClaimHandler({
+  const { claimBest, pass } = useClaimHandler({
     claimOptions: controller.claimOptions,
     submitClaim: controller.submitClaim,
     pass: controller.pass,
@@ -41,23 +40,14 @@ export default function GameContent() {
         onDiscard={controller.discardSelected}
         onKong={controller.declareKong}
         onWin={controller.declareWin}
-        onClaim={handleClaim}
-        onPass={controller.pass}
+        onClaimBest={claimBest}
+        onPass={pass}
         canDeclareKong={controller.canDeclareKong}
         canDeclareWin={controller.canDeclareWin}
         hasClaimOptions={controller.claimOptions.length > 0}
-        availableClaimTypes={controller.claimOptions.map(c => c.claimType)}
+        claimOptions={controller.claimOptions}
         claimTimer={controller.claimTimer}
       />
-
-      {pendingClaim && controller.game.lastDiscardedTile && (
-        <ClaimChoiceModal
-          claim={pendingClaim}
-          discardedTile={controller.game.lastDiscardedTile}
-          onSelect={handleClaimSelect}
-          onCancel={cancelClaim}
-        />
-      )}
 
       {controller.isGameOver && (
         <GameOverScreen

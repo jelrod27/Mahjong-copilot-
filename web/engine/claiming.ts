@@ -125,6 +125,25 @@ export function getAvailableClaims(
 }
 
 /**
+ * Pick the highest-priority claim Mahjong rules allow (win > kong > pung > chow).
+ * Uses the first valid tile combination when several exist (e.g. multiple chows).
+ */
+export function getBestClaimSubmission(
+  claims: AvailableClaim[],
+): { claimType: ClaimType; tilesFromHand: Tile[] } | null {
+  if (claims.length === 0) return null;
+  let best = claims[0];
+  for (let i = 1; i < claims.length; i++) {
+    if (claims[i].priority > best.priority) {
+      best = claims[i];
+    }
+  }
+  const combo = best.tilesFromHand[0];
+  if (!combo) return null;
+  return { claimType: best.claimType, tilesFromHand: combo };
+}
+
+/**
  * Find all possible chow combinations using 2 tiles from hand + the discarded tile.
  */
 function findChowCombinations(hand: Tile[], discarded: Tile): Tile[][] {

@@ -32,7 +32,7 @@ npx vitest run engine/__tests__/scoring.test.ts
 
 CI runs lint → type check → unit test → production build on every PR and push (see `.github/workflows/ci.yml`). Playwright with a **local** dev server runs only on pushes to `main` after the quality job passes.
 
-Browser tests against the **Vercel preview URL** run from `.github/workflows/e2e-preview.yml` when Vercel reports a successful non-production `deployment_status` (requires the Vercel–GitHub integration). That workflow must be present on the default branch to trigger. Optional repository secret **`VERCEL_AUTOMATION_BYPASS_SECRET`**: use the same value as Vercel → Project → Deployment Protection → *Protection Bypass for Automation* if previews are protected.
+Optional browser tests against a **Vercel preview URL** run from `.github/workflows/e2e-preview.yml` via **workflow_dispatch** (paste the preview base URL). Automatic runs on each preview deploy are off by default. For protected previews, set GitHub secret **`VERCEL_AUTOMATION_BYPASS_SECRET`** to the same value as Vercel → Project → Deployment Protection → *Protection Bypass for Automation*.
 
 Manual preview run: GitHub → Actions → **E2E (Vercel preview)** → Run workflow → paste the preview base URL.
 

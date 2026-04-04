@@ -1,16 +1,15 @@
-# Browser tests against the Vercel preview URL after a preview deployment succeeds.
+# Browser tests against a Vercel preview URL (manual only).
 #
-# Requires: Vercel project linked to this repo with GitHub integration (Deployments API).
-# If the preview returns 401 (Vercel Deployment Protection), you must add GitHub secret
-# VERCEL_AUTOMATION_BYPASS_SECRET — same value as Vercel → Deployment Protection →
-# Protection Bypass for Automation. The workflow fails fast with instructions when it detects 401
-# and the secret is missing.
+# Automatic runs on every preview deploy were disabled so PR checks are not blocked by
+# Deployment Protection / bypass setup. Re-add `deployment_status` under `on:` when ready.
 #
-# Manual run: Actions → "E2E (Vercel preview)" → Run workflow → paste preview base URL.
+# Requires for protected previews: GitHub secret VERCEL_AUTOMATION_BYPASS_SECRET (same as
+# Vercel → Deployment Protection → Protection Bypass for Automation).
+#
+# Run: Actions → "E2E (Vercel preview)" → Run workflow → paste preview base URL.
 name: E2E (Vercel preview)
 
 on:
-  deployment_status:
   workflow_dispatch:
     inputs:
       preview_url:
@@ -27,11 +26,6 @@ permissions:
 
 jobs:
   e2e-vercel-preview:
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.deployment_status.state == 'success' &&
-       github.event.deployment_status.environment != 'production' &&
-       github.event.deployment_status.environment != 'Production')
     runs-on: ubuntu-latest
 
     steps:
@@ -39,20 +33,11 @@ jobs:
         id: preview
         env:
           MANUAL_URL: ${{ github.event.inputs.preview_url }}
-          ENV_URL: ${{ github.event.deployment_status.environment_url }}
-          TARGET_URL: ${{ github.event.deployment_status.target_url }}
         run: |
           set -euo pipefail
-          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
-            BASE="${MANUAL_URL}"
-          else
-            BASE="${ENV_URL:-}"
-            if [ -z "${BASE}" ]; then
-              BASE="${TARGET_URL:-}"
-            fi
-          fi
+          BASE="${MANUAL_URL}"
           if [ -z "${BASE}" ]; then
-            echo "::error::No preview URL on deployment_status (expected environment_url or target_url from Vercel)."
+            echo "::error::No preview URL (workflow input preview_url is required)."
             exit 1
           fi
           # Normalize: no trailing slash (Playwright baseURL)
@@ -60,12 +45,8 @@ jobs:
           echo "base_url=${BASE}" >> "${GITHUB_OUTPUT}"
           echo "Testing against ${BASE}"
 
-      # For deployment_status, github.sha is the commit being deployed (GitHub docs).
-      # deployment.sha is the deployed commit; github.sha can be wrong for deployment_status.
-      - name: Checkout tests at deployed commit
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.deployment.sha || github.sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

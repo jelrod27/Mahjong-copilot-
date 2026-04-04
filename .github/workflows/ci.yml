@@ -1,6 +1,6 @@
 # Fast feedback on every push / PR: lint, types, unit tests, production build.
-# Playwright against a live URL runs in e2e-preview.yml (Vercel preview deployment).
-# Playwright with a local dev server runs on pushes to main only (see e2e-local job).
+# Optional Playwright against a preview URL: workflow_dispatch only in e2e-preview.yml.
+# Playwright with a local dev server: see e2e-local (full run on main; notice-only on PR).
 name: CI
 
 on:
@@ -55,12 +55,12 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - name: Browser tests run on Vercel preview
+      - name: Optional browser tests against preview
         run: |
-          echo "::notice::Playwright runs in workflow 'E2E (Vercel preview)' after the preview deployment succeeds."
+          echo "::notice::Preview Playwright is manual: Actions → E2E (Vercel preview) → Run workflow. Main-branch pushes also run local Playwright in CI."
 
   # Same check name on PR and main: PR only records a notice (avoids "skipped" on branch protection).
-  # Main runs Playwright against a local dev server; PRs rely on "E2E (Vercel preview)".
+  # Main runs Playwright against a local dev server.
   e2e-local:
     name: E2E (local dev server, main only)
     if: success() && needs.quality.result == 'success'
@@ -104,4 +104,4 @@ jobs:
       - name: Pull request — local E2E not run (use Vercel preview workflow)
         if: github.event_name == 'pull_request'
         run: |
-          echo "::notice::Local Playwright runs on main pushes only. For this PR, browser tests run in workflow \"E2E (Vercel preview)\" after the preview deploys."
+          echo "::notice::Local Playwright runs on main pushes only. To test a preview in CI, run workflow \"E2E (Vercel preview)\" manually with the preview URL."

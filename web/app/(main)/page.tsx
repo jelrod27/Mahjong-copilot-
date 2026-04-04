@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useAppSelector } from '@/store/hooks';
 import { Level1 } from '@/content/level1';
 import { MahjongTile } from '@/components/MahjongTile';
 import { getAllTiles } from '@/models/Tile';
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 
 export default function HomePage() {
+  const user = useAppSelector((state) => state.auth.user);
   const { completedLessons } = useCompletedLessons();
   const [randomTile, setRandomTile] = useState<ReturnType<typeof getAllTiles>[0] | null>(null);
 
@@ -66,9 +68,14 @@ export default function HomePage() {
               16 BIT MAHJONG
             </h1>
           </div>
-          <Link href="/login" className="flex items-center gap-2 px-3 py-1.5 rounded-sm border border-retro-gold/30 bg-retro-gold/5 hover:bg-retro-gold/10 transition-all group">
-            <Sparkles size={14} className="text-retro-gold group-hover:scale-110 transition-transform" />
-            <span className="font-pixel text-[9px] text-retro-gold">SYNC PROGRESS</span>
+          <Link
+            href={user ? '/profile' : '/login'}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-sm border border-retro-gold/30 bg-retro-gold/5 hover:bg-retro-gold/10 transition-all group"
+          >
+            <Sparkles size={14} className="text-retro-gold group-hover:scale-110 transition-transform" aria-hidden />
+            <span className="font-pixel home-micro-track text-[9px] text-retro-gold">
+              {user ? 'PROFILE' : 'SYNC PROGRESS'}
+            </span>
           </Link>
         </div>
         <p className="text-retro-text/80 leading-relaxed font-sans max-w-2xl">

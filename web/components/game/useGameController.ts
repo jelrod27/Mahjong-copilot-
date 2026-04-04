@@ -1,5 +1,8 @@
 'use client';
 
+/* Game-loop effects use narrow `game` fields in dependency arrays so full-state updates do not reset
+ * AI timers or duplicate moves. Claim countdown avoids listing `claimTimer` to prevent interval churn. */
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, GamePhase, ClaimType } from '@/models/GameState';
 import { Tile, TileType, tilesMatch } from '@/models/Tile';

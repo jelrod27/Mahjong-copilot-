@@ -3,6 +3,7 @@ import { settingsReducer } from '../settingsReducer';
 import {
   SETTINGS_INITIALIZE, SETTINGS_SET_VARIANT, SETTINGS_SET_LOCALE,
   SETTINGS_SET_THEME_MODE, SETTINGS_SET_SOUND_ENABLED, SETTINGS_SET_NOTIFICATIONS_ENABLED,
+  SETTINGS_SET_LARGER_UI_TEXT,
 } from '../../actions/settingsActions';
 
 const initialState = {
@@ -11,6 +12,7 @@ const initialState = {
   themeMode: 'light',
   soundEnabled: true,
   notificationsEnabled: true,
+  largerUiText: false,
 };
 
 describe('settingsReducer', () => {
@@ -19,7 +21,14 @@ describe('settingsReducer', () => {
   });
 
   it('handles SETTINGS_INITIALIZE', () => {
-    const newSettings = { selectedVariant: 'Japanese', locale: 'ja', themeMode: 'dark', soundEnabled: false, notificationsEnabled: false };
+    const newSettings = {
+      selectedVariant: 'Japanese',
+      locale: 'ja',
+      themeMode: 'dark' as const,
+      soundEnabled: false,
+      notificationsEnabled: false,
+      largerUiText: true,
+    };
     const state = settingsReducer(initialState, { type: SETTINGS_INITIALIZE, payload: newSettings });
     expect(state).toEqual(newSettings);
   });
@@ -48,6 +57,11 @@ describe('settingsReducer', () => {
   it('handles SETTINGS_SET_NOTIFICATIONS_ENABLED', () => {
     const state = settingsReducer(initialState, { type: SETTINGS_SET_NOTIFICATIONS_ENABLED, payload: false });
     expect(state.notificationsEnabled).toBe(false);
+  });
+
+  it('handles SETTINGS_SET_LARGER_UI_TEXT', () => {
+    const state = settingsReducer(initialState, { type: SETTINGS_SET_LARGER_UI_TEXT, payload: true });
+    expect(state.largerUiText).toBe(true);
   });
 
   it('returns state unchanged for unknown action', () => {

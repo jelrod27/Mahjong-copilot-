@@ -1,40 +1,46 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
-// Mock next/navigation
 vi.mock('next/navigation', () => ({
   usePathname: () => '/learn',
 }));
 
-// Mock next/link to render a plain anchor
 vi.mock('next/link', () => ({
-  default: ({ children, href, ...props }: any) => <a href={href} {...props}>{children}</a>,
+  default: ({ children, href, ...props }: React.ComponentProps<'a'> & { href: string }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
 }));
 
 import BottomNav from '../BottomNav';
 
 describe('BottomNav', () => {
-  it('renders all 7 navigation tabs', () => {
+  it('renders primary tabs and More control in the main nav', () => {
     render(<BottomNav />);
-    expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('Learn')).toBeInTheDocument();
-    expect(screen.getByText('Play')).toBeInTheDocument();
-    expect(screen.getByText('Practice')).toBeInTheDocument();
-    expect(screen.getByText('Reference')).toBeInTheDocument();
-    expect(screen.getByText('Progress')).toBeInTheDocument();
-    expect(screen.getByText('Settings')).toBeInTheDocument();
+    const nav = screen.getByRole('navigation', { name: /main navigation/i });
+    expect(within(nav).getByText('Home')).toBeInTheDocument();
+    expect(within(nav).getByText('Learn')).toBeInTheDocument();
+    expect(within(nav).getByText('Play')).toBeInTheDocument();
+    expect(within(nav).getByText('Practice')).toBeInTheDocument();
+    expect(within(nav).getByRole('button', { name: /more/i })).toBeInTheDocument();
   });
 
-  it('renders correct hrefs', () => {
+  it('opens More sheet with secondary destinations', async () => {
+    const user = userEvent.setup();
     render(<BottomNav />);
-    const links = screen.getAllByRole('link');
-    const hrefs = links.map(l => l.getAttribute('href'));
-    expect(hrefs).toContain('/');
-    expect(hrefs).toContain('/learn');
-    expect(hrefs).toContain('/practice');
-    expect(hrefs).toContain('/reference');
-    expect(hrefs).toContain('/progress');
-    expect(hrefs).toContain('/settings');
+    await user.click(screen.getByRole('button', { name: /more/i }));
+    expect(await screen.findByRole('link', { name: /^reference$/i })).toHaveAttribute('href', '/reference');
+    expect(screen.getByRole('link', { name: /^settings$/i })).toHaveAttribute('href', '/settings');
+  });
+
+  it('renders correct primary hrefs', () => {
+    render(<BottomNav />);
+    const nav = screen.getByRole('navigation', { name: /main navigation/i });
+    const links = within(nav).getAllByRole('link');
+    const hrefs = links.map((l) => l.getAttribute('href'));
+    expect(hrefs).toEqual(['/', '/learn', '/play', '/practice']);
   });
 
   it('highlights active tab based on pathname', () => {

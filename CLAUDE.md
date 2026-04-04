@@ -19,7 +19,7 @@ cd web
 npm run dev          # Dev server at localhost:3000
 npm run build        # Production build
 npm run lint         # ESLint
-npx tsc --noEmit     # Type check
+npm run typecheck    # TypeScript (tsc --noEmit)
 npm test             # Vitest (run all tests)
 npm run test:watch   # Vitest watch mode
 npm run test:coverage # Coverage report

@@ -7,6 +7,8 @@ export interface SettingsState {
   themeMode: 'light' | 'dark';
   soundEnabled: boolean;
   notificationsEnabled: boolean;
+  /** Larger UI text for readability (bottom nav labels, micro copy). */
+  largerUiText: boolean;
 }
 
 export const SETTINGS_INITIALIZE = 'SETTINGS_INITIALIZE';
@@ -15,6 +17,7 @@ export const SETTINGS_SET_LOCALE = 'SETTINGS_SET_LOCALE';
 export const SETTINGS_SET_THEME_MODE = 'SETTINGS_SET_THEME_MODE';
 export const SETTINGS_SET_SOUND_ENABLED = 'SETTINGS_SET_SOUND_ENABLED';
 export const SETTINGS_SET_NOTIFICATIONS_ENABLED = 'SETTINGS_SET_NOTIFICATIONS_ENABLED';
+export const SETTINGS_SET_LARGER_UI_TEXT = 'SETTINGS_SET_LARGER_UI_TEXT';
 
 export const initializeSettings = () => async (dispatch: any) => {
   try {
@@ -23,6 +26,7 @@ export const initializeSettings = () => async (dispatch: any) => {
     const themeMode = themeModeString === 'dark' ? 'dark' : 'light';
     const soundEnabled = await StorageService.getBool(AppConstants.SOUND_ENABLED_KEY) ?? true;
     const languageCode = await StorageService.getString(AppConstants.LANGUAGE_KEY) || 'en';
+    const largerUiText = await StorageService.getBool(AppConstants.LARGER_UI_TEXT_KEY) ?? false;
 
     dispatch({
       type: SETTINGS_INITIALIZE,
@@ -32,6 +36,7 @@ export const initializeSettings = () => async (dispatch: any) => {
         themeMode,
         soundEnabled,
         notificationsEnabled: true,
+        largerUiText,
       },
     });
   } catch (error) {
@@ -62,4 +67,9 @@ export const setSoundEnabled = (enabled: boolean) => async (dispatch: any) => {
 export const setNotificationsEnabled = (enabled: boolean) => async (dispatch: any) => {
   await StorageService.setBool('notifications_enabled', enabled);
   dispatch({ type: SETTINGS_SET_NOTIFICATIONS_ENABLED, payload: enabled });
+};
+
+export const setLargerUiText = (enabled: boolean) => async (dispatch: any) => {
+  await StorageService.setBool(AppConstants.LARGER_UI_TEXT_KEY, enabled);
+  dispatch({ type: SETTINGS_SET_LARGER_UI_TEXT, payload: enabled });
 };

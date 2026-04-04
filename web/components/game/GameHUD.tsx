@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Player } from '@/models/GameState';
 import { WindTile } from '@/models/Tile';
 import { TurnPhase } from '@/models/GameState';
@@ -26,7 +27,17 @@ const PHASE_LABELS: Record<TurnPhase, string> = {
 export default function GameHUD({
   wallCount, prevailingWind, currentPlayerIndex, players, turnPhase,
 }: GameHUDProps) {
+  const router = useRouter();
   const [soundOn, setSoundOn] = useState(soundManager.isEnabled());
+
+  const leaveToMenu = () => {
+    if (
+      typeof window !== 'undefined' &&
+      window.confirm('Leave this game and return to the play menu? Your progress in this hand will be lost.')
+    ) {
+      router.push('/play');
+    }
+  };
 
   const toggleSound = () => {
     const next = !soundOn;
@@ -38,15 +49,26 @@ export default function GameHUD({
   return (
     <div className="retro-panel p-2 font-retro text-sm">
       {/* Title bar with sound toggle */}
-      <div className="flex justify-between items-center mb-1">
-        <span className="text-retro-accent text-xs font-pixel">╔══ GAME ══╗</span>
-        <button
-          onClick={toggleSound}
-          className="text-xs px-1 hover:text-retro-cyan transition-colors"
-          title={soundOn ? 'Mute' : 'Unmute'}
-        >
-          {soundOn ? '🔊' : '🔇'}
-        </button>
+      <div className="flex justify-between items-center gap-1 mb-1">
+        <span className="text-retro-accent text-xs font-pixel shrink-0">╔══ GAME ══╗</span>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button
+            type="button"
+            onClick={toggleSound}
+            className="text-xs px-1.5 py-0.5 rounded-sm hover:text-retro-cyan hover:bg-retro-bg/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-retro-cyan/50"
+            aria-pressed={soundOn}
+            aria-label={soundOn ? 'Mute game sounds' : 'Unmute game sounds'}
+          >
+            <span aria-hidden>{soundOn ? '🔊' : '🔇'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={leaveToMenu}
+            className="font-pixel text-[8px] px-1.5 py-0.5 rounded-sm border border-retro-border/40 text-retro-textDim hover:text-retro-cyan hover:border-retro-cyan/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-retro-cyan/50"
+          >
+            MENU
+          </button>
+        </div>
       </div>
 
       {/* Wind & Wall */}

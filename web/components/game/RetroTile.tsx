@@ -77,11 +77,18 @@ export default function RetroTile({
           background: 'repeating-linear-gradient(45deg, #2a2240, #2a2240 3px, #1c1829 3px, #1c1829 6px)',
         }}
       >
-        <span className="text-retro-textDim" style={{ fontSize: w * 0.3 }}>?</span>
+        <span className="text-retro-textDim" style={{ fontSize: w * 0.3 }} aria-hidden>?</span>
       </div>
     );
     return onClick ? (
-      <button onClick={onClick} disabled={disabled} type="button">{backContent}</button>
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        type="button"
+        aria-label="Face-down tile"
+      >
+        {backContent}
+      </button>
     ) : backContent;
   }
 
@@ -125,6 +132,7 @@ export default function RetroTile({
         onClick={onClick}
         disabled={disabled}
         type="button"
+        aria-label={`Mahjong tile: ${tile.nameEnglish}`}
         className="transition-transform duration-100 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {tileContent}

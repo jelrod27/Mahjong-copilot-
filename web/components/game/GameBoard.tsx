@@ -1,6 +1,7 @@
 'use client';
 
-import { GameState, ClaimType } from '@/models/GameState';
+import { GameState } from '@/models/GameState';
+import type { AvailableClaim } from '@/engine/types';
 import { Tile } from '@/models/Tile';
 import PlayerHand from './PlayerHand';
 import OpponentHand from './OpponentHand';
@@ -21,20 +22,20 @@ interface GameBoardProps {
   onDiscard: () => void;
   onKong: () => void;
   onWin: () => void;
-  onClaim: (claimType: ClaimType) => void;
+  onClaimBest: () => void;
   onPass: () => void;
   canDeclareKong?: boolean;
   canDeclareWin?: boolean;
   hasClaimOptions?: boolean;
-  availableClaimTypes?: ClaimType[];
+  claimOptions?: AvailableClaim[];
   claimTimer?: number;
 }
 
 export default function GameBoard({
   gameState, humanPlayerId, selectedTileId, suggestedTileId, tutorAdvice,
-  onTileSelect, onDiscard, onKong, onWin, onClaim, onPass,
+  onTileSelect, onDiscard, onKong, onWin, onClaimBest, onPass,
   canDeclareKong: canKongProp, canDeclareWin: canWinProp,
-  hasClaimOptions: hasClaimsProp, availableClaimTypes, claimTimer,
+  hasClaimOptions: hasClaimsProp, claimOptions = [], claimTimer,
 }: GameBoardProps) {
   const humanIndex = gameState.players.findIndex(p => p.id === humanPlayerId);
   const humanPlayer = gameState.players[humanIndex];
@@ -54,6 +55,8 @@ export default function GameBoard({
   const canDeclareWin = canWinProp ?? false;
   const canDeclareKong = canKongProp ?? false;
   const hasClaimOptions = hasClaimsProp ?? false;
+  const showClaimHighlight =
+    gameState.turnPhase === 'claim' && hasClaimOptions && isHumanTurn;
 
   return (
     <div
@@ -117,6 +120,7 @@ export default function GameBoard({
             <DiscardPool
               discards={gameState.discardPile}
               lastDiscardedTile={gameState.lastDiscardedTile}
+              claimHighlight={showClaimHighlight}
             />
           </div>
 
@@ -146,14 +150,14 @@ export default function GameBoard({
           canDeclareKong={canDeclareKong}
           canDeclareWin={canDeclareWin}
           hasClaimOptions={hasClaimOptions}
+          claimOptions={claimOptions}
           onDiscard={onDiscard}
           onKong={onKong}
           onWin={onWin}
-          onClaim={onClaim}
+          onClaimBest={onClaimBest}
           onPass={onPass}
           turnPhase={gameState.turnPhase}
           isHumanTurn={isHumanTurn}
-          availableClaimTypes={availableClaimTypes}
           claimTimer={claimTimer}
         />
 

@@ -6,7 +6,6 @@ import useGameController from '@/components/game/useGameController';
 import useClaimHandler from '@/hooks/useClaimHandler';
 import GameBoard from '@/components/game/GameBoard';
 import GameOverScreen from '@/components/game/GameOverScreen';
-import ClaimChoiceModal from '@/components/game/ClaimChoiceModal';
 import HintOverlay from '@/components/game/HintOverlay';
 
 export default function PracticePage() {
@@ -72,7 +71,7 @@ function PracticeGame({
   onBack: () => void;
 }) {
   const controller = useGameController('easy');
-  const { pendingClaim, handleClaim, handleClaimSelect, cancelClaim } = useClaimHandler({
+  const { claimBest, pass } = useClaimHandler({
     claimOptions: controller.claimOptions,
     submitClaim: controller.submitClaim,
     pass: controller.pass,
@@ -102,12 +101,12 @@ function PracticeGame({
         onDiscard={controller.discardSelected}
         onKong={controller.declareKong}
         onWin={controller.declareWin}
-        onClaim={handleClaim}
-        onPass={controller.pass}
+        onClaimBest={claimBest}
+        onPass={pass}
         canDeclareKong={controller.canDeclareKong}
         canDeclareWin={controller.canDeclareWin}
         hasClaimOptions={controller.claimOptions.length > 0}
-        availableClaimTypes={controller.claimOptions.map(c => c.claimType)}
+        claimOptions={controller.claimOptions}
         claimTimer={controller.claimTimer}
       />
 
@@ -117,15 +116,6 @@ function PracticeGame({
         showHints={showHints}
         onToggle={onToggleHints}
       />
-
-      {pendingClaim && controller.game.lastDiscardedTile && (
-        <ClaimChoiceModal
-          claim={pendingClaim}
-          discardedTile={controller.game.lastDiscardedTile}
-          onSelect={handleClaimSelect}
-          onCancel={cancelClaim}
-        />
-      )}
 
       {controller.isGameOver && (
         <GameOverScreen

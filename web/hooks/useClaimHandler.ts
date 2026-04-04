@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { ClaimType } from '@/models/GameState';
 import { Tile } from '@/models/Tile';
-import { AvailableClaim } from '@/engine/types';
+import type { AvailableClaim } from '@/engine/types';
+import { getBestClaimSubmission } from '@/engine/claiming';
 
 interface ClaimHandlerOptions {
   claimOptions: AvailableClaim[];
@@ -12,33 +13,16 @@ interface ClaimHandlerOptions {
 }
 
 /**
- * Shared claim handler logic — used by GameContent, practice page, and multiplayer game page.
- * Manages the pending claim state and provides handleClaim/handleClaimSelect/cancelClaim.
+ * One-tap claiming: submits the highest-priority valid claim (win > kong > pung > chow)
+ * using the first valid tile combination when several exist.
  */
 export default function useClaimHandler({ claimOptions, submitClaim, pass }: ClaimHandlerOptions) {
-  const [pendingClaim, setPendingClaim] = useState<AvailableClaim | null>(null);
-
-  const handleClaim = useCallback((claimType: ClaimType) => {
-    const claim = claimOptions.find(c => c.claimType === claimType);
-    if (!claim) return;
-
-    if (claim.tilesFromHand.length > 1) {
-      setPendingClaim(claim);
-      return;
+  const claimBest = useCallback(() => {
+    const best = getBestClaimSubmission(claimOptions);
+    if (best) {
+      submitClaim(best.claimType, best.tilesFromHand);
     }
-
-    submitClaim(claimType, claim.tilesFromHand[0] || []);
   }, [claimOptions, submitClaim]);
 
-  const handleClaimSelect = useCallback((claimType: ClaimType, tilesFromHand: Tile[]) => {
-    submitClaim(claimType, tilesFromHand);
-    setPendingClaim(null);
-  }, [submitClaim]);
-
-  const cancelClaim = useCallback(() => {
-    setPendingClaim(null);
-    pass();
-  }, [pass]);
-
-  return { pendingClaim, handleClaim, handleClaimSelect, cancelClaim };
+  return { claimBest, pass };
 }

@@ -8,7 +8,6 @@ import useMultiplayerGame from '@/hooks/useMultiplayerGame';
 import useClaimHandler from '@/hooks/useClaimHandler';
 import GameBoard from '@/components/game/GameBoard';
 import GameOverScreen from '@/components/game/GameOverScreen';
-import ClaimChoiceModal from '@/components/game/ClaimChoiceModal';
 import ConnectionStatus from '@/components/multiplayer/ConnectionStatus';
 import WaitingRoom from '@/components/multiplayer/WaitingRoom';
 
@@ -87,7 +86,7 @@ export default function MultiplayerGamePage() {
 function ActiveGame({ roomId, playerId }: { roomId: string; playerId: string }) {
   const router = useRouter();
   const controller = useMultiplayerGame(roomId, playerId);
-  const { pendingClaim, handleClaim, handleClaimSelect, cancelClaim } = useClaimHandler({
+  const { claimBest, pass } = useClaimHandler({
     claimOptions: controller.claimOptions,
     submitClaim: controller.submitClaim,
     pass: controller.pass,
@@ -116,23 +115,14 @@ function ActiveGame({ roomId, playerId }: { roomId: string; playerId: string }) 
         onDiscard={controller.discardSelected}
         onKong={controller.declareKong}
         onWin={controller.declareWin}
-        onClaim={handleClaim}
-        onPass={controller.pass}
+        onClaimBest={claimBest}
+        onPass={pass}
         canDeclareKong={controller.canDeclareKong}
         canDeclareWin={controller.canDeclareWin}
         hasClaimOptions={controller.claimOptions.length > 0}
-        availableClaimTypes={controller.claimOptions.map(c => c.claimType)}
+        claimOptions={controller.claimOptions}
         claimTimer={controller.claimTimer}
       />
-
-      {pendingClaim && controller.game.lastDiscardedTile && (
-        <ClaimChoiceModal
-          claim={pendingClaim}
-          discardedTile={controller.game.lastDiscardedTile}
-          onSelect={handleClaimSelect}
-          onCancel={cancelClaim}
-        />
-      )}
 
       {controller.isGameOver && (
         <GameOverScreen

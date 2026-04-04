@@ -61,10 +61,11 @@ jobs:
           echo "Testing against ${BASE}"
 
       # For deployment_status, github.sha is the commit being deployed (GitHub docs).
+      # deployment.sha is the deployed commit; github.sha can be wrong for deployment_status.
       - name: Checkout tests at deployed commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.deployment.sha || github.sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -87,12 +88,16 @@ jobs:
           PREVIEW_URL: ${{ steps.preview.outputs.base_url }}
         run: |
           set -euo pipefail
-          CODE=$(curl -sS -o /dev/null -w "%{http_code}" "${PREVIEW_URL}/" || echo "000")
+          CODE=$(curl -sS -o /dev/null -w "%{http_code}" --max-redirs 0 "${PREVIEW_URL}/" || echo "000")
+          CODE="${CODE//$'\r'/}"
+          CODE="${CODE//$'\n'/}"
           echo "http_code=${CODE}" >> "${GITHUB_OUTPUT}"
           echo "Probe GET ${PREVIEW_URL}/ => HTTP ${CODE}"
 
-      - name: Require bypass secret when preview returns 401
-        if: steps.protection.outputs.http_code == '401'
+      - name: Require bypass secret when preview returns 401 or 403
+        if: |
+          steps.protection.outputs.http_code == '401' ||
+          steps.protection.outputs.http_code == '403'
         env:
           BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |

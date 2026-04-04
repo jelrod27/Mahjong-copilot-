@@ -26,6 +26,7 @@ export default async function globalSetup(config: FullConfig) {
     const page = await context.newPage();
     const url = new URL('/', baseURL);
     url.searchParams.set('x-vercel-protection-bypass', bypass);
+    url.searchParams.set('x-vercel-set-bypass-cookie', 'true');
     await page.goto(url.toString(), { waitUntil: 'domcontentloaded', timeout: 90_000 });
     await context.storageState({ path: STORAGE });
     await browser.close();

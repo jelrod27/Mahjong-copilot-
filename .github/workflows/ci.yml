@@ -59,10 +59,11 @@ jobs:
         run: |
           echo "::notice::Playwright runs in workflow 'E2E (Vercel preview)' after the preview deployment succeeds."
 
+  # Same check name on PR and main: PR only records a notice (avoids "skipped" on branch protection).
+  # Main runs Playwright against a local dev server; PRs rely on "E2E (Vercel preview)".
   e2e-local:
-    # PRs get browser tests against Vercel preview (e2e-preview.yml). Main keeps a local-server safety net.
     name: E2E (local dev server, main only)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: success() && needs.quality.result == 'success'
     runs-on: ubuntu-latest
     needs: [quality]
     defaults:
@@ -74,6 +75,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Node.js
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -81,17 +83,25 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - name: Install dependencies
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: npm ci
 
       - name: Install Playwright Chromium
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: npx playwright install --with-deps chromium
 
       - name: End-to-end tests (local dev server)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: npm run test:e2e
 
       - name: Upload Playwright report on failure
-        if: failure()
+        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-main
           path: web/playwright-report/
+
+      - name: Pull request — local E2E not run (use Vercel preview workflow)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "::notice::Local Playwright runs on main pushes only. For this PR, browser tests run in workflow \"E2E (Vercel preview)\" after the preview deploys."

@@ -51,7 +51,13 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: process.env.CI ? 'retain-on-failure' : 'off',
     ...(vercelBypass
-      ? { extraHTTPHeaders: { 'x-vercel-protection-bypass': vercelBypass } }
+      ? {
+          extraHTTPHeaders: {
+            'x-vercel-protection-bypass': vercelBypass,
+            // Vercel: persist bypass for document + subresource requests (see protection-bypass-automation docs).
+            'x-vercel-set-bypass-cookie': 'true',
+          },
+        }
       : {}),
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],

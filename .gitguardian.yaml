@@ -1,0 +1,11 @@
+# GitGuardian (PR checks): ignore paths that should never hold app secrets and
+# document intentional non-secret strings. See https://docs.gitguardian.com/ggshield-docs/configuration
+version: 2
+
+paths-ignore:
+  - "**/node_modules/**"
+  - "**/.next/**"
+  - "**/dist/**"
+  - "**/playwright-report/**"
+  - "**/test-results/**"
+  - "**/coverage/**"

@@ -58,6 +58,7 @@ export default function GameBoard({
   return (
     <div
       className="h-screen w-full flex flex-col"
+      data-testid="game-board-root"
       style={{
         background: 'radial-gradient(ellipse at center, #1e2a22 0%, #0f1610 50%, #110e1a 100%)',
       }}

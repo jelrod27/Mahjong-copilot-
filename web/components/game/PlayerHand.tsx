@@ -20,7 +20,11 @@ export default function PlayerHand({
       {tiles.map((tile, i) => {
         const isLastDrawn = tile.id === lastDrawnTileId;
         return (
-          <div key={tile.id} className={isLastDrawn ? 'ml-3' : ''}>
+          <div
+            key={tile.id}
+            className={isLastDrawn ? 'ml-3' : ''}
+            data-testid="human-hand-tile"
+          >
             <RetroTile
               tile={tile}
               size="lg"

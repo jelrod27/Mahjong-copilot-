@@ -3,7 +3,17 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const publicPaths = ["/login", "/signup", "/auth/callback"];
 
+function isConfiguredSupabase(): boolean {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
+  return url.length > 0 && key.length > 0 && /^https?:\/\//i.test(url);
+}
+
 export async function middleware(request: NextRequest) {
+  if (!isConfiguredSupabase()) {
+    return NextResponse.next();
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(

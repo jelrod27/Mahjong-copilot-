@@ -56,15 +56,63 @@ yarn-error.log
 google-services.json
 GoogleService-Info.plist
 
-# Environment variables
+# --- Secrets & credentials (never commit; use GitHub / Vercel env UI or 1Password, etc.) ---
+# Env files: ignore all variants; allow only checked-in templates (no real values).
 .env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+!.env*.example
+!.env.ci.example
+# dotenvx / encrypted local overrides
+.env.keys
+# direnv often loads secrets into the shell
+.envrc
+.envrc.local
 .env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+# Supabase CLI / local (keys often in .env next to config)
+supabase/.env
+supabase/.env.*
+!supabase/.env.example
+# Vercel CLI can store project link + tokens locally
+.vercel/
+# Private keys & cert material (adjust if you truly need to commit a public cert)
+*.pem
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+id_ecdsa
+*.keystore
+# Cloud / CI credential filenames often dropped in repo root by mistake
+credentials.json
+*-credentials.json
+*-service-account*.json
+gcp-key.json
+google-credentials.json
+application_default_credentials.json
+# Sentry / similar local auth files
+.sentryclirc
+# Playwright stored auth sessions (can hold cookies / tokens)
+**/playwright/.auth/
+playwright/.auth/
+web/.auth/
+# Local npm auth (use CI secrets instead; commit .npmrc only if it has zero tokens)
+.npmrc.local
 
 # TypeScript
 *.tsbuildinfo
 
 # Testing
 coverage/
+web/playwright-report/
+web/test-results/
+web/blob-report/
 
 # Next.js
 .next/

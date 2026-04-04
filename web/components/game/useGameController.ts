@@ -58,9 +58,11 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
   const [claimOptions, setClaimOptions] = useState<AvailableClaim[]>([]);
   const [claimTimer, setClaimTimer] = useState(0);
   const [scoringResult, setScoringResult] = useState<ScoringResult | null>(null);
-  const [preClaimPause, setPreClaimPause] = useState(false);
   const gameRef = useRef<GameState | null>(null);
   const processingRef = useRef(false);
+  /** Easy-mode claim UI is delayed; track which discard we scheduled for so we do not cancel the timer on re-render. */
+  const easyClaimDelayKeyRef = useRef<string | null>(null);
+  const easyClaimDelayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep ref in sync
   useEffect(() => { gameRef.current = game; }, [game]);
@@ -83,7 +85,11 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
     setClaimOptions([]);
     setClaimTimer(0);
     setScoringResult(null);
-    setPreClaimPause(false);
+    easyClaimDelayKeyRef.current = null;
+    if (easyClaimDelayTimerRef.current) {
+      clearTimeout(easyClaimDelayTimerRef.current);
+      easyClaimDelayTimerRef.current = null;
+    }
     processingRef.current = false;
   }, []);
 
@@ -298,7 +304,11 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
   useEffect(() => {
     if (!game || game.phase !== GamePhase.PLAYING) return;
     if (game.turnPhase !== 'claim') {
-      setPreClaimPause(false);
+      easyClaimDelayKeyRef.current = null;
+      if (easyClaimDelayTimerRef.current) {
+        clearTimeout(easyClaimDelayTimerRef.current);
+        easyClaimDelayTimerRef.current = null;
+      }
       return;
     }
     // Only show claim UI when it's the human's turn to decide
@@ -314,25 +324,37 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
       game.lastDiscardedTile, humanPlayer, humanIndex, discarderIndex, game.players.length
     );
 
+    const claimDelayKey = `${game.lastDiscardedTile.id}:${game.lastDiscardedBy}`;
+
     if (claims.length > 0) {
-      if (difficulty === 'easy' && !preClaimPause) {
-        setPreClaimPause(true);
-        const timer = setTimeout(() => {
+      if (difficulty === 'easy') {
+        if (easyClaimDelayKeyRef.current === claimDelayKey) {
+          return;
+        }
+        easyClaimDelayKeyRef.current = claimDelayKey;
+        if (easyClaimDelayTimerRef.current) {
+          clearTimeout(easyClaimDelayTimerRef.current);
+        }
+        easyClaimDelayTimerRef.current = setTimeout(() => {
+          easyClaimDelayTimerRef.current = null;
           setClaimOptions(claims);
           setClaimTimer(CLAIM_TIMEOUT);
           soundManager.play('turnAlert');
-        }, 1500); // 1.5s pause to process the opponent's discard
-        return () => clearTimeout(timer);
-      } else if (difficulty !== 'easy') {
-        setClaimOptions(claims);
-        setClaimTimer(CLAIM_TIMEOUT);
-        soundManager.play('turnAlert');
+        }, 1500);
+        return () => {
+          clearTimeout(easyClaimDelayTimerRef.current!);
+          easyClaimDelayTimerRef.current = null;
+          easyClaimDelayKeyRef.current = null;
+        };
       }
+      setClaimOptions(claims);
+      setClaimTimer(CLAIM_TIMEOUT);
+      soundManager.play('turnAlert');
     } else {
       // Human has no claims — auto-pass
       doAction(HUMAN_ID, { type: 'PASS' });
     }
-  }, [game?.turnPhase, game?.lastDiscardedTile?.id, game?.lastDiscardedBy, humanIndex, doAction, difficulty, preClaimPause]);
+  }, [game?.turnPhase, game?.lastDiscardedTile?.id, game?.lastDiscardedBy, humanIndex, doAction, difficulty]);
 
   // === Claim countdown ===
   useEffect(() => {

@@ -23,12 +23,18 @@ npx tsc --noEmit     # Type check
 npm test             # Vitest (run all tests)
 npm run test:watch   # Vitest watch mode
 npm run test:coverage # Coverage report
+npm run test:e2e     # Playwright (starts Next on port 3100 by default)
+npm run test:e2e:ui  # Playwright UI mode
 
 # Run a single test file
 npx vitest run engine/__tests__/scoring.test.ts
 ```
 
-CI runs lint → type check → test → build in the `/web` directory (see `.github/workflows/ci.yml`).
+CI runs lint → type check → unit test → production build on every PR and push (see `.github/workflows/ci.yml`). Playwright with a **local** dev server runs only on pushes to `main` after the quality job passes.
+
+Optional browser tests against a **Vercel preview URL** run from `.github/workflows/e2e-preview.yml` via **workflow_dispatch** (paste the preview base URL). Automatic runs on each preview deploy are off by default. For protected previews, set GitHub secret **`VERCEL_AUTOMATION_BYPASS_SECRET`** to the same value as Vercel → Project → Deployment Protection → *Protection Bypass for Automation*.
+
+Manual preview run: GitHub → Actions → **E2E (Vercel preview)** → Run workflow → paste the preview base URL.
 
 ## Architecture
 

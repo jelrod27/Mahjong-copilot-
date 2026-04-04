@@ -1,3 +1,6 @@
+# Fast feedback on every push / PR: lint, types, unit tests, production build.
+# Optional Playwright against a preview URL: workflow_dispatch only in e2e-preview.yml.
+# Playwright with a local dev server: see e2e-local (full run on main; notice-only on PR).
 name: CI
 
 on:
@@ -6,8 +9,15 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
-  ci:
+  quality:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -33,8 +43,65 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
-      - name: Test
+      - name: Unit tests
         run: npm test
 
-      - name: Build
+      - name: Production build
         run: npm run build
+
+  # Green check on PRs so it is obvious browser E2E is covered elsewhere (not a failure).
+  e2e-info-pull-request:
+    name: E2E note (PR)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Optional browser tests against preview
+        run: |
+          echo "::notice::Preview Playwright is manual: Actions → E2E (Vercel preview) → Run workflow. Main-branch pushes also run local Playwright in CI."
+
+  # Same check name on PR and main: PR only records a notice (avoids "skipped" on branch protection).
+  # Main runs Playwright against a local dev server.
+  e2e-local:
+    name: E2E (local dev server, main only)
+    if: success() && needs.quality.result == 'success'
+    runs-on: ubuntu-latest
+    needs: [quality]
+    defaults:
+      run:
+        working-directory: ./web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests (local dev server)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npm run test:e2e
+
+      - name: Upload Playwright report on failure
+        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-main
+          path: web/playwright-report/
+
+      - name: Pull request — local E2E not run (use Vercel preview workflow)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "::notice::Local Playwright runs on main pushes only. To test a preview in CI, run workflow \"E2E (Vercel preview)\" manually with the preview URL."

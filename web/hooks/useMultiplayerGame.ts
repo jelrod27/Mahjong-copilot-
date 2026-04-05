@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { GameState, GamePhase, ClaimType, gameStateFromJson } from '@/models/GameState';
 import { Tile, TileType, tileKey } from '@/models/Tile';
 import { AvailableClaim, ScoringContext, ScoringResult } from '@/engine/types';
-import { getAvailableClaims } from '@/engine/claiming';
+import { getAvailableClaims, getBestClaimSubmission } from '@/engine/claiming';
 import { isWinningHand } from '@/engine/winDetection';
 import { calculateScore } from '@/engine/scoring';
 import { GameController } from '@/components/game/useGameController';
@@ -93,7 +93,8 @@ export default function useMultiplayerGame(
     if (state.turnPhase === 'claim' && state.lastDiscardedTile && state.lastDiscardedBy !== playerId) {
       const playerIndex = state.players.findIndex(p => p.id === playerId);
       const player = state.players[playerIndex];
-      if (player && player.hand.length > 0) {
+      const isOurClaimTurn = state.currentPlayerIndex === playerIndex;
+      if (isOurClaimTurn && player && player.hand.length > 0) {
         const lastDiscarderIndex = state.players.findIndex(p => p.id === state.lastDiscardedBy);
         const claims = getAvailableClaims(
           state.lastDiscardedTile,
@@ -104,6 +105,8 @@ export default function useMultiplayerGame(
         );
         setClaimOptions(claims);
         startClaimTimer();
+      } else {
+        setClaimOptions([]);
       }
     } else {
       setClaimOptions([]);
@@ -183,6 +186,26 @@ export default function useMultiplayerGame(
     });
   }, [game, playerId, roomId, clearClaimTimer]);
 
+  const claimBest = useCallback(async () => {
+    if (!game || game.turnPhase !== 'claim') return;
+    const playerIndex = game.players.findIndex(p => p.id === playerId);
+    if (game.currentPlayerIndex !== playerIndex) return;
+    if (game.lastDiscardedBy === playerId) return;
+    const me = game.players[playerIndex];
+    const discarderIndex = game.players.findIndex(p => p.id === game.lastDiscardedBy);
+    if (discarderIndex === -1 || !game.lastDiscardedTile) return;
+    const claims = getAvailableClaims(
+      game.lastDiscardedTile,
+      me,
+      playerIndex,
+      discarderIndex,
+      game.players.length,
+    );
+    const best = getBestClaimSubmission(claims);
+    if (!best) return;
+    await submitClaimAction(best.claimType, best.tilesFromHand);
+  }, [game, playerId, submitClaimAction]);
+
   const handlePass = useCallback(async () => {
     clearClaimTimer();
     await submitMove(roomId, { type: 'PASS', playerId });
@@ -228,6 +251,7 @@ export default function useMultiplayerGame(
     declareKong,
     declareWin,
     submitClaim: submitClaimAction,
+    claimBest,
     pass: handlePass,
     startNewGame,
     canDeclareKong,

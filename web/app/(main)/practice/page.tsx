@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import useGameController from '@/components/game/useGameController';
-import useClaimHandler from '@/hooks/useClaimHandler';
 import GameBoard from '@/components/game/GameBoard';
 import GameOverScreen from '@/components/game/GameOverScreen';
 import HintOverlay from '@/components/game/HintOverlay';
@@ -71,11 +70,6 @@ function PracticeGame({
   onBack: () => void;
 }) {
   const controller = useGameController('easy');
-  const { claimBest, pass } = useClaimHandler({
-    claimOptions: controller.claimOptions,
-    submitClaim: controller.submitClaim,
-    pass: controller.pass,
-  });
 
   if (!controller.game) {
     return (
@@ -101,8 +95,8 @@ function PracticeGame({
         onDiscard={controller.discardSelected}
         onKong={controller.declareKong}
         onWin={controller.declareWin}
-        onClaimBest={claimBest}
-        onPass={pass}
+        onClaimBest={controller.claimBest}
+        onPass={controller.pass}
         canDeclareKong={controller.canDeclareKong}
         canDeclareWin={controller.canDeclareWin}
         hasClaimOptions={controller.claimOptions.length > 0}

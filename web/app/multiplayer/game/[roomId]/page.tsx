@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { getRoomPlayers, leaveRoom, RoomPlayer } from '@/lib/multiplayer/roomService';
 import useMultiplayerGame from '@/hooks/useMultiplayerGame';
-import useClaimHandler from '@/hooks/useClaimHandler';
 import GameBoard from '@/components/game/GameBoard';
 import GameOverScreen from '@/components/game/GameOverScreen';
 import ConnectionStatus from '@/components/multiplayer/ConnectionStatus';
@@ -86,11 +85,6 @@ export default function MultiplayerGamePage() {
 function ActiveGame({ roomId, playerId }: { roomId: string; playerId: string }) {
   const router = useRouter();
   const controller = useMultiplayerGame(roomId, playerId);
-  const { claimBest, pass } = useClaimHandler({
-    claimOptions: controller.claimOptions,
-    submitClaim: controller.submitClaim,
-    pass: controller.pass,
-  });
 
   if (!controller.game) {
     return (
@@ -115,8 +109,8 @@ function ActiveGame({ roomId, playerId }: { roomId: string; playerId: string }) 
         onDiscard={controller.discardSelected}
         onKong={controller.declareKong}
         onWin={controller.declareWin}
-        onClaimBest={claimBest}
-        onPass={pass}
+        onClaimBest={controller.claimBest}
+        onPass={controller.pass}
         canDeclareKong={controller.canDeclareKong}
         canDeclareWin={controller.canDeclareWin}
         hasClaimOptions={controller.claimOptions.length > 0}

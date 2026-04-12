@@ -30,6 +30,7 @@ export default function GameContent() {
         selectedTileId={controller.selectedTileId}
         suggestedTileId={controller.suggestedTileId}
         tutorAdvice={controller.tutorAdvice}
+        tileClassifications={controller.tileClassifications}
         onTileSelect={controller.selectTile}
         onDiscard={controller.discardSelected}
         onKong={controller.declareKong}

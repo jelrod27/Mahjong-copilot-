@@ -242,6 +242,7 @@ export default function useMultiplayerGame(
     selectedTileId,
     suggestedTileId: undefined,
     tutorAdvice: null,
+    tileClassifications: new Map(),
     claimOptions,
     claimTimer,
     isGameOver,

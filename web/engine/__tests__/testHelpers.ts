@@ -127,6 +127,50 @@ export function buildPureOneSuit(): Tile[] {
   ];
 }
 
+/** Build a Small Three Dragons hand: 2 dragon pungs + 1 chow + 1 pung + dragon pair */
+export function buildSmallThreeDragons(): Tile[] {
+  return [
+    dragonTile(DragonTile.RED, 1), dragonTile(DragonTile.RED, 2), dragonTile(DragonTile.RED, 3),
+    dragonTile(DragonTile.GREEN, 1), dragonTile(DragonTile.GREEN, 2), dragonTile(DragonTile.GREEN, 3),
+    dot(1, 1), dot(2, 1), dot(3, 1), // chow
+    bam(5, 1), bam(5, 2), bam(5, 3), // pung
+    dragonTile(DragonTile.WHITE, 1), dragonTile(DragonTile.WHITE, 2), // pair
+  ];
+}
+
+/** Build a Big Three Dragons hand: 3 dragon pungs + 1 chow + non-dragon pair */
+export function buildBigThreeDragons(): Tile[] {
+  return [
+    dragonTile(DragonTile.RED, 1), dragonTile(DragonTile.RED, 2), dragonTile(DragonTile.RED, 3),
+    dragonTile(DragonTile.GREEN, 1), dragonTile(DragonTile.GREEN, 2), dragonTile(DragonTile.GREEN, 3),
+    dragonTile(DragonTile.WHITE, 1), dragonTile(DragonTile.WHITE, 2), dragonTile(DragonTile.WHITE, 3),
+    dot(1, 1), dot(2, 1), dot(3, 1), // chow
+    bam(5, 1), bam(5, 2),            // pair
+  ];
+}
+
+/** Build a Mixed One Suit hand: one suit + honors */
+export function buildMixedOneSuit(): Tile[] {
+  return [
+    dot(1, 1), dot(2, 1), dot(3, 1), // chow
+    dot(4, 1), dot(5, 1), dot(6, 1), // chow
+    dot(7, 1), dot(8, 1), dot(9, 1), // chow
+    windTile(WindTile.NORTH, 1), windTile(WindTile.NORTH, 2), windTile(WindTile.NORTH, 3), // pung
+    dot(1, 2), dot(1, 3),            // pair
+  ];
+}
+
+/** Build a Small Four Winds hand: 3 wind pungs + chow + wind pair */
+export function buildSmallFourWinds(): Tile[] {
+  return [
+    windTile(WindTile.EAST, 1), windTile(WindTile.EAST, 2), windTile(WindTile.EAST, 3),
+    windTile(WindTile.SOUTH, 1), windTile(WindTile.SOUTH, 2), windTile(WindTile.SOUTH, 3),
+    windTile(WindTile.WEST, 1), windTile(WindTile.WEST, 2), windTile(WindTile.WEST, 3),
+    dot(1, 1), dot(2, 1), dot(3, 1), // chow
+    windTile(WindTile.NORTH, 1), windTile(WindTile.NORTH, 2), // pair
+  ];
+}
+
 /** Create a test player with the given hand */
 export function makePlayer(overrides: Partial<Player> & { hand: Tile[] }): Player {
   return {

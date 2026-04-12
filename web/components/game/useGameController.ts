@@ -10,7 +10,8 @@ import { initializeGame, applyAction } from '@/engine/turnManager';
 import { getAvailableClaims, getBestClaimSubmission } from '@/engine/claiming';
 import { isWinningHand } from '@/engine/winDetection';
 import { calculateScore } from '@/engine/scoring';
-import { AvailableClaim, ScoringContext, ScoringResult } from '@/engine/types';
+import { AvailableClaim, ScoringContext, ScoringResult, WinMethod, TileClassification } from '@/engine/types';
+import { calculatePayment } from '@/engine/scoring';
 import { getAIDecision, getAIClaimDecision } from '@/engine/ai';
 import { getTutorAdvice } from '@/engine/tutor';
 import soundManager from '@/lib/soundManager';
@@ -37,6 +38,7 @@ export interface GameController {
   selectedTileId: string | undefined;
   suggestedTileId: string | undefined;
   tutorAdvice: TutorAdvice | null;
+  tileClassifications: Map<string, 'green' | 'orange' | 'red'>;
   claimOptions: AvailableClaim[];
   claimTimer: number;
   isGameOver: boolean;
@@ -63,6 +65,7 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
   const [claimOptions, setClaimOptions] = useState<AvailableClaim[]>([]);
   const [claimTimer, setClaimTimer] = useState(0);
   const [scoringResult, setScoringResult] = useState<ScoringResult | null>(null);
+  const [tileClassifications, setTileClassifications] = useState<Map<string, 'green' | 'orange' | 'red'>>(new Map());
   const gameRef = useRef<GameState | null>(null);
   const processingRef = useRef(false);
   // Keep ref in sync
@@ -246,9 +249,20 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
       const advice = getTutorAdvice(game, humanIndex, claimOptions);
       setTutorAdvice(advice);
       setSuggestedTileId(advice?.suggestedTileId);
+      // Build tile classification map for teacher overlay
+      if (advice?.tileClassifications) {
+        const map = new Map<string, 'green' | 'orange' | 'red'>();
+        for (const tc of advice.tileClassifications) {
+          if (tc.color !== 'neutral') map.set(tc.tileId, tc.color);
+        }
+        setTileClassifications(map);
+      } else {
+        setTileClassifications(new Map());
+      }
     } else {
       setTutorAdvice(null);
       setSuggestedTileId(undefined);
+      setTileClassifications(new Map());
     }
   }, [game?.turnPhase, game?.currentPlayerIndex, game?.phase, claimOptions, difficulty, humanIndex]);
 
@@ -396,15 +410,34 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
     soundManager.play('win');
 
     try {
+      const isSelfDrawn = game.isSelfDrawn ?? false;
+      let winMethod: WinMethod = isSelfDrawn ? 'selfDraw' : 'discard';
+      if (game.wall.length === 0) {
+        winMethod = isSelfDrawn ? 'lastTileDraw' : 'lastTileClaim';
+      }
+
+      const winnerIndex = game.players.findIndex(p => p.id === game.winnerId);
+      const discarderIndex = game.lastDiscardedBy
+        ? game.players.findIndex(p => p.id === game.lastDiscardedBy)
+        : undefined;
+
       const context: ScoringContext = {
         winningTile: game.winningTile,
-        isSelfDrawn: game.isSelfDrawn ?? false,
+        isSelfDrawn,
         seatWind: winner.seatWind,
         prevailingWind: game.prevailingWind,
         isConcealed: winner.melds.filter(m => !m.isConcealed).length === 0,
         flowers: winner.flowers,
+        winMethod,
+        isDealer: winner.isDealer,
+        discarderIndex: !isSelfDrawn ? discarderIndex : undefined,
       };
       const result = calculateScore(winner.hand, winner.melds, context);
+      result.payment = calculatePayment(
+        result, winnerIndex,
+        !isSelfDrawn ? discarderIndex : undefined,
+        isSelfDrawn,
+      );
       setScoringResult(result);
     } catch {
       // Scoring may fail on edge cases
@@ -412,8 +445,8 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
   }, [game?.phase, game?.winnerId]);
 
   return {
-    game, selectedTileId, suggestedTileId, tutorAdvice, claimOptions, claimTimer,
-    isGameOver, scoringResult,
+    game, selectedTileId, suggestedTileId, tutorAdvice, tileClassifications,
+    claimOptions, claimTimer, isGameOver, scoringResult,
     selectTile, discardSelected, declareKong, declareWin,
     submitClaim, claimBest, pass, startNewGame,
     canDeclareKong, canDeclareWin,

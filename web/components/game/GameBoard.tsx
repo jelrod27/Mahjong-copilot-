@@ -18,6 +18,7 @@ interface GameBoardProps {
   selectedTileId?: string;
   suggestedTileId?: string;
   tutorAdvice?: TutorAdvice | null;
+  tileClassifications?: Map<string, 'green' | 'orange' | 'red'>;
   onTileSelect: (tile: Tile) => void;
   onDiscard: () => void;
   onKong: () => void;
@@ -33,6 +34,7 @@ interface GameBoardProps {
 
 export default function GameBoard({
   gameState, humanPlayerId, selectedTileId, suggestedTileId, tutorAdvice,
+  tileClassifications,
   onTileSelect, onDiscard, onKong, onWin, onClaimBest, onPass,
   canDeclareKong: canKongProp, canDeclareWin: canWinProp,
   hasClaimOptions: hasClaimsProp, claimOptions = [], claimTimer,
@@ -176,6 +178,20 @@ export default function GameBoard({
           </div>
         </div>
 
+        {/* Tenpai badge */}
+        {tutorAdvice?.isTenpai && (
+          <div className="text-center">
+            <span className="font-pixel text-xs text-retro-green retro-glow animate-pulse">
+              TENPAI — ONE TILE AWAY
+            </span>
+            {tutorAdvice.tenpaiWaits && tutorAdvice.tenpaiWaits.length > 0 && (
+              <span className="font-retro text-xs text-retro-cyan ml-2">
+                Waiting: {tutorAdvice.tenpaiWaits.join(', ')}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Player hand */}
         <div className="flex justify-center">
           <PlayerHand
@@ -185,6 +201,7 @@ export default function GameBoard({
             onTileSelect={onTileSelect}
             lastDrawnTileId={gameState.lastDrawnTile?.id}
             disabled={!isHumanTurn || gameState.turnPhase !== 'discard'}
+            tileClassifications={tileClassifications}
           />
         </div>
 

@@ -10,15 +10,18 @@ interface PlayerHandProps {
   onTileSelect: (tile: Tile) => void;
   lastDrawnTileId?: string;
   disabled?: boolean;
+  tileClassifications?: Map<string, 'green' | 'orange' | 'red'>;
 }
 
 export default function PlayerHand({
-  tiles, selectedTileId, suggestedTileId, onTileSelect, lastDrawnTileId, disabled = false,
+  tiles, selectedTileId, suggestedTileId, onTileSelect, lastDrawnTileId,
+  disabled = false, tileClassifications,
 }: PlayerHandProps) {
   return (
     <div className="flex items-end justify-center gap-0.5 flex-wrap">
-      {tiles.map((tile, i) => {
+      {tiles.map((tile) => {
         const isLastDrawn = tile.id === lastDrawnTileId;
+        const tutorColor = tileClassifications?.get(tile.id);
         return (
           <div
             key={tile.id}
@@ -33,6 +36,7 @@ export default function PlayerHand({
               isNewlyDrawn={isLastDrawn}
               onClick={() => onTileSelect(tile)}
               disabled={disabled}
+              tutorColor={tutorColor}
             />
           </div>
         );

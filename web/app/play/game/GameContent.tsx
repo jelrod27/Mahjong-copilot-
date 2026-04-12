@@ -3,6 +3,7 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import useGameController from '@/components/game/useGameController';
 import GameBoard from '@/components/game/GameBoard';
+import GameErrorBoundary from '@/components/game/GameErrorBoundary';
 import HandResultScreen from '@/components/game/HandResultScreen';
 import MatchOverScreen from '@/components/game/MatchOverScreen';
 import { GameMode } from '@/models/MatchState';
@@ -26,7 +27,7 @@ export default function GameContent() {
   }
 
   return (
-    <>
+    <GameErrorBoundary>
       <GameBoard
         gameState={controller.game}
         match={controller.match}
@@ -68,6 +69,6 @@ export default function GameContent() {
           onBackToMenu={() => router.push('/play')}
         />
       )}
-    </>
+    </GameErrorBoundary>
   );
 }

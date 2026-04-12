@@ -3,11 +3,20 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import useGameRoom from '@/hooks/useGameRoom';
+import GameErrorBoundary from '@/components/game/GameErrorBoundary';
 import { GameMode } from '@/models/MatchState';
 
 const WIND_LABELS = ['East', 'South', 'West', 'North'];
 
 export default function LobbyPage() {
+  return (
+    <GameErrorBoundary>
+      <LobbyContent />
+    </GameErrorBoundary>
+  );
+}
+
+function LobbyContent() {
   const router = useRouter();
   const {
     room,
@@ -21,6 +30,7 @@ export default function LobbyPage() {
     setReady,
     startGame,
     fillWithAI,
+    retry,
   } = useGameRoom();
 
   // ── Local state ─────────────────────────────────────────────────────
@@ -107,8 +117,11 @@ export default function LobbyPage() {
         </div>
 
         {error && (
-          <div className="mt-4 retro-panel p-3 border-red-500 text-red-400 font-retro text-sm max-w-xs text-center">
-            {error}
+          <div className="mt-4 retro-panel p-3 border-red-500 text-red-400 font-retro text-sm max-w-xs text-center space-y-2">
+            <p>{error}</p>
+            <button onClick={retry} className="retro-btn font-pixel text-xs px-4 py-1">
+              RETRY
+            </button>
           </div>
         )}
       </div>
@@ -184,8 +197,11 @@ export default function LobbyPage() {
         </div>
 
         {error && (
-          <div className="mt-4 retro-panel p-3 border-red-500 text-red-400 font-retro text-sm max-w-xs text-center">
-            {error}
+          <div className="mt-4 retro-panel p-3 border-red-500 text-red-400 font-retro text-sm max-w-xs text-center space-y-2">
+            <p>{error}</p>
+            <button onClick={retry} className="retro-btn font-pixel text-xs px-4 py-1">
+              RETRY
+            </button>
           </div>
         )}
       </div>
@@ -246,8 +262,11 @@ export default function LobbyPage() {
         </div>
 
         {error && (
-          <div className="mt-4 retro-panel p-3 border-red-500 text-red-400 font-retro text-sm max-w-xs text-center">
-            {error}
+          <div className="mt-4 retro-panel p-3 border-red-500 text-red-400 font-retro text-sm max-w-xs text-center space-y-2">
+            <p>{error}</p>
+            <button onClick={retry} className="retro-btn font-pixel text-xs px-4 py-1">
+              RETRY
+            </button>
           </div>
         )}
       </div>
@@ -371,8 +390,11 @@ export default function LobbyPage() {
       </div>
 
       {error && (
-        <div className="mt-4 retro-panel p-3 border-red-500 text-red-400 font-retro text-sm max-w-sm text-center">
-          {error}
+        <div className="mt-4 retro-panel p-3 border-red-500 text-red-400 font-retro text-sm max-w-sm text-center space-y-2">
+          <p>{error}</p>
+          <button onClick={retry} className="retro-btn font-pixel text-xs px-4 py-1">
+            RETRY
+          </button>
         </div>
       )}
     </div>

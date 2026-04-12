@@ -12,7 +12,7 @@ import {
 const initialState: SettingsState = {
   selectedVariant: 'Hong Kong Mahjong',
   locale: 'en',
-  themeMode: 'light',
+  themeMode: 'retro',
   soundEnabled: true,
   notificationsEnabled: true,
   largerUiText: false,

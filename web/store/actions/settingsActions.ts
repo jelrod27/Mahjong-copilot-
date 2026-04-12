@@ -4,7 +4,7 @@ import { AppConstants } from '@/constants/appConstants';
 export interface SettingsState {
   selectedVariant: string;
   locale: string;
-  themeMode: 'light' | 'dark';
+  themeMode: 'retro' | 'light' | 'dark';
   soundEnabled: boolean;
   notificationsEnabled: boolean;
   /** Larger UI text for readability (bottom nav labels, micro copy). */
@@ -23,7 +23,7 @@ export const initializeSettings = () => async (dispatch: any) => {
   try {
     const selectedVariant = await StorageService.getString(AppConstants.SELECTED_VARIANT_KEY) || AppConstants.VARIANTS[0];
     const themeModeString = await StorageService.getString(AppConstants.THEME_MODE_KEY) || 'light';
-    const themeMode = themeModeString === 'dark' ? 'dark' : 'light';
+    const themeMode = themeModeString === 'dark' ? 'dark' : themeModeString === 'light' ? 'light' : 'retro';
     const soundEnabled = await StorageService.getBool(AppConstants.SOUND_ENABLED_KEY) ?? true;
     const languageCode = await StorageService.getString(AppConstants.LANGUAGE_KEY) || 'en';
     const largerUiText = await StorageService.getBool(AppConstants.LARGER_UI_TEXT_KEY) ?? false;
@@ -54,7 +54,7 @@ export const setLocale = (locale: string) => async (dispatch: any) => {
   dispatch({ type: SETTINGS_SET_LOCALE, payload: locale });
 };
 
-export const setThemeMode = (mode: 'light' | 'dark') => async (dispatch: any) => {
+export const setThemeMode = (mode: 'retro' | 'light' | 'dark') => async (dispatch: any) => {
   await StorageService.setString(AppConstants.THEME_MODE_KEY, mode);
   dispatch({ type: SETTINGS_SET_THEME_MODE, payload: mode });
 };

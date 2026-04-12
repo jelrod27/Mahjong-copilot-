@@ -43,14 +43,18 @@ const DEFAULT_STATS: GameStats = {
   lastPlayedAt: null,
 };
 
+function cloneDefaults(): GameStats {
+  return JSON.parse(JSON.stringify(DEFAULT_STATS));
+}
+
 export function loadStats(): GameStats {
-  if (typeof window === 'undefined') return { ...DEFAULT_STATS };
+  if (typeof window === 'undefined') return cloneDefaults();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_STATS };
+    if (!raw) return cloneDefaults();
     const parsed = JSON.parse(raw);
     // Merge with defaults to handle missing fields from older versions
-    return { ...DEFAULT_STATS, ...parsed };
+    return { ...cloneDefaults(), ...parsed };
   } catch {
     return { ...DEFAULT_STATS };
   }

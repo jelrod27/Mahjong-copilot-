@@ -37,6 +37,7 @@ export interface UseGameRoom {
   setReady: (ready: boolean) => Promise<void>;
   startGame: () => Promise<void>;
   fillWithAI: () => Promise<void>;
+  retry: () => Promise<void>;
 }
 
 // ── Hook ────────────────────────────────────────────────────────────────
@@ -86,13 +87,21 @@ export default function useGameRoom(): UseGameRoom {
 
   const refreshPlayers = useCallback(async (roomId: string) => {
     if (!isSupabaseConfigured()) return;
-    const supabase = getSupabase();
-    const { data } = await supabase
-      .from('room_players')
-      .select('*')
-      .eq('room_id', roomId)
-      .order('seat_index');
-    if (data) setPlayers(data as RoomPlayer[]);
+    try {
+      const supabase = getSupabase();
+      const { data, error: fetchErr } = await supabase
+        .from('room_players')
+        .select('*')
+        .eq('room_id', roomId)
+        .order('seat_index');
+      if (fetchErr) {
+        setError(`Failed to load players: ${fetchErr.message}`);
+        return;
+      }
+      if (data) setPlayers(data as RoomPlayer[]);
+    } catch {
+      setError('Network error while loading players. Please try again.');
+    }
   }, []);
 
   // ── Cleanup on unmount ──────────────────────────────────────────────
@@ -258,39 +267,56 @@ export default function useGameRoom(): UseGameRoom {
 
   const leaveRoom = useCallback(async () => {
     if (!room || !isSupabaseConfigured()) return;
-    const supabase = getSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const supabase = getSupabase();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    await supabase
-      .from('room_players')
-      .delete()
-      .eq('room_id', room.id)
-      .eq('user_id', user.id);
+      const { error: delErr } = await supabase
+        .from('room_players')
+        .delete()
+        .eq('room_id', room.id)
+        .eq('user_id', user.id);
 
-    if (roomChannelRef.current) {
-      supabase.removeChannel(roomChannelRef.current);
-      roomChannelRef.current = null;
+      if (delErr) {
+        setError(`Failed to leave room: ${delErr.message}`);
+        return;
+      }
+
+      if (roomChannelRef.current) {
+        supabase.removeChannel(roomChannelRef.current);
+        roomChannelRef.current = null;
+      }
+
+      setRoom(null);
+      setPlayers([]);
+      setIsHost(false);
+    } catch {
+      setError('Network error while leaving room. Please try again.');
     }
-
-    setRoom(null);
-    setPlayers([]);
-    setIsHost(false);
   }, [room]);
 
   // ── Set ready ───────────────────────────────────────────────────────
 
   const setReady = useCallback(async (ready: boolean) => {
     if (!room || !isSupabaseConfigured()) return;
-    const supabase = getSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const supabase = getSupabase();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    await supabase
-      .from('room_players')
-      .update({ is_ready: ready })
-      .eq('room_id', room.id)
-      .eq('user_id', user.id);
+      const { error: updateErr } = await supabase
+        .from('room_players')
+        .update({ is_ready: ready })
+        .eq('room_id', room.id)
+        .eq('user_id', user.id);
+
+      if (updateErr) {
+        setError(`Failed to update ready status: ${updateErr.message}`);
+      }
+    } catch {
+      setError('Network error while updating ready status. Please try again.');
+    }
   }, [room]);
 
   // ── Start game (host only) ─────────────────────────────────────────
@@ -299,46 +325,72 @@ export default function useGameRoom(): UseGameRoom {
     if (!room || !isHost || !isSupabaseConfigured()) return;
     setError(null);
 
-    const supabase = getSupabase();
+    try {
+      const supabase = getSupabase();
 
-    // Verify all human players are ready
-    const humanPlayers = players.filter(p => !p.user_id.startsWith('ai-'));
-    const allReady = humanPlayers.every(p => p.is_ready);
-    if (!allReady) {
-      setError('All players must be ready before starting.');
-      return;
+      // Verify all human players are ready
+      const humanPlayers = players.filter(p => !p.user_id.startsWith('ai-'));
+      const allReady = humanPlayers.every(p => p.is_ready);
+      if (!allReady) {
+        setError('All players must be ready before starting.');
+        return;
+      }
+
+      // Update room status
+      const { error: updateErr } = await supabase
+        .from('game_rooms')
+        .update({ status: 'playing', updated_at: new Date().toISOString() })
+        .eq('id', room.id);
+
+      if (updateErr) {
+        setError(`Failed to start game: ${updateErr.message}`);
+      }
+    } catch {
+      setError('Network error while starting game. Please try again.');
     }
-
-    // Update room status
-    await supabase
-      .from('game_rooms')
-      .update({ status: 'playing', updated_at: new Date().toISOString() })
-      .eq('id', room.id);
   }, [room, isHost, players]);
 
   // ── Fill empty seats with AI ───────────────────────────────────────
 
   const fillWithAI = useCallback(async () => {
     if (!room || !isHost || !isSupabaseConfigured()) return;
-    const supabase = getSupabase();
+    try {
+      const supabase = getSupabase();
 
-    const takenSeats = new Set(players.map(p => p.seat_index));
-    const aiNames = ['AI East', 'AI South', 'AI West', 'AI North'];
+      const takenSeats = new Set(players.map(p => p.seat_index));
+      const aiNames = ['AI East', 'AI South', 'AI West', 'AI North'];
 
-    for (let seat = 0; seat < room.max_players; seat++) {
-      if (takenSeats.has(seat)) continue;
+      for (let seat = 0; seat < room.max_players; seat++) {
+        if (takenSeats.has(seat)) continue;
 
-      await supabase.from('room_players').insert({
-        room_id: room.id,
-        user_id: `ai-${seat}-${room.id}`, // synthetic ID for AI
-        display_name: aiNames[seat] || `AI ${seat + 1}`,
-        seat_index: seat,
-        is_ready: true,
-      });
+        const { error: insertErr } = await supabase.from('room_players').insert({
+          room_id: room.id,
+          user_id: `ai-${seat}-${room.id}`, // synthetic ID for AI
+          display_name: aiNames[seat] || `AI ${seat + 1}`,
+          seat_index: seat,
+          is_ready: true,
+        });
+
+        if (insertErr) {
+          setError(`Failed to add AI player: ${insertErr.message}`);
+          return;
+        }
+      }
+
+      await refreshPlayers(room.id);
+    } catch {
+      setError('Network error while adding AI players. Please try again.');
     }
-
-    await refreshPlayers(room.id);
   }, [room, isHost, players, refreshPlayers]);
+
+  // ── Retry (clear error + re-fetch room state) ─────────────────────
+
+  const retry = useCallback(async () => {
+    setError(null);
+    if (room) {
+      await refreshPlayers(room.id);
+    }
+  }, [room, refreshPlayers]);
 
   return {
     room,
@@ -352,5 +404,6 @@ export default function useGameRoom(): UseGameRoom {
     setReady,
     startGame,
     fillWithAI,
+    retry,
   };
 }

@@ -3,14 +3,17 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import useGameController from '@/components/game/useGameController';
 import GameBoard from '@/components/game/GameBoard';
-import GameOverScreen from '@/components/game/GameOverScreen';
+import HandResultScreen from '@/components/game/HandResultScreen';
+import MatchOverScreen from '@/components/game/MatchOverScreen';
+import { GameMode } from '@/models/MatchState';
 
 export default function GameContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const difficulty = (searchParams.get('difficulty') || 'easy') as 'easy' | 'medium' | 'hard';
+  const mode = (searchParams.get('mode') || 'quick') as GameMode;
 
-  const controller = useGameController(difficulty);
+  const controller = useGameController(difficulty, mode);
 
   if (!controller.game) {
     return (
@@ -26,10 +29,12 @@ export default function GameContent() {
     <>
       <GameBoard
         gameState={controller.game}
+        match={controller.match}
         humanPlayerId="human-player"
         selectedTileId={controller.selectedTileId}
         suggestedTileId={controller.suggestedTileId}
         tutorAdvice={controller.tutorAdvice}
+        tenpaiStatus={controller.tenpaiStatus}
         tileClassifications={controller.tileClassifications}
         onTileSelect={controller.selectTile}
         onDiscard={controller.discardSelected}
@@ -45,11 +50,21 @@ export default function GameContent() {
         claimTimer={controller.claimTimer}
       />
 
-      {controller.isGameOver && (
-        <GameOverScreen
+      {/* Between hands — show hand result */}
+      {controller.match?.phase === 'betweenHands' && controller.isGameOver && (
+        <HandResultScreen
           gameState={controller.game}
+          match={controller.match}
           scoringResult={controller.scoringResult}
-          onPlayAgain={() => controller.startNewGame(difficulty)}
+          onContinue={controller.continueToNextHand}
+        />
+      )}
+
+      {/* Match over — show final standings */}
+      {controller.isMatchOver && controller.match && (
+        <MatchOverScreen
+          match={controller.match}
+          onPlayAgain={() => controller.startNewGame(difficulty, mode)}
           onBackToMenu={() => router.push('/play')}
         />
       )}

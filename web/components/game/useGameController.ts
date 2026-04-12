@@ -5,8 +5,10 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, GamePhase, ClaimType } from '@/models/GameState';
-import { Tile, TileType, tilesMatch } from '@/models/Tile';
+import { MatchState, GameMode } from '@/models/MatchState';
+import { Tile, TileType, TileFactory, tilesMatch } from '@/models/Tile';
 import { initializeGame, applyAction } from '@/engine/turnManager';
+import { initializeMatch, advanceMatch, startNextHand } from '@/engine/matchManager';
 import { getAvailableClaims, getBestClaimSubmission } from '@/engine/claiming';
 import { isWinningHand } from '@/engine/winDetection';
 import { calculateScore } from '@/engine/scoring';
@@ -26,6 +28,7 @@ const DELAYS = {
 };
 
 const CLAIM_TIMEOUT = 10000;
+const DEBOUNCE_MS = 200;
 
 export interface TutorAdvice {
   message: string;
@@ -33,15 +36,23 @@ export interface TutorAdvice {
   suggestedTileId?: string;
 }
 
+export interface TenpaiStatus {
+  isTenpai: boolean;
+  waits: string[];
+}
+
 export interface GameController {
   game: GameState | null;
+  match: MatchState | null;
   selectedTileId: string | undefined;
   suggestedTileId: string | undefined;
   tutorAdvice: TutorAdvice | null;
+  tenpaiStatus: TenpaiStatus | null;
   tileClassifications: Map<string, 'green' | 'orange' | 'red'>;
   claimOptions: AvailableClaim[];
   claimTimer: number;
   isGameOver: boolean;
+  isMatchOver: boolean;
   scoringResult: ScoringResult | null;
   selectTile: (tile: Tile) => void;
   discardSelected: () => void;
@@ -53,59 +64,95 @@ export interface GameController {
   /** Recomputes best claim from live game state (avoids stale tile refs), then submits. */
   claimBest: () => void;
   pass: () => void;
-  startNewGame: (difficulty: 'easy' | 'medium' | 'hard') => void;
+  startNewGame: (difficulty: 'easy' | 'medium' | 'hard', mode?: GameMode) => void;
+  continueToNextHand: () => void;
   canDeclareKong: boolean;
   canDeclareWin: boolean;
 }
 
-export default function useGameController(initialDifficulty: 'easy' | 'medium' | 'hard'): GameController {
+export default function useGameController(
+  initialDifficulty: 'easy' | 'medium' | 'hard',
+  initialMode: GameMode = 'quick',
+): GameController {
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>(initialDifficulty);
+  const [mode, setMode] = useState<GameMode>(initialMode);
   const [game, setGame] = useState<GameState | null>(null);
+  const [match, setMatch] = useState<MatchState | null>(null);
   const [selectedTileId, setSelectedTileId] = useState<string | undefined>();
   const [suggestedTileId, setSuggestedTileId] = useState<string | undefined>();
   const [tutorAdvice, setTutorAdvice] = useState<TutorAdvice | null>(null);
+  const [tenpaiStatus, setTenpaiStatus] = useState<TenpaiStatus | null>(null);
   const [claimOptions, setClaimOptions] = useState<AvailableClaim[]>([]);
   const [claimTimer, setClaimTimer] = useState(0);
   const [scoringResult, setScoringResult] = useState<ScoringResult | null>(null);
   const [tileClassifications, setTileClassifications] = useState<Map<string, 'green' | 'orange' | 'red'>>(new Map());
   const gameRef = useRef<GameState | null>(null);
+  const matchRef = useRef<MatchState | null>(null);
   const processingRef = useRef(false);
-  // Keep ref in sync
+  const lastActionTimeRef = useRef(0);
+  // Keep refs in sync
   useEffect(() => { gameRef.current = game; }, [game]);
+  useEffect(() => { matchRef.current = match; }, [match]);
 
-  const startNewGame = useCallback((newDifficulty: 'easy' | 'medium' | 'hard') => {
-    setDifficulty(newDifficulty);
-    const state = initializeGame({
-      playerNames: ['You', 'West AI', 'North AI', 'East AI'],
-      aiPlayers: [
-        { index: 1, difficulty: newDifficulty },
-        { index: 2, difficulty: newDifficulty },
-        { index: 3, difficulty: newDifficulty },
-      ],
-      humanPlayerId: HUMAN_ID,
-    });
-    setGame(state);
+  const resetHandState = useCallback(() => {
     setSelectedTileId(undefined);
     setSuggestedTileId(undefined);
     setTutorAdvice(null);
+    setTenpaiStatus(null);
     setClaimOptions([]);
     setClaimTimer(0);
     setScoringResult(null);
+    setTileClassifications(new Map());
     processingRef.current = false;
   }, []);
 
+  const startNewGame = useCallback((newDifficulty: 'easy' | 'medium' | 'hard', newMode?: GameMode) => {
+    setDifficulty(newDifficulty);
+    const gameMode = newMode ?? mode;
+    setMode(gameMode);
+
+    const newMatch = initializeMatch({
+      mode: gameMode,
+      difficulty: newDifficulty,
+      playerNames: ['You', 'West AI', 'North AI', 'East AI'],
+      humanPlayerId: HUMAN_ID,
+    });
+
+    setMatch(newMatch);
+    setGame(newMatch.currentHand);
+    resetHandState();
+  }, [mode, resetHandState]);
+
   // Initialize game on mount
   useEffect(() => {
-    startNewGame(initialDifficulty);
-  }, [initialDifficulty, startNewGame]);
+    startNewGame(initialDifficulty, initialMode);
+  }, [initialDifficulty, initialMode]);
+
+  const continueToNextHand = useCallback(() => {
+    const currentMatch = matchRef.current;
+    if (!currentMatch || currentMatch.phase !== 'betweenHands') return;
+
+    const nextMatch = startNextHand(currentMatch);
+    setMatch(nextMatch);
+    setGame(nextMatch.currentHand);
+    resetHandState();
+  }, [resetHandState]);
 
   const currentDelays = DELAYS[difficulty];
   const humanIndex = game?.players.findIndex(p => p.id === HUMAN_ID) ?? 0;
   const isHumanTurn = game?.currentPlayerIndex === humanIndex;
   const isGameOver = game?.phase === GamePhase.FINISHED;
+  const isMatchOver = match?.phase === 'finished';
 
-  // Apply an action and update state
+  // Apply an action and update state (with rapid-click debouncing for human)
   const doAction = useCallback((playerId: string, action: any): GameState | null => {
+    // Debounce human actions
+    if (playerId === HUMAN_ID) {
+      const now = Date.now();
+      if (now - lastActionTimeRef.current < DEBOUNCE_MS) return null;
+      lastActionTimeRef.current = now;
+    }
+
     const current = gameRef.current;
     if (!current || current.phase !== GamePhase.PLAYING) return null;
     const next = applyAction(current, playerId, action);
@@ -135,8 +182,9 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
   const declareKong = useCallback(() => {
     const current = gameRef.current;
     if (!current || current.turnPhase !== 'discard' || current.currentPlayerIndex !== humanIndex) return;
-    // Find a tile the player has 4 of
     const hand = current.players[humanIndex].hand;
+
+    // Check concealed kong (4 of a kind in hand)
     const counts = new Map<string, Tile[]>();
     for (const t of hand) {
       const key = `${t.suit}_${t.number ?? t.wind ?? t.dragon}`;
@@ -149,6 +197,18 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
       if (tiles.length === 4) {
         doAction(HUMAN_ID, { type: 'DECLARE_KONG', tile: tiles[0] });
         return;
+      }
+    }
+
+    // Check add-to-pung (1 matching tile in hand + existing exposed pung)
+    const melds = current.players[humanIndex].melds;
+    for (const meld of melds) {
+      if (meld.type === 'pung') {
+        const match = hand.find(t => tilesMatch(t, meld.tiles[0]));
+        if (match) {
+          doAction(HUMAN_ID, { type: 'DECLARE_KONG', tile: match });
+          return;
+        }
       }
     }
   }, [humanIndex, doAction]);
@@ -279,6 +339,45 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
     }
   }, [game?.turnPhase, game?.currentPlayerIndex, game?.phase, claimOptions, difficulty, humanIndex]);
 
+  // === Persistent tenpai badge (easy mode, all phases) ===
+  useEffect(() => {
+    if (difficulty !== 'easy' || !game || game.phase !== GamePhase.PLAYING) {
+      setTenpaiStatus(null);
+      return;
+    }
+
+    const humanPlayer = game.players[humanIndex];
+    if (!humanPlayer) { setTenpaiStatus(null); return; }
+
+    // Quick shanten check: compute if hand is tenpai
+    // We check if removing any one tile makes the rest a winning hand
+    const hand = humanPlayer.hand;
+    const waits: string[] = [];
+    // A hand is tenpai if it's one tile away from winning
+    // For efficiency, just check if the hand is already winning (0 shanten)
+    if (isWinningHand(hand)) {
+      setTenpaiStatus({ isTenpai: true, waits: ['Already winning!'] });
+      return;
+    }
+
+    // Check which tiles, when added, make a winning hand
+    // Use a set of tile keys we've already tested to avoid duplicates
+    const tested = new Set<string>();
+    const allTiles: Tile[] = TileFactory.getAllTiles();
+
+    for (const tile of allTiles) {
+      const key = `${tile.suit}_${tile.number ?? tile.wind ?? tile.dragon}`;
+      if (tested.has(key)) continue;
+      tested.add(key);
+
+      if (isWinningHand([...hand, tile])) {
+        waits.push(tile.nameEnglish);
+      }
+    }
+
+    setTenpaiStatus(waits.length > 0 ? { isTenpai: true, waits } : null);
+  }, [game?.players, game?.phase, difficulty, humanIndex]);
+
   // === Auto-draw for human ===
   useEffect(() => {
     if (!game || game.phase !== GamePhase.PLAYING) return;
@@ -289,6 +388,27 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
       doAction(HUMAN_ID, { type: 'DRAW' });
       soundManager.play('tileDraw');
     }, 300);
+    return () => clearTimeout(timer);
+  }, [game?.turnPhase, game?.currentPlayerIndex, game?.phase, humanIndex, doAction]);
+
+  // === Discard timeout — auto-discard if human takes too long ===
+  useEffect(() => {
+    if (!game || game.phase !== GamePhase.PLAYING) return;
+    if (game.turnPhase !== 'discard' || game.currentPlayerIndex !== humanIndex) return;
+
+    const timer = setTimeout(() => {
+      const current = gameRef.current;
+      if (!current || current.turnPhase !== 'discard' || current.currentPlayerIndex !== humanIndex) return;
+      const hand = current.players[humanIndex].hand;
+      // Auto-discard last drawn tile, or last tile in hand
+      const autoTile = current.lastDrawnTile
+        ? hand.find(t => t.id === current.lastDrawnTile?.id)
+        : hand[hand.length - 1];
+      if (autoTile) {
+        doAction(HUMAN_ID, { type: 'DISCARD', tile: autoTile });
+        setSelectedTileId(undefined);
+      }
+    }, (game.turnTimeLimit ?? 20) * 1000);
     return () => clearTimeout(timer);
   }, [game?.turnPhase, game?.currentPlayerIndex, game?.phase, humanIndex, doAction]);
 
@@ -427,55 +547,72 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
     return () => clearInterval(interval);
   }, [claimTimer > 0, claimOptions.length, pass]);
 
-  // === Scoring on game over ===
+  // === Scoring on hand over ===
   useEffect(() => {
-    if (!game || game.phase !== GamePhase.FINISHED || !game.winnerId) return;
+    if (!game || game.phase !== GamePhase.FINISHED) return;
 
-    const winner = game.players.find(p => p.id === game.winnerId);
-    if (!winner || !game.winningTile) return;
+    const currentMatch = matchRef.current;
+    if (!currentMatch || currentMatch.phase !== 'playing') return;
 
-    soundManager.play('win');
+    let result: ScoringResult | null = null;
 
-    try {
-      const isSelfDrawn = game.isSelfDrawn ?? false;
-      let winMethod: WinMethod = isSelfDrawn ? 'selfDraw' : 'discard';
-      if (game.wall.length === 0) {
-        winMethod = isSelfDrawn ? 'lastTileDraw' : 'lastTileClaim';
+    if (game.winnerId) {
+      const winner = game.players.find(p => p.id === game.winnerId);
+      if (winner && game.winningTile) {
+        soundManager.play('win');
+
+        try {
+          const isSelfDrawn = game.isSelfDrawn ?? false;
+          let winMethod: WinMethod = isSelfDrawn ? 'selfDraw' : 'discard';
+          if (game.isRobKongOpportunity && !isSelfDrawn) {
+            winMethod = 'robKong';
+          } else if (game.isKongReplacement && isSelfDrawn) {
+            winMethod = 'kongReplacement';
+          } else if (game.wall.length === 0) {
+            winMethod = isSelfDrawn ? 'lastTileDraw' : 'lastTileClaim';
+          }
+
+          const winnerIndex = game.players.findIndex(p => p.id === game.winnerId);
+          const discarderIndex = game.lastDiscardedBy
+            ? game.players.findIndex(p => p.id === game.lastDiscardedBy)
+            : undefined;
+
+          const context: ScoringContext = {
+            winningTile: game.winningTile,
+            isSelfDrawn,
+            seatWind: winner.seatWind,
+            prevailingWind: game.prevailingWind,
+            isConcealed: winner.melds.filter(m => !m.isConcealed).length === 0,
+            flowers: winner.flowers,
+            winMethod,
+            isDealer: winner.isDealer,
+            discarderIndex: !isSelfDrawn ? discarderIndex : undefined,
+          };
+          result = calculateScore(winner.hand, winner.melds, context);
+          result.payment = calculatePayment(
+            result, winnerIndex,
+            !isSelfDrawn ? discarderIndex : undefined,
+            isSelfDrawn,
+          );
+        } catch {
+          // Scoring may fail on edge cases
+        }
       }
-
-      const winnerIndex = game.players.findIndex(p => p.id === game.winnerId);
-      const discarderIndex = game.lastDiscardedBy
-        ? game.players.findIndex(p => p.id === game.lastDiscardedBy)
-        : undefined;
-
-      const context: ScoringContext = {
-        winningTile: game.winningTile,
-        isSelfDrawn,
-        seatWind: winner.seatWind,
-        prevailingWind: game.prevailingWind,
-        isConcealed: winner.melds.filter(m => !m.isConcealed).length === 0,
-        flowers: winner.flowers,
-        winMethod,
-        isDealer: winner.isDealer,
-        discarderIndex: !isSelfDrawn ? discarderIndex : undefined,
-      };
-      const result = calculateScore(winner.hand, winner.melds, context);
-      result.payment = calculatePayment(
-        result, winnerIndex,
-        !isSelfDrawn ? discarderIndex : undefined,
-        isSelfDrawn,
-      );
-      setScoringResult(result);
-    } catch {
-      // Scoring may fail on edge cases
     }
+
+    setScoringResult(result);
+
+    // Advance the match
+    const advancedMatch = advanceMatch(currentMatch, game, result);
+    setMatch(advancedMatch);
+    matchRef.current = advancedMatch;
   }, [game?.phase, game?.winnerId]);
 
   return {
-    game, selectedTileId, suggestedTileId, tutorAdvice, tileClassifications,
-    claimOptions, claimTimer, isGameOver, scoringResult,
-    selectTile, discardSelected, declareKong, declareWin,
-    submitClaim, submitChow, claimBest, pass, startNewGame,
+    game, match, selectedTileId, suggestedTileId, tutorAdvice, tenpaiStatus,
+    tileClassifications, claimOptions, claimTimer, isGameOver, isMatchOver,
+    scoringResult, selectTile, discardSelected, declareKong, declareWin,
+    submitClaim, submitChow, claimBest, pass, startNewGame, continueToNextHand,
     canDeclareKong, canDeclareWin,
   };
 }

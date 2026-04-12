@@ -3,7 +3,7 @@
  * Pure functions — no framework deps.
  */
 
-import { Tile, TileType, tileKey } from '@/models/Tile';
+import { Tile, TileType, TileSuit, tileKey } from '@/models/Tile';
 import { GameState, MeldInfo } from '@/models/GameState';
 
 /**
@@ -119,6 +119,68 @@ export function tileDangerScore(
  * Categorize a tile for discard priority.
  * Lower = safer to discard (in general).
  */
+/**
+ * Detect if an opponent appears dangerous (likely close to winning).
+ * Checks exposed meld count, discard pattern, and late-game state.
+ */
+export function isOpponentDangerous(gameState: GameState, opponentIndex: number): boolean {
+  const opponent = gameState.players[opponentIndex];
+
+  // Many exposed melds = close to winning
+  const exposedMelds = opponent.melds.filter(m => !m.isConcealed).length;
+  if (exposedMelds >= 3) return true;
+
+  // Late game (wall running low) + any exposed melds
+  if (gameState.wall.length < 20 && exposedMelds >= 2) return true;
+
+  // Very few tiles in hand (after many melds) = close to winning
+  const handSize = opponent.hand.length; // we can see hand.length even if not tiles
+  if (handSize <= 4 && exposedMelds >= 2) return true;
+
+  return false;
+}
+
+/**
+ * Detect suit concentration in an opponent's discards.
+ * Returns suits the opponent appears to be collecting (not discarding).
+ */
+export function detectOpponentSuitFocus(
+  gameState: GameState,
+  opponentIndex: number,
+): Set<string> {
+  const opponent = gameState.players[opponentIndex];
+  const discards = gameState.playerDiscards[opponent.id] || [];
+  if (discards.length < 4) return new Set();
+
+  const suitDiscards = new Map<string, number>();
+  const totalSuitDiscards = discards.filter(t => t.type === TileType.SUIT).length;
+
+  for (const t of discards) {
+    if (t.type === TileType.SUIT) {
+      suitDiscards.set(t.suit, (suitDiscards.get(t.suit) || 0) + 1);
+    }
+  }
+
+  const focused = new Set<string>();
+  const suits = [TileSuit.BAMBOO, TileSuit.CHARACTER, TileSuit.DOT];
+  for (const suit of suits) {
+    const count = suitDiscards.get(suit) || 0;
+    // If they've discarded many tiles but almost none of this suit, they're collecting it
+    if (totalSuitDiscards >= 5 && count <= 1) {
+      focused.add(suit);
+    }
+  }
+
+  // Also check exposed melds for suit concentration
+  for (const meld of opponent.melds) {
+    if (meld.tiles[0].type === TileType.SUIT) {
+      focused.add(meld.tiles[0].suit);
+    }
+  }
+
+  return focused;
+}
+
 export function tileDiscardPriority(tile: Tile): number {
   // Honor tiles (winds/dragons) — generally safer early
   if (tile.type === TileType.HONOR) return 1;

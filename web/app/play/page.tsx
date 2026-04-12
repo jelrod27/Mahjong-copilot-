@@ -2,15 +2,17 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { GameMode } from '@/models/MatchState';
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 
 export default function PlayPage() {
   const router = useRouter();
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
+  const [mode, setMode] = useState<GameMode>('quick');
 
   const handleStart = () => {
-    router.push(`/play/game?difficulty=${difficulty}`);
+    router.push(`/play/game?difficulty=${difficulty}&mode=${mode}`);
   };
 
   return (
@@ -31,6 +33,37 @@ export default function PlayPage() {
         </div>
         <div className="font-retro text-retro-textDim text-lg">
           ╚════════════════════╝
+        </div>
+      </div>
+
+      {/* Game mode selector */}
+      <div className="retro-panel p-4 mb-4 w-full max-w-xs">
+        <div className="font-pixel text-xs text-retro-cyan mb-3 text-center">
+          GAME MODE
+        </div>
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => setMode('quick')}
+            className={`retro-btn text-center w-full text-left ${
+              mode === 'quick'
+                ? 'bg-retro-accent text-white border-retro-gold'
+                : 'bg-retro-bgLight'
+            }`}
+          >
+            <div>► QUICK GAME</div>
+            <div className="font-retro text-xs text-retro-textDim mt-0.5">East round only (~4 hands)</div>
+          </button>
+          <button
+            onClick={() => setMode('full')}
+            className={`retro-btn text-center w-full text-left ${
+              mode === 'full'
+                ? 'bg-retro-accent text-white border-retro-gold'
+                : 'bg-retro-bgLight'
+            }`}
+          >
+            <div>► FULL GAME</div>
+            <div className="font-retro text-xs text-retro-textDim mt-0.5">All 4 rounds (~16 hands)</div>
+          </button>
         </div>
       </div>
 

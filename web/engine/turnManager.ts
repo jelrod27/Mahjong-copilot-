@@ -24,6 +24,9 @@ export interface GameOptions {
   aiPlayers: { index: number; difficulty: 'easy' | 'medium' | 'hard' }[];
   humanPlayerId: string;
   turnTimeLimit?: number;
+  dealerIndex?: number;
+  seatWinds?: WindTile[];
+  prevailingWind?: WindTile;
 }
 
 /**
@@ -38,7 +41,8 @@ export function initializeGame(options: GameOptions): GameState {
     [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
   }
 
-  const winds: WindTile[] = [WindTile.EAST, WindTile.SOUTH, WindTile.WEST, WindTile.NORTH];
+  const dealerIndex = options.dealerIndex ?? 0;
+  const winds: WindTile[] = options.seatWinds ?? [WindTile.EAST, WindTile.SOUTH, WindTile.WEST, WindTile.NORTH];
 
   const players: Player[] = options.playerNames.map((name, i) => {
     const aiConfig = options.aiPlayers.find(a => a.index === i);
@@ -51,7 +55,7 @@ export function initializeGame(options: GameOptions): GameState {
       melds: [],
       score: 0,
       seatWind: winds[i],
-      isDealer: i === 0,
+      isDealer: i === dealerIndex,
       flowers: [],
     };
   });
@@ -76,12 +80,12 @@ export function initializeGame(options: GameOptions): GameState {
     phase: GamePhase.PLAYING,
     turnPhase: 'draw',
     players,
-    currentPlayerIndex: 0,
+    currentPlayerIndex: dealerIndex,
     wall,
     deadWall,
     discardPile: [],
     playerDiscards: Object.fromEntries(players.map(p => [p.id, []])),
-    prevailingWind: WindTile.EAST,
+    prevailingWind: options.prevailingWind ?? WindTile.EAST,
     pendingClaims: [],
     claimablePlayers: [],
     passedPlayers: [],
@@ -160,6 +164,7 @@ function handleDraw(state: GameState, playerIndex: number): GameState | null {
     lastDrawnTile: drawnTile,
     turnPhase: 'discard',
     turnStartedAt: new Date(),
+    isKongReplacement: undefined,
   };
 
   // Handle flower/season: reveal and draw replacement
@@ -317,6 +322,7 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
       [state.deadWall.length > 0 ? 'deadWall' : 'wall']: sourceWall.slice(1),
       lastDrawnTile: replacement,
       turnPhase: 'discard', // player must discard after kong
+      isKongReplacement: true,
     };
   }
 
@@ -351,6 +357,7 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
           passedPlayers: [],
           pendingClaims: [],
           currentPlayerIndex: (playerIndex + 1) % state.players.length,
+          isRobKongOpportunity: true,
         };
       }
 
@@ -384,6 +391,7 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
         [state.deadWall.length > 0 ? 'deadWall' : 'wall']: sourceWall.slice(1),
         lastDrawnTile: replacement,
         turnPhase: 'discard',
+        isKongReplacement: true,
       };
     }
   }
@@ -551,6 +559,7 @@ function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameSta
         [sourceWall]: (newState[sourceWall] as Tile[]).slice(1),
         lastDrawnTile: replacement,
         turnPhase: 'discard',
+        isKongReplacement: true,
       };
     }
   }

@@ -170,6 +170,25 @@ body {
   animation: slide-up 0.3s ease-out;
 }
 
+/* Discard pool tile arrival */
+@keyframes tile-arrive {
+  0% { opacity: 0; transform: scale(0.6) translateY(-8px); }
+  60% { opacity: 1; transform: scale(1.08); }
+  100% { transform: scale(1) translateY(0); }
+}
+.animate-tile-arrive {
+  animation: tile-arrive 0.28s ease-out;
+}
+
+/* Discard pool tile departure (claimed) */
+@keyframes tile-depart {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.5) translateY(-12px); }
+}
+.animate-tile-depart {
+  animation: tile-depart 0.22s ease-in forwards;
+}
+
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }

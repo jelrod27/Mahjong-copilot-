@@ -77,6 +77,8 @@ export interface GameState {
   winnerId?: string;
   winningTile?: Tile;
   isSelfDrawn?: boolean;
+  isRobKongOpportunity?: boolean;
+  isKongReplacement?: boolean;
   finalScores: Record<string, number>;
   createdAt: Date;
   finishedAt?: Date;
@@ -153,6 +155,8 @@ export const gameStateFromJson = (json: Record<string, any>): GameState => {
     winnerId: json.winnerId as string | undefined,
     winningTile: json.winningTile ? tileFromJson(json.winningTile) : undefined,
     isSelfDrawn: json.isSelfDrawn as boolean | undefined,
+    isRobKongOpportunity: json.isRobKongOpportunity as boolean | undefined,
+    isKongReplacement: json.isKongReplacement as boolean | undefined,
     finalScores: (json.finalScores as Record<string, number>) ?? {},
     createdAt: new Date(json.createdAt as string),
     finishedAt: json.finishedAt ? new Date(json.finishedAt as string) : undefined,

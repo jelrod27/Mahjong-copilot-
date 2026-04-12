@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { GameState } from '@/models/GameState';
+import { MatchState } from '@/models/MatchState';
 import type { AvailableClaim } from '@/engine/types';
 import type { Tile } from '@/models/Tile';
 import PlayerHand from './PlayerHand';
@@ -13,13 +14,16 @@ import ExposedMelds from './ExposedMelds';
 import TutorPanel from './TutorPanel';
 import GameToast from './GameToast';
 import { TutorAdvice } from '@/engine/types';
+import { TenpaiStatus } from './useGameController';
 
 interface GameBoardProps {
   gameState: GameState;
+  match?: MatchState | null;
   humanPlayerId: string;
   selectedTileId?: string;
   suggestedTileId?: string;
   tutorAdvice?: TutorAdvice | null;
+  tenpaiStatus?: TenpaiStatus | null;
   tileClassifications?: Map<string, 'green' | 'orange' | 'red'>;
   onTileSelect: (tile: Tile) => void;
   onDiscard: () => void;
@@ -36,8 +40,8 @@ interface GameBoardProps {
 }
 
 export default function GameBoard({
-  gameState, humanPlayerId, selectedTileId, suggestedTileId, tutorAdvice,
-  tileClassifications,
+  gameState, match, humanPlayerId, selectedTileId, suggestedTileId, tutorAdvice,
+  tenpaiStatus, tileClassifications,
   onTileSelect, onDiscard, onKong, onWin, onClaimBest, onSubmitChow, onPass,
   canDeclareKong: canKongProp, canDeclareWin: canWinProp,
   hasClaimOptions: hasClaimsProp, claimOptions = [], claimTimer,
@@ -114,6 +118,8 @@ export default function GameBoard({
             currentPlayerIndex={gameState.currentPlayerIndex}
             players={gameState.players}
             turnPhase={gameState.turnPhase}
+            handNumber={match?.handNumber}
+            playerScores={match?.playerScores}
           />
         </div>
 
@@ -223,15 +229,16 @@ export default function GameBoard({
           </div>
         </div>
 
-        {/* Tenpai badge */}
-        {tutorAdvice?.isTenpai && (
+        {/* Tenpai badge — persistent across all phases in easy mode */}
+        {tenpaiStatus?.isTenpai && (
           <div className="text-center">
             <span className="font-pixel text-xs text-retro-green retro-glow animate-pulse">
               TENPAI — ONE TILE AWAY
             </span>
-            {tutorAdvice.tenpaiWaits && tutorAdvice.tenpaiWaits.length > 0 && (
+            {tenpaiStatus.waits.length > 0 && tenpaiStatus.waits[0] !== 'Already winning!' && (
               <span className="font-retro text-xs text-retro-cyan ml-2">
-                Waiting: {tutorAdvice.tenpaiWaits.join(', ')}
+                Waiting: {tenpaiStatus.waits.slice(0, 5).join(', ')}
+                {tenpaiStatus.waits.length > 5 && ` +${tenpaiStatus.waits.length - 5} more`}
               </span>
             )}
           </div>

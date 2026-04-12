@@ -56,8 +56,8 @@ export default function HandResultScreen({
   const handNum = lastResult?.handNumber ?? match.handNumber;
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-40 flex items-center justify-center p-4">
-      <div className={`retro-panel p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto ${showContent ? 'animate-slide-up' : 'opacity-0'}`}>
+    <div className="fixed inset-0 bg-black/80 z-40 flex items-center justify-center p-2 md:p-4">
+      <div className={`retro-panel p-3 md:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto ${showContent ? 'animate-slide-up' : 'opacity-0'}`}>
         {/* Round + Hand header */}
         <div className="text-center mb-1">
           <span className="font-retro text-xs text-retro-textDim">
@@ -66,20 +66,20 @@ export default function HandResultScreen({
         </div>
 
         {/* Header */}
-        <div className="text-center mb-4">
-          <div className="font-retro text-retro-accent text-sm">
+        <div className="text-center mb-3 md:mb-4">
+          <div className="font-retro text-retro-accent text-xs md:text-sm">
             ╔════════════════════════╗
           </div>
           {isDraw ? (
-            <h2 className="font-pixel text-lg text-retro-gold retro-glow my-2">
+            <h2 className="font-pixel text-sm md:text-lg text-retro-gold retro-glow my-1 md:my-2">
               DRAW GAME
             </h2>
           ) : (
-            <h2 className="font-pixel text-lg text-retro-green retro-glow my-2">
+            <h2 className="font-pixel text-sm md:text-lg text-retro-green retro-glow my-1 md:my-2">
               {winner?.id === 'human-player' ? 'YOU WIN!' : `${winner?.name} WINS`}
             </h2>
           )}
-          <div className="font-retro text-retro-accent text-sm">
+          <div className="font-retro text-retro-accent text-xs md:text-sm">
             ╚════════════════════════╝
           </div>
         </div>

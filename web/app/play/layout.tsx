@@ -5,7 +5,7 @@ import BottomNav from '@/components/layout/BottomNav';
 
 export default function PlayLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isInGame = pathname.startsWith('/play/game');
+  const isInGame = pathname.startsWith('/play/game') || pathname.startsWith('/play/multiplayer');
 
   return (
     <>

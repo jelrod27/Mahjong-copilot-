@@ -16,28 +16,28 @@ export default function PlayPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center p-3 md:p-4">
       {/* Title */}
-      <div className="text-center mb-8">
-        <h1 className="font-pixel text-xl text-retro-accent retro-glow-strong mb-2">
+      <div className="text-center mb-4 md:mb-8">
+        <h1 className="font-pixel text-base md:text-xl text-retro-accent retro-glow-strong mb-1 md:mb-2">
           HONG KONG
         </h1>
-        <h1 className="font-pixel text-2xl text-retro-gold retro-glow-strong mb-4">
+        <h1 className="font-pixel text-xl md:text-2xl text-retro-gold retro-glow-strong mb-2 md:mb-4">
           MAHJONG
         </h1>
-        <div className="font-retro text-retro-textDim text-lg">
+        <div className="font-retro text-retro-textDim text-sm md:text-lg">
           ╔════════════════════╗
         </div>
-        <div className="font-retro text-retro-textDim text-lg">
+        <div className="font-retro text-retro-textDim text-sm md:text-lg">
           ║&nbsp; 4-Player &bull; HK Rules &nbsp;║
         </div>
-        <div className="font-retro text-retro-textDim text-lg">
+        <div className="font-retro text-retro-textDim text-sm md:text-lg">
           ╚════════════════════╝
         </div>
       </div>
 
       {/* Game mode selector */}
-      <div className="retro-panel p-4 mb-4 w-full max-w-xs">
+      <div className="retro-panel p-3 md:p-4 mb-3 md:mb-4 w-full max-w-xs">
         <div className="font-pixel text-xs text-retro-cyan mb-3 text-center">
           GAME MODE
         </div>
@@ -68,7 +68,7 @@ export default function PlayPage() {
       </div>
 
       {/* Difficulty selector */}
-      <div className="retro-panel p-4 mb-6 w-full max-w-xs">
+      <div className="retro-panel p-3 md:p-4 mb-4 md:mb-6 w-full max-w-xs">
         <div className="font-pixel text-xs text-retro-cyan mb-3 text-center">
           SELECT DIFFICULTY
         </div>
@@ -94,13 +94,21 @@ export default function PlayPage() {
       {/* Start button */}
       <button
         onClick={handleStart}
-        className="retro-btn-green font-pixel text-sm px-8 py-3"
+        className="retro-btn-green font-pixel text-xs md:text-sm px-6 md:px-8 py-3 min-h-[44px]"
       >
         [ START GAME ]
       </button>
 
+      {/* Multiplayer */}
+      <button
+        onClick={() => router.push('/play/lobby')}
+        className="retro-btn font-pixel text-xs md:text-sm px-6 md:px-8 py-3 mt-3 min-h-[44px] border-retro-cyan text-retro-cyan"
+      >
+        [ MULTIPLAYER ]
+      </button>
+
       {/* Quick reference */}
-      <div className="mt-8 retro-panel p-3 w-full max-w-xs">
+      <div className="mt-4 md:mt-8 retro-panel p-3 w-full max-w-xs">
         <div className="font-pixel text-xs text-retro-gold mb-2">QUICK RULES</div>
         <div className="font-retro text-sm text-retro-textDim space-y-1">
           <p>• Draw a tile, then discard one</p>

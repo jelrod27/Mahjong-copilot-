@@ -2,6 +2,7 @@
 
 import { Tile } from '@/models/Tile';
 import RetroTile from './RetroTile';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface PlayerHandProps {
   tiles: Tile[];
@@ -17,20 +18,24 @@ export default function PlayerHand({
   tiles, selectedTileId, suggestedTileId, onTileSelect, lastDrawnTileId,
   disabled = false, tileClassifications,
 }: PlayerHandProps) {
+  const isMobile = useMediaQuery('(max-width: 639px)');
+  const isTablet = useMediaQuery('(min-width: 640px) and (max-width: 767px)');
+  const tileSize = isMobile ? 'sm' : isTablet ? 'md' : 'lg';
+
   return (
-    <div className="flex items-end justify-center gap-0.5 flex-wrap">
+    <div className="flex items-end justify-center gap-px sm:gap-0.5 flex-wrap">
       {tiles.map((tile) => {
         const isLastDrawn = tile.id === lastDrawnTileId;
         const tutorColor = tileClassifications?.get(tile.id);
         return (
           <div
             key={tile.id}
-            className={isLastDrawn ? 'ml-3' : ''}
+            className={isLastDrawn ? 'ml-1 sm:ml-3' : ''}
             data-testid="human-hand-tile"
           >
             <RetroTile
               tile={tile}
-              size="lg"
+              size={tileSize}
               isSelected={tile.id === selectedTileId}
               isSuggested={tile.id === suggestedTileId}
               isNewlyDrawn={isLastDrawn}

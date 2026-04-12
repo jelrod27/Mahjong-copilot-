@@ -5,7 +5,7 @@ import RetroTile from './RetroTile';
 
 interface ExposedMeldsProps {
   melds: MeldInfo[];
-  size?: 'sm' | 'md';
+  size?: 'xs' | 'sm' | 'md';
 }
 
 export default function ExposedMelds({ melds, size = 'sm' }: ExposedMeldsProps) {

@@ -131,6 +131,32 @@ export default function GameOverScreen({
           </div>
         )}
 
+        {/* Payment breakdown */}
+        {scoringResult?.payment && scoringResult.payment.payments.length > 0 && (
+          <div className="mb-4">
+            <div className="font-pixel text-xs text-retro-accent mb-2">PAYMENTS</div>
+            <div className="space-y-0.5">
+              {scoringResult.payment.payments.map((p, i) => (
+                <div key={i} className="flex justify-between font-retro text-sm">
+                  <span className="text-retro-textDim">
+                    {gameState.players[p.fromPlayerIndex]?.name ?? `Player ${p.fromPlayerIndex + 1}`}
+                  </span>
+                  <span className="text-red-400">-{p.amount} pts</span>
+                </div>
+              ))}
+              <div className="border-t border-retro-border my-1" />
+              <div className="flex justify-between font-retro text-sm">
+                <span className="text-retro-green">
+                  {winner?.name ?? 'Winner'} receives
+                </span>
+                <span className="text-retro-green retro-glow">
+                  +{scoringResult.payment.payments.reduce((sum, p) => sum + p.amount, 0)} pts
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Player scores */}
         <div className="mb-4">
           <div className="font-pixel text-xs text-retro-cyan mb-2">PLAYERS</div>

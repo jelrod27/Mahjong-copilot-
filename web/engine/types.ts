@@ -13,10 +13,20 @@ export type GameAction =
 /** Result of evaluating available claims after a discard */
 export type ClaimType = 'chow' | 'pung' | 'kong' | 'win';
 
+export type TileColor = 'green' | 'orange' | 'red' | 'neutral';
+
+export interface TileClassification {
+  tileId: string;
+  color: TileColor;
+}
+
 export interface TutorAdvice {
   message: string;
   type: 'discard' | 'claim' | 'general';
   suggestedTileId?: string;
+  tileClassifications?: TileClassification[];
+  isTenpai?: boolean;
+  tenpaiWaits?: string[];
 }
 
 export interface AvailableClaim {
@@ -32,6 +42,9 @@ export interface AIDecision {
   reasoning?: string; // for debugging
 }
 
+/** How the winning tile was obtained */
+export type WinMethod = 'selfDraw' | 'discard' | 'robKong' | 'kongReplacement' | 'lastTileDraw' | 'lastTileClaim';
+
 /** Scoring context passed to the scorer */
 export interface ScoringContext {
   winningTile: Tile;
@@ -40,6 +53,9 @@ export interface ScoringContext {
   prevailingWind: WindTile;
   isConcealed: boolean; // no exposed melds (except kongs)
   flowers: Tile[];
+  winMethod?: WinMethod;
+  isDealer?: boolean;
+  discarderIndex?: number;
 }
 
 /** Individual fan award */
@@ -47,6 +63,11 @@ export interface FanItem {
   name: string;
   fan: number;
   description: string;
+}
+
+/** Payment breakdown after scoring */
+export interface PaymentBreakdown {
+  payments: { fromPlayerIndex: number; toPlayerIndex: number; amount: number }[];
 }
 
 /** Full scoring result */
@@ -58,6 +79,7 @@ export interface ScoringResult {
   handName?: string; // e.g. "Pure One Suit", "Thirteen Orphans"
   melds: MeldInfo[];
   pair: Tile[];
+  payment?: PaymentBreakdown;
 }
 
 /** Win decomposition — one valid way to arrange a winning hand */

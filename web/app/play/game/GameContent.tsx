@@ -2,7 +2,6 @@
 
 import { useSearchParams, useRouter } from 'next/navigation';
 import useGameController from '@/components/game/useGameController';
-import useClaimHandler from '@/hooks/useClaimHandler';
 import GameBoard from '@/components/game/GameBoard';
 import GameOverScreen from '@/components/game/GameOverScreen';
 
@@ -12,11 +11,6 @@ export default function GameContent() {
   const difficulty = (searchParams.get('difficulty') || 'easy') as 'easy' | 'medium' | 'hard';
 
   const controller = useGameController(difficulty);
-  const { claimBest, pass } = useClaimHandler({
-    claimOptions: controller.claimOptions,
-    submitClaim: controller.submitClaim,
-    pass: controller.pass,
-  });
 
   if (!controller.game) {
     return (
@@ -36,12 +30,14 @@ export default function GameContent() {
         selectedTileId={controller.selectedTileId}
         suggestedTileId={controller.suggestedTileId}
         tutorAdvice={controller.tutorAdvice}
+        tileClassifications={controller.tileClassifications}
         onTileSelect={controller.selectTile}
         onDiscard={controller.discardSelected}
         onKong={controller.declareKong}
         onWin={controller.declareWin}
-        onClaimBest={claimBest}
-        onPass={pass}
+        onClaimBest={controller.claimBest}
+        onSubmitChow={controller.submitChow}
+        onPass={controller.pass}
         canDeclareKong={controller.canDeclareKong}
         canDeclareWin={controller.canDeclareWin}
         hasClaimOptions={controller.claimOptions.length > 0}

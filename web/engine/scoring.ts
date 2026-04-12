@@ -6,7 +6,7 @@
 
 import { Tile, TileSuit, TileType, DragonTile, WindTile, tileKey, tilesMatch } from '@/models/Tile';
 import { MeldInfo } from '@/models/GameState';
-import { ScoringContext, ScoringResult, FanItem, HandDecomposition } from './types';
+import { ScoringContext, ScoringResult, FanItem, HandDecomposition, PaymentBreakdown } from './types';
 import { findDecompositions, isThirteenOrphans, isSevenPairs } from './winDetection';
 
 const BASE_POINTS = 8; // base payment in HK Mahjong
@@ -89,86 +89,153 @@ function evaluateFans(
   const fans: FanItem[] = [];
   const allMeldTiles = melds.flatMap(m => m.tiles);
   const allTiles = [...allMeldTiles, ...pair];
+  const realMelds = melds.filter(m => m.type !== 'pair');
 
-  // === Self-drawn ===
+  // === Limit hand checks (return immediately if found) ===
+
+  // All Honors — all honor tiles
+  if (allTiles.every(t => t.type === TileType.HONOR)) {
+    return [{ name: 'All Honors', fan: LIMIT_FAN, description: 'All honor tiles (limit hand)' }];
+  }
+
+  // All Terminals — all 1s and 9s
+  if (allTiles.every(t => t.type === TileType.SUIT && (t.number === 1 || t.number === 9))) {
+    return [{ name: 'All Terminals', fan: LIMIT_FAN, description: 'All terminal tiles (limit hand)' }];
+  }
+
+  // Big Three Dragons — pung/kong of all 3 dragons
+  const dragonMelds = realMelds.filter(m =>
+    (m.type === 'pung' || m.type === 'kong') && m.tiles[0].suit === TileSuit.DRAGON
+  );
+  if (dragonMelds.length === 3) {
+    return [{ name: 'Big Three Dragons', fan: LIMIT_FAN, description: 'Pung/kong of all three dragons (limit hand)' }];
+  }
+
+  // Big Four Winds — pung/kong of all 4 winds
+  const windMelds = realMelds.filter(m =>
+    (m.type === 'pung' || m.type === 'kong') && m.tiles[0].suit === TileSuit.WIND
+  );
+  if (windMelds.length === 4) {
+    return [{ name: 'Big Four Winds', fan: LIMIT_FAN, description: 'Pung/kong of all four winds (limit hand)' }];
+  }
+
+  // Small Four Winds — 3 wind pungs + wind pair
+  const pairIsWind = pair.length === 2 && pair[0].suit === TileSuit.WIND;
+  if (windMelds.length === 3 && pairIsWind) {
+    return [{ name: 'Small Four Winds', fan: LIMIT_FAN, description: 'Three wind pungs + wind pair (limit hand)' }];
+  }
+
+  // Four Concealed Pungs — all 4 melds are concealed pungs, self-draw win
+  if (context.isConcealed && context.isSelfDrawn &&
+      realMelds.length >= 4 && realMelds.every(m => m.type === 'pung' || m.type === 'kong')) {
+    return [{ name: 'Four Concealed Pungs', fan: LIMIT_FAN, description: 'Four concealed pungs with self-draw (limit hand)' }];
+  }
+
+  // All Kongs — 4 kongs
+  if (realMelds.length >= 4 && realMelds.every(m => m.type === 'kong')) {
+    return [{ name: 'All Kongs', fan: LIMIT_FAN, description: 'Four kongs (limit hand)' }];
+  }
+
+  // === Standard fan patterns ===
+
+  // Self-drawn
   if (context.isSelfDrawn) {
     fans.push({ name: 'Self-Drawn', fan: 1, description: 'Won by drawing own tile' });
   }
 
-  // === Concealed Hand ===
+  // Concealed Hand
   if (context.isConcealed) {
     fans.push({ name: 'Concealed Hand', fan: 1, description: 'No exposed melds' });
   }
 
-  // === All Pungs ===
-  const realMelds = melds.filter(m => m.type !== 'pair');
+  // All Pungs
   if (realMelds.length >= 4 && realMelds.every(m => m.type === 'pung' || m.type === 'kong')) {
     fans.push({ name: 'All Pungs', fan: 3, description: 'All melds are pungs or kongs' });
   }
 
-  // === All Chows ===
+  // All Chows
   if (realMelds.length >= 4 && realMelds.every(m => m.type === 'chow')) {
     fans.push({ name: 'All Chows', fan: 1, description: 'All melds are chows' });
   }
 
-  // === Dragon pungs ===
-  for (const meld of realMelds) {
-    if ((meld.type === 'pung' || meld.type === 'kong') && meld.tiles[0].suit === TileSuit.DRAGON) {
-      const dragon = meld.tiles[0].dragon;
-      const name = dragon === DragonTile.RED ? 'Red' : dragon === DragonTile.GREEN ? 'Green' : 'White';
-      fans.push({ name: `${name} Dragon`, fan: 1, description: `Pung/Kong of ${name} Dragon` });
-    }
+  // Dragon pungs (1 fan each)
+  for (const meld of dragonMelds) {
+    const dragon = meld.tiles[0].dragon;
+    const name = dragon === DragonTile.RED ? 'Red' : dragon === DragonTile.GREEN ? 'Green' : 'White';
+    fans.push({ name: `${name} Dragon`, fan: 1, description: `Pung/Kong of ${name} Dragon` });
   }
 
-  // === Seat wind pung ===
+  // Small Three Dragons — 2 dragon pungs + dragon pair (net 5 faan including the 2 individual dragon fans above)
+  const pairIsDragon = pair.length === 2 && pair[0].suit === TileSuit.DRAGON;
+  if (dragonMelds.length === 2 && pairIsDragon) {
+    fans.push({ name: 'Small Three Dragons', fan: 3, description: 'Two dragon pungs + dragon pair' });
+  }
+
+  // Seat wind pung
   for (const meld of realMelds) {
     if ((meld.type === 'pung' || meld.type === 'kong') && meld.tiles[0].wind === context.seatWind) {
       fans.push({ name: 'Seat Wind', fan: 1, description: `Pung of own seat wind` });
     }
   }
 
-  // === Prevailing wind pung ===
+  // Prevailing wind pung
   for (const meld of realMelds) {
     if ((meld.type === 'pung' || meld.type === 'kong') && meld.tiles[0].wind === context.prevailingWind) {
       fans.push({ name: 'Prevailing Wind', fan: 1, description: `Pung of prevailing wind` });
     }
   }
 
-  // === Mixed One Suit (mixed with honors) ===
+  // Mixed One Suit / Pure One Suit (mutually exclusive)
   const suitTiles = allTiles.filter(t => t.type === TileType.SUIT);
   const honorTiles = allTiles.filter(t => t.type === TileType.HONOR);
   const suits = new Set(suitTiles.map(t => t.suit));
 
-  if (suits.size === 1 && honorTiles.length > 0) {
+  if (suits.size === 1 && honorTiles.length === 0 && suitTiles.length === allTiles.length) {
+    fans.push({ name: 'Pure One Suit', fan: 7, description: 'All tiles of one suit' });
+  } else if (suits.size === 1 && honorTiles.length > 0) {
     fans.push({ name: 'Mixed One Suit', fan: 3, description: 'One suit plus honors' });
   }
 
-  // === Pure One Suit (no honors) ===
-  if (suits.size === 1 && honorTiles.length === 0 && suitTiles.length === allTiles.length) {
-    fans.push({ name: 'Pure One Suit', fan: 7, description: 'All tiles of one suit' });
-  }
-
-  // === All Honors ===
-  if (allTiles.every(t => t.type === TileType.HONOR)) {
-    fans.push({ name: 'All Honors', fan: 10, description: 'All honor tiles (limit hand)' });
-  }
-
-  // === All Terminals ===
-  if (allTiles.every(t => t.type === TileType.SUIT && (t.number === 1 || t.number === 9))) {
-    fans.push({ name: 'All Terminals', fan: 10, description: 'All terminal tiles (limit hand)' });
-  }
-
-  // === No Flowers ===
+  // No Flowers
   if (context.flowers.length === 0) {
     fans.push({ name: 'No Flowers', fan: 1, description: 'No bonus tiles collected' });
   }
 
-  // === Flower bonus ===
+  // Flower bonus (total count)
   if (context.flowers.length > 0) {
     fans.push({ name: 'Flower Tiles', fan: context.flowers.length, description: `${context.flowers.length} flower/season tiles` });
   }
 
-  // === Seven Pairs ===
+  // Seat Flower/Season matching (1 faan per match)
+  const seatNumberMap: Record<string, number> = { east: 1, south: 2, west: 3, north: 4 };
+  const seatNumber = seatNumberMap[context.seatWind] ?? 0;
+  if (seatNumber > 0) {
+    const flowerNames = ['Plum', 'Orchid', 'Chrysanthemum', 'Bamboo'];
+    const seasonNames = ['Spring', 'Summer', 'Autumn', 'Winter'];
+    for (const f of context.flowers) {
+      const flowerIdx = flowerNames.indexOf(f.flower ?? '');
+      const seasonIdx = seasonNames.indexOf(f.season ?? '');
+      if (flowerIdx + 1 === seatNumber || seasonIdx + 1 === seatNumber) {
+        fans.push({ name: 'Seat Flower', fan: 1, description: 'Flower/season matches seat wind' });
+      }
+    }
+  }
+
+  // Win-method bonuses
+  if (context.winMethod === 'robKong') {
+    fans.push({ name: 'Robbing the Kong', fan: 1, description: 'Won by robbing a kong' });
+  }
+  if (context.winMethod === 'kongReplacement') {
+    fans.push({ name: 'Win on Kong Replacement', fan: 1, description: 'Won from kong replacement draw' });
+  }
+  if (context.winMethod === 'lastTileDraw') {
+    fans.push({ name: 'Last Tile Draw', fan: 1, description: 'Won by drawing the last wall tile' });
+  }
+  if (context.winMethod === 'lastTileClaim') {
+    fans.push({ name: 'Last Tile Claim', fan: 1, description: 'Won by claiming the last discard' });
+  }
+
+  // Seven Pairs
   if (isSevenPairs(allTiles)) {
     fans.push({ name: 'Seven Pairs', fan: 4, description: 'Seven distinct pairs' });
   }
@@ -179,6 +246,37 @@ function evaluateFans(
   }
 
   return fans;
+}
+
+/**
+ * Calculate payment distribution after a win.
+ */
+export function calculatePayment(
+  result: ScoringResult,
+  winnerIndex: number,
+  discarderIndex: number | undefined,
+  isSelfDrawn: boolean,
+  playerCount: number = 4,
+): PaymentBreakdown {
+  const payments: PaymentBreakdown['payments'] = [];
+  const base = result.totalPoints;
+
+  if (isSelfDrawn) {
+    // Self-draw: all other players pay 2× base
+    for (let i = 0; i < playerCount; i++) {
+      if (i === winnerIndex) continue;
+      payments.push({ fromPlayerIndex: i, toPlayerIndex: winnerIndex, amount: base * 2 });
+    }
+  } else if (discarderIndex !== undefined) {
+    // Discard win: discarder pays 2×, others pay 1×
+    for (let i = 0; i < playerCount; i++) {
+      if (i === winnerIndex) continue;
+      const amount = i === discarderIndex ? base * 2 : base;
+      payments.push({ fromPlayerIndex: i, toPlayerIndex: winnerIndex, amount });
+    }
+  }
+
+  return { payments };
 }
 
 function isNineGates(handTiles: Tile[], winningTile: Tile): boolean {

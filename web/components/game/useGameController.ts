@@ -7,10 +7,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, GamePhase, ClaimType } from '@/models/GameState';
 import { Tile, TileType, tilesMatch } from '@/models/Tile';
 import { initializeGame, applyAction } from '@/engine/turnManager';
-import { getAvailableClaims } from '@/engine/claiming';
+import { getAvailableClaims, getBestClaimSubmission } from '@/engine/claiming';
 import { isWinningHand } from '@/engine/winDetection';
 import { calculateScore } from '@/engine/scoring';
-import { AvailableClaim, ScoringContext, ScoringResult } from '@/engine/types';
+import { AvailableClaim, ScoringContext, ScoringResult, WinMethod, TileClassification } from '@/engine/types';
+import { calculatePayment } from '@/engine/scoring';
 import { getAIDecision, getAIClaimDecision } from '@/engine/ai';
 import { getTutorAdvice } from '@/engine/tutor';
 import soundManager from '@/lib/soundManager';
@@ -37,6 +38,7 @@ export interface GameController {
   selectedTileId: string | undefined;
   suggestedTileId: string | undefined;
   tutorAdvice: TutorAdvice | null;
+  tileClassifications: Map<string, 'green' | 'orange' | 'red'>;
   claimOptions: AvailableClaim[];
   claimTimer: number;
   isGameOver: boolean;
@@ -46,6 +48,10 @@ export interface GameController {
   declareKong: () => void;
   declareWin: () => void;
   submitClaim: (claimType: ClaimType, tilesFromHand: Tile[]) => void;
+  /** Submit a specific chow combination (from ChowSelector). */
+  submitChow: (tilesFromHand: Tile[]) => void;
+  /** Recomputes best claim from live game state (avoids stale tile refs), then submits. */
+  claimBest: () => void;
   pass: () => void;
   startNewGame: (difficulty: 'easy' | 'medium' | 'hard') => void;
   canDeclareKong: boolean;
@@ -61,12 +67,9 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
   const [claimOptions, setClaimOptions] = useState<AvailableClaim[]>([]);
   const [claimTimer, setClaimTimer] = useState(0);
   const [scoringResult, setScoringResult] = useState<ScoringResult | null>(null);
+  const [tileClassifications, setTileClassifications] = useState<Map<string, 'green' | 'orange' | 'red'>>(new Map());
   const gameRef = useRef<GameState | null>(null);
   const processingRef = useRef(false);
-  /** Easy-mode claim UI is delayed; track which discard we scheduled for so we do not cancel the timer on re-render. */
-  const easyClaimDelayKeyRef = useRef<string | null>(null);
-  const easyClaimDelayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // Keep ref in sync
   useEffect(() => { gameRef.current = game; }, [game]);
 
@@ -88,11 +91,6 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
     setClaimOptions([]);
     setClaimTimer(0);
     setScoringResult(null);
-    easyClaimDelayKeyRef.current = null;
-    if (easyClaimDelayTimerRef.current) {
-      clearTimeout(easyClaimDelayTimerRef.current);
-      easyClaimDelayTimerRef.current = null;
-    }
     processingRef.current = false;
   }, []);
 
@@ -160,21 +158,63 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
   }, [doAction]);
 
   const submitClaim = useCallback((claimType: ClaimType, tilesFromHand: Tile[]) => {
-    doAction(HUMAN_ID, { type: 'CLAIM', claimType, tilesFromHand });
-    setClaimOptions([]);
-    setClaimTimer(0);
-    setTutorAdvice(null);
-    setSuggestedTileId(undefined);
-    soundManager.play(claimType === 'win' ? 'win' : 'claim');
+    const next = doAction(HUMAN_ID, { type: 'CLAIM', claimType, tilesFromHand });
+    if (next) {
+      setClaimOptions([]);
+      setClaimTimer(0);
+      setTutorAdvice(null);
+      setSuggestedTileId(undefined);
+      soundManager.play(claimType === 'win' ? 'win' : 'claim');
+    }
+  }, [doAction]);
+
+  const claimBest = useCallback(() => {
+    const current = gameRef.current;
+    if (!current || current.phase !== GamePhase.PLAYING || current.turnPhase !== 'claim') return;
+    if (current.currentPlayerIndex !== humanIndex) return;
+    if (current.lastDiscardedBy === HUMAN_ID) return;
+    const humanPlayer = current.players[humanIndex];
+    const discarderIndex = current.players.findIndex(p => p.id === current.lastDiscardedBy);
+    if (discarderIndex === -1 || !current.lastDiscardedTile) return;
+    const claims = getAvailableClaims(
+      current.lastDiscardedTile,
+      humanPlayer,
+      humanIndex,
+      discarderIndex,
+      current.players.length,
+    );
+    const best = getBestClaimSubmission(claims);
+    if (!best) return;
+    const next = doAction(HUMAN_ID, { type: 'CLAIM', claimType: best.claimType, tilesFromHand: best.tilesFromHand });
+    if (next) {
+      setClaimOptions([]);
+      setClaimTimer(0);
+      setTutorAdvice(null);
+      setSuggestedTileId(undefined);
+      soundManager.play(best.claimType === 'win' ? 'win' : 'claim');
+    }
+  }, [doAction, humanIndex]);
+
+  const submitChow = useCallback((tilesFromHand: Tile[]) => {
+    const next = doAction(HUMAN_ID, { type: 'CLAIM', claimType: 'chow' as ClaimType, tilesFromHand });
+    if (next) {
+      setClaimOptions([]);
+      setClaimTimer(0);
+      setTutorAdvice(null);
+      setSuggestedTileId(undefined);
+      soundManager.play('claim');
+    }
   }, [doAction]);
 
   const pass = useCallback(() => {
-    doAction(HUMAN_ID, { type: 'PASS' });
-    setClaimOptions([]);
-    setClaimTimer(0);
-    setTutorAdvice(null);
-    setSuggestedTileId(undefined);
-    soundManager.play('pass');
+    const next = doAction(HUMAN_ID, { type: 'PASS' });
+    if (next) {
+      setClaimOptions([]);
+      setClaimTimer(0);
+      setTutorAdvice(null);
+      setSuggestedTileId(undefined);
+      soundManager.play('pass');
+    }
   }, [doAction]);
 
   // === Computed state ===
@@ -222,9 +262,20 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
       const advice = getTutorAdvice(game, humanIndex, claimOptions);
       setTutorAdvice(advice);
       setSuggestedTileId(advice?.suggestedTileId);
+      // Build tile classification map for teacher overlay
+      if (advice?.tileClassifications) {
+        const map = new Map<string, 'green' | 'orange' | 'red'>();
+        for (const tc of advice.tileClassifications) {
+          if (tc.color !== 'neutral') map.set(tc.tileId, tc.color);
+        }
+        setTileClassifications(map);
+      } else {
+        setTileClassifications(new Map());
+      }
     } else {
       setTutorAdvice(null);
       setSuggestedTileId(undefined);
+      setTileClassifications(new Map());
     }
   }, [game?.turnPhase, game?.currentPlayerIndex, game?.phase, claimOptions, difficulty, humanIndex]);
 
@@ -282,9 +333,10 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
       return () => { clearTimeout(timer); processingRef.current = false; };
     }
 
-    // AI in claim phase
+    // AI in claim phase — submit immediately (no inter-AI delay)
     if (game.turnPhase === 'claim' && game.lastDiscardedBy !== currentPlayer.id) {
       processingRef.current = true;
+      // Brief delay so the claim phase is visible, then submit
       const timer = setTimeout(() => {
         const discarderIndex = game.players.findIndex(p => p.id === game.lastDiscardedBy);
         if (game.lastDiscardedTile && discarderIndex !== -1) {
@@ -298,26 +350,38 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
           doAction(currentPlayer.id, { type: 'PASS' });
         }
         processingRef.current = false;
-      }, currentDelays.claim);
+      }, 150); // Fast: 150ms per AI instead of full claim delay
       return () => { clearTimeout(timer); processingRef.current = false; };
     }
   }, [game?.currentPlayerIndex, game?.turnPhase, game?.phase, doAction, currentDelays]);
 
-  // === Claim detection with Pre-Claim pause for Easy mode ===
+  // === Claim detection: show options immediately when claim phase starts (don't wait for currentPlayerIndex) ===
   useEffect(() => {
     if (!game || game.phase !== GamePhase.PLAYING) return;
     if (game.turnPhase !== 'claim') {
-      easyClaimDelayKeyRef.current = null;
-      if (easyClaimDelayTimerRef.current) {
-        clearTimeout(easyClaimDelayTimerRef.current);
-        easyClaimDelayTimerRef.current = null;
+      setClaimOptions([]);
+      setClaimTimer(0);
+      return;
+    }
+
+    // Don't show claim options if human was the discarder
+    if (game.lastDiscardedBy === HUMAN_ID) {
+      // Still need to auto-pass if it's our turn in the rotation
+      if (game.currentPlayerIndex === humanIndex) {
+        doAction(HUMAN_ID, { type: 'PASS' });
       }
       return;
     }
-    // Only show claim UI when it's the human's turn to decide
-    if (game.currentPlayerIndex !== humanIndex) return;
-    // Don't show claims if human was the discarder
-    if (game.lastDiscardedBy === HUMAN_ID) return;
+
+    // Check if human has already acted this claim round (passed or claimed)
+    const humanId = game.players[humanIndex].id;
+    const alreadyActed = game.passedPlayers.includes(humanId) ||
+      game.pendingClaims.some(c => c.playerId === humanId);
+    if (alreadyActed) {
+      setClaimOptions([]);
+      setClaimTimer(0);
+      return;
+    }
 
     const humanPlayer = game.players[humanIndex];
     const discarderIndex = game.players.findIndex(p => p.id === game.lastDiscardedBy);
@@ -327,37 +391,25 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
       game.lastDiscardedTile, humanPlayer, humanIndex, discarderIndex, game.players.length
     );
 
-    const claimDelayKey = `${game.lastDiscardedTile.id}:${game.lastDiscardedBy}`;
-
     if (claims.length > 0) {
-      if (difficulty === 'easy') {
-        if (easyClaimDelayKeyRef.current === claimDelayKey) {
-          return;
-        }
-        easyClaimDelayKeyRef.current = claimDelayKey;
-        if (easyClaimDelayTimerRef.current) {
-          clearTimeout(easyClaimDelayTimerRef.current);
-        }
-        easyClaimDelayTimerRef.current = setTimeout(() => {
-          easyClaimDelayTimerRef.current = null;
-          setClaimOptions(claims);
-          setClaimTimer(CLAIM_TIMEOUT);
-          soundManager.play('turnAlert');
-        }, 1500);
-        return () => {
-          clearTimeout(easyClaimDelayTimerRef.current!);
-          easyClaimDelayTimerRef.current = null;
-          easyClaimDelayKeyRef.current = null;
-        };
-      }
       setClaimOptions(claims);
-      setClaimTimer(CLAIM_TIMEOUT);
+      // Only start timer if not already running
+      setClaimTimer(prev => prev > 0 ? prev : CLAIM_TIMEOUT);
       soundManager.play('turnAlert');
-    } else {
-      // Human has no claims — auto-pass
+    } else if (game.currentPlayerIndex === humanIndex) {
+      // Human has no claims and it's their turn — auto-pass
       doAction(HUMAN_ID, { type: 'PASS' });
     }
-  }, [game?.turnPhase, game?.lastDiscardedTile?.id, game?.lastDiscardedBy, humanIndex, doAction, difficulty]);
+  }, [
+    game?.turnPhase,
+    game?.lastDiscardedTile?.id,
+    game?.lastDiscardedBy,
+    game?.currentPlayerIndex,
+    game?.passedPlayers?.length,
+    game?.pendingClaims?.length,
+    humanIndex,
+    doAction,
+  ]);
 
   // === Claim countdown ===
   useEffect(() => {
@@ -385,15 +437,34 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
     soundManager.play('win');
 
     try {
+      const isSelfDrawn = game.isSelfDrawn ?? false;
+      let winMethod: WinMethod = isSelfDrawn ? 'selfDraw' : 'discard';
+      if (game.wall.length === 0) {
+        winMethod = isSelfDrawn ? 'lastTileDraw' : 'lastTileClaim';
+      }
+
+      const winnerIndex = game.players.findIndex(p => p.id === game.winnerId);
+      const discarderIndex = game.lastDiscardedBy
+        ? game.players.findIndex(p => p.id === game.lastDiscardedBy)
+        : undefined;
+
       const context: ScoringContext = {
         winningTile: game.winningTile,
-        isSelfDrawn: game.isSelfDrawn ?? false,
+        isSelfDrawn,
         seatWind: winner.seatWind,
         prevailingWind: game.prevailingWind,
         isConcealed: winner.melds.filter(m => !m.isConcealed).length === 0,
         flowers: winner.flowers,
+        winMethod,
+        isDealer: winner.isDealer,
+        discarderIndex: !isSelfDrawn ? discarderIndex : undefined,
       };
       const result = calculateScore(winner.hand, winner.melds, context);
+      result.payment = calculatePayment(
+        result, winnerIndex,
+        !isSelfDrawn ? discarderIndex : undefined,
+        isSelfDrawn,
+      );
       setScoringResult(result);
     } catch {
       // Scoring may fail on edge cases
@@ -401,10 +472,10 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
   }, [game?.phase, game?.winnerId]);
 
   return {
-    game, selectedTileId, suggestedTileId, tutorAdvice, claimOptions, claimTimer,
-    isGameOver, scoringResult,
+    game, selectedTileId, suggestedTileId, tutorAdvice, tileClassifications,
+    claimOptions, claimTimer, isGameOver, scoringResult,
     selectTile, discardSelected, declareKong, declareWin,
-    submitClaim, pass, startNewGame,
+    submitClaim, submitChow, claimBest, pass, startNewGame,
     canDeclareKong, canDeclareWin,
   };
 }

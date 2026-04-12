@@ -120,6 +120,26 @@ describe('getAvailableClaims', () => {
     const claims = getAvailableClaims(missingTile, player, 2, 0, 4);
     expect(claims.some(c => c.claimType === 'win')).toBe(true);
   });
+
+  it('allows chow-to-win from any seat (not just left player)', () => {
+    // Hand that needs a chow-completing tile to win:
+    // 3 pungs + 1 partial chow (4,5) + pair → needs 3 or 6 to complete chow and win
+    const hand = [
+      dot(1, 1), dot(1, 2), dot(1, 3),    // pung
+      bam(2, 1), bam(2, 2), bam(2, 3),    // pung
+      char(7, 1), char(7, 2), char(7, 3), // pung
+      dot(4, 1), dot(5, 1),               // partial chow
+      bam(9, 1), bam(9, 2),               // pair
+    ];
+    const winTile = dot(6, 1); // completes the 4-5-6 chow → winning hand
+    // Player at index 3, discarder at index 0 → NOT left player (left is index 1)
+    const player = makePlayer({ hand });
+    const claims = getAvailableClaims(winTile, player, 3, 0, 4);
+    // Should be detected as a win (not a chow), since isWinningHand checks the full hand
+    expect(claims.some(c => c.claimType === 'win')).toBe(true);
+    // Should NOT have a chow claim since player is not left of discarder
+    expect(claims.some(c => c.claimType === 'chow')).toBe(false);
+  });
 });
 
 describe('resolveClaims', () => {

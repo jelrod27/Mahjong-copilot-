@@ -47,16 +47,52 @@ describe('Easy AI', () => {
     expect(['DISCARD', 'DECLARE_WIN', 'DECLARE_KONG']).toContain(decision.action.type);
   });
 
-  it('never claims except for win', () => {
+  it('never claims chow', () => {
     const game = createTestGame('easy');
-    // Create fake claims (pung and chow)
-    const fakeClaims = [
-      { playerId: 'ai_1', claimType: 'pung' as const, tilesFromHand: [[dot(1, 1), dot(1, 2)]], priority: 2 },
+    const chowClaim = [
       { playerId: 'ai_1', claimType: 'chow' as const, tilesFromHand: [[dot(2, 1), dot(3, 1)]], priority: 1 },
     ];
 
-    const decision = getAIClaimDecision(game, 1, fakeClaims);
+    const decision = getAIClaimDecision(game, 1, chowClaim);
     expect(decision.action.type).toBe('PASS');
+  });
+
+  it('prefers discarding isolated honor tiles over connected suit tiles', () => {
+    // Build a hand with an isolated North Wind and a connected suit sequence
+    const player = makePlayer({
+      id: 'ai_1', name: 'AI 1', isAI: true,
+      hand: [
+        bam(4, 1), bam(5, 1), bam(6, 1), // connected chow
+        dot(1, 1), dot(1, 2), dot(1, 3),  // pung
+        char(2, 1), char(3, 1),            // partial chow
+        char(7, 1), char(7, 2),            // pair
+        dot(5, 1), dot(6, 1),             // partial
+        windTile(WindTile.NORTH, 1),       // isolated honor
+        bam(8, 1),                         // draw
+      ],
+      seatWind: WindTile.EAST,
+      flowers: [],
+    });
+
+    const fakeState = {
+      id: 'test', variant: 'Hong Kong Mahjong',
+      phase: GamePhase.PLAYING, turnPhase: 'discard' as const,
+      currentPlayerIndex: 0, players: [player],
+      wall: [], deadWall: [], discardPile: [], playerDiscards: {},
+      pendingClaims: [], prevailingWind: WindTile.EAST, finalScores: {},
+      createdAt: new Date(), turnHistory: [], turnTimeLimit: 20,
+      claimablePlayers: [], passedPlayers: [],
+    };
+
+    // Run multiple times to account for jitter — isolated honor should be discarded most of the time
+    let northDiscardCount = 0;
+    for (let i = 0; i < 20; i++) {
+      const decision = getAIDecision(fakeState, 0);
+      if (decision.action.type === 'DISCARD' && decision.action.tile.wind === WindTile.NORTH) {
+        northDiscardCount++;
+      }
+    }
+    expect(northDiscardCount).toBeGreaterThan(10); // at least 50% of the time
   });
 
   it('claims win when available', () => {

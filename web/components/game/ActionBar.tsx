@@ -1,8 +1,10 @@
 'use client';
 
+import { Tile } from '@/models/Tile';
 import { TurnPhase } from '@/models/GameState';
 import { AvailableClaim } from '@/engine/types';
 import { getBestClaimSubmission } from '@/engine/claiming';
+import ChowSelector from './ChowSelector';
 
 interface ActionBarProps {
   canDiscard: boolean;
@@ -10,10 +12,12 @@ interface ActionBarProps {
   canDeclareWin: boolean;
   hasClaimOptions: boolean;
   claimOptions: AvailableClaim[];
+  discardedTile?: Tile;
   onDiscard: () => void;
   onKong: () => void;
   onWin: () => void;
   onClaimBest: () => void;
+  onSubmitChow: (tilesFromHand: Tile[]) => void;
   onPass: () => void;
   turnPhase: TurnPhase;
   isHumanTurn: boolean;
@@ -38,8 +42,8 @@ function claimSummaryLabel(claimType: string): string {
 
 export default function ActionBar({
   canDiscard, canDeclareKong, canDeclareWin, hasClaimOptions,
-  claimOptions,
-  onDiscard, onKong, onWin, onClaimBest, onPass,
+  claimOptions, discardedTile,
+  onDiscard, onKong, onWin, onClaimBest, onSubmitChow, onPass,
   turnPhase, isHumanTurn, claimTimer = 0, claimTimeout = 10000,
 }: ActionBarProps) {
   if (turnPhase === 'discard' && isHumanTurn) {
@@ -70,6 +74,32 @@ export default function ActionBar({
     const best = getBestClaimSubmission(claimOptions);
     const timerPct = claimTimer > 0 ? (claimTimer / claimTimeout) * 100 : 0;
     const timerColor = timerPct > 50 ? 'bg-retro-cyan' : timerPct > 20 ? 'bg-retro-gold' : 'bg-retro-accent';
+
+    // Check if the only/best claim is a chow with multiple combinations
+    const chowClaim = claimOptions.find(c => c.claimType === 'chow');
+    const hasMultipleChows = chowClaim && chowClaim.tilesFromHand.length > 1;
+    const bestIsChow = best?.claimType === 'chow';
+
+    // Show chow selector when chow is the best (or only) claim and there are multiple combos
+    if (bestIsChow && hasMultipleChows && discardedTile) {
+      return (
+        <div className="space-y-2 py-2 px-2">
+          <div className="h-1 bg-retro-bgLight rounded-full mx-1">
+            <div
+              className={`h-full rounded-full transition-all duration-100 ${timerColor}`}
+              style={{ width: `${timerPct}%` }}
+            />
+          </div>
+          <ChowSelector
+            options={chowClaim!.tilesFromHand}
+            discardedTile={discardedTile}
+            onSelect={onSubmitChow}
+            onPass={onPass}
+          />
+        </div>
+      );
+    }
+
     const primaryVerb = best?.claimType === 'win' ? 'WIN!' : 'CLAIM';
 
     return (

@@ -12,6 +12,7 @@ interface RetroTileProps {
   isNewlyDrawn?: boolean;
   onClick?: () => void;
   disabled?: boolean;
+  tutorColor?: 'green' | 'orange' | 'red';
 }
 
 const SIZES = {
@@ -61,9 +62,16 @@ function getSuitLabel(tile: Tile): string {
   return '';
 }
 
+const TUTOR_COLORS: Record<string, string> = {
+  green: '#4CAF50',
+  orange: '#FF9800',
+  red: '#ef4444',
+};
+
 export default function RetroTile({
   tile, size = 'md', showBack = false, isSelected = false, isSuggested = false,
   isLastDiscarded = false, isNewlyDrawn = false, onClick, disabled = false,
+  tutorColor,
 }: RetroTileProps) {
   const { w, h } = SIZES[size];
   const suitColor = SUIT_COLORS[tile.suit] || '#a1a1aa';
@@ -103,8 +111,14 @@ export default function RetroTile({
       `}
       style={{ width: w, height: h, backgroundColor: '#FFF8E1' }}
     >
-      {/* Suit color bar */}
+      {/* Suit color bar + tutor indicator */}
       <div className="h-1 w-full" style={{ backgroundColor: suitColor }} />
+      {tutorColor && (
+        <div
+          className="h-[3px] w-full"
+          style={{ backgroundColor: TUTOR_COLORS[tutorColor] }}
+        />
+      )}
 
       {/* Symbol */}
       <div className="flex flex-col flex-1 items-center justify-center">
@@ -133,7 +147,7 @@ export default function RetroTile({
         disabled={disabled}
         type="button"
         aria-label={`Mahjong tile: ${tile.nameEnglish}`}
-        className="transition-transform duration-100 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="transition-transform duration-100 disabled:opacity-50 disabled:cursor-not-allowed hover:enabled:scale-105 hover:enabled:-translate-y-0.5"
       >
         {tileContent}
       </button>

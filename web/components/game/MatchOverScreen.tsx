@@ -52,17 +52,17 @@ export default function MatchOverScreen({
   const rankLabels = ['1st', '2nd', '3rd', '4th'];
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-40 flex items-center justify-center p-4">
-      <div className={`retro-panel p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto ${showContent ? 'animate-slide-up' : 'opacity-0'}`}>
+    <div className="fixed inset-0 bg-black/80 z-40 flex items-center justify-center p-2 md:p-4">
+      <div className={`retro-panel p-3 md:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto ${showContent ? 'animate-slide-up' : 'opacity-0'}`}>
         {/* Header */}
-        <div className="text-center mb-4">
-          <div className="font-retro text-retro-accent text-sm">
+        <div className="text-center mb-3 md:mb-4">
+          <div className="font-retro text-retro-accent text-xs md:text-sm">
             ╔════════════════════════╗
           </div>
-          <h2 className="font-pixel text-lg text-retro-gold retro-glow-strong my-2">
+          <h2 className="font-pixel text-sm md:text-lg text-retro-gold retro-glow-strong my-1 md:my-2">
             GAME OVER
           </h2>
-          <div className="font-retro text-retro-accent text-sm">
+          <div className="font-retro text-retro-accent text-xs md:text-sm">
             ╚════════════════════════╝
           </div>
         </div>
@@ -143,11 +143,11 @@ export default function MatchOverScreen({
         )}
 
         {/* Actions */}
-        <div className="flex gap-3 justify-center">
-          <button className="retro-btn-green font-pixel text-xs" onClick={onPlayAgain}>
+        <div className="flex gap-2 md:gap-3 justify-center">
+          <button className="retro-btn-green font-pixel text-[10px] md:text-xs min-h-[44px] px-4 md:px-6" onClick={onPlayAgain}>
             [ PLAY AGAIN ]
           </button>
-          <button className="retro-btn bg-retro-bgLight font-pixel text-xs" onClick={onBackToMenu}>
+          <button className="retro-btn bg-retro-bgLight font-pixel text-[10px] md:text-xs min-h-[44px] px-4 md:px-6" onClick={onBackToMenu}>
             [ MENU ]
           </button>
         </div>

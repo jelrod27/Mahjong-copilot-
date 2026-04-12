@@ -6,59 +6,128 @@ import useGameController from '@/components/game/useGameController';
 import GameBoard from '@/components/game/GameBoard';
 import GameOverScreen from '@/components/game/GameOverScreen';
 import HintOverlay from '@/components/game/HintOverlay';
+import TileQuiz from './TileQuiz';
+import ScoringQuiz from './ScoringQuiz';
+import HandRecognition from './HandRecognition';
+
+type Mode = 'menu' | 'tile-quiz' | 'scoring-quiz' | 'hand-recognition' | 'practice-game';
 
 export default function PracticePage() {
   const router = useRouter();
-  const [started, setStarted] = useState(false);
+  const [mode, setMode] = useState<Mode>('menu');
   const [showHints, setShowHints] = useState(true);
 
-  if (!started) {
-    return <PracticeSetup onStart={() => setStarted(true)} />;
+  if (mode === 'menu') {
+    return <PracticeMenu onSelect={setMode} />;
+  }
+
+  if (mode === 'tile-quiz') {
+    return <TileQuiz onBack={() => setMode('menu')} />;
+  }
+
+  if (mode === 'scoring-quiz') {
+    return <ScoringQuiz onBack={() => setMode('menu')} />;
+  }
+
+  if (mode === 'hand-recognition') {
+    return <HandRecognition onBack={() => setMode('menu')} />;
   }
 
   return (
     <PracticeGame
       showHints={showHints}
       onToggleHints={() => setShowHints(h => !h)}
-      onBack={() => router.push('/practice')}
+      onBack={() => setMode('menu')}
     />
   );
 }
 
-function PracticeSetup({ onStart }: { onStart: () => void }) {
+/* ─────────────────────────────────────────
+   Practice Menu
+   ───────────────────────────────────────── */
+
+function PracticeMenu({ onSelect }: { onSelect: (mode: Mode) => void }) {
+  const bestScores = typeof window !== 'undefined'
+    ? JSON.parse(localStorage.getItem('16bit-mahjong-practice') || '{}')
+    : {};
+
+  const modes: { key: Mode; title: string; desc: string; icon: string; color: string }[] = [
+    {
+      key: 'tile-quiz',
+      title: 'Tile Quiz',
+      desc: 'Identify tile types from descriptions. 10 questions per round.',
+      icon: '?',
+      color: 'text-retro-cyan',
+    },
+    {
+      key: 'scoring-quiz',
+      title: 'Scoring Quiz',
+      desc: 'Calculate fan count for described hands. Test your scoring knowledge.',
+      icon: '#',
+      color: 'text-retro-gold',
+    },
+    {
+      key: 'hand-recognition',
+      title: 'Hand Recognition',
+      desc: 'Is this a valid winning hand? Yes or no. Quick-fire decisions.',
+      icon: '!',
+      color: 'text-retro-green',
+    },
+    {
+      key: 'practice-game',
+      title: 'Play with Hints',
+      desc: 'Full game against Easy AI with shanten, safe tiles, and tutor advice.',
+      icon: '>',
+      color: 'text-retro-accent',
+    },
+  ];
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6">
-      <div className="retro-card p-8 max-w-sm w-full text-center">
-        <p className="font-pixel text-[10px] text-retro-cyan tracking-[1.5px] mb-2">
-          PRACTICE MODE
+    <div className="min-h-screen">
+      {/* Header */}
+      <div className="bg-gradient-to-b from-retro-panel to-retro-bg px-6 pt-8 pb-6 rounded-b-2xl">
+        <p className="font-pixel text-[10px] text-retro-cyan tracking-[1.5px] mb-1">
+          PRACTICE
         </p>
-        <h1 className="font-pixel text-sm text-retro-gold retro-glow mb-4">
-          Play with Hints
-        </h1>
-        <p className="text-retro-text/80 font-retro text-base mb-6 leading-relaxed">
-          Play against Easy AI with a hint overlay that shows you safe tiles,
-          how close you are to winning, and strategic advice.
+        <h1 className="font-pixel text-lg text-retro-white mb-2">Sharpen Your Skills</h1>
+        <p className="text-base text-retro-text/80 font-retro">
+          Quizzes and guided play to reinforce what you&apos;ve learned.
         </p>
-        <div className="space-y-3">
-          <div className="retro-card p-3 text-left">
-            <p className="text-sm font-retro text-retro-cyan mb-1">What you&apos;ll see:</p>
-            <ul className="text-sm font-retro text-retro-textDim space-y-1">
-              <li>&#8226; Shanten count (distance to win)</li>
-              <li>&#8226; Safe tile indicators</li>
-              <li>&#8226; Tutor advice on each turn</li>
-            </ul>
-          </div>
+      </div>
+
+      {/* Mode Cards */}
+      <div className="p-4 space-y-3">
+        {modes.map(m => (
           <button
-            className="retro-btn-green w-full py-4 text-lg"
-            onClick={onStart}
+            key={m.key}
+            onClick={() => onSelect(m.key)}
+            className="w-full retro-card p-5 text-left hover:border-retro-cyan/50 transition-colors"
           >
-            Start Practice
+            <div className="flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-lg flex items-center justify-center bg-retro-bgLight ${m.color}`}>
+                <span className="font-pixel text-lg">{m.icon}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[17px] font-retro text-retro-text mb-0.5">{m.title}</p>
+                <p className="text-sm font-retro text-retro-textDim">{m.desc}</p>
+                {bestScores[m.key] !== undefined && (
+                  <p className="text-xs font-retro text-retro-gold mt-1">
+                    Best: {bestScores[m.key]}/10
+                  </p>
+                )}
+              </div>
+              <span className="text-3xl text-retro-cyan font-light">&#x203A;</span>
+            </div>
           </button>
-        </div>
+        ))}
       </div>
     </div>
   );
 }
+
+/* ─────────────────────────────────────────
+   Practice Game (existing)
+   ───────────────────────────────────────── */
 
 function PracticeGame({
   showHints,

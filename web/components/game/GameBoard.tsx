@@ -100,7 +100,7 @@ export default function GameBoard({
 
   return (
     <div
-      className="h-screen w-full flex flex-col"
+      className="h-screen w-full flex flex-col overflow-hidden"
       data-testid="game-board-root"
       style={{
         background: 'radial-gradient(ellipse at center, #1e2a22 0%, #0f1610 50%, #110e1a 100%)',
@@ -108,10 +108,10 @@ export default function GameBoard({
     >
       <GameToast message={toastMessage} />
 
-      {/* Top row: HUD + Top opponent */}
-      <div className="flex items-start p-2 gap-2" style={{ flex: '0 0 auto' }}>
-        {/* Left HUD */}
-        <div className="w-48 shrink-0">
+      {/* Top row: HUD + opponents (mobile: compact bar, desktop: full layout) */}
+      <div className="flex items-start p-1 md:p-2 gap-1 md:gap-2" style={{ flex: '0 0 auto' }}>
+        {/* Left HUD — hidden on mobile, shown on md+ */}
+        <div className="hidden md:block w-48 shrink-0">
           <GameHUD
             wallCount={gameState.wall.length}
             prevailingWind={gameState.prevailingWind}
@@ -123,8 +123,30 @@ export default function GameBoard({
           />
         </div>
 
-        {/* Top opponent */}
-        <div className="flex-1 flex justify-center">
+        {/* Mobile: compact top bar with all 3 opponents + minimal HUD */}
+        <div className="flex md:hidden flex-1 items-center justify-between gap-1 px-1">
+          <OpponentHand
+            player={leftPlayer}
+            position="left"
+            isCurrentTurn={gameState.currentPlayerIndex === gameState.players.indexOf(leftPlayer)}
+            compact
+          />
+          <OpponentHand
+            player={topPlayer}
+            position="top"
+            isCurrentTurn={gameState.currentPlayerIndex === gameState.players.indexOf(topPlayer)}
+            compact
+          />
+          <OpponentHand
+            player={rightPlayer}
+            position="right"
+            isCurrentTurn={gameState.currentPlayerIndex === gameState.players.indexOf(rightPlayer)}
+            compact
+          />
+        </div>
+
+        {/* Desktop: Top opponent centered */}
+        <div className="hidden md:flex flex-1 justify-center">
           <OpponentHand
             player={topPlayer}
             position="top"
@@ -132,14 +154,28 @@ export default function GameBoard({
           />
         </div>
 
-        {/* Right spacer */}
-        <div className="w-48 shrink-0" />
+        {/* Right spacer — desktop only */}
+        <div className="hidden md:block w-48 shrink-0" />
+      </div>
+
+      {/* Mobile: minimal HUD bar */}
+      <div className="flex md:hidden items-center justify-between px-2 py-0.5" style={{ flex: '0 0 auto' }}>
+        <GameHUD
+          wallCount={gameState.wall.length}
+          prevailingWind={gameState.prevailingWind}
+          currentPlayerIndex={gameState.currentPlayerIndex}
+          players={gameState.players}
+          turnPhase={gameState.turnPhase}
+          handNumber={match?.handNumber}
+          playerScores={match?.playerScores}
+          compact
+        />
       </div>
 
       {/* Middle row: Left opponent + Discard Pool + Right opponent */}
-      <div className="flex-1 flex items-center px-2 gap-2 min-h-0">
-        {/* Left opponent */}
-        <div className="w-24 shrink-0 flex justify-center">
+      <div className="flex-1 flex items-center px-1 md:px-2 gap-1 md:gap-2 min-h-0">
+        {/* Left opponent — desktop only (mobile shows in top bar) */}
+        <div className="hidden md:flex w-24 shrink-0 justify-center">
           <OpponentHand
             player={leftPlayer}
             position="left"
@@ -148,13 +184,13 @@ export default function GameBoard({
         </div>
 
         {/* Center: Discard pool + wind indicator */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-2 min-h-0">
+        <div className="flex-1 flex flex-col items-center justify-center gap-1 md:gap-2 min-h-0">
           {/* Turn indicator */}
           <div className="text-center">
-            <div className={`inline-block retro-panel px-3 py-1 transition-all duration-300 ${
+            <div className={`inline-block retro-panel px-2 py-0.5 md:px-3 md:py-1 transition-all duration-300 ${
               isHumanTurn ? 'ring-1 ring-retro-cyan/40' : ''
             }`}>
-              <span className="text-retro-gold font-pixel text-xs retro-glow">
+              <span className="text-retro-gold font-pixel text-[8px] md:text-xs retro-glow">
                 {gameState.turnPhase === 'claim'
                   ? '⚡ CLAIM WINDOW'
                   : isHumanTurn
@@ -165,7 +201,7 @@ export default function GameBoard({
           </div>
 
           {/* Discard pool */}
-          <div className="w-full max-w-xs">
+          <div className="w-full max-w-[280px] md:max-w-xs">
             <DiscardPool
               discards={gameState.discardPile}
               lastDiscardedTile={gameState.lastDiscardedTile}
@@ -177,14 +213,14 @@ export default function GameBoard({
 
           {/* Tutor Advice */}
           {tutorAdvice && (
-            <div className="w-full max-w-md">
+            <div className="w-full max-w-[280px] md:max-w-md">
               <TutorPanel advice={tutorAdvice} />
             </div>
           )}
         </div>
 
-        {/* Right opponent */}
-        <div className="w-24 shrink-0 flex justify-center">
+        {/* Right opponent — desktop only (mobile shows in top bar) */}
+        <div className="hidden md:flex w-24 shrink-0 justify-center">
           <OpponentHand
             player={rightPlayer}
             position="right"
@@ -194,7 +230,7 @@ export default function GameBoard({
       </div>
 
       {/* Bottom row: Player hand + melds + actions */}
-      <div className="p-2 space-y-1" style={{ flex: '0 0 auto' }}>
+      <div className="p-1 md:p-2 space-y-0.5 md:space-y-1" style={{ flex: '0 0 auto' }}>
         {/* Action bar */}
         <ActionBar
           canDiscard={canDiscard}
@@ -215,13 +251,13 @@ export default function GameBoard({
         />
 
         {/* Player info bar */}
-        <div className="flex items-center justify-between px-2">
-          <div className="flex items-center gap-2 font-pixel text-xs">
+        <div className="flex items-center justify-between px-1 md:px-2">
+          <div className="flex items-center gap-1 md:gap-2 font-pixel text-[8px] md:text-xs">
             <span className="text-retro-gold retro-glow">{humanPlayer.seatWind.toUpperCase()}</span>
             <span className="text-retro-text">{humanPlayer.name}</span>
             {humanPlayer.isDealer && <span className="text-retro-accent">★ DEALER</span>}
           </div>
-          <div className="flex items-center gap-3 font-retro text-sm">
+          <div className="flex items-center gap-2 md:gap-3 font-retro text-xs md:text-sm">
             {humanPlayer.flowers.length > 0 && (
               <span className="text-retro-gold">🌸 ×{humanPlayer.flowers.length}</span>
             )}
@@ -232,13 +268,13 @@ export default function GameBoard({
         {/* Tenpai badge — persistent across all phases in easy mode */}
         {tenpaiStatus?.isTenpai && (
           <div className="text-center">
-            <span className="font-pixel text-xs text-retro-green retro-glow animate-pulse">
+            <span className="font-pixel text-[8px] md:text-xs text-retro-green retro-glow animate-pulse">
               TENPAI — ONE TILE AWAY
             </span>
             {tenpaiStatus.waits.length > 0 && tenpaiStatus.waits[0] !== 'Already winning!' && (
-              <span className="font-retro text-xs text-retro-cyan ml-2">
-                Waiting: {tenpaiStatus.waits.slice(0, 5).join(', ')}
-                {tenpaiStatus.waits.length > 5 && ` +${tenpaiStatus.waits.length - 5} more`}
+              <span className="font-retro text-[10px] md:text-xs text-retro-cyan ml-1 md:ml-2">
+                Waiting: {tenpaiStatus.waits.slice(0, 3).join(', ')}
+                {tenpaiStatus.waits.length > 3 && ` +${tenpaiStatus.waits.length - 3} more`}
               </span>
             )}
           </div>

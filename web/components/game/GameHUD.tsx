@@ -15,6 +15,8 @@ interface GameHUDProps {
   turnPhase: TurnPhase;
   handNumber?: number;
   playerScores?: number[];
+  /** Compact single-line mode for mobile */
+  compact?: boolean;
 }
 
 const WIND_CHARS: Record<WindTile, string> = {
@@ -28,7 +30,7 @@ const PHASE_LABELS: Record<TurnPhase, string> = {
 
 export default function GameHUD({
   wallCount, prevailingWind, currentPlayerIndex, players, turnPhase,
-  handNumber, playerScores,
+  handNumber, playerScores, compact = false,
 }: GameHUDProps) {
   const router = useRouter();
   const [soundOn, setSoundOn] = useState(soundManager.isEnabled());
@@ -48,6 +50,40 @@ export default function GameHUD({
     soundManager.setEnabled(next);
     if (next) soundManager.play('tilePlace');
   };
+
+  // Mobile compact mode: single-line bar
+  if (compact) {
+    return (
+      <div className="flex items-center justify-between w-full gap-2 font-retro text-xs">
+        <div className="flex items-center gap-2">
+          <span className="text-retro-gold retro-glow font-pixel text-[8px]">
+            {WIND_CHARS[prevailingWind]}
+            {handNumber != null && <span className="text-retro-textDim ml-0.5">H{handNumber}</span>}
+          </span>
+          <span className="text-retro-cyan">W:{wallCount}</span>
+          <span className="text-retro-green text-[10px]">{PHASE_LABELS[turnPhase]}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={toggleSound}
+            className="text-xs px-1 py-0.5 rounded-sm hover:text-retro-cyan min-w-[28px] min-h-[28px] flex items-center justify-center"
+            aria-pressed={soundOn}
+            aria-label={soundOn ? 'Mute game sounds' : 'Unmute game sounds'}
+          >
+            <span aria-hidden>{soundOn ? '🔊' : '🔇'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={leaveToMenu}
+            className="font-pixel text-[7px] px-1.5 py-0.5 rounded-sm border border-retro-border/40 text-retro-textDim hover:text-retro-cyan min-h-[28px]"
+          >
+            MENU
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="retro-panel p-2 font-retro text-sm">

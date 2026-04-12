@@ -4,7 +4,7 @@ import { Tile, TileType, TileSuit, WindTile, DragonTile } from '@/models/Tile';
 
 interface RetroTileProps {
   tile: Tile;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   showBack?: boolean;
   isSelected?: boolean;
   isSuggested?: boolean;
@@ -16,6 +16,7 @@ interface RetroTileProps {
 }
 
 const SIZES = {
+  xs: { w: 24, h: 36 },
   sm: { w: 32, h: 48 },
   md: { w: 44, h: 66 },
   lg: { w: 56, h: 84 },
@@ -128,7 +129,7 @@ export default function RetroTile({
         >
           {getSymbol(tile)}
         </span>
-        {size !== 'sm' && (
+        {size !== 'sm' && size !== 'xs' && (
           <span
             className="leading-none text-gray-500"
             style={{ fontSize: w * 0.22 }}

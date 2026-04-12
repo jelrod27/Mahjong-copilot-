@@ -9,6 +9,8 @@ interface OpponentHandProps {
   player: Player;
   position: 'left' | 'top' | 'right';
   isCurrentTurn: boolean;
+  /** Mobile compact mode: show tile count + wind badge instead of full tile bar */
+  compact?: boolean;
 }
 
 const WIND_LABELS: Record<WindTile, string> = {
@@ -16,9 +18,33 @@ const WIND_LABELS: Record<WindTile, string> = {
   [WindTile.WEST]: 'W', [WindTile.NORTH]: 'N',
 };
 
-export default function OpponentHand({ player, position, isCurrentTurn }: OpponentHandProps) {
+export default function OpponentHand({ player, position, isCurrentTurn, compact = false }: OpponentHandProps) {
   const isVertical = position === 'left' || position === 'right';
   const tileCount = player.hand.length;
+
+  // Compact mode for mobile: just wind badge, name, tile count
+  if (compact) {
+    return (
+      <div className={`
+        flex flex-col items-center gap-0.5 rounded-md px-2 py-1 transition-all duration-300
+        ${isCurrentTurn ? 'ring-1 ring-retro-gold/50 bg-retro-gold/5' : ''}
+      `}>
+        <div className={`
+          flex items-center gap-1 font-pixel text-[8px]
+          ${isCurrentTurn ? 'text-retro-cyan retro-glow' : 'text-retro-textDim'}
+        `}>
+          <span className="text-retro-gold">{WIND_LABELS[player.seatWind]}</span>
+          <span className="truncate max-w-[48px]">{player.name}</span>
+          {isCurrentTurn && <span className="animate-blink">▸</span>}
+        </div>
+        <div className="font-retro text-[10px] text-retro-textDim">
+          {tileCount} tiles
+          {player.melds.length > 0 && ` · ${player.melds.length}m`}
+          {player.flowers.length > 0 && ` · 🌸${player.flowers.length}`}
+        </div>
+      </div>
+    );
+  }
 
   // Create placeholder tiles for face-down display
   const placeholders = Array.from({ length: tileCount }, (_, i) => (

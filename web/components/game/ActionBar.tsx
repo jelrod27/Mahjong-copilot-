@@ -48,21 +48,21 @@ export default function ActionBar({
 }: ActionBarProps) {
   if (turnPhase === 'discard' && isHumanTurn) {
     return (
-      <div className="flex items-center justify-center gap-2 py-2">
+      <div className="flex items-center justify-center gap-2 py-1 md:py-2">
         <button
-          className="retro-btn-accent"
+          className="retro-btn-accent min-h-[44px] px-4 md:px-6"
           onClick={onDiscard}
           disabled={!canDiscard}
         >
           [ DISCARD ]
         </button>
         {canDeclareKong && (
-          <button type="button" className="retro-btn-gold" onClick={onKong}>
+          <button type="button" className="retro-btn-gold min-h-[44px] px-4 md:px-6" onClick={onKong}>
             [ KONG ]
           </button>
         )}
         {canDeclareWin && (
-          <button type="button" className="retro-btn-green" onClick={onWin}>
+          <button type="button" className="retro-btn-green min-h-[44px] px-4 md:px-6" onClick={onWin}>
             [ WIN! ]
           </button>
         )}
@@ -83,7 +83,7 @@ export default function ActionBar({
     // Show chow selector when chow is the best (or only) claim and there are multiple combos
     if (bestIsChow && hasMultipleChows && discardedTile) {
       return (
-        <div className="space-y-2 py-2 px-2">
+        <div className="space-y-1 md:space-y-2 py-1 md:py-2 px-1 md:px-2">
           <div className="h-1 bg-retro-bgLight rounded-full mx-1">
             <div
               className={`h-full rounded-full transition-all duration-100 ${timerColor}`}
@@ -103,7 +103,7 @@ export default function ActionBar({
     const primaryVerb = best?.claimType === 'win' ? 'WIN!' : 'CLAIM';
 
     return (
-      <div className="space-y-2 py-2 px-2">
+      <div className="space-y-1 md:space-y-2 py-1 md:py-2 px-1 md:px-2">
         <div className="h-1 bg-retro-bgLight rounded-full mx-1">
           <div
             className={`h-full rounded-full transition-all duration-100 ${timerColor}`}
@@ -142,8 +142,8 @@ export default function ActionBar({
 
   if (!isHumanTurn) {
     return (
-      <div className="flex items-center justify-center py-2">
-        <span className="text-retro-textDim font-retro text-lg">
+      <div className="flex items-center justify-center py-1 md:py-2">
+        <span className="text-retro-textDim font-retro text-sm md:text-lg">
           Waiting for opponent<span className="animate-blink">...</span>
         </span>
       </div>

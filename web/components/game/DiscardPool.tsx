@@ -97,7 +97,7 @@ export default function DiscardPool({
     const playerIds = Object.keys(playerDiscards).filter(id => playerDiscards[id].length > 0);
     if (playerIds.length > 0) {
       return (
-        <div className="retro-panel p-2 space-y-1">
+        <div className="retro-panel p-1 md:p-2 space-y-1">
           {playerIds.map(playerId => (
             <div key={playerId}>
               <div className="font-retro text-[9px] text-retro-textDim mb-0.5">
@@ -140,8 +140,8 @@ export default function DiscardPool({
 
   // Fallback: single grid view
   return (
-    <div className="retro-panel p-2">
-      <div className="grid grid-cols-6 gap-px min-h-[120px]">
+    <div className="retro-panel p-1 md:p-2">
+      <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-px min-h-[80px] md:min-h-[120px]">
         {discards.map((tile) => (
           <TileWrapper
             key={tile.id}
@@ -164,12 +164,12 @@ export default function DiscardPool({
         ))}
       </div>
       {discards.length === 0 && (
-        <div className="flex items-center justify-center h-[120px] text-retro-textDim font-retro text-sm">
+        <div className="flex items-center justify-center h-[80px] md:h-[120px] text-retro-textDim font-retro text-xs md:text-sm">
           No discards yet
         </div>
       )}
       {claimHighlight && lastDiscardedTile && (
-        <p className="mt-2 text-center font-pixel text-[9px] text-retro-gold retro-glow tracking-wide">
+        <p className="mt-1 md:mt-2 text-center font-pixel text-[8px] md:text-[9px] text-retro-gold retro-glow tracking-wide">
           LAST DISCARD — USE CLAIM BELOW
         </p>
       )}

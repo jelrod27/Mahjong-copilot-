@@ -1,8 +1,9 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import { GameState } from '@/models/GameState';
 import type { AvailableClaim } from '@/engine/types';
-import { Tile } from '@/models/Tile';
+import type { Tile } from '@/models/Tile';
 import PlayerHand from './PlayerHand';
 import OpponentHand from './OpponentHand';
 import DiscardPool from './DiscardPool';
@@ -10,6 +11,7 @@ import GameHUD from './GameHUD';
 import ActionBar from './ActionBar';
 import ExposedMelds from './ExposedMelds';
 import TutorPanel from './TutorPanel';
+import GameToast from './GameToast';
 import { TutorAdvice } from '@/engine/types';
 
 interface GameBoardProps {
@@ -24,6 +26,7 @@ interface GameBoardProps {
   onKong: () => void;
   onWin: () => void;
   onClaimBest: () => void;
+  onSubmitChow: (tilesFromHand: Tile[]) => void;
   onPass: () => void;
   canDeclareKong?: boolean;
   canDeclareWin?: boolean;
@@ -35,13 +38,44 @@ interface GameBoardProps {
 export default function GameBoard({
   gameState, humanPlayerId, selectedTileId, suggestedTileId, tutorAdvice,
   tileClassifications,
-  onTileSelect, onDiscard, onKong, onWin, onClaimBest, onPass,
+  onTileSelect, onDiscard, onKong, onWin, onClaimBest, onSubmitChow, onPass,
   canDeclareKong: canKongProp, canDeclareWin: canWinProp,
   hasClaimOptions: hasClaimsProp, claimOptions = [], claimTimer,
 }: GameBoardProps) {
   const humanIndex = gameState.players.findIndex(p => p.id === humanPlayerId);
   const humanPlayer = gameState.players[humanIndex];
   const isHumanTurn = gameState.currentPlayerIndex === humanIndex;
+
+  // Toast system — track last discard for event messages
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const prevDiscardRef = useRef<string | undefined>();
+  const prevMeldsRef = useRef<number>(0);
+
+  useEffect(() => {
+    // Track new discards
+    const lastTileId = gameState.lastDiscardedTile?.id;
+    if (lastTileId && lastTileId !== prevDiscardRef.current) {
+      prevDiscardRef.current = lastTileId;
+      const discarder = gameState.players.find(p => p.id === gameState.lastDiscardedBy);
+      if (discarder && discarder.id !== humanPlayerId) {
+        setToastMessage(`${discarder.name} discarded ${gameState.lastDiscardedTile?.nameEnglish}`);
+      }
+    }
+
+    // Track new melds (claims)
+    const totalMelds = gameState.players.reduce((sum, p) => sum + p.melds.length, 0);
+    if (totalMelds > prevMeldsRef.current && prevMeldsRef.current > 0) {
+      const claimer = gameState.players.find(p =>
+        p.melds.length > 0 && p.id !== humanPlayerId
+      );
+      const lastMeld = claimer?.melds[claimer.melds.length - 1];
+      if (claimer && lastMeld) {
+        const meldName = lastMeld.type.charAt(0).toUpperCase() + lastMeld.type.slice(1);
+        setToastMessage(`${claimer.name} claimed ${meldName}`);
+      }
+    }
+    prevMeldsRef.current = totalMelds;
+  }, [gameState.lastDiscardedTile?.id, gameState.lastDiscardedBy, gameState.players, humanPlayerId]);
 
   // Map opponents to positions: right of human = right, across = top, left = left
   const getOpponent = (offset: number) => {
@@ -68,6 +102,8 @@ export default function GameBoard({
         background: 'radial-gradient(ellipse at center, #1e2a22 0%, #0f1610 50%, #110e1a 100%)',
       }}
     >
+      <GameToast message={toastMessage} />
+
       {/* Top row: HUD + Top opponent */}
       <div className="flex items-start p-2 gap-2" style={{ flex: '0 0 auto' }}>
         {/* Left HUD */}
@@ -107,12 +143,17 @@ export default function GameBoard({
 
         {/* Center: Discard pool + wind indicator */}
         <div className="flex-1 flex flex-col items-center justify-center gap-2 min-h-0">
-          {/* Wind compass */}
+          {/* Turn indicator */}
           <div className="text-center">
-            <div className="inline-block retro-panel px-3 py-1">
+            <div className={`inline-block retro-panel px-3 py-1 transition-all duration-300 ${
+              isHumanTurn ? 'ring-1 ring-retro-cyan/40' : ''
+            }`}>
               <span className="text-retro-gold font-pixel text-xs retro-glow">
-                {gameState.turnPhase === 'claim' ? '⚡ CLAIM' :
-                 isHumanTurn ? '► YOUR TURN' : '⏳ OPPONENT'}
+                {gameState.turnPhase === 'claim'
+                  ? '⚡ CLAIM WINDOW'
+                  : isHumanTurn
+                    ? `► YOUR TURN — ${gameState.turnPhase === 'discard' ? 'Discard a tile' : 'Draw'}`
+                    : `⏳ ${gameState.players[gameState.currentPlayerIndex]?.name ?? 'Opponent'}`}
               </span>
             </div>
           </div>
@@ -123,6 +164,8 @@ export default function GameBoard({
               discards={gameState.discardPile}
               lastDiscardedTile={gameState.lastDiscardedTile}
               claimHighlight={showClaimHighlight}
+              playerDiscards={gameState.playerDiscards}
+              playerNames={Object.fromEntries(gameState.players.map(p => [p.id, p.name]))}
             />
           </div>
 
@@ -153,10 +196,12 @@ export default function GameBoard({
           canDeclareWin={canDeclareWin}
           hasClaimOptions={hasClaimOptions}
           claimOptions={claimOptions}
+          discardedTile={gameState.lastDiscardedTile}
           onDiscard={onDiscard}
           onKong={onKong}
           onWin={onWin}
           onClaimBest={onClaimBest}
+          onSubmitChow={onSubmitChow}
           onPass={onPass}
           turnPhase={gameState.turnPhase}
           isHumanTurn={isHumanTurn}

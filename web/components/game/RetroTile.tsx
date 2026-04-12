@@ -147,7 +147,7 @@ export default function RetroTile({
         disabled={disabled}
         type="button"
         aria-label={`Mahjong tile: ${tile.nameEnglish}`}
-        className="transition-transform duration-100 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="transition-transform duration-100 disabled:opacity-50 disabled:cursor-not-allowed hover:enabled:scale-105 hover:enabled:-translate-y-0.5"
       >
         {tileContent}
       </button>

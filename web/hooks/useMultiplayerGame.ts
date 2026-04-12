@@ -252,6 +252,7 @@ export default function useMultiplayerGame(
     declareKong,
     declareWin,
     submitClaim: submitClaimAction,
+    submitChow: (tilesFromHand: Tile[]) => submitClaimAction('chow', tilesFromHand),
     claimBest,
     pass: handlePass,
     startNewGame,

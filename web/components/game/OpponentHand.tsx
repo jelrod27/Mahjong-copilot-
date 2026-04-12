@@ -31,7 +31,11 @@ export default function OpponentHand({ player, position, isCurrentTurn }: Oppone
   ));
 
   return (
-    <div className={`flex flex-col items-center gap-1 ${isVertical ? 'justify-center' : ''}`}>
+    <div className={`
+      flex flex-col items-center gap-1 ${isVertical ? 'justify-center' : ''}
+      rounded-lg p-1 transition-all duration-300
+      ${isCurrentTurn ? 'ring-2 ring-retro-gold/50 shadow-[0_0_12px_rgba(245,183,49,0.3)]' : ''}
+    `}>
       {/* Player info */}
       <div className={`
         flex items-center gap-1 text-xs font-pixel

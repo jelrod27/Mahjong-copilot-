@@ -36,6 +36,7 @@ export default function GameContent() {
         onKong={controller.declareKong}
         onWin={controller.declareWin}
         onClaimBest={controller.claimBest}
+        onSubmitChow={controller.submitChow}
         onPass={controller.pass}
         canDeclareKong={controller.canDeclareKong}
         canDeclareWin={controller.canDeclareWin}

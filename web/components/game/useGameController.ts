@@ -48,6 +48,8 @@ export interface GameController {
   declareKong: () => void;
   declareWin: () => void;
   submitClaim: (claimType: ClaimType, tilesFromHand: Tile[]) => void;
+  /** Submit a specific chow combination (from ChowSelector). */
+  submitChow: (tilesFromHand: Tile[]) => void;
   /** Recomputes best claim from live game state (avoids stale tile refs), then submits. */
   claimBest: () => void;
   pass: () => void;
@@ -193,6 +195,17 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
     }
   }, [doAction, humanIndex]);
 
+  const submitChow = useCallback((tilesFromHand: Tile[]) => {
+    const next = doAction(HUMAN_ID, { type: 'CLAIM', claimType: 'chow' as ClaimType, tilesFromHand });
+    if (next) {
+      setClaimOptions([]);
+      setClaimTimer(0);
+      setTutorAdvice(null);
+      setSuggestedTileId(undefined);
+      soundManager.play('claim');
+    }
+  }, [doAction]);
+
   const pass = useCallback(() => {
     const next = doAction(HUMAN_ID, { type: 'PASS' });
     if (next) {
@@ -320,9 +333,10 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
       return () => { clearTimeout(timer); processingRef.current = false; };
     }
 
-    // AI in claim phase
+    // AI in claim phase — submit immediately (no inter-AI delay)
     if (game.turnPhase === 'claim' && game.lastDiscardedBy !== currentPlayer.id) {
       processingRef.current = true;
+      // Brief delay so the claim phase is visible, then submit
       const timer = setTimeout(() => {
         const discarderIndex = game.players.findIndex(p => p.id === game.lastDiscardedBy);
         if (game.lastDiscardedTile && discarderIndex !== -1) {
@@ -336,12 +350,12 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
           doAction(currentPlayer.id, { type: 'PASS' });
         }
         processingRef.current = false;
-      }, currentDelays.claim);
+      }, 150); // Fast: 150ms per AI instead of full claim delay
       return () => { clearTimeout(timer); processingRef.current = false; };
     }
   }, [game?.currentPlayerIndex, game?.turnPhase, game?.phase, doAction, currentDelays]);
 
-  // === Claim detection (solo): show options only on the human's claim turn; keep in sync with currentPlayerIndex ===
+  // === Claim detection: show options immediately when claim phase starts (don't wait for currentPlayerIndex) ===
   useEffect(() => {
     if (!game || game.phase !== GamePhase.PLAYING) return;
     if (game.turnPhase !== 'claim') {
@@ -350,9 +364,20 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
       return;
     }
 
-    const notHumanClaimTurn =
-      game.currentPlayerIndex !== humanIndex || game.lastDiscardedBy === HUMAN_ID;
-    if (notHumanClaimTurn) {
+    // Don't show claim options if human was the discarder
+    if (game.lastDiscardedBy === HUMAN_ID) {
+      // Still need to auto-pass if it's our turn in the rotation
+      if (game.currentPlayerIndex === humanIndex) {
+        doAction(HUMAN_ID, { type: 'PASS' });
+      }
+      return;
+    }
+
+    // Check if human has already acted this claim round (passed or claimed)
+    const humanId = game.players[humanIndex].id;
+    const alreadyActed = game.passedPlayers.includes(humanId) ||
+      game.pendingClaims.some(c => c.playerId === humanId);
+    if (alreadyActed) {
       setClaimOptions([]);
       setClaimTimer(0);
       return;
@@ -367,12 +392,12 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
     );
 
     if (claims.length > 0) {
-      // No delay: a 1.5s easy-mode wait left claimOptions out of sync with the live hand/tutor.
       setClaimOptions(claims);
-      setClaimTimer(CLAIM_TIMEOUT);
+      // Only start timer if not already running
+      setClaimTimer(prev => prev > 0 ? prev : CLAIM_TIMEOUT);
       soundManager.play('turnAlert');
-    } else {
-      // Human has no claims — auto-pass
+    } else if (game.currentPlayerIndex === humanIndex) {
+      // Human has no claims and it's their turn — auto-pass
       doAction(HUMAN_ID, { type: 'PASS' });
     }
   }, [
@@ -380,6 +405,8 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
     game?.lastDiscardedTile?.id,
     game?.lastDiscardedBy,
     game?.currentPlayerIndex,
+    game?.passedPlayers?.length,
+    game?.pendingClaims?.length,
     humanIndex,
     doAction,
   ]);
@@ -448,7 +475,7 @@ export default function useGameController(initialDifficulty: 'easy' | 'medium' |
     game, selectedTileId, suggestedTileId, tutorAdvice, tileClassifications,
     claimOptions, claimTimer, isGameOver, scoringResult,
     selectTile, discardSelected, declareKong, declareWin,
-    submitClaim, claimBest, pass, startNewGame,
+    submitClaim, submitChow, claimBest, pass, startNewGame,
     canDeclareKong, canDeclareWin,
   };
 }

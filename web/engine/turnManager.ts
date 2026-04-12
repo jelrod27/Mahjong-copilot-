@@ -235,6 +235,16 @@ function handleDiscard(state: GameState, playerIndex: number, tile: Tile): GameS
   // Check if any other player can claim
   const claims = getAllClaims(state, playerIndex, tile, newPlayers);
 
+  // Only include players who actually have claims available
+  const claimableIds = claims.length > 0
+    ? claims.map(c => c.playerId)
+    : [];
+
+  // All non-discarder players need to act during claim phase (claim or pass)
+  const allNonDiscarderIds = claims.length > 0
+    ? getClaimablePlayerIds(playerIndex, newPlayers)
+    : [];
+
   const newState: GameState = {
     ...state,
     players: newPlayers,
@@ -246,9 +256,7 @@ function handleDiscard(state: GameState, playerIndex: number, tile: Tile): GameS
     turnHistory: [...state.turnHistory, turn],
     turnPhase: claims.length > 0 ? 'claim' : 'draw',
     pendingClaims: [],
-    claimablePlayers: claims.length > 0
-      ? getClaimablePlayerIds(playerIndex, state.players)
-      : [],
+    claimablePlayers: allNonDiscarderIds,
     passedPlayers: [],
     currentPlayerIndex: (playerIndex + 1) % state.players.length,
     turnStartedAt: new Date(),

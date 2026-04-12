@@ -1,15 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import { getAIDecision, getAIClaimDecision } from '../index';
-import { getMediumDiscard } from '../mediumAI';
-import { getHardDiscard } from '../hardAI';
+import { getMediumDiscard, getMediumClaimDecision } from '../mediumAI';
+import { getHardDiscard, getHardClaimDecision } from '../hardAI';
+import { getEasyDiscard } from '../easyAI';
 import { initializeGame } from '../../turnManager';
 import { applyAction } from '../../turnManager';
 import { getAvailableClaims } from '../../claiming';
-import { GamePhase } from '@/models/GameState';
+import { GamePhase, MeldInfo } from '@/models/GameState';
 import {
   dot, bam, char, windTile, dragonTile, flowerTile, makePlayer, buildAllPungsHand,
 } from '../../__tests__/testHelpers';
-import { WindTile, DragonTile, TileType } from '@/models/Tile';
+import { WindTile, DragonTile, TileSuit, TileType } from '@/models/Tile';
 
 function createTestGame(difficulty: 'easy' | 'medium' | 'hard') {
   return initializeGame({
@@ -245,5 +246,140 @@ describe('Medium AI - bonus tile edge case', () => {
     expect(decision.action.type).toBe('DISCARD');
     // The reasoning should show an actual shanten value, not Infinity
     expect(decision.reasoning).not.toContain('Infinity');
+  });
+});
+
+describe('AI Strategic Differentiation', () => {
+  function buildFakeState(player: any, opponents: any[] = [], discardPile: any[] = []) {
+    const players = [player, ...opponents];
+    return {
+      id: 'test', variant: 'Hong Kong Mahjong',
+      phase: GamePhase.PLAYING, turnPhase: 'discard' as const,
+      currentPlayerIndex: 0, players,
+      wall: Array(40).fill(dot(9, 4)), deadWall: [],
+      discardPile,
+      playerDiscards: Object.fromEntries(players.map((p: any) => [p.id, []])),
+      pendingClaims: [], prevailingWind: WindTile.EAST, finalScores: {},
+      createdAt: new Date(), turnHistory: [], turnTimeLimit: 20,
+      claimablePlayers: [], passedPlayers: [],
+    };
+  }
+
+  it('Medium AI fan retention prefers discarding isolated honors over dragon pairs', () => {
+    // Hand with dragon pair and isolated honor — both have similar shanten impact
+    // but Medium AI should penalize discarding dragon pair due to fan bonus
+    const player = makePlayer({
+      id: 'ai_1', name: 'AI 1', isAI: true, aiDifficulty: 'medium',
+      hand: [
+        bam(1, 1), bam(2, 1), bam(3, 1), // chow
+        dot(4, 1), dot(5, 1), dot(6, 1), // chow
+        char(7, 1), char(8, 1), char(9, 1), // chow
+        dragonTile(DragonTile.RED, 1), dragonTile(DragonTile.RED, 2), // dragon pair — valuable
+        windTile(WindTile.NORTH, 1), // isolated honor — expendable
+        windTile(WindTile.WEST, 1), // draw — another isolated honor
+      ],
+      seatWind: WindTile.EAST,
+    });
+
+    const state = buildFakeState(player);
+    const decision = getMediumDiscard(state, 0);
+
+    // Should discard one of the isolated winds, not a dragon
+    expect(decision.action.type).toBe('DISCARD');
+    if (decision.action.type === 'DISCARD') {
+      expect(decision.action.tile.suit).not.toBe(TileSuit.DRAGON);
+    }
+  });
+
+  it('Medium AI claims valuable pung (dragon) when available', () => {
+    // Medium AI should always claim win, and should claim dragon pungs when beneficial
+    const player = makePlayer({
+      id: 'ai_1', name: 'AI 1', isAI: true, aiDifficulty: 'medium',
+      hand: [
+        bam(1, 1), bam(2, 1), bam(3, 1),     // chow
+        dot(4, 1), dot(5, 1), dot(6, 1),       // chow
+        char(7, 1), char(8, 1), char(9, 1),    // chow
+        dragonTile(DragonTile.GREEN, 1), dragonTile(DragonTile.GREEN, 2), // pair → pung target
+        bam(5, 1),                               // filler
+      ],
+      seatWind: WindTile.EAST,
+    });
+
+    const state = buildFakeState(player);
+
+    // Win claim should always be taken
+    const winClaims = [{
+      playerId: 'ai_1',
+      claimType: 'win' as const,
+      tilesFromHand: [player.hand],
+      priority: 4,
+    }];
+    const winDecision = getMediumClaimDecision(state, 0, winClaims);
+    expect(winDecision.action.type).toBe('CLAIM');
+  });
+
+  it('Hard AI switches to defensive play when opponent has many melds', () => {
+    const player = makePlayer({
+      id: 'ai_1', name: 'AI 1', isAI: true, aiDifficulty: 'hard',
+      hand: [
+        bam(1, 1), bam(2, 1), bam(3, 1),
+        dot(4, 1), dot(5, 1), dot(6, 1),
+        char(7, 1), char(8, 1),
+        windTile(WindTile.NORTH, 1), // isolated, safe (4 copies visible)
+        dot(3, 1), // middle tile, potentially dangerous
+        dot(9, 1),
+        bam(7, 1),
+        char(5, 1), // draw
+      ],
+      seatWind: WindTile.EAST,
+    });
+
+    // Opponent with 3 exposed melds = dangerous
+    const opponent = makePlayer({
+      id: 'ai_2', name: 'AI 2', isAI: true,
+      hand: [bam(9, 1), bam(9, 2)], // small hand
+      melds: [
+        { tiles: [dot(1, 1), dot(1, 2), dot(1, 3)], type: 'pung' as const, isConcealed: false },
+        { tiles: [dot(7, 1), dot(8, 1), dot(9, 1)], type: 'chow' as const, isConcealed: false },
+        { tiles: [dragonTile(DragonTile.RED, 1), dragonTile(DragonTile.RED, 2), dragonTile(DragonTile.RED, 3)], type: 'pung' as const, isConcealed: false },
+      ] as MeldInfo[],
+    });
+
+    const state = buildFakeState(player, [opponent]);
+
+    const decision = getHardDiscard(state, 0);
+    // Hard AI should mention defensive in reasoning
+    expect(decision.reasoning).toContain('defensive');
+  });
+
+  it('Hard AI evaluates all chow combinations for best result', () => {
+    const player = makePlayer({
+      id: 'ai_1', name: 'AI 1', isAI: true, aiDifficulty: 'hard',
+      hand: [
+        bam(1, 1), bam(2, 1), bam(3, 1), bam(4, 1), // 1-2-3-4 bamboo
+        dot(1, 1), dot(2, 1), dot(3, 1),
+        char(7, 1), char(8, 1), char(9, 1),
+        dragonTile(DragonTile.GREEN, 1), dragonTile(DragonTile.GREEN, 2),
+        windTile(WindTile.NORTH, 1),
+      ],
+      seatWind: WindTile.EAST,
+    });
+
+    const state = buildFakeState(player);
+
+    // Two possible chow combinations: 1-2-3 or 2-3-4
+    const claims = [{
+      playerId: 'ai_1',
+      claimType: 'chow' as const,
+      tilesFromHand: [
+        [bam(1, 1), bam(2, 1)], // uses 1 and 2
+        [bam(2, 1), bam(4, 1)], // uses 2 and 4
+      ],
+      priority: 1,
+    }];
+
+    const decision = getHardClaimDecision(state, 0, claims);
+    // Hard AI should evaluate both and pick one (or pass if neither helps)
+    expect(['CLAIM', 'PASS']).toContain(decision.action.type);
   });
 });

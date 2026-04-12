@@ -1,13 +1,37 @@
 /**
  * Hard AI — strategic and defensive.
- * Builds on medium AI with danger analysis and opponent reading.
+ * Builds on medium AI with danger analysis, opponent reading, and defensive switching.
  */
 
-import { Tile, TileType, tileKey, tilesMatch } from '@/models/Tile';
+import { Tile, TileType, TileSuit, tileKey, tilesMatch } from '@/models/Tile';
 import { GameState } from '@/models/GameState';
 import { AIDecision, AvailableClaim } from '../types';
 import { isWinningHand, calculateShanten } from '../winDetection';
-import { tileDangerScore, isSafeTile, tileDiscardPriority } from './aiUtils';
+import {
+  tileDangerScore, isSafeTile, tileDiscardPriority,
+  isOpponentDangerous, detectOpponentSuitFocus,
+} from './aiUtils';
+
+/** Check if any opponent appears dangerous. */
+function shouldPlayDefensive(gameState: GameState, playerIndex: number): boolean {
+  for (let i = 0; i < gameState.players.length; i++) {
+    if (i === playerIndex) continue;
+    if (isOpponentDangerous(gameState, i)) return true;
+  }
+  return false;
+}
+
+/** Extra danger from opponent suit concentration. */
+function suitFocusDanger(tile: Tile, gameState: GameState, playerIndex: number): number {
+  if (tile.type !== TileType.SUIT) return 0;
+  let danger = 0;
+  for (let i = 0; i < gameState.players.length; i++) {
+    if (i === playerIndex) continue;
+    const focused = detectOpponentSuitFocus(gameState, i);
+    if (focused.has(tile.suit)) danger += 4;
+  }
+  return danger;
+}
 
 export function getHardDiscard(gameState: GameState, playerIndex: number): AIDecision {
   const player = gameState.players[playerIndex];
@@ -43,13 +67,12 @@ export function getHardDiscard(gameState: GameState, playerIndex: number): AIDec
 
   const nonBonus = hand.filter(t => t.type !== TileType.BONUS);
   const currentShanten = calculateShanten(nonBonus.slice(0, 13));
+  const defensive = shouldPlayDefensive(gameState, playerIndex);
 
-  // Score each tile for discard
   interface DiscardCandidate {
     tile: Tile;
     shanten: number;
     danger: number;
-    priority: number;
     score: number;
   }
 
@@ -61,26 +84,56 @@ export function getHardDiscard(gameState: GameState, playerIndex: number): AIDec
     if (testHand.length === 0) continue;
 
     const shanten = calculateShanten(testHand);
-    const danger = tileDangerScore(tile, gameState, playerIndex);
+    const baseDanger = tileDangerScore(tile, gameState, playerIndex);
+    const focusDanger = suitFocusDanger(tile, gameState, playerIndex);
+    const danger = baseDanger + focusDanger;
     const priority = tileDiscardPriority(tile);
 
-    // Combined score: lower is better to discard
-    // Heavily weight shanten (don't increase it), then prefer safe tiles
-    let score = shanten * 100; // primary: keep shanten low
-    score += danger * 3;        // secondary: avoid dangerous tiles
-    score -= priority * 1;      // tertiary: prefer discarding isolated/honor tiles
+    let score: number;
 
-    // Bonus: if we're tenpai, heavily penalize dangerous discards
-    if (currentShanten === 0 && danger > 4) {
-      score += 50;
+    if (defensive && currentShanten > 1) {
+      // Defensive mode: prioritize safety over hand progress
+      score = danger * 10;            // primary: avoid dangerous tiles
+      score += shanten * 30;          // secondary: still try to reduce shanten
+      score -= priority * 2;
+
+      // Strong bonus for safe tiles in defensive mode
+      if (isSafeTile(tile, gameState, playerIndex)) {
+        score -= 50;
+      }
+    } else {
+      // Aggressive mode: optimize for winning
+      score = shanten * 100;          // primary: keep shanten low
+      score += danger * 3;            // secondary: avoid dangerous tiles
+      score -= priority * 1;
+
+      // Bonus for safe tiles
+      if (isSafeTile(tile, gameState, playerIndex)) {
+        score -= 20;
+      }
+
+      // When tenpai, heavily penalize dangerous discards
+      if (currentShanten === 0 && danger > 4) {
+        score += 50;
+      }
     }
 
-    // Bonus for safe tiles
-    if (isSafeTile(tile, gameState, playerIndex)) {
-      score -= 20;
+    // Bonus: keep dragon pairs/triplets (fan value)
+    if (tile.suit === TileSuit.DRAGON) {
+      const dragonCount = hand.filter(t => t.suit === TileSuit.DRAGON && t.dragon === tile.dragon).length;
+      if (dragonCount >= 2) score += 15;
     }
 
-    candidates.push({ tile, shanten, danger, priority, score });
+    // Bonus: keep seat/prevailing wind pairs+
+    if (tile.suit === TileSuit.WIND) {
+      const isValuable = tile.wind === player.seatWind || tile.wind === gameState.prevailingWind;
+      if (isValuable) {
+        const windCount = hand.filter(t => t.wind === tile.wind).length;
+        if (windCount >= 2) score += 12;
+      }
+    }
+
+    candidates.push({ tile, shanten, danger, score });
   }
 
   // Sort by score (lowest = best discard)
@@ -90,7 +143,7 @@ export function getHardDiscard(gameState: GameState, playerIndex: number): AIDec
 
   return {
     action: { type: 'DISCARD', tile: best.tile },
-    reasoning: `Hard AI: discard ${best.tile.nameEnglish} (score=${(best as DiscardCandidate).score})`,
+    reasoning: `Hard AI: discard ${best.tile.nameEnglish} (${defensive ? 'defensive' : 'aggressive'}, score=${(best as DiscardCandidate).score})`,
   };
 }
 
@@ -115,7 +168,7 @@ export function getHardClaimDecision(
     ? calculateShanten(currentHand.slice(0, 13))
     : 8;
 
-  // Evaluate all claims
+  // Evaluate all pung/kong claims
   for (const claim of availableClaims) {
     if (claim.claimType === 'kong' || claim.claimType === 'pung') {
       const tiles = claim.tilesFromHand[0];
@@ -127,35 +180,58 @@ export function getHardClaimDecision(
       if (testHand.length >= 10) {
         const newShanten = calculateShanten(testHand.slice(0, 13));
 
-        // Hard AI is more aggressive — claim even if shanten stays same
-        // if it builds toward a scoring hand
-        if (newShanten <= currentShanten) {
+        // Hard AI claims more aggressively:
+        // - Always claim if shanten improves
+        // - Claim at equal shanten for valuable tiles (dragons, winds)
+        // - Claim at equal shanten if close to winning (shanten <= 1)
+        if (newShanten < currentShanten) {
           return {
             action: { type: 'CLAIM', claimType: claim.claimType, tilesFromHand: tiles },
             reasoning: `Hard AI: claiming ${claim.claimType} (shanten ${currentShanten}→${newShanten})`,
           };
         }
+
+        if (newShanten === currentShanten) {
+          const claimedTile = tiles[0];
+          const isDragon = claimedTile?.suit === TileSuit.DRAGON;
+          const isValuableWind = claimedTile?.suit === TileSuit.WIND &&
+            (claimedTile.wind === player.seatWind || claimedTile.wind === gameState.prevailingWind);
+          const isCloseToWin = currentShanten <= 1;
+
+          if (isDragon || isValuableWind || isCloseToWin) {
+            return {
+              action: { type: 'CLAIM', claimType: claim.claimType, tilesFromHand: tiles },
+              reasoning: `Hard AI: aggressive claim ${claim.claimType} (close/valuable)`,
+            };
+          }
+        }
       }
     }
   }
 
-  // Chow: claim if beneficial
-  const chowClaim = availableClaims.find(c => c.claimType === 'chow');
-  if (chowClaim && chowClaim.tilesFromHand[0]) {
-    const tiles = chowClaim.tilesFromHand[0];
-    const handAfter = player.hand.filter(t => !tiles.find(ct => ct.id === t.id));
-    const testHand = handAfter.filter(t => t.type !== TileType.BONUS);
+  // Chow: evaluate all combinations and pick the best
+  const chowClaims = availableClaims.filter(c => c.claimType === 'chow');
+  let bestChow: { tiles: Tile[]; shanten: number } | null = null;
 
-    if (testHand.length >= 10) {
-      const newShanten = calculateShanten(testHand.slice(0, 13));
+  for (const claim of chowClaims) {
+    for (const tiles of claim.tilesFromHand) {
+      const handAfter = player.hand.filter(t => !tiles.find(ct => ct.id === t.id));
+      const testHand = handAfter.filter(t => t.type !== TileType.BONUS);
 
-      if (newShanten < currentShanten) {
-        return {
-          action: { type: 'CLAIM', claimType: 'chow', tilesFromHand: tiles },
-          reasoning: `Hard AI: claiming chow (shanten ${currentShanten}→${newShanten})`,
-        };
+      if (testHand.length >= 10) {
+        const newShanten = calculateShanten(testHand.slice(0, 13));
+        if (newShanten < currentShanten && (!bestChow || newShanten < bestChow.shanten)) {
+          bestChow = { tiles, shanten: newShanten };
+        }
       }
     }
+  }
+
+  if (bestChow) {
+    return {
+      action: { type: 'CLAIM', claimType: 'chow', tilesFromHand: bestChow.tiles },
+      reasoning: `Hard AI: claiming best chow (shanten ${currentShanten}→${bestChow.shanten})`,
+    };
   }
 
   return {

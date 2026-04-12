@@ -13,6 +13,8 @@ interface GameHUDProps {
   currentPlayerIndex: number;
   players: Player[];
   turnPhase: TurnPhase;
+  handNumber?: number;
+  playerScores?: number[];
 }
 
 const WIND_CHARS: Record<WindTile, string> = {
@@ -26,6 +28,7 @@ const PHASE_LABELS: Record<TurnPhase, string> = {
 
 export default function GameHUD({
   wallCount, prevailingWind, currentPlayerIndex, players, turnPhase,
+  handNumber, playerScores,
 }: GameHUDProps) {
   const router = useRouter();
   const [soundOn, setSoundOn] = useState(soundManager.isEnabled());
@@ -75,6 +78,7 @@ export default function GameHUD({
       <div className="flex justify-between items-center mb-1">
         <span className="text-retro-gold retro-glow">
           {WIND_CHARS[prevailingWind]} Round
+          {handNumber != null && <span className="text-retro-textDim text-xs ml-1">H{handNumber}</span>}
         </span>
         <span className="text-retro-cyan">
           Wall: {wallCount}
@@ -99,7 +103,7 @@ export default function GameHUD({
             {i !== currentPlayerIndex && <span className="w-2" />}
             <span className="text-retro-gold w-3">{WIND_CHARS[player.seatWind]}</span>
             <span className="flex-1 truncate">{player.name}</span>
-            <span className="text-retro-gold">{player.score}</span>
+            <span className="text-retro-gold">{playerScores ? playerScores[i] : player.score}</span>
           </div>
         ))}
       </div>

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, VT323, Press_Start_2P } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import StoreProvider from "@/store/provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -44,6 +45,7 @@ export default function RootLayout({
           <TooltipProvider>
             {children}
           </TooltipProvider>
+          <Analytics />
         </StoreProvider>
       </body>
     </html>

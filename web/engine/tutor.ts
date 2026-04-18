@@ -3,9 +3,9 @@
  */
 
 import { Tile, TileType, TileSuit, WindTile, DragonTile, tileKey } from '@/models/Tile';
-import { GameState } from '@/models/GameState';
+import { GameState, MeldInfo } from '@/models/GameState';
 import { AvailableClaim, TutorAdvice, TileClassification, TileColor } from './types';
-import { calculateShanten, isWinningHand } from './winDetection';
+import { calculateShanten, isWinningHand, canPlayerWin } from './winDetection';
 import { tileDiscardPriority, tileDangerScore, isSafeTile } from './ai/aiUtils';
 import { getBestClaimSubmission } from './claiming';
 
@@ -115,8 +115,9 @@ function buildDiscardAdvice(
   hand: Tile[],
   playerIndex: number,
 ): TutorAdvice | null {
-  // Check if player can win
-  if (isWinningHand(hand)) {
+  // Check if player can win (accounting for exposed melds)
+  const melds = gameState.players[playerIndex].melds;
+  if (canPlayerWin(hand, melds)) {
     return {
       type: 'general',
       message: "You have a winning hand! Press [ WIN! ] to claim victory.",
@@ -168,7 +169,7 @@ function buildDiscardAdvice(
 
   // Check tenpai
   if (currentShanten === 0) {
-    const waits = findTenpaiWaits(nonBonus.slice(0, 13));
+    const waits = findTenpaiWaits(nonBonus.slice(0, 13), melds);
     const waitNames = waits.map(t => t.nameEnglish);
     return {
       type: 'discard',
@@ -206,11 +207,11 @@ function classifyTiles(scores: ScoredTile[]): TileClassification[] {
   });
 }
 
-function findTenpaiWaits(hand: Tile[]): Tile[] {
+function findTenpaiWaits(hand: Tile[], melds: MeldInfo[]): Tile[] {
   const waits: Tile[] = [];
   for (const testTile of ALL_TILE_TYPES) {
     const testHand = [...hand, testTile];
-    if (isWinningHand(testHand)) {
+    if (canPlayerWin(testHand, melds)) {
       waits.push(testTile);
     }
   }

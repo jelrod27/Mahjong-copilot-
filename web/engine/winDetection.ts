@@ -28,6 +28,47 @@ export function isWinningHand(tiles: Tile[]): boolean {
 }
 
 /**
+ * Check if a player can win given their concealed hand and exposed melds.
+ * This is the correct way to check for win conditions during gameplay,
+ * as it accounts for tiles that have been exposed via pung/chow/kong claims.
+ *
+ * For a player with exposed melds, the concealed hand will have fewer than
+ * 14 tiles (e.g., 11 hand + 3 meld = 14 total). isWinningHand() alone only
+ * checks the concealed hand, so it will fail for players with any melds exposed.
+ *
+ * Special hands (thirteen orphans, seven pairs) require all 14 tiles concealed,
+ * so they can only win via self-draw when the player has no exposed melds.
+ */
+export function canPlayerWin(hand: Tile[], melds: MeldInfo[]): boolean {
+  const nonBonusHand = hand.filter(t => t.type !== TileType.BONUS);
+  const meldTiles = melds.flatMap(m => m.tiles);
+  const allTiles = [...nonBonusHand, ...meldTiles];
+
+  if (allTiles.length !== 14) return false;
+
+  // Special hands require all tiles concealed (no exposed melds)
+  if (melds.length === 0) {
+    if (isThirteenOrphans(allTiles)) return true;
+    if (isSevenPairs(allTiles)) return true;
+  }
+
+  // Standard decomposition: use melds as pre-formed melds, check if
+  // remaining hand tiles form the right number of melds + a pair
+  const meldsNeeded = 4 - melds.length;
+  // Need: meldsNeeded * 3 tiles (for additional melds) + 2 tiles (for pair)
+  if (nonBonusHand.length !== meldsNeeded * 3 + 2) return false;
+
+  // Try to decompose the remaining hand tiles into the needed melds + pair
+  const results: HandDecomposition[] = [];
+  findStandardDecompositions(
+    sortTiles(nonBonusHand),
+    [...melds],
+    results,
+  );
+  return results.length > 0;
+}
+
+/**
  * Find all valid decompositions of a winning hand.
  * Returns all ways to arrange tiles into 4 melds + 1 pair.
  */

@@ -11,7 +11,7 @@ import {
 } from '@/models/GameState';
 import { TileFactory } from '@/models/Tile';
 import { GameAction } from './types';
-import { isWinningHand } from './winDetection';
+import { isWinningHand, canPlayerWin } from './winDetection';
 import { getAvailableClaims, resolveClaims } from './claiming';
 
 // ============================================
@@ -275,7 +275,7 @@ function handleSelfDrawnWin(state: GameState, playerIndex: number): GameState | 
   if (state.currentPlayerIndex !== playerIndex) return null;
 
   const player = state.players[playerIndex];
-  if (!isWinningHand(player.hand)) return null;
+  if (!canPlayerWin(player.hand, player.melds)) return null;
 
   return {
     ...state,
@@ -339,7 +339,7 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
       for (let i = 0; i < state.players.length; i++) {
         if (i === playerIndex) continue;
         const otherHand = [...state.players[i].hand, kongTile];
-        if (isWinningHand(otherHand)) {
+        if (canPlayerWin(otherHand, state.players[i].melds)) {
           robbingClaims.push({ playerId: state.players[i].id });
         }
       }
@@ -415,7 +415,7 @@ function handleClaim(
   // Validate the claim
   if (claimType === 'win') {
     const handWithTile = [...player.hand, discardedTile];
-    if (!isWinningHand(handWithTile)) return null;
+    if (!canPlayerWin(handWithTile, player.melds)) return null;
   } else {
     // Validate tiles from hand exist
     for (const t of tilesFromHand) {

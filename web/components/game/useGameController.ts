@@ -10,7 +10,7 @@ import { Tile, TileType, TileFactory, tilesMatch } from '@/models/Tile';
 import { initializeGame, applyAction } from '@/engine/turnManager';
 import { initializeMatch, advanceMatch, startNextHand } from '@/engine/matchManager';
 import { getAvailableClaims, getBestClaimSubmission } from '@/engine/claiming';
-import { isWinningHand } from '@/engine/winDetection';
+import { isWinningHand, canPlayerWin } from '@/engine/winDetection';
 import { calculateScore } from '@/engine/scoring';
 import { AvailableClaim, ScoringContext, ScoringResult, WinMethod, TileClassification } from '@/engine/types';
 import { calculatePayment } from '@/engine/scoring';
@@ -303,7 +303,7 @@ export default function useGameController(
 
   const canDeclareWin = (() => {
     if (!game || game.turnPhase !== 'discard' || game.currentPlayerIndex !== humanIndex) return false;
-    return isWinningHand(game.players[humanIndex].hand);
+    return canPlayerWin(game.players[humanIndex].hand, game.players[humanIndex].melds);
   })();
 
   // === Tutor Calculation Hook ===
@@ -352,10 +352,11 @@ export default function useGameController(
     // Quick shanten check: compute if hand is tenpai
     // We check if removing any one tile makes the rest a winning hand
     const hand = humanPlayer.hand;
+    const melds = humanPlayer.melds;
     const waits: string[] = [];
     // A hand is tenpai if it's one tile away from winning
-    // For efficiency, just check if the hand is already winning (0 shanten)
-    if (isWinningHand(hand)) {
+    // For full combined hand+melds check
+    if (canPlayerWin(hand, melds)) {
       setTenpaiStatus({ isTenpai: true, waits: ['Already winning!'] });
       return;
     }
@@ -370,7 +371,7 @@ export default function useGameController(
       if (tested.has(key)) continue;
       tested.add(key);
 
-      if (isWinningHand([...hand, tile])) {
+      if (canPlayerWin([...hand, tile], melds)) {
         waits.push(tile.nameEnglish);
       }
     }

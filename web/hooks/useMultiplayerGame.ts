@@ -5,7 +5,7 @@ import { GameState, GamePhase, ClaimType, gameStateFromJson } from '@/models/Gam
 import { Tile, TileType, tileKey } from '@/models/Tile';
 import { AvailableClaim, ScoringContext, ScoringResult } from '@/engine/types';
 import { getAvailableClaims, getBestClaimSubmission } from '@/engine/claiming';
-import { isWinningHand } from '@/engine/winDetection';
+import { isWinningHand, canPlayerWin } from '@/engine/winDetection';
 import { calculateScore } from '@/engine/scoring';
 import { GameController } from '@/components/game/useGameController';
 import { joinGameChannel, leaveChannel, GameEvent } from '@/lib/supabase/realtime';
@@ -234,7 +234,7 @@ export default function useMultiplayerGame(
     if (!game || !humanPlayer) return false;
     if (game.currentPlayerIndex !== game.players.indexOf(humanPlayer)) return false;
     if (game.turnPhase !== 'discard') return false;
-    return isWinningHand(humanPlayer.hand);
+    return canPlayerWin(humanPlayer.hand, humanPlayer.melds);
   }, [game, humanPlayer]);
 
   return {

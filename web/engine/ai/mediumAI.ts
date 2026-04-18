@@ -6,7 +6,7 @@
 import { Tile, TileType, TileSuit, tileKey, tilesMatch } from '@/models/Tile';
 import { GameState } from '@/models/GameState';
 import { AIDecision, AvailableClaim } from '../types';
-import { isWinningHand, calculateShanten } from '../winDetection';
+import { isWinningHand, canPlayerWin, calculateShanten } from '../winDetection';
 import { tileDiscardPriority } from './aiUtils';
 
 /** Bonus for keeping tiles that contribute to known fan patterns. */
@@ -58,7 +58,7 @@ export function getMediumDiscard(gameState: GameState, playerIndex: number): AID
   const hand = player.hand;
 
   // Check for self-drawn win
-  if (isWinningHand(hand)) {
+  if (canPlayerWin(hand, player.melds)) {
     return { action: { type: 'DECLARE_WIN' }, reasoning: 'Medium AI: winning hand' };
   }
 

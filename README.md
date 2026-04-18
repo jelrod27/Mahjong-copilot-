@@ -1,45 +1,64 @@
-# Mahjong Copilot (16 Bit Mahjong)
+# 16 Bit Mahjong
 
-Web-first mahjong learning and solo play. Production: [16bitmahjong.co](https://16bitmahjong.co).
+A mahjong learning and solo play platform. Live at [16bitmahjong.co](https://16bitmahjong.co).
 
-## Repository layout
+Built around a deterministic, dependency-free game engine that handles the full Hong Kong Mahjong ruleset -- dealing, drawing, discarding, claiming (chow/pung/kong/win), scoring, and three AI tiers.
 
-| Path | Description |
-|------|-------------|
-| `web/` | Next.js 14 app (primary) |
-| `web/engine/` | Pure TypeScript game engine (deterministic, testable) |
-| `src/` | Legacy React Native client (less active) |
+## Stack
 
-## Web app quick start
+**Web app** (`web/`): Next.js 14, React 18, Redux Toolkit, Supabase, Tailwind CSS
+
+**Game engine** (`web/engine/`): Pure TypeScript, no dependencies, no side effects. Framework-agnostic and fully testable.
+
+**Mobile** (`src/`): Legacy React Native shell. Not actively developed.
+
+## Running locally
 
 ```bash
 cd web
 npm ci
-cp .env.example .env.local   # optional; see file for Supabase vars
+cp .env.example .env.local   # optional for offline play
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Playwright uses port **3100** by default (`npm run test:e2e` starts `next dev` there).
+The app runs on `localhost:3000`. Supabase env vars are only needed for auth and multiplayer -- the solo game works without them.
 
-## Scripts (from `web/`)
+## Commands
 
-| Command | Purpose |
-|---------|---------|
-| `npm run dev` | Development server |
+All commands run from `web/`.
+
+| Command | What it does |
+|---------|-------------|
+| `npm run dev` | Dev server |
 | `npm run build` | Production build |
+| `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
-| `npm run typecheck` | TypeScript (`tsc --noEmit`) |
-| `npm test` | Vitest (unit / engine tests) |
-| `npm run test:e2e` | Playwright |
+| `npm test` | Vitest unit tests |
+| `npm run test:coverage` | Coverage report |
+| `npm run test:e2e` | Playwright (starts dev server on port 3100) |
 
-## Environment
+## Testing
 
-Copy `web/.env.example` to `web/.env.local`. Supabase URL and anon key enable auth and protected routes in middleware; without them, middleware passes through for local static use.
+221 tests across the engine, components, and pages. Engine tests live in `web/engine/__tests__/`. Vitest runs unit tests; Playwright handles e2e.
 
-## CI
+CI runs typecheck, lint, unit tests, and build on every PR. See `.github/workflows/ci.yml`.
 
-GitHub Actions runs lint, typecheck, tests, and build on pull requests and `main`. Optional Vercel preview browser tests live in `.github/workflows/e2e-preview.yml` (manual workflow dispatch).
+## Architecture
 
-## More detail
+The engine is the core. Everything flows through `applyAction(state, action) -> newState` in `turnManager.ts`, which acts as the state machine. The `useGameController` hook bridges the engine to React -- managing game state, AI turn timing, and claim timeouts.
 
-See [`CLAUDE.md`](./CLAUDE.md) for architecture, engine overview, and conventions.
+```
+User action -> engine.applyAction() -> new GameState -> Redux store -> React re-render
+```
+
+Key engine modules:
+
+- **turnManager.ts** -- State machine. Dealing, drawing, discarding, claiming, kong, win resolution.
+- **winDetection.ts** -- Validates winning hands. Standard decomposition, thirteen orphans, seven pairs. Calculates shanten distance.
+- **scoring.ts** -- Hong Kong Mahjong fan scoring. Payment formula: 8 * 2^fan, capped at 256.
+- **claiming.ts** -- Validates discard claims. Priority resolution between competing players.
+- **ai/** -- Three tiers. Easy plays randomly, medium uses shanten, hard evaluates danger and opponent reading.
+
+## License
+
+MIT

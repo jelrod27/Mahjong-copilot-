@@ -5,7 +5,7 @@
 import { Tile, TileType, TileSuit, tileKey } from '@/models/Tile';
 import { GameState } from '@/models/GameState';
 import { GameAction, AIDecision, AvailableClaim } from '../types';
-import { isWinningHand } from '../winDetection';
+import { isWinningHand, canPlayerWin } from '../winDetection';
 
 /**
  * Score a tile for discard desirability (higher = more desirable to discard).
@@ -53,7 +53,7 @@ export function getEasyDiscard(gameState: GameState, playerIndex: number): AIDec
   const hand = player.hand;
 
   // Check for self-drawn win first
-  if (isWinningHand(hand)) {
+  if (canPlayerWin(hand, player.melds)) {
     return { action: { type: 'DECLARE_WIN' }, reasoning: 'Easy AI: winning hand detected' };
   }
 

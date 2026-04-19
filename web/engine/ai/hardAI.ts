@@ -53,9 +53,15 @@ export function getHardDiscard(gameState: GameState, playerIndex: number): AIDec
   const entries = Array.from(keyCounts.entries());
   for (const [, tiles] of entries) {
     if (tiles.length === 4) {
-      const handWithout = hand.filter(t => !tilesMatch(t, tiles[0]));
-      const shantenWithout = calculateShanten(handWithout.filter(t => t.type !== TileType.BONUS).slice(0, 13));
-      const shantenWith = calculateShanten(hand.filter(t => t.type !== TileType.BONUS).slice(0, 13));
+      // Build comparable 13-tile hands: kong-declared treats the 4 as a fixed pung
+      // (3 copies + remaining ~10); kong-kept keeps all 4 in hand and drops one
+      // other tile, preserving the seven-pairs option that kong would forfeit.
+      const nonBonusHand = hand.filter(t => t.type !== TileType.BONUS);
+      const remaining = nonBonusHand.filter(t => !tilesMatch(t, tiles[0]));
+      const handWithoutKong = [...remaining, tiles[0], tiles[1], tiles[2]].slice(0, 13);
+      const handKeepingKong = [...remaining.slice(0, Math.max(0, remaining.length - 1)), ...tiles].slice(0, 13);
+      const shantenWithout = calculateShanten(handWithoutKong);
+      const shantenWith = calculateShanten(handKeepingKong);
       if (shantenWithout <= shantenWith) {
         return {
           action: { type: 'DECLARE_KONG', tile: tiles[0] },

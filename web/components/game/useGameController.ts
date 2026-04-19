@@ -89,6 +89,10 @@ export default function useGameController(
   const gameRef = useRef<GameState | null>(null);
   const matchRef = useRef<MatchState | null>(null);
   const processingRef = useRef(false);
+  // Mutex shared by human discard paths (manual click + auto-discard timer) so
+  // whichever fires first wins and the other no-ops. Cleared after the hand
+  // state transitions (resetHandState) or when phase leaves discard.
+  const humanDiscardInFlightRef = useRef(false);
   const lastActionTimeRef = useRef(0);
   // Keep refs in sync
   useEffect(() => { gameRef.current = game; }, [game]);
@@ -104,6 +108,7 @@ export default function useGameController(
     setScoringResult(null);
     setTileClassifications(new Map());
     processingRef.current = false;
+    humanDiscardInFlightRef.current = false;
   }, []);
 
   const startNewGame = useCallback((newDifficulty: 'easy' | 'medium' | 'hard', newMode?: GameMode) => {
@@ -172,9 +177,17 @@ export default function useGameController(
   const discardSelected = useCallback(() => {
     const current = gameRef.current;
     if (!current || current.turnPhase !== 'discard' || current.currentPlayerIndex !== humanIndex) return;
+    // Bug #7: mutex against auto-discard timer — whichever fires first wins.
+    if (humanDiscardInFlightRef.current) return;
     const tile = current.players[humanIndex].hand.find(t => t.id === selectedTileId);
     if (!tile) return;
-    doAction(HUMAN_ID, { type: 'DISCARD', tile });
+    humanDiscardInFlightRef.current = true;
+    const next = doAction(HUMAN_ID, { type: 'DISCARD', tile });
+    if (!next) {
+      // Debounce or engine rejection — release the mutex so a retry/auto can fire.
+      humanDiscardInFlightRef.current = false;
+      return;
+    }
     setSelectedTileId(undefined);
     soundManager.play('tilePlace');
   }, [selectedTileId, humanIndex, doAction]);
@@ -397,7 +410,12 @@ export default function useGameController(
     if (!game || game.phase !== GamePhase.PLAYING) return;
     if (game.turnPhase !== 'discard' || game.currentPlayerIndex !== humanIndex) return;
 
+    // Release any stale mutex when a fresh discard phase begins (next hand, new turn).
+    humanDiscardInFlightRef.current = false;
+
     const timer = setTimeout(() => {
+      // Bug #7: mutex against manual discardSelected() — whichever fires first wins.
+      if (humanDiscardInFlightRef.current) return;
       const current = gameRef.current;
       if (!current || current.turnPhase !== 'discard' || current.currentPlayerIndex !== humanIndex) return;
       const hand = current.players[humanIndex].hand;
@@ -406,7 +424,12 @@ export default function useGameController(
         ? hand.find(t => t.id === current.lastDrawnTile?.id)
         : hand[hand.length - 1];
       if (autoTile) {
-        doAction(HUMAN_ID, { type: 'DISCARD', tile: autoTile });
+        humanDiscardInFlightRef.current = true;
+        const next = doAction(HUMAN_ID, { type: 'DISCARD', tile: autoTile });
+        if (!next) {
+          humanDiscardInFlightRef.current = false;
+          return;
+        }
         setSelectedTileId(undefined);
       }
     }, (game.turnTimeLimit ?? 20) * 1000);
@@ -534,8 +557,23 @@ export default function useGameController(
 
   // === Claim countdown ===
   useEffect(() => {
+    // Bug #8: stop ticking as soon as the hand ends (robbing-the-kong win, wall
+    // exhaustion, etc.) or the claim opportunity is gone — otherwise the
+    // interval keeps calling pass() against a FINISHED state.
     if (claimTimer <= 0 || claimOptions.length === 0) return;
+    if (!game || game.phase !== GamePhase.PLAYING || game.turnPhase !== 'claim') {
+      // Reset timer synchronously so lingering UI also clears.
+      if (claimTimer !== 0) setClaimTimer(0);
+      return;
+    }
     const interval = setInterval(() => {
+      // Re-check inside the tick — phase may have flipped between scheduling
+      // and firing.
+      const live = gameRef.current;
+      if (!live || live.phase !== GamePhase.PLAYING || live.turnPhase !== 'claim') {
+        setClaimTimer(0);
+        return;
+      }
       setClaimTimer(prev => {
         if (prev <= 100) {
           // Time's up — auto-pass
@@ -546,7 +584,7 @@ export default function useGameController(
       });
     }, 100);
     return () => clearInterval(interval);
-  }, [claimTimer > 0, claimOptions.length, pass]);
+  }, [claimTimer > 0, claimOptions.length, game?.phase, game?.turnPhase, pass]);
 
   // === Scoring on hand over ===
   useEffect(() => {

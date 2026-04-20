@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { useAppDispatch } from '@/store/hooks';
+import { quizCompleted } from '@/store/actions/progressActions';
 
 /* ─────────────────────────────────────────
    Question data
@@ -105,6 +107,7 @@ export default function HandRecognition({ onBack }: { onBack: () => void }) {
   const [selected, setSelected] = useState<boolean | null>(null);
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
+  const dispatch = useAppDispatch();
 
   const current = questions[index];
 
@@ -125,12 +128,13 @@ export default function HandRecognition({ onBack }: { onBack: () => void }) {
           localStorage.setItem(LS_KEY, JSON.stringify(stored));
         }
       } catch { /* ignore */ }
+      void dispatch(quizCompleted({ mode: 'hand-recognition', score }));
       setFinished(true);
     } else {
       setIndex(i => i + 1);
       setSelected(null);
     }
-  }, [index, score]);
+  }, [index, score, dispatch]);
 
   if (finished) {
     return (

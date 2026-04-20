@@ -204,29 +204,29 @@ export default function HandResultScreen({
           })}
         </div>
 
-        {/* Post-hand review (easy mode only) */}
-        {match.difficulty === 'easy' && (() => {
+        {/* Post-hand review — surfaced on every difficulty */}
+        {(() => {
           const humanIndex = gameState.players.findIndex(p => p.id === match.humanPlayerId);
           if (humanIndex === -1) return null;
-          const insights = analyzeHandPerformance(gameState, humanIndex);
+          const insights = analyzeHandPerformance(gameState, humanIndex).slice(0, 5);
           if (insights.length === 0) return null;
           return (
-            <div className="mb-4">
+            <div className="mb-4" data-testid="hand-review">
               <div className="font-pixel text-xs text-retro-green mb-2">REVIEW</div>
-              <div className="space-y-1">
-                {insights.map((insight, i) => (
-                  <div key={i} className="flex gap-2 font-retro text-xs">
-                    <span className={
-                      insight.type === 'good' ? 'text-retro-green' :
-                      insight.type === 'mistake' ? 'text-red-400' :
-                      'text-retro-textDim'
-                    }>
-                      {insight.type === 'good' ? '+' : insight.type === 'mistake' ? '!' : '-'}
-                    </span>
-                    <span className="text-retro-text">{insight.message}</span>
-                  </div>
-                ))}
-              </div>
+              <ul className="space-y-1">
+                {insights.map((insight, i) => {
+                  const { symbol, cls, sr } = getInsightGlyph(insight.type);
+                  return (
+                    <li key={i} className="flex gap-2 font-retro text-xs items-start" data-insight-type={insight.type}>
+                      <span className={`${cls} font-pixel shrink-0 leading-5`} aria-hidden>
+                        {symbol}
+                      </span>
+                      <span className="sr-only">{sr}</span>
+                      <span className="text-retro-text leading-snug">{insight.message}</span>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
           );
         })()}
@@ -248,4 +248,16 @@ export default function HandResultScreen({
       </div>
     </div>
   );
+}
+
+/** Per-insight visual treatment — green check, red x, cyan bullet. */
+function getInsightGlyph(type: ReviewInsight['type']): { symbol: string; cls: string; sr: string } {
+  switch (type) {
+    case 'good':
+      return { symbol: '\u2713', cls: 'text-retro-green', sr: 'Good play:' };
+    case 'mistake':
+      return { symbol: '\u2717', cls: 'text-red-400', sr: 'Mistake:' };
+    default:
+      return { symbol: '\u2022', cls: 'text-retro-cyan', sr: 'Note:' };
+  }
 }

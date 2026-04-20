@@ -2,7 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { TrendingUp } from 'lucide-react';
-import { loadStats, GameStats } from '@/lib/gameStats';
+import { loadStats, GameStats, QuizMode } from '@/lib/gameStats';
+
+const QUIZ_LABELS: Record<QuizMode, string> = {
+  'tile-quiz': 'Tile Quiz',
+  'scoring-quiz': 'Scoring Quiz',
+  'hand-recognition': 'Hand Recognition',
+};
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
@@ -74,6 +80,9 @@ export default function ProgressPage() {
     : '-';
 
   const hasPlayed = stats.gamesPlayed > 0;
+  const quizEntries = (Object.entries(stats.quizzes ?? {}) as [QuizMode, { played: number; best: number; lastScore: number }][])
+    .filter(([, s]) => s && s.played > 0);
+  const hasQuizzed = quizEntries.length > 0;
 
   return (
     <div className="min-h-screen px-4 py-8 max-w-md mx-auto">
@@ -85,6 +94,25 @@ export default function ProgressPage() {
           Track your mahjong journey
         </div>
       </div>
+
+      {/* Practice quiz stats — shown whenever any quiz has been completed */}
+      {hasQuizzed && (
+        <div className="retro-panel p-3 mb-4" data-testid="quiz-stats">
+          <div className="font-pixel text-[9px] text-retro-cyan mb-2">PRACTICE QUIZZES</div>
+          <div className="space-y-1">
+            {quizEntries.map(([mode, s]) => (
+              <div key={mode} className="flex justify-between font-retro text-sm">
+                <span className="text-retro-text">{QUIZ_LABELS[mode]}</span>
+                <span className="text-retro-textDim">
+                  <span className="text-retro-gold">{s.best}/10 best</span>
+                  <span className="mx-1">&middot;</span>
+                  {s.played} played
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {!hasPlayed ? (
         <div className="retro-panel p-6 text-center">

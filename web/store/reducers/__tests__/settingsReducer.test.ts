@@ -3,7 +3,7 @@ import { settingsReducer } from '../settingsReducer';
 import {
   SETTINGS_INITIALIZE, SETTINGS_SET_VARIANT, SETTINGS_SET_LOCALE,
   SETTINGS_SET_THEME_MODE, SETTINGS_SET_SOUND_ENABLED, SETTINGS_SET_NOTIFICATIONS_ENABLED,
-  SETTINGS_SET_LARGER_UI_TEXT,
+  SETTINGS_SET_LARGER_UI_TEXT, SETTINGS_SET_SHOW_TUTOR,
 } from '../../actions/settingsActions';
 
 const initialState = {
@@ -13,6 +13,7 @@ const initialState = {
   soundEnabled: true,
   notificationsEnabled: true,
   largerUiText: false,
+  showTutor: true,
 };
 
 describe('settingsReducer', () => {
@@ -28,6 +29,7 @@ describe('settingsReducer', () => {
       soundEnabled: false,
       notificationsEnabled: false,
       largerUiText: true,
+      showTutor: false,
     };
     const state = settingsReducer(initialState, { type: SETTINGS_INITIALIZE, payload: newSettings });
     expect(state).toEqual(newSettings);
@@ -62,6 +64,16 @@ describe('settingsReducer', () => {
   it('handles SETTINGS_SET_LARGER_UI_TEXT', () => {
     const state = settingsReducer(initialState, { type: SETTINGS_SET_LARGER_UI_TEXT, payload: true });
     expect(state.largerUiText).toBe(true);
+  });
+
+  it('handles SETTINGS_SET_SHOW_TUTOR', () => {
+    const state = settingsReducer(initialState, { type: SETTINGS_SET_SHOW_TUTOR, payload: false });
+    expect(state.showTutor).toBe(false);
+  });
+
+  it('defaults showTutor to true', () => {
+    const state = settingsReducer(undefined, { type: 'UNKNOWN' });
+    expect(state.showTutor).toBe(true);
   });
 
   it('returns state unchanged for unknown action', () => {

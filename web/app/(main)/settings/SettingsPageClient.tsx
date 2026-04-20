@@ -8,6 +8,7 @@ import {
   setSoundEnabled,
   setThemeMode,
   setNotificationsEnabled,
+  setShowTutor,
   SettingsState,
 } from '@/store/actions/settingsActions';
 import soundManager from '@/lib/soundManager';
@@ -90,6 +91,7 @@ export default function SettingsPageClient() {
     void dispatch(setSoundEnabled(true));
     void dispatch(setThemeMode('retro'));
     void dispatch(setNotificationsEnabled(true));
+    void dispatch(setShowTutor(true));
     const defaultPrefs: GamePreferences = { turnTimer: 20, autoPass: false };
     setGamePrefs(defaultPrefs);
     saveGamePreferences(defaultPrefs);
@@ -211,6 +213,14 @@ export default function SettingsPageClient() {
           onChange={(v) => updateGamePref('autoPass', v)}
           label="Auto-pass when no claims"
           description="Automatically pass during claim phase when you have no valid claims"
+        />
+
+        {/* Tutor panel */}
+        <ToggleRow
+          checked={settings.showTutor}
+          onChange={(v) => void dispatch(setShowTutor(v))}
+          label="Show tutor hints"
+          description="In-game discard tips, claim suggestions, and safe-tile hints across all difficulties."
         />
       </section>
 

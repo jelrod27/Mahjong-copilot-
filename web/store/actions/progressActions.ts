@@ -1,6 +1,7 @@
 import { UserProgress, LearningLevel, LevelProgress } from '@/models/UserProgress';
 import { userProgressToJson } from '@/models/UserProgress';
 import StorageService from '@/lib/storageService';
+import { recordQuizCompletion, QuizMode } from '@/lib/gameStats';
 
 export interface ProgressState {
   progress: UserProgress | null;
@@ -17,7 +18,14 @@ export const PROGRESS_INCREMENT_GAMES = 'PROGRESS_INCREMENT_GAMES';
 export const PROGRESS_INCREMENT_WINS = 'PROGRESS_INCREMENT_WINS';
 export const PROGRESS_ADD_TIME = 'PROGRESS_ADD_TIME';
 export const PROGRESS_ADD_ACHIEVEMENT = 'PROGRESS_ADD_ACHIEVEMENT';
+export const PROGRESS_QUIZ_COMPLETED = 'PROGRESS_QUIZ_COMPLETED';
 export const PROGRESS_CLEAR_ERROR = 'PROGRESS_CLEAR_ERROR';
+
+export interface QuizCompletedPayload {
+  mode: QuizMode;
+  score: number;
+  best: number;
+}
 
 const DEFAULT_USER_ID = 'local_user';
 
@@ -125,6 +133,42 @@ export const addAchievement = (achievementId: string) => async (dispatch: any, g
   await StorageService.saveProgress(updatedProgress);
   dispatch({ type: PROGRESS_ADD_ACHIEVEMENT, payload: updatedProgress });
 };
+
+/**
+ * Record that the user finished a practice quiz. Persists the running best/last score
+ * to localStorage via `recordQuizCompletion` and bumps `quizzesCompleted` on the Redux
+ * UserProgress object. Works whether or not UserProgress has been initialized —
+ * the quiz stat still lands in localStorage, and `getState().progress.progress`
+ * is only updated when present.
+ */
+export const quizCompleted = (payload: { mode: QuizMode; score: number }) =>
+  async (dispatch: any, getState: any) => {
+    const updatedStats = recordQuizCompletion({ mode: payload.mode, score: payload.score });
+    const best = updatedStats.quizzes?.[payload.mode]?.best ?? payload.score;
+
+    const state = getState();
+    const current: UserProgress | null = state.progress?.progress ?? null;
+
+    if (current) {
+      const updatedProgress: UserProgress = {
+        ...current,
+        quizzesCompleted: current.quizzesCompleted + 1,
+        lastUpdated: new Date(),
+      };
+      await StorageService.saveProgress(updatedProgress);
+      dispatch({
+        type: PROGRESS_QUIZ_COMPLETED,
+        payload: { progress: updatedProgress, quiz: { mode: payload.mode, score: payload.score, best } },
+      });
+      return;
+    }
+
+    // No UserProgress yet — still surface the quiz event so any listener can react.
+    dispatch({
+      type: PROGRESS_QUIZ_COMPLETED,
+      payload: { progress: null, quiz: { mode: payload.mode, score: payload.score, best } },
+    });
+  };
 
 export const clearProgressError = () => ({
   type: PROGRESS_CLEAR_ERROR,

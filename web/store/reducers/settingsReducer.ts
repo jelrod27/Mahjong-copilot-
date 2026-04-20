@@ -7,6 +7,7 @@ import {
   SETTINGS_SET_SOUND_ENABLED,
   SETTINGS_SET_NOTIFICATIONS_ENABLED,
   SETTINGS_SET_LARGER_UI_TEXT,
+  SETTINGS_SET_SHOW_TUTOR,
 } from '../actions/settingsActions';
 
 const initialState: SettingsState = {
@@ -16,6 +17,7 @@ const initialState: SettingsState = {
   soundEnabled: true,
   notificationsEnabled: true,
   largerUiText: false,
+  showTutor: true,
 };
 
 export const settingsReducer = (
@@ -37,6 +39,8 @@ export const settingsReducer = (
       return { ...state, notificationsEnabled: action.payload };
     case SETTINGS_SET_LARGER_UI_TEXT:
       return { ...state, largerUiText: action.payload };
+    case SETTINGS_SET_SHOW_TUTOR:
+      return { ...state, showTutor: action.payload };
     default:
       return state;
   }

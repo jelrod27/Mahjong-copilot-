@@ -85,6 +85,24 @@ export interface GameState {
   turnHistory: GameTurn[];
   turnTimeLimit: number;
   turnStartedAt?: Date;
+  /** Minimum faan required for a legal win. HK default is 3. */
+  minFaan?: number;
+  /** Wall-exhaustion draw settlement (set when the game ends as a draw). */
+  drawResult?: DrawResult;
+}
+
+/**
+ * Result of a wall-exhaustion draw. Captures tenpai/noten split so that
+ * the match manager can apply the flat noten-penalty payments.
+ */
+export interface DrawResult {
+  reason: 'wallExhausted';
+  /** Player ids that were tenpai (shanten === 0) at wall exhaustion. */
+  tenpaiPlayerIds: string[];
+  /** Player ids that were noten (shanten > 0) at wall exhaustion. */
+  notenPlayerIds: string[];
+  /** Net score delta per player index — indices match GameState.players order. */
+  scoreChanges: number[];
 }
 
 export const getCurrentPlayer = (gameState: GameState): Player => {
@@ -163,6 +181,8 @@ export const gameStateFromJson = (json: Record<string, any>): GameState => {
     turnHistory: (json.turnHistory as any[])?.map((t: any) => gameTurnFromJson(t)) ?? [],
     turnTimeLimit: (json.turnTimeLimit as number) ?? 20,
     turnStartedAt: json.turnStartedAt ? new Date(json.turnStartedAt as string) : undefined,
+    minFaan: json.minFaan as number | undefined,
+    drawResult: json.drawResult as DrawResult | undefined,
   };
 };
 

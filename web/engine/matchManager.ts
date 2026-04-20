@@ -63,6 +63,12 @@ export function advanceMatch(
   const scoreChanges = new Array(match.playerNames.length).fill(0);
   if (scoringResult?.payment) {
     applyPayments(scoreChanges, scoringResult.payment);
+  } else if (!winnerId && completedHand.drawResult) {
+    // Wall-exhaustion draw: apply flat tenpai/noten settlement.
+    const draw = completedHand.drawResult;
+    for (let i = 0; i < scoreChanges.length && i < draw.scoreChanges.length; i++) {
+      scoreChanges[i] += draw.scoreChanges[i];
+    }
   }
 
   // Update cumulative scores

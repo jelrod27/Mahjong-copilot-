@@ -7,12 +7,24 @@
 import { Tile, TileSuit, TileType, WindTile, tilesMatch, tileKey } from '@/models/Tile';
 import {
   GameState, GamePhase, Player, PlayerAction, GameTurn,
-  MeldInfo, ClaimRequest, TurnPhase, ClaimType,
+  MeldInfo, ClaimRequest, TurnPhase, ClaimType, DrawResult,
 } from '@/models/GameState';
 import { TileFactory } from '@/models/Tile';
-import { GameAction } from './types';
-import { isWinningHand, canPlayerWin } from './winDetection';
+import { GameAction, ScoringContext, DEFAULT_MIN_FAAN } from './types';
+import { isWinningHand, canPlayerWin, calculateShanten } from './winDetection';
 import { getAvailableClaims, resolveClaims } from './claiming';
+import { meetsMinFaan } from './scoring';
+
+/**
+ * Flat noten-penalty constant used at wall exhaustion.
+ *
+ * Ruleset note: HK rules vary — many clubs play "no payment on draw" while
+ * modern learning/app settings import the Japanese tenpai/noten bappu idea.
+ * We pick the simplest defensible variant: every noten player pays
+ * NOTEN_PENALTY_PER_NOTEN, split evenly among the tenpai players. If everyone
+ * is tenpai or everyone is noten, there is no payment.
+ */
+export const NOTEN_PENALTY_PER_NOTEN = 1500;
 
 // ============================================
 // Game initialization
@@ -27,6 +39,11 @@ export interface GameOptions {
   dealerIndex?: number;
   seatWinds?: WindTile[];
   prevailingWind?: WindTile;
+  /**
+   * Minimum faan required for a legal win. Defaults to HK standard (3).
+   * Solo / learning modes may pass 1 or 0 to let beginners complete hands.
+   */
+  minFaan?: number;
 }
 
 /**
@@ -93,6 +110,7 @@ export function initializeGame(options: GameOptions): GameState {
     createdAt: new Date(),
     turnHistory: [],
     turnTimeLimit: options.turnTimeLimit || 20,
+    minFaan: options.minFaan ?? DEFAULT_MIN_FAAN,
   };
 
   // Handle initial flowers for all players
@@ -276,6 +294,14 @@ function handleSelfDrawnWin(state: GameState, playerIndex: number): GameState | 
 
   const player = state.players[playerIndex];
   if (!canPlayerWin(player.hand, player.melds)) return null;
+  if (!state.lastDrawnTile) return null;
+
+  // Enforce HK minimum faan threshold: a hand must score >= minFaan to legally win.
+  const ctx = buildScoringContext(state, player, state.lastDrawnTile, {
+    isSelfDrawn: true,
+    winMethod: state.isKongReplacement ? 'kongReplacement' : 'selfDraw',
+  });
+  if (!meetsMinFaan(player.hand, player.melds, ctx)) return null;
 
   return {
     ...state,
@@ -334,14 +360,20 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
     if (pungMeldIndex !== -1) {
       const kongTile = matchingInHand[0];
 
-      // Check if any other player can win with the kong tile (robbing the kong)
+      // Check if any other player can win with the kong tile (robbing the kong).
+      // The robbing hand must also meet the HK minimum faan threshold to be legal.
       const robbingClaims: { playerId: string }[] = [];
       for (let i = 0; i < state.players.length; i++) {
         if (i === playerIndex) continue;
         const otherHand = [...state.players[i].hand, kongTile];
-        if (canPlayerWin(otherHand, state.players[i].melds)) {
-          robbingClaims.push({ playerId: state.players[i].id });
-        }
+        if (!canPlayerWin(otherHand, state.players[i].melds)) continue;
+        const robCtx = buildScoringContext(state, state.players[i], kongTile, {
+          isSelfDrawn: false,
+          winMethod: 'robKong',
+          discarderIndex: playerIndex,
+        });
+        if (!meetsMinFaan(state.players[i].hand, state.players[i].melds, robCtx)) continue;
+        robbingClaims.push({ playerId: state.players[i].id });
       }
 
       if (robbingClaims.length > 0) {
@@ -416,6 +448,13 @@ function handleClaim(
   if (claimType === 'win') {
     const handWithTile = [...player.hand, discardedTile];
     if (!canPlayerWin(handWithTile, player.melds)) return null;
+    // Enforce HK minimum faan threshold on discard-wins as well.
+    const ctx = buildScoringContext(state, player, discardedTile, {
+      isSelfDrawn: false,
+      winMethod: state.isRobKongOpportunity ? 'robKong' : 'discard',
+      discarderIndex: state.players.findIndex(p => p.id === state.lastDiscardedBy),
+    });
+    if (!meetsMinFaan(player.hand, player.melds, ctx)) return null;
   } else {
     // Validate tiles from hand exist
     for (const t of tilesFromHand) {
@@ -617,11 +656,96 @@ function handlePass(state: GameState, playerIndex: number): GameState | null {
 }
 
 function handleWallExhaustion(state: GameState): GameState {
+  // Tenpai/noten settlement (see NOTEN_PENALTY_PER_NOTEN note above).
+  // A player is tenpai if their hand is one tile away from winning (shanten === 0).
+  // For players with exposed melds, shanten is evaluated on their concealed tiles
+  // treated as a 13-tile equivalent hand (meld count × 3 pre-committed tiles).
+  const tenpaiFlags = state.players.map(p => isPlayerTenpai(p));
+  const tenpaiCount = tenpaiFlags.filter(Boolean).length;
+  const notenCount = state.players.length - tenpaiCount;
+
+  const scoreChanges = new Array(state.players.length).fill(0);
+  // Only settle when the split is mixed — all-tenpai and all-noten pay nothing.
+  if (tenpaiCount > 0 && notenCount > 0) {
+    const totalPool = NOTEN_PENALTY_PER_NOTEN * notenCount;
+    const perTenpai = Math.floor(totalPool / tenpaiCount);
+    for (let i = 0; i < state.players.length; i++) {
+      if (tenpaiFlags[i]) {
+        scoreChanges[i] += perTenpai;
+      } else {
+        scoreChanges[i] -= NOTEN_PENALTY_PER_NOTEN;
+      }
+    }
+  }
+
+  const drawResult: DrawResult = {
+    reason: 'wallExhausted',
+    tenpaiPlayerIds: state.players.filter((_, i) => tenpaiFlags[i]).map(p => p.id),
+    notenPlayerIds: state.players.filter((_, i) => !tenpaiFlags[i]).map(p => p.id),
+    scoreChanges,
+  };
+
   return {
     ...state,
     phase: GamePhase.FINISHED,
     finishedAt: new Date(),
+    drawResult,
     // No winnerId = draw game
+  };
+}
+
+/**
+ * Determine whether a player is tenpai (one tile away from winning).
+ * Accounts for exposed melds by padding the concealed hand with one representative
+ * tile per meld tile so calculateShanten sees a 13-tile equivalent.
+ *
+ * Standard hands + seven pairs + thirteen orphans are covered via calculateShanten.
+ */
+export function isPlayerTenpai(player: Player): boolean {
+  const concealed = player.hand.filter(t => t.type !== TileType.BONUS);
+  const meldTiles = player.melds.flatMap(m => m.tiles);
+  // Treat the kong's 4th tile as a "bonus" for counting: shanten logic assumes
+  // 13 tiles pre-draw, and each exposed kong contributes one extra tile we
+  // should ignore so the handSize+meldTiles math adds to 13.
+  const kongExtras = player.melds.filter(m => m.type === 'kong').length;
+  const combined = [...concealed, ...meldTiles];
+  // Expected canonical size is 13 tiles (pre-draw). Kongs add 1 extra each.
+  const expected = 13 + kongExtras;
+  if (combined.length !== expected) return false;
+  // Drop one tile per exposed kong to normalize back to the 13-tile model
+  // calculateShanten expects. Kong tiles are guaranteed identical, so removing
+  // one doesn't break decomposition — the remaining three still form a pung.
+  const normalized = [...concealed];
+  for (const meld of player.melds) {
+    const count = meld.type === 'kong' ? 3 : meld.tiles.length;
+    normalized.push(...meld.tiles.slice(0, count));
+  }
+  if (normalized.length !== 13) return false;
+  return calculateShanten(normalized) === 0;
+}
+
+/**
+ * Build a ScoringContext from the current game state for a given player + winning tile.
+ * Used by the min-faan legality gate on win declarations.
+ */
+function buildScoringContext(
+  state: GameState,
+  player: Player,
+  winningTile: Tile,
+  opts: Partial<ScoringContext> & Pick<ScoringContext, 'isSelfDrawn'>,
+): ScoringContext {
+  const isConcealed = player.melds.every(m => m.isConcealed);
+  return {
+    winningTile,
+    isSelfDrawn: opts.isSelfDrawn,
+    seatWind: player.seatWind,
+    prevailingWind: state.prevailingWind,
+    isConcealed,
+    flowers: player.flowers,
+    winMethod: opts.winMethod,
+    isDealer: player.isDealer,
+    discarderIndex: opts.discarderIndex,
+    minFaan: state.minFaan ?? DEFAULT_MIN_FAAN,
   };
 }
 

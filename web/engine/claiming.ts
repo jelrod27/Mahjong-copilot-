@@ -75,9 +75,15 @@ export function getAvailableClaims(
   const claims: AvailableClaim[] = [];
   const hand = player.hand;
 
+  // Own-discard guard: a player cannot pung/kong/win off their own discarded tile.
+  // Chow from self is already impossible (it only offers from the left neighbor).
+  // The "rob the kong" path is handled separately in turnManager — the robber is
+  // by construction never the kong-declarer, so this guard doesn't break it.
+  const isOwnDiscard = playerIndex === discarderIndex;
+
   // Check for Win (any player can claim win from any discard)
   const handWithDiscard = [...hand, discardedTile];
-  if (canPlayerWin(handWithDiscard, player.melds)) {
+  if (!isOwnDiscard && canPlayerWin(handWithDiscard, player.melds)) {
     claims.push({
       playerId: player.id,
       claimType: 'win',
@@ -88,7 +94,7 @@ export function getAvailableClaims(
 
   // Check for Kong (3 matching tiles in hand + discarded = 4)
   const kongMatches = hand.filter(t => isSameTile(t, discardedTile));
-  if (kongMatches.length >= 3) {
+  if (!isOwnDiscard && kongMatches.length >= 3) {
     claims.push({
       playerId: player.id,
       claimType: 'kong',
@@ -98,7 +104,7 @@ export function getAvailableClaims(
   }
 
   // Check for Pung (2 matching tiles in hand + discarded = 3)
-  if (kongMatches.length >= 2) {
+  if (!isOwnDiscard && kongMatches.length >= 2) {
     claims.push({
       playerId: player.id,
       claimType: 'pung',

@@ -56,7 +56,16 @@ export interface ScoringContext {
   winMethod?: WinMethod;
   isDealer?: boolean;
   discarderIndex?: number;
+  /**
+   * Minimum faan required for a hand to be a legal win.
+   * HK standard default is 3. Beginner/learning modes may override to 1 or 0.
+   * When unset, defaults to 3 at the enforcement site.
+   */
+  minFaan?: number;
 }
+
+/** HK standard minimum faan threshold for a legal win. */
+export const DEFAULT_MIN_FAAN = 3;
 
 /** Individual fan award */
 export interface FanItem {

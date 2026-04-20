@@ -6,7 +6,7 @@
 
 import { Tile, TileSuit, TileType, DragonTile, WindTile, tileKey, tilesMatch } from '@/models/Tile';
 import { MeldInfo } from '@/models/GameState';
-import { ScoringContext, ScoringResult, FanItem, HandDecomposition, PaymentBreakdown } from './types';
+import { ScoringContext, ScoringResult, FanItem, HandDecomposition, PaymentBreakdown, DEFAULT_MIN_FAAN } from './types';
 import { findDecompositions, isThirteenOrphans, isSevenPairs } from './winDetection';
 
 const BASE_POINTS = 8; // base payment in HK Mahjong
@@ -332,6 +332,32 @@ function buildLimitResult(
     melds,
     pair,
   };
+}
+
+/**
+ * Check whether a would-be winning hand meets the configured minimum faan threshold.
+ * HK standard is 3-faan minimum; overridable via `context.minFaan` (e.g. 1 or 0 for
+ * beginner/learning modes). This is the legality gate used by the turn manager when
+ * a player attempts to declare a win.
+ *
+ * A hand meets the threshold iff at least one valid decomposition scores >= minFaan.
+ * The 0-faan "chicken hand" fallback is intentionally excluded — it is the signal
+ * that no scoring decomposition was found and therefore the hand cannot legally win
+ * under HK rules.
+ */
+export function meetsMinFaan(
+  hand: Tile[],
+  exposedMelds: MeldInfo[],
+  context: ScoringContext,
+): boolean {
+  const min = context.minFaan ?? DEFAULT_MIN_FAAN;
+  if (min <= 0) return true; // no threshold — any winning shape qualifies
+
+  const result = calculateScore(hand, exposedMelds, context);
+  // Treat the chicken-hand fallback as 0 faan regardless of what totalFan reports.
+  const isChicken = result.fans.length === 1 && result.fans[0].name === 'Chicken Hand';
+  const effectiveFaan = isChicken ? 0 : result.totalFan;
+  return effectiveFaan >= min;
 }
 
 function getHandName(fans: FanItem[], totalFan: number): string | undefined {

@@ -73,6 +73,7 @@ export interface GameController {
 export default function useGameController(
   initialDifficulty: 'easy' | 'medium' | 'hard',
   initialMode: GameMode = 'quick',
+  showTutor: boolean = true,
 ): GameController {
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>(initialDifficulty);
   const [mode, setMode] = useState<GameMode>(initialMode);
@@ -307,10 +308,14 @@ export default function useGameController(
   })();
 
   // === Tutor Calculation Hook ===
+  // Tutor is gated on the user-controlled `showTutor` setting (defaults on) so learners can
+  // keep the teacher overlay across all difficulties. Previously this was hard-gated to easy,
+  // silently discarding computed advice on medium/hard.
   useEffect(() => {
-    if (difficulty !== 'easy' || !game || game.phase !== GamePhase.PLAYING) {
+    if (!showTutor || !game || game.phase !== GamePhase.PLAYING) {
       setTutorAdvice(null);
       setSuggestedTileId(undefined);
+      setTileClassifications(new Map());
       return;
     }
 
@@ -337,7 +342,7 @@ export default function useGameController(
       setSuggestedTileId(undefined);
       setTileClassifications(new Map());
     }
-  }, [game?.turnPhase, game?.currentPlayerIndex, game?.phase, claimOptions, difficulty, humanIndex]);
+  }, [game?.turnPhase, game?.currentPlayerIndex, game?.phase, claimOptions, showTutor, humanIndex]);
 
   // === Persistent tenpai badge (easy mode, all phases) ===
   useEffect(() => {

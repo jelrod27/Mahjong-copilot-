@@ -9,6 +9,8 @@ export interface SettingsState {
   notificationsEnabled: boolean;
   /** Larger UI text for readability (bottom nav labels, micro copy). */
   largerUiText: boolean;
+  /** Show the in-game tutor panel (advice + tile safety hints) across all difficulties. */
+  showTutor: boolean;
 }
 
 export const SETTINGS_INITIALIZE = 'SETTINGS_INITIALIZE';
@@ -18,6 +20,7 @@ export const SETTINGS_SET_THEME_MODE = 'SETTINGS_SET_THEME_MODE';
 export const SETTINGS_SET_SOUND_ENABLED = 'SETTINGS_SET_SOUND_ENABLED';
 export const SETTINGS_SET_NOTIFICATIONS_ENABLED = 'SETTINGS_SET_NOTIFICATIONS_ENABLED';
 export const SETTINGS_SET_LARGER_UI_TEXT = 'SETTINGS_SET_LARGER_UI_TEXT';
+export const SETTINGS_SET_SHOW_TUTOR = 'SETTINGS_SET_SHOW_TUTOR';
 
 export const initializeSettings = () => async (dispatch: any) => {
   try {
@@ -27,6 +30,7 @@ export const initializeSettings = () => async (dispatch: any) => {
     const soundEnabled = await StorageService.getBool(AppConstants.SOUND_ENABLED_KEY) ?? true;
     const languageCode = await StorageService.getString(AppConstants.LANGUAGE_KEY) || 'en';
     const largerUiText = await StorageService.getBool(AppConstants.LARGER_UI_TEXT_KEY) ?? false;
+    const showTutor = await StorageService.getBool(AppConstants.SHOW_TUTOR_KEY) ?? true;
 
     dispatch({
       type: SETTINGS_INITIALIZE,
@@ -37,6 +41,7 @@ export const initializeSettings = () => async (dispatch: any) => {
         soundEnabled,
         notificationsEnabled: true,
         largerUiText,
+        showTutor,
       },
     });
   } catch (error) {
@@ -72,4 +77,9 @@ export const setNotificationsEnabled = (enabled: boolean) => async (dispatch: an
 export const setLargerUiText = (enabled: boolean) => async (dispatch: any) => {
   await StorageService.setBool(AppConstants.LARGER_UI_TEXT_KEY, enabled);
   dispatch({ type: SETTINGS_SET_LARGER_UI_TEXT, payload: enabled });
+};
+
+export const setShowTutor = (enabled: boolean) => async (dispatch: any) => {
+  await StorageService.setBool(AppConstants.SHOW_TUTOR_KEY, enabled);
+  dispatch({ type: SETTINGS_SET_SHOW_TUTOR, payload: enabled });
 };

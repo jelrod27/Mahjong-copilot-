@@ -7,14 +7,16 @@ import GameErrorBoundary from '@/components/game/GameErrorBoundary';
 import HandResultScreen from '@/components/game/HandResultScreen';
 import MatchOverScreen from '@/components/game/MatchOverScreen';
 import { GameMode } from '@/models/MatchState';
+import { useAppSelector } from '@/store/hooks';
 
 export default function GameContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const difficulty = (searchParams.get('difficulty') || 'easy') as 'easy' | 'medium' | 'hard';
   const mode = (searchParams.get('mode') || 'quick') as GameMode;
+  const showTutor = useAppSelector((s) => s.settings.showTutor);
 
-  const controller = useGameController(difficulty, mode);
+  const controller = useGameController(difficulty, mode, showTutor);
 
   if (!controller.game) {
     return (

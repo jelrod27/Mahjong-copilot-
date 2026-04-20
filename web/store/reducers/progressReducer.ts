@@ -9,6 +9,7 @@ import {
   PROGRESS_INCREMENT_WINS,
   PROGRESS_ADD_TIME,
   PROGRESS_ADD_ACHIEVEMENT,
+  PROGRESS_QUIZ_COMPLETED,
   PROGRESS_CLEAR_ERROR,
 } from '../actions/progressActions';
 
@@ -38,6 +39,20 @@ export const progressReducer = (
         isLoading: false,
         errorMessage: null,
       };
+
+    case PROGRESS_QUIZ_COMPLETED: {
+      // Payload: { progress: UserProgress | null, quiz: { mode, score, best } }
+      // We only overwrite Redux progress when a fresh UserProgress object was
+      // produced. The localStorage quiz stats are persisted by the thunk.
+      const { progress } = action.payload ?? {};
+      if (!progress) return state;
+      return {
+        ...state,
+        progress: progress as UserProgress,
+        isLoading: false,
+        errorMessage: null,
+      };
+    }
 
     case PROGRESS_LOAD_FAILURE:
       return { ...state, isLoading: false, errorMessage: action.payload };

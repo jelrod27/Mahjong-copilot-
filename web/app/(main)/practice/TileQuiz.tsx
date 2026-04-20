@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { useAppDispatch } from '@/store/hooks';
+import { quizCompleted } from '@/store/actions/progressActions';
 
 /* ─────────────────────────────────────────
    Question data
@@ -57,6 +59,7 @@ export default function TileQuiz({ onBack }: { onBack: () => void }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
+  const dispatch = useAppDispatch();
 
   const current = questions[index];
 
@@ -70,8 +73,7 @@ export default function TileQuiz({ onBack }: { onBack: () => void }) {
 
   const handleNext = useCallback(() => {
     if (index + 1 >= QUESTIONS_PER_ROUND) {
-      const finalScore = score + (selected === current.answer ? 0 : 0); // already counted
-      // Save best
+      // Save best to legacy localStorage (used by the practice menu)
       try {
         const stored = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
         if (!stored['tile-quiz'] || score > stored['tile-quiz']) {
@@ -79,12 +81,14 @@ export default function TileQuiz({ onBack }: { onBack: () => void }) {
           localStorage.setItem(LS_KEY, JSON.stringify(stored));
         }
       } catch { /* ignore */ }
+      // Wire into Redux/progress so /progress can surface it
+      void dispatch(quizCompleted({ mode: 'tile-quiz', score }));
       setFinished(true);
     } else {
       setIndex(i => i + 1);
       setSelected(null);
     }
-  }, [index, score, selected, current]);
+  }, [index, score, dispatch]);
 
   if (finished) {
     return (

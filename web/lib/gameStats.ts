@@ -5,6 +5,17 @@
 
 const STORAGE_KEY = '16bit-mahjong-stats';
 
+export type QuizMode = 'tile-quiz' | 'scoring-quiz' | 'hand-recognition';
+
+export interface QuizStatEntry {
+  played: number;
+  best: number;
+  lastScore: number;
+  lastPlayedAt: string;
+}
+
+export type QuizStats = Record<QuizMode, QuizStatEntry>;
+
 export interface GameStats {
   gamesPlayed: number;
   gamesWon: number;
@@ -22,6 +33,8 @@ export interface GameStats {
   };
   placementCounts: [number, number, number, number]; // [1st, 2nd, 3rd, 4th]
   lastPlayedAt: string | null;
+  /** Practice-quiz completions, keyed by quiz mode. Absent entries mean "not yet played". */
+  quizzes: Partial<QuizStats>;
 }
 
 const DEFAULT_STATS: GameStats = {
@@ -41,6 +54,7 @@ const DEFAULT_STATS: GameStats = {
   },
   placementCounts: [0, 0, 0, 0],
   lastPlayedAt: null,
+  quizzes: {},
 };
 
 function cloneDefaults(): GameStats {
@@ -109,6 +123,38 @@ export function recordMatchResult(result: MatchResult): GameStats {
     stats.bestFan = result.bestFanThisMatch;
     stats.bestHandName = result.bestHandNameThisMatch;
   }
+
+  saveStats(stats);
+  return stats;
+}
+
+export interface QuizResult {
+  mode: QuizMode;
+  /** Final score for this attempt (e.g. 7 out of 10). */
+  score: number;
+}
+
+/**
+ * Record the completion of a practice quiz. Tracks play count, running best,
+ * and the most recent score. Mirrors recordMatchResult — read-modify-write
+ * of the same localStorage blob, keeping all local stats in one place.
+ */
+export function recordQuizCompletion(result: QuizResult): GameStats {
+  const stats = loadStats();
+  const now = new Date().toISOString();
+  const existing = stats.quizzes?.[result.mode];
+  const best = existing ? Math.max(existing.best, result.score) : result.score;
+  const played = (existing?.played ?? 0) + 1;
+
+  stats.quizzes = {
+    ...(stats.quizzes ?? {}),
+    [result.mode]: {
+      played,
+      best,
+      lastScore: result.score,
+      lastPlayedAt: now,
+    },
+  };
 
   saveStats(stats);
   return stats;

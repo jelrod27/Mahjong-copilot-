@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { Provider } from 'react-redux';
+import { store } from '@/store';
 import TileQuiz from '../TileQuiz';
+
+const renderWithProvider = (ui: React.ReactElement) =>
+  render(<Provider store={store}>{ui}</Provider>);
 
 // Make shuffle deterministic by returning the array in original order
 vi.mock('../TileQuiz', async () => {
@@ -19,14 +24,14 @@ describe('TileQuiz', () => {
   });
 
   it('renders a question', () => {
-    render(<TileQuiz onBack={onBack} />);
+    renderWithProvider(<TileQuiz onBack={onBack} />);
     // Should show "IDENTIFY THIS TILE" prompt and "Question 1 of 10"
     expect(screen.getByText('IDENTIFY THIS TILE')).toBeDefined();
     expect(screen.getByText(/Question 1 of 10/)).toBeDefined();
   });
 
   it('clicking an answer option shows feedback', () => {
-    render(<TileQuiz onBack={onBack} />);
+    renderWithProvider(<TileQuiz onBack={onBack} />);
     // Get all option buttons (there should be 4)
     const buttons = screen.getAllByRole('button').filter(
       btn => !btn.textContent?.includes('Back') && !btn.textContent?.includes('TILE QUIZ'),
@@ -44,7 +49,7 @@ describe('TileQuiz', () => {
   });
 
   it('after 10 questions, shows final score', () => {
-    render(<TileQuiz onBack={onBack} />);
+    renderWithProvider(<TileQuiz onBack={onBack} />);
 
     for (let i = 0; i < 10; i++) {
       // Get clickable option buttons (not disabled, not Back button)

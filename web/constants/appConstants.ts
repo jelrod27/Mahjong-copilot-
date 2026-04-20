@@ -40,6 +40,7 @@ export class AppConstants {
   static readonly LANGUAGE_KEY = 'language';
   static readonly SOUND_ENABLED_KEY = 'sound_enabled';
   static readonly LARGER_UI_TEXT_KEY = 'larger_ui_text';
+  static readonly SHOW_TUTOR_KEY = 'show_tutor';
   static readonly OFFLINE_PROGRESS_KEY = 'offline_progress';
 }
 

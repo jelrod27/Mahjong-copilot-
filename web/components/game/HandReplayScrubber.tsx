@@ -174,31 +174,42 @@ export default function HandReplayScrubber({ gameState }: HandReplayScrubberProp
  * draw is retained for narrative reading. Fall back to a hard cutoff based
  * on player count — covers edge cases like a heavenly-hand win on the
  * dealer's opening tile, or draws where no discard was ever recorded.
+ *
+ * The cutoff is only applied if the first `cutoff` entries look like the
+ * pre-deal block (all DRAW actions). Tests and alternate constructors that
+ * record only post-deal history would otherwise get sliced to `[]`.
  */
 function filterMeaningfulTurns(history: GameTurn[], playerCount: number): GameTurn[] {
   const cutoff = Math.max(0, playerCount) * PRE_DEAL_DRAWS_PER_PLAYER;
+  const hasPreDealDrawBlock =
+    cutoff > 0 &&
+    history.length >= cutoff &&
+    history.slice(0, cutoff).every(t => t.action === PlayerAction.DRAW);
+  const preDealCutoff = hasPreDealDrawBlock ? cutoff : 0;
   const firstDiscardIdx = history.findIndex(t => t.action === PlayerAction.DISCARD);
   const anchor = firstDiscardIdx >= 0
-    ? Math.max(cutoff, firstDiscardIdx - 1)
-    : cutoff;
+    ? Math.max(preDealCutoff, firstDiscardIdx - 1)
+    : preDealCutoff;
   return history.slice(Math.min(anchor, history.length));
 }
 
 function describeAction(turn: GameTurn): string {
-  const tileName = turn.tile?.nameEnglish ?? '';
+  // GameTurn.tile is optional — guard each action so malformed history
+  // entries never render dangling labels like "discarded " or "won with ".
+  const tileName = turn.tile?.nameEnglish;
   switch (turn.action) {
     case PlayerAction.DRAW:
-      return `drew${tileName ? ` ${tileName}` : ''}`;
+      return tileName ? `drew ${tileName}` : 'drew a tile';
     case PlayerAction.DISCARD:
-      return `discarded ${tileName}`;
+      return tileName ? `discarded ${tileName}` : 'discarded a tile';
     case PlayerAction.CHOW:
-      return `claimed chow with ${tileName}`;
+      return tileName ? `claimed chow with ${tileName}` : 'claimed chow';
     case PlayerAction.PUNG:
-      return `claimed pung with ${tileName}`;
+      return tileName ? `claimed pung with ${tileName}` : 'claimed pung';
     case PlayerAction.KONG:
-      return `declared kong with ${tileName}`;
+      return tileName ? `declared kong with ${tileName}` : 'declared kong';
     case PlayerAction.WIN:
-      return `won with ${tileName}`;
+      return tileName ? `won with ${tileName}` : 'won the hand';
     case PlayerAction.PASS:
       return 'passed';
     default:

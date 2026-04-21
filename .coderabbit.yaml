@@ -108,8 +108,6 @@ reviews:
       - "Draft"
 
   tools:
-    ast-grep:
-      rules_folder: ast-grep-rules
     github-checks:
       enabled: true
       timeout_ms: 90000

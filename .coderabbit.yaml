@@ -7,9 +7,8 @@ early_access: false
 
 tone_instructions: |
   Be concise and technical. Focus on correctness, edge cases, and maintainability.
-  Avoid filler. When reviewing the game engine, treat state-machine correctness as
-  the highest priority. When reviewing React components, focus on render performance,
-  accessibility, and hook correctness.
+  For the game engine, state-machine correctness is top priority. For React, focus
+  on render performance, accessibility, and hook correctness.
 
 reviews:
   profile: assertive
@@ -97,7 +96,7 @@ reviews:
 
   auto_review:
     enabled: true
-    auto_incremental_review: enabled
+    auto_incremental_review: true
     drafts: false
     base_branches:
       - main

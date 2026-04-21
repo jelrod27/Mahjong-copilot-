@@ -6,6 +6,7 @@ import GameBoard from '@/components/game/GameBoard';
 import GameErrorBoundary from '@/components/game/GameErrorBoundary';
 import HandResultScreen from '@/components/game/HandResultScreen';
 import MatchOverScreen from '@/components/game/MatchOverScreen';
+import VoiceSubtitle from '@/components/game/VoiceSubtitle';
 import { GameMode } from '@/models/MatchState';
 import { useAppSelector } from '@/store/hooks';
 
@@ -14,10 +15,24 @@ export default function GameContent() {
   const router = useRouter();
   const difficulty = (searchParams.get('difficulty') || 'easy') as 'easy' | 'medium' | 'hard';
   const mode = (searchParams.get('mode') || 'quick') as GameMode;
+  // `minFaan` URL param: only exact '0', '1', or '3' are valid. Strict string
+  // match avoids `parseInt` quirks like '3abc' → 3 silently validating.
+  const rawMinFaan = searchParams.get('minFaan');
+  const minFaan = rawMinFaan === '0' || rawMinFaan === '1' || rawMinFaan === '3'
+    ? Number(rawMinFaan)
+    : undefined;
   const showTutor = useAppSelector((s) => s.settings.showTutor);
   const liveFaanMeter = useAppSelector((s) => s.settings.liveFaanMeter);
+  const tileVoice = useAppSelector((s) => s.settings.tileVoice);
 
-  const controller = useGameController(difficulty, mode, showTutor, liveFaanMeter);
+  const controller = useGameController(
+    difficulty,
+    mode,
+    showTutor,
+    liveFaanMeter,
+    minFaan,
+    tileVoice,
+  );
 
   if (!controller.game) {
     return (
@@ -31,6 +46,7 @@ export default function GameContent() {
 
   return (
     <GameErrorBoundary>
+      <VoiceSubtitle />
       <GameBoard
         gameState={controller.game}
         match={controller.match}

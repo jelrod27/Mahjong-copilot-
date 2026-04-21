@@ -18,6 +18,7 @@ import { getAIDecision, getAIClaimDecision } from '@/engine/ai';
 import { getTutorAdvice } from '@/engine/tutor';
 import { projectFaan, FaanProjection } from '@/engine/faanProjection';
 import soundManager from '@/lib/soundManager';
+import { speakTile, TileVoiceLanguage } from '@/lib/tileVoice';
 import { saveGame, loadGame, clearSavedGame, hasSavedGame, canResume } from '@/lib/matchStorage';
 
 const HUMAN_ID = 'human-player';
@@ -82,6 +83,8 @@ export default function useGameController(
   initialMode: GameMode = 'quick',
   showTutor: boolean = true,
   liveFaanMeter: boolean = true,
+  initialMinFaan?: number,
+  tileVoice: 'off' | TileVoiceLanguage = 'off',
 ): GameController {
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>(initialDifficulty);
   const [mode, setMode] = useState<GameMode>(initialMode);
@@ -132,12 +135,13 @@ export default function useGameController(
       difficulty: newDifficulty,
       playerNames: ['You', 'West AI', 'North AI', 'East AI'],
       humanPlayerId: HUMAN_ID,
+      minFaan: initialMinFaan,
     });
 
     setMatch(newMatch);
     setGame(newMatch.currentHand);
     resetHandState();
-  }, [mode, resetHandState]);
+  }, [mode, resetHandState, initialMinFaan]);
 
   // Initialize game on mount — resume saved match if one exists and is active
   useEffect(() => {
@@ -411,6 +415,25 @@ export default function useGameController(
       setTileClassifications(new Map());
     }
   }, [game?.turnPhase, game?.currentPlayerIndex, game?.phase, claimOptions, showTutor, humanIndex]);
+
+  // === Voice callouts on discard ===
+  // When a tile is discarded (by any player), optionally speak it in the
+  // user's chosen language and emit a subtitle so learners see Chinese +
+  // English side by side. `lastDiscardedTile.id` debounces duplicate fires.
+  const lastSpokenDiscardIdRef = useRef<string | undefined>();
+  useEffect(() => {
+    if (tileVoice === 'off' || !game) return;
+    const tile = game.lastDiscardedTile;
+    const discarderId = game.lastDiscardedBy;
+    if (!tile || !discarderId) return;
+    if (lastSpokenDiscardIdRef.current === tile.id) return;
+    lastSpokenDiscardIdRef.current = tile.id;
+    const discarder = game.players.find(p => p.id === discarderId);
+    const speakerLabel = discarder
+      ? (discarder.id === HUMAN_ID ? 'You discarded' : `${discarder.name} discarded`)
+      : undefined;
+    speakTile(tile, tileVoice, speakerLabel);
+  }, [game?.lastDiscardedTile?.id, game?.lastDiscardedBy, tileVoice]);
 
   // === Live faan projection ===
   // Recomputes whenever the human's visible hand changes. Gated on the

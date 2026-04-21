@@ -13,6 +13,8 @@ export interface SettingsState {
   showTutor: boolean;
   /** Show the live faan meter overlay during play (learning aid for HK scoring). */
   liveFaanMeter: boolean;
+  /** Voice callouts for discarded tiles: 'off', 'cantonese' (preferred), or 'english'. */
+  tileVoice: 'off' | 'cantonese' | 'english';
 }
 
 export const SETTINGS_INITIALIZE = 'SETTINGS_INITIALIZE';
@@ -24,6 +26,7 @@ export const SETTINGS_SET_NOTIFICATIONS_ENABLED = 'SETTINGS_SET_NOTIFICATIONS_EN
 export const SETTINGS_SET_LARGER_UI_TEXT = 'SETTINGS_SET_LARGER_UI_TEXT';
 export const SETTINGS_SET_SHOW_TUTOR = 'SETTINGS_SET_SHOW_TUTOR';
 export const SETTINGS_SET_LIVE_FAAN_METER = 'SETTINGS_SET_LIVE_FAAN_METER';
+export const SETTINGS_SET_TILE_VOICE = 'SETTINGS_SET_TILE_VOICE';
 
 export const initializeSettings = () => async (dispatch: any) => {
   try {
@@ -35,6 +38,9 @@ export const initializeSettings = () => async (dispatch: any) => {
     const largerUiText = await StorageService.getBool(AppConstants.LARGER_UI_TEXT_KEY) ?? false;
     const showTutor = await StorageService.getBool(AppConstants.SHOW_TUTOR_KEY) ?? true;
     const liveFaanMeter = await StorageService.getBool(AppConstants.LIVE_FAAN_METER_KEY) ?? true;
+    const tileVoiceRaw = await StorageService.getString(AppConstants.TILE_VOICE_KEY);
+    const tileVoice: SettingsState['tileVoice'] =
+      tileVoiceRaw === 'cantonese' || tileVoiceRaw === 'english' ? tileVoiceRaw : 'off';
 
     dispatch({
       type: SETTINGS_INITIALIZE,
@@ -47,6 +53,7 @@ export const initializeSettings = () => async (dispatch: any) => {
         largerUiText,
         showTutor,
         liveFaanMeter,
+        tileVoice,
       },
     });
   } catch (error) {
@@ -92,4 +99,9 @@ export const setShowTutor = (enabled: boolean) => async (dispatch: any) => {
 export const setLiveFaanMeter = (enabled: boolean) => async (dispatch: any) => {
   await StorageService.setBool(AppConstants.LIVE_FAAN_METER_KEY, enabled);
   dispatch({ type: SETTINGS_SET_LIVE_FAAN_METER, payload: enabled });
+};
+
+export const setTileVoice = (mode: SettingsState['tileVoice']) => async (dispatch: any) => {
+  await StorageService.setString(AppConstants.TILE_VOICE_KEY, mode);
+  dispatch({ type: SETTINGS_SET_TILE_VOICE, payload: mode });
 };

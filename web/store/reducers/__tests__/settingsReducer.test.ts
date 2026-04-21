@@ -4,6 +4,7 @@ import {
   SETTINGS_INITIALIZE, SETTINGS_SET_VARIANT, SETTINGS_SET_LOCALE,
   SETTINGS_SET_THEME_MODE, SETTINGS_SET_SOUND_ENABLED, SETTINGS_SET_NOTIFICATIONS_ENABLED,
   SETTINGS_SET_LARGER_UI_TEXT, SETTINGS_SET_SHOW_TUTOR, SETTINGS_SET_LIVE_FAAN_METER,
+  SETTINGS_SET_TILE_VOICE,
 } from '../../actions/settingsActions';
 
 const initialState = {
@@ -15,6 +16,7 @@ const initialState = {
   largerUiText: false,
   showTutor: true,
   liveFaanMeter: true,
+  tileVoice: 'off' as const,
 };
 
 describe('settingsReducer', () => {
@@ -32,6 +34,7 @@ describe('settingsReducer', () => {
       largerUiText: true,
       showTutor: false,
       liveFaanMeter: false,
+      tileVoice: 'cantonese' as const,
     };
     const state = settingsReducer(initialState, { type: SETTINGS_INITIALIZE, payload: newSettings });
     expect(state).toEqual(newSettings);
@@ -76,6 +79,11 @@ describe('settingsReducer', () => {
   it('handles SETTINGS_SET_LIVE_FAAN_METER', () => {
     const state = settingsReducer(initialState, { type: SETTINGS_SET_LIVE_FAAN_METER, payload: false });
     expect(state.liveFaanMeter).toBe(false);
+  });
+
+  it('handles SETTINGS_SET_TILE_VOICE', () => {
+    const state = settingsReducer(initialState, { type: SETTINGS_SET_TILE_VOICE, payload: 'cantonese' });
+    expect(state.tileVoice).toBe('cantonese');
   });
 
   it('defaults showTutor to true', () => {

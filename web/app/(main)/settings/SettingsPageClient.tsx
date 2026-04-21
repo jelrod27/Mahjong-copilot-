@@ -10,6 +10,7 @@ import {
   setNotificationsEnabled,
   setShowTutor,
   setLiveFaanMeter,
+  setTileVoice,
   SettingsState,
 } from '@/store/actions/settingsActions';
 import soundManager from '@/lib/soundManager';
@@ -94,6 +95,7 @@ export default function SettingsPageClient() {
     void dispatch(setNotificationsEnabled(true));
     void dispatch(setShowTutor(true));
     void dispatch(setLiveFaanMeter(true));
+    void dispatch(setTileVoice('off'));
     const defaultPrefs: GamePreferences = { turnTimer: 20, autoPass: false };
     setGamePrefs(defaultPrefs);
     saveGamePreferences(defaultPrefs);
@@ -232,6 +234,33 @@ export default function SettingsPageClient() {
           label="Live faan meter"
           description="During play, show what faan your hand is building toward and whether it meets the 3-faan minimum."
         />
+
+        {/* Tile voice callouts */}
+        <div>
+          <span className="font-retro text-retro-text block mb-1">Tile voice callouts</span>
+          <p className="text-retro-textDim text-xs font-sans mb-2">
+            Speak each discarded tile aloud with an on-screen subtitle (中 · Red Dragon). Cantonese
+            uses your OS voice if available, otherwise falls back to English.
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            {(['off', 'cantonese', 'english'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => void dispatch(setTileVoice(mode))}
+                aria-pressed={settings.tileVoice === mode}
+                aria-label={`Tile voice callouts: ${mode}`}
+                className={`font-retro text-sm px-3 py-1.5 border transition-colors capitalize ${
+                  settings.tileVoice === mode
+                    ? 'border-retro-cyan text-retro-cyan bg-retro-cyan/10'
+                    : 'border-retro-border/40 text-retro-textDim hover:border-retro-border'
+                }`}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* ── Data ──────────────────────────────────────────────────────── */}

@@ -6,6 +6,7 @@ import GameBoard from '@/components/game/GameBoard';
 import GameErrorBoundary from '@/components/game/GameErrorBoundary';
 import HandResultScreen from '@/components/game/HandResultScreen';
 import MatchOverScreen from '@/components/game/MatchOverScreen';
+import VoiceSubtitle from '@/components/game/VoiceSubtitle';
 import { GameMode } from '@/models/MatchState';
 import { useAppSelector } from '@/store/hooks';
 
@@ -14,10 +15,22 @@ export default function GameContent() {
   const router = useRouter();
   const difficulty = (searchParams.get('difficulty') || 'easy') as 'easy' | 'medium' | 'hard';
   const mode = (searchParams.get('mode') || 'quick') as GameMode;
+  // `minFaan` URL param: only 0, 1, or 3 are valid UI choices. Anything else
+  // falls through to the engine default (DEFAULT_MIN_FAAN = 3).
+  const rawMinFaan = Number.parseInt(searchParams.get('minFaan') ?? '', 10);
+  const minFaan = [0, 1, 3].includes(rawMinFaan) ? rawMinFaan : undefined;
   const showTutor = useAppSelector((s) => s.settings.showTutor);
   const liveFaanMeter = useAppSelector((s) => s.settings.liveFaanMeter);
+  const tileVoice = useAppSelector((s) => s.settings.tileVoice);
 
-  const controller = useGameController(difficulty, mode, showTutor, liveFaanMeter);
+  const controller = useGameController(
+    difficulty,
+    mode,
+    showTutor,
+    liveFaanMeter,
+    minFaan,
+    tileVoice === 'off' ? 'off' : tileVoice,
+  );
 
   if (!controller.game) {
     return (
@@ -31,6 +44,7 @@ export default function GameContent() {
 
   return (
     <GameErrorBoundary>
+      <VoiceSubtitle />
       <GameBoard
         gameState={controller.game}
         match={controller.match}

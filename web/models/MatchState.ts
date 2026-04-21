@@ -31,6 +31,11 @@ export interface MatchState {
   phase: MatchPhase;
   playerNames: string[];
   humanPlayerId: string;
+  /**
+   * Minimum faan required for a legal win across all hands of this match.
+   * HK standard default is 3. Beginner / family rules may lower to 1 or 0.
+   */
+  minFaan?: number;
 }
 
 export function matchStateToJson(match: MatchState): Record<string, any> {
@@ -50,6 +55,7 @@ export function matchStateToJson(match: MatchState): Record<string, any> {
     phase: match.phase,
     playerNames: match.playerNames,
     humanPlayerId: match.humanPlayerId,
+    minFaan: match.minFaan,
   };
 }
 
@@ -70,6 +76,7 @@ export function matchStateFromJson(json: Record<string, any>): MatchState {
     phase: json.phase as MatchPhase,
     playerNames: json.playerNames as string[],
     humanPlayerId: json.humanPlayerId as string,
+    minFaan: json.minFaan as number | undefined,
   };
 }
 

@@ -13,6 +13,7 @@ import ActionBar from './ActionBar';
 import ExposedMelds from './ExposedMelds';
 import TutorPanel from './TutorPanel';
 import FaanMeter from './FaanMeter';
+import DiscardReadingPanel from './DiscardReadingPanel';
 import GameToast from './GameToast';
 import { TutorAdvice } from '@/engine/types';
 import { TenpaiStatus } from './useGameController';
@@ -158,9 +159,10 @@ export default function GameBoard({
           />
         </div>
 
-        {/* Right panel — faan meter (desktop) */}
-        <div className="hidden md:block w-48 shrink-0">
+        {/* Right panel — faan meter + discard reading (desktop) */}
+        <div className="hidden md:flex md:flex-col md:gap-1 w-48 shrink-0">
           {faanProjection && <FaanMeter projection={faanProjection} />}
+          <DiscardReadingPanel game={gameState} humanPlayerId={humanPlayerId} />
         </div>
       </div>
 
@@ -178,12 +180,11 @@ export default function GameBoard({
         />
       </div>
 
-      {/* Mobile: compact faan meter */}
-      {faanProjection && (
-        <div className="flex md:hidden px-2 py-0.5" style={{ flex: '0 0 auto' }}>
-          <div className="flex-1">
-            <FaanMeter projection={faanProjection} compact />
-          </div>
+      {/* Mobile: compact learning panels stacked */}
+      {(faanProjection || gameState.players.length > 0) && (
+        <div className="flex md:hidden flex-col gap-0.5 px-2 py-0.5" style={{ flex: '0 0 auto' }}>
+          {faanProjection && <FaanMeter projection={faanProjection} compact />}
+          <DiscardReadingPanel game={gameState} humanPlayerId={humanPlayerId} compact />
         </div>
       )}
 

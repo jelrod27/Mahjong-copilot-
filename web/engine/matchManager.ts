@@ -21,6 +21,11 @@ export interface MatchOptions {
   playerNames: string[];
   humanPlayerId: string;
   turnTimeLimit?: number;
+  /**
+   * Minimum faan required for a legal win. Defaults to DEFAULT_MIN_FAAN (3).
+   * Lower values are used for beginner/family rules.
+   */
+  minFaan?: number;
 }
 
 /** Create a new match and initialize the first hand. */
@@ -43,6 +48,7 @@ export function initializeMatch(options: MatchOptions): MatchState {
     phase: 'playing',
     playerNames: options.playerNames,
     humanPlayerId: options.humanPlayerId,
+    minFaan: options.minFaan,
   };
 }
 
@@ -159,6 +165,7 @@ export function startNextHand(match: MatchState): MatchState {
       difficulty: match.difficulty,
       playerNames: match.playerNames,
       humanPlayerId: match.humanPlayerId,
+      minFaan: match.minFaan,
     },
     match.currentDealerIndex,
     match.currentRound,
@@ -209,7 +216,7 @@ function getPlayerId(playerIndex: number, humanPlayerId: string): string {
 }
 
 function createHand(
-  options: Pick<MatchOptions, 'difficulty' | 'playerNames' | 'humanPlayerId'> & { mode?: GameMode },
+  options: Pick<MatchOptions, 'difficulty' | 'playerNames' | 'humanPlayerId' | 'minFaan'> & { mode?: GameMode },
   dealerIndex: number,
   prevailingWind: WindTile,
 ): GameState {
@@ -223,6 +230,7 @@ function createHand(
     dealerIndex,
     seatWinds,
     prevailingWind,
+    minFaan: options.minFaan,
   };
   return initializeGame(gameOptions);
 }

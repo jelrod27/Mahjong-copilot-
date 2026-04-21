@@ -6,11 +6,19 @@ import { GameMode } from '@/models/MatchState';
 import { hasSavedGame } from '@/lib/matchStorage';
 
 type Difficulty = 'easy' | 'medium' | 'hard';
+type MinFaan = 0 | 1 | 3;
+
+const MIN_FAAN_OPTIONS: { value: MinFaan; label: string; description: string }[] = [
+  { value: 3, label: 'STANDARD (3 FAAN)', description: 'HK competition rules — 3-faan minimum to win' },
+  { value: 1, label: 'FAMILY (1 FAAN)', description: 'Beginner-friendly — any scoring hand wins' },
+  { value: 0, label: 'CASUAL (0 FAAN)', description: 'Chicken hands allowed — pure learning mode' },
+];
 
 export default function PlayPage() {
   const router = useRouter();
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [mode, setMode] = useState<GameMode>('quick');
+  const [minFaan, setMinFaan] = useState<MinFaan>(3);
   const [canResume, setCanResume] = useState(false);
 
   useEffect(() => {
@@ -19,7 +27,7 @@ export default function PlayPage() {
 
   const handleStart = () => {
     localStorage.removeItem('mahjong_match_in_progress');
-    router.push(`/play/game?difficulty=${difficulty}&mode=${mode}`);
+    router.push(`/play/game?difficulty=${difficulty}&mode=${mode}&minFaan=${minFaan}`);
   };
 
   const handleResume = () => {
@@ -79,7 +87,7 @@ export default function PlayPage() {
       </div>
 
       {/* Difficulty selector */}
-      <div className="retro-panel p-3 md:p-4 mb-4 md:mb-6 w-full max-w-xs">
+      <div className="retro-panel p-3 md:p-4 mb-3 md:mb-4 w-full max-w-xs">
         <div className="font-pixel text-xs text-retro-cyan mb-3 text-center">
           SELECT DIFFICULTY
         </div>
@@ -97,6 +105,29 @@ export default function PlayPage() {
               {d === 'easy' && '► EASY — Random AI'}
               {d === 'medium' && '► MEDIUM — Smart AI'}
               {d === 'hard' && '► HARD — Strategic AI'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Faan minimum (table rule) selector */}
+      <div className="retro-panel p-3 md:p-4 mb-4 md:mb-6 w-full max-w-xs">
+        <div className="font-pixel text-xs text-retro-cyan mb-3 text-center">
+          TABLE RULE
+        </div>
+        <div className="flex flex-col gap-2">
+          {MIN_FAAN_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setMinFaan(opt.value)}
+              className={`retro-btn text-center w-full text-left ${
+                minFaan === opt.value
+                  ? 'bg-retro-accent text-white border-retro-gold'
+                  : 'bg-retro-bgLight'
+              }`}
+            >
+              <div>► {opt.label}</div>
+              <div className="font-retro text-xs text-retro-textDim mt-0.5">{opt.description}</div>
             </button>
           ))}
         </div>

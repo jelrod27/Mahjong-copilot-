@@ -30,10 +30,13 @@ test.describe('Solo play', () => {
 });
 
 test.describe('Practice mode', () => {
-  test('setup screen then in-game HUD', async ({ page }) => {
+  test('menu card opens in-game HUD', async ({ page }) => {
     await page.goto('/practice');
-    await expect(page.getByRole('heading', { name: 'Play with Hints' })).toBeVisible();
-    await page.getByRole('button', { name: 'Start Practice' }).click();
+    // Redesigned practice menu: "Play with Hints" is a mode card (button),
+    // not a separate setup screen with its own "Start Practice" button.
+    const playWithHints = page.getByRole('button', { name: /Play with Hints/i });
+    await expect(playWithHints).toBeVisible();
+    await playWithHints.click();
     await expectGameBoardReady(page);
   });
 });

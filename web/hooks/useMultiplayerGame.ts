@@ -250,6 +250,7 @@ export default function useMultiplayerGame(
     isGameOver,
     isMatchOver: isGameOver,
     scoringResult,
+    faanProjection: null,
     selectTile,
     discardSelected,
     declareKong,

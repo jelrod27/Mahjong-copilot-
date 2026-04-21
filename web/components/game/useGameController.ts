@@ -16,6 +16,7 @@ import { AvailableClaim, ScoringContext, ScoringResult, WinMethod, TileClassific
 import { calculatePayment } from '@/engine/scoring';
 import { getAIDecision, getAIClaimDecision } from '@/engine/ai';
 import { getTutorAdvice } from '@/engine/tutor';
+import { projectFaan, FaanProjection } from '@/engine/faanProjection';
 import soundManager from '@/lib/soundManager';
 import { saveGame, loadGame, clearSavedGame, hasSavedGame, canResume } from '@/lib/matchStorage';
 
@@ -55,6 +56,7 @@ export interface GameController {
   isGameOver: boolean;
   isMatchOver: boolean;
   scoringResult: ScoringResult | null;
+  faanProjection: FaanProjection | null;
   selectTile: (tile: Tile) => void;
   discardSelected: () => void;
   declareKong: () => void;
@@ -79,6 +81,7 @@ export default function useGameController(
   initialDifficulty: 'easy' | 'medium' | 'hard',
   initialMode: GameMode = 'quick',
   showTutor: boolean = true,
+  liveFaanMeter: boolean = true,
 ): GameController {
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>(initialDifficulty);
   const [mode, setMode] = useState<GameMode>(initialMode);
@@ -92,6 +95,7 @@ export default function useGameController(
   const [claimTimer, setClaimTimer] = useState(0);
   const [scoringResult, setScoringResult] = useState<ScoringResult | null>(null);
   const [tileClassifications, setTileClassifications] = useState<Map<string, 'green' | 'orange' | 'red'>>(new Map());
+  const [faanProjection, setFaanProjection] = useState<FaanProjection | null>(null);
   const gameRef = useRef<GameState | null>(null);
   const matchRef = useRef<MatchState | null>(null);
   const processingRef = useRef(false);
@@ -113,6 +117,7 @@ export default function useGameController(
     setClaimTimer(0);
     setScoringResult(null);
     setTileClassifications(new Map());
+    setFaanProjection(null);
     processingRef.current = false;
     humanDiscardInFlightRef.current = false;
   }, []);
@@ -406,6 +411,53 @@ export default function useGameController(
       setTileClassifications(new Map());
     }
   }, [game?.turnPhase, game?.currentPlayerIndex, game?.phase, claimOptions, showTutor, humanIndex]);
+
+  // === Live faan projection ===
+  // Recomputes whenever the human's visible hand changes. Gated on the
+  // user-controlled `liveFaanMeter` setting (default on) so learners can
+  // see which scoring patterns they're building toward in real time.
+  //
+  // Dep array keys on stable signatures of the human's tiles/melds/flowers
+  // rather than `game.players` — otherwise the effect fires on every
+  // opponent draw/discard/claim/kong and recomputes identical projections.
+  // projectFaan iterates all 34 tile prototypes with canPlayerWin when
+  // tenpai, so this matters for perf.
+  const humanPlayerForFaan = game?.players[humanIndex];
+  const faanHandSig = humanPlayerForFaan?.hand.map(t => t.id).join(',') ?? '';
+  const faanMeldSig = humanPlayerForFaan?.melds
+    .map(m => `${m.type}:${m.tiles.map(t => t.id).join('.')}`)
+    .join('|') ?? '';
+  const faanFlowerSig = humanPlayerForFaan?.flowers.map(t => t.id).join(',') ?? '';
+  useEffect(() => {
+    if (!liveFaanMeter || !game || game.phase !== GamePhase.PLAYING) {
+      setFaanProjection(null);
+      return;
+    }
+    const humanPlayer = game.players[humanIndex];
+    if (!humanPlayer) {
+      setFaanProjection(null);
+      return;
+    }
+    try {
+      const projection = projectFaan(
+        humanPlayer.hand,
+        humanPlayer.melds,
+        humanPlayer.seatWind,
+        game.prevailingWind,
+        humanPlayer.flowers,
+      );
+      setFaanProjection(projection);
+    } catch (err) {
+      // Projection is a learning aid — never block the game on a compute error.
+      // In dev, surface the failure so a regression in shanten/pattern detection
+      // doesn't silently ship.
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[faanProjection] compute failed', err);
+      }
+      setFaanProjection(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- signatures below capture all inputs
+  }, [faanHandSig, faanMeldSig, faanFlowerSig, game?.phase, game?.prevailingWind, humanIndex, liveFaanMeter]);
 
   // === Persistent tenpai badge (easy mode, all phases) ===
   useEffect(() => {
@@ -705,7 +757,8 @@ export default function useGameController(
   return {
     game, match, selectedTileId, suggestedTileId, tutorAdvice, tenpaiStatus,
     tileClassifications, claimOptions, claimTimer, isGameOver, isMatchOver,
-    scoringResult, selectTile, discardSelected, declareKong, declareWin,
+    scoringResult, faanProjection,
+    selectTile, discardSelected, declareKong, declareWin,
     submitClaim, submitChow, claimBest, pass, startNewGame, continueToNextHand,
     resumeGame, clearSavedGame: clearSavedGameAndReset,
     canDeclareKong, canDeclareWin,

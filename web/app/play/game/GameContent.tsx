@@ -15,10 +15,12 @@ export default function GameContent() {
   const router = useRouter();
   const difficulty = (searchParams.get('difficulty') || 'easy') as 'easy' | 'medium' | 'hard';
   const mode = (searchParams.get('mode') || 'quick') as GameMode;
-  // `minFaan` URL param: only 0, 1, or 3 are valid UI choices. Anything else
-  // falls through to the engine default (DEFAULT_MIN_FAAN = 3).
-  const rawMinFaan = Number.parseInt(searchParams.get('minFaan') ?? '', 10);
-  const minFaan = [0, 1, 3].includes(rawMinFaan) ? rawMinFaan : undefined;
+  // `minFaan` URL param: only exact '0', '1', or '3' are valid. Strict string
+  // match avoids `parseInt` quirks like '3abc' → 3 silently validating.
+  const rawMinFaan = searchParams.get('minFaan');
+  const minFaan = rawMinFaan === '0' || rawMinFaan === '1' || rawMinFaan === '3'
+    ? Number(rawMinFaan)
+    : undefined;
   const showTutor = useAppSelector((s) => s.settings.showTutor);
   const liveFaanMeter = useAppSelector((s) => s.settings.liveFaanMeter);
   const tileVoice = useAppSelector((s) => s.settings.tileVoice);
@@ -29,7 +31,7 @@ export default function GameContent() {
     showTutor,
     liveFaanMeter,
     minFaan,
-    tileVoice === 'off' ? 'off' : tileVoice,
+    tileVoice,
   );
 
   if (!controller.game) {

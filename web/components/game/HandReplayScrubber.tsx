@@ -1,9 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, Rewind, Play, FastForward } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ChevronDown, ChevronUp, Rewind, FastForward } from 'lucide-react';
 import { GameState, GameTurn, PlayerAction } from '@/models/GameState';
 import RetroTile from './RetroTile';
+
+/** Standard HK Mahjong deal: every player draws 13 tiles at hand start. */
+const PRE_DEAL_DRAWS_PER_PLAYER = 13;
 
 interface HandReplayScrubberProps {
   gameState: GameState;
@@ -18,14 +21,26 @@ interface HandReplayScrubberProps {
  * below it for "this is where you should have done X" context.
  */
 export default function HandReplayScrubber({ gameState }: HandReplayScrubberProps) {
-  const turns = useMemo(() => filterMeaningfulTurns(gameState.turnHistory), [gameState.turnHistory]);
+  const playerCount = gameState.players.length;
+  const turns = useMemo(
+    () => filterMeaningfulTurns(gameState.turnHistory, playerCount),
+    [gameState.turnHistory, playerCount],
+  );
   const [expanded, setExpanded] = useState(false);
   const [cursor, setCursor] = useState(turns.length > 0 ? turns.length - 1 : 0);
+
+  // Snap the cursor to the latest turn whenever the timeline grows or
+  // shrinks (e.g. post-hand state update appending turns, or component
+  // remounted with a different hand).
+  useEffect(() => {
+    setCursor(Math.max(0, turns.length - 1));
+  }, [turns]);
 
   if (turns.length === 0) return null;
 
   const cursorSafe = Math.min(cursor, turns.length - 1);
   const activeTurn = turns[cursorSafe];
+  const scrubberInert = turns.length <= 1;
 
   const step = (delta: number) => {
     setCursor(c => Math.max(0, Math.min(turns.length - 1, c + delta)));
@@ -73,12 +88,14 @@ export default function HandReplayScrubber({ gameState }: HandReplayScrubberProp
             )}
           </div>
 
-          {/* Scrubber controls */}
+          {/* Scrubber controls — inert when there's a single turn, since a
+              zero-width range track renders awkwardly and "0 of 0" is a
+              screen-reader dead end. */}
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setCursor(0)}
-              disabled={cursorSafe === 0}
+              disabled={scrubberInert || cursorSafe === 0}
               aria-label="Jump to first turn"
               className="retro-btn font-pixel text-[8px] px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
             >
@@ -87,7 +104,7 @@ export default function HandReplayScrubber({ gameState }: HandReplayScrubberProp
             <button
               type="button"
               onClick={() => step(-1)}
-              disabled={cursorSafe === 0}
+              disabled={scrubberInert || cursorSafe === 0}
               aria-label="Previous turn"
               className="retro-btn font-pixel text-[8px] px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
             >
@@ -96,16 +113,17 @@ export default function HandReplayScrubber({ gameState }: HandReplayScrubberProp
             <input
               type="range"
               min={0}
-              max={turns.length - 1}
+              max={Math.max(0, turns.length - 1)}
               value={cursorSafe}
               onChange={e => setCursor(Number(e.target.value))}
+              disabled={scrubberInert}
               aria-label="Replay turn scrubber"
-              className="flex-1 accent-retro-cyan"
+              className="flex-1 accent-retro-cyan disabled:opacity-40"
             />
             <button
               type="button"
               onClick={() => step(1)}
-              disabled={cursorSafe >= turns.length - 1}
+              disabled={scrubberInert || cursorSafe >= turns.length - 1}
               aria-label="Next turn"
               className="retro-btn font-pixel text-[8px] px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
             >
@@ -114,7 +132,7 @@ export default function HandReplayScrubber({ gameState }: HandReplayScrubberProp
             <button
               type="button"
               onClick={() => setCursor(turns.length - 1)}
-              disabled={cursorSafe >= turns.length - 1}
+              disabled={scrubberInert || cursorSafe >= turns.length - 1}
               aria-label="Jump to final turn"
               className="retro-btn font-pixel text-[8px] px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
             >
@@ -149,15 +167,21 @@ export default function HandReplayScrubber({ gameState }: HandReplayScrubberProp
 
 /**
  * Drop the initial deal-draws that clutter the timeline. Every player draws
- * 13 tiles at hand start, which adds 50+ noise turns. Keep only player-
- * intentional actions after deal.
+ * 13 tiles at hand start, which adds playerCount × 13 noise turns (52 for a
+ * 4-player match). Keep only player-intentional actions after the deal.
+ *
+ * Prefer anchoring one turn before the first DISCARD so the dealer's first
+ * draw is retained for narrative reading. Fall back to a hard cutoff based
+ * on player count — covers edge cases like a heavenly-hand win on the
+ * dealer's opening tile, or draws where no discard was ever recorded.
  */
-function filterMeaningfulTurns(history: GameTurn[]): GameTurn[] {
+function filterMeaningfulTurns(history: GameTurn[], playerCount: number): GameTurn[] {
+  const cutoff = Math.max(0, playerCount) * PRE_DEAL_DRAWS_PER_PLAYER;
   const firstDiscardIdx = history.findIndex(t => t.action === PlayerAction.DISCARD);
-  if (firstDiscardIdx < 0) return history;
-  // Retain the dealer's first draw so the sequence reads naturally, but skip
-  // the 52 pre-deal draws.
-  return history.slice(Math.max(0, firstDiscardIdx - 1));
+  const anchor = firstDiscardIdx >= 0
+    ? Math.max(cutoff, firstDiscardIdx - 1)
+    : cutoff;
+  return history.slice(Math.min(anchor, history.length));
 }
 
 function describeAction(turn: GameTurn): string {

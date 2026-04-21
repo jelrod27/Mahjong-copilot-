@@ -119,7 +119,10 @@ export default function PlayPage() {
           {MIN_FAAN_OPTIONS.map((opt) => (
             <button
               key={opt.value}
+              type="button"
               onClick={() => setMinFaan(opt.value)}
+              aria-pressed={minFaan === opt.value}
+              aria-label={`${opt.label}: ${opt.description}`}
               className={`retro-btn text-center w-full text-left ${
                 minFaan === opt.value
                   ? 'bg-retro-accent text-white border-retro-gold'

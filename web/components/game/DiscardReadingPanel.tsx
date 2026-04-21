@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { GameState } from '@/models/GameState';
 import { Tile, TileSuit, TileType, tileKey } from '@/models/Tile';
@@ -22,8 +22,6 @@ interface OpponentReading {
   total: number;
   /** Suits they have never discarded — learner signal that they may be collecting those */
   quietSuits: TileSuit[];
-  /** True if they've shed most honors (not collecting winds/dragons) */
-  shedsHonors: boolean;
 }
 
 const SUIT_LABEL: Record<string, string> = {
@@ -34,12 +32,23 @@ const SUIT_LABEL: Record<string, string> = {
 };
 
 const MAIN_SUITS: TileSuit[] = [TileSuit.BAMBOO, TileSuit.CHARACTER, TileSuit.DOT];
+/** Ordered groups rendered in the per-opponent breakdown. */
+const GROUP_KEYS: string[] = [...MAIN_SUITS, 'honor'];
 
 export default function DiscardReadingPanel({ game, humanPlayerId, compact = false }: DiscardReadingPanelProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const readings = buildReadings(game, humanPlayerId);
-  const insight = summariseInsight(readings);
+  // GameBoard re-renders on every tick (claim timer, toasts, faan projection).
+  // Memoise so we only regroup/sort when a discard pile actually changes.
+  const discardSig = game.players
+    .map(p => `${p.id}:${(game.playerDiscards[p.id] ?? []).length}`)
+    .join('|');
+  const readings = useMemo(
+    () => buildReadings(game, humanPlayerId),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- discardSig captures the hot path; full `game` would thrash
+    [discardSig, humanPlayerId],
+  );
+  const insight = useMemo(() => summariseInsight(readings), [readings]);
 
   const header = (
     <button
@@ -93,8 +102,7 @@ export default function DiscardReadingPanel({ game, humanPlayerId, compact = fal
                   <span className="text-retro-textDim">{r.total} discards</span>
                 </header>
                 <div className="space-y-1">
-                  {[...MAIN_SUITS, 'honor' as const].map(group => {
-                    const key = group === 'honor' ? 'honor' : (group as TileSuit);
+                  {GROUP_KEYS.map(key => {
                     const tiles = r.bySuit[key] ?? [];
                     if (tiles.length === 0) return null;
                     return (
@@ -159,16 +167,12 @@ function buildReadings(game: GameState, humanPlayerId: string): OpponentReading[
       }
     }
 
-    const honorCount = bySuit.honor?.length ?? 0;
-    const shedsHonors = discards.length >= 6 && honorCount / discards.length >= 0.4;
-
     readings.push({
       playerId: player.id,
       name: player.name,
       bySuit,
       total: discards.length,
       quietSuits,
-      shedsHonors,
     });
   }
 

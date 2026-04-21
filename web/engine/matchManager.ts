@@ -8,7 +8,7 @@
 
 import { WindTile } from '@/models/Tile';
 import { GameState } from '@/models/GameState';
-import { MatchState, HandResult, GameMode } from '@/models/MatchState';
+import { MatchState, HandResult, GameMode, normaliseMinFaan } from '@/models/MatchState';
 import { ScoringResult, PaymentBreakdown } from './types';
 import { initializeGame, GameOptions } from './turnManager';
 
@@ -48,7 +48,9 @@ export function initializeMatch(options: MatchOptions): MatchState {
     phase: 'playing',
     playerNames: options.playerNames,
     humanPlayerId: options.humanPlayerId,
-    minFaan: options.minFaan,
+    // Normalise at the boundary — MatchState.minFaan is typed narrowly so
+    // corrupted persisted values never flow into future hand creation.
+    minFaan: normaliseMinFaan(options.minFaan),
   };
 }
 

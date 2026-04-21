@@ -59,10 +59,12 @@ function pickVoice(language: TileVoiceLanguage): SpeechSynthesisVoice | null {
   let picked: SpeechSynthesisVoice | null = null;
 
   if (language === 'cantonese') {
-    // Prefer Cantonese, then Mandarin, then any Chinese voice.
+    // Prefer Cantonese, then Mandarin, then any Chinese voice. The HK regex
+    // tolerates BCP-47 script subtags that OSes commonly expose, e.g.
+    // `zh-Hant-HK` on macOS/iOS with the HK language pack installed.
     picked =
-      voices.find(v => /yue/i.test(v.lang) || /zh[-_]?HK/i.test(v.lang)) ??
-      voices.find(v => /zh[-_]?(CN|TW)/i.test(v.lang)) ??
+      voices.find(v => /yue/i.test(v.lang) || /^zh(?:[-_][a-z0-9]+)*[-_]HK$/i.test(v.lang)) ??
+      voices.find(v => /^zh(?:[-_][a-z0-9]+)*[-_](CN|TW)$/i.test(v.lang)) ??
       voices.find(v => /^zh/i.test(v.lang)) ??
       null;
   } else {

@@ -246,7 +246,10 @@ export default function SettingsPageClient() {
             {(['off', 'cantonese', 'english'] as const).map((mode) => (
               <button
                 key={mode}
+                type="button"
                 onClick={() => void dispatch(setTileVoice(mode))}
+                aria-pressed={settings.tileVoice === mode}
+                aria-label={`Tile voice callouts: ${mode}`}
                 className={`font-retro text-sm px-3 py-1.5 border transition-colors capitalize ${
                   settings.tileVoice === mode
                     ? 'border-retro-cyan text-retro-cyan bg-retro-cyan/10'

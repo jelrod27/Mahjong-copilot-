@@ -159,8 +159,11 @@ export default function GameBoard({
           />
         </div>
 
-        {/* Right panel — faan meter + discard reading (desktop) */}
-        <div className="hidden md:flex md:flex-col md:gap-1 w-48 shrink-0">
+        {/* Right panel — faan meter + discard reading (desktop).
+            min-h-0 + overflow-y-auto so an expanded reading scrolls inside
+            the rail instead of inflating the top row and pushing the
+            discard pool down. */}
+        <div className="hidden md:flex md:flex-col md:gap-1 w-48 shrink-0 min-h-0 max-h-[calc(100vh-160px)] overflow-y-auto">
           {faanProjection && <FaanMeter projection={faanProjection} />}
           <DiscardReadingPanel game={gameState} humanPlayerId={humanPlayerId} />
         </div>
@@ -181,12 +184,10 @@ export default function GameBoard({
       </div>
 
       {/* Mobile: compact learning panels stacked */}
-      {(faanProjection || gameState.players.length > 0) && (
-        <div className="flex md:hidden flex-col gap-0.5 px-2 py-0.5" style={{ flex: '0 0 auto' }}>
-          {faanProjection && <FaanMeter projection={faanProjection} compact />}
-          <DiscardReadingPanel game={gameState} humanPlayerId={humanPlayerId} compact />
-        </div>
-      )}
+      <div className="flex md:hidden flex-col gap-0.5 px-2 py-0.5" style={{ flex: '0 0 auto' }}>
+        {faanProjection && <FaanMeter projection={faanProjection} compact />}
+        <DiscardReadingPanel game={gameState} humanPlayerId={humanPlayerId} compact />
+      </div>
 
       {/* Middle row: Left opponent + Discard Pool + Right opponent */}
       <div className="flex-1 flex items-center px-1 md:px-2 gap-1 md:gap-2 min-h-0">

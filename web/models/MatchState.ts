@@ -4,6 +4,8 @@ import { ScoringResult, PaymentBreakdown } from '../engine/types';
 
 export type GameMode = 'quick' | 'full';
 export type MatchPhase = 'playing' | 'betweenHands' | 'finished';
+/** Legal faan-minimum values exposed in the lobby. */
+export type MinFaan = 0 | 1 | 3;
 
 export interface HandResult {
   handNumber: number;
@@ -35,7 +37,16 @@ export interface MatchState {
    * Minimum faan required for a legal win across all hands of this match.
    * HK standard default is 3. Beginner / family rules may lower to 1 or 0.
    */
-  minFaan?: number;
+  minFaan?: MinFaan;
+}
+
+/**
+ * Narrow an unknown value from persisted JSON into a valid MinFaan. Returns
+ * `undefined` for anything else so the engine falls back to the HK default
+ * rather than trusting a corrupted or hand-edited localStorage entry.
+ */
+export function normaliseMinFaan(value: unknown): MinFaan | undefined {
+  return value === 0 || value === 1 || value === 3 ? value : undefined;
 }
 
 export function matchStateToJson(match: MatchState): Record<string, any> {
@@ -76,7 +87,7 @@ export function matchStateFromJson(json: Record<string, any>): MatchState {
     phase: json.phase as MatchPhase,
     playerNames: json.playerNames as string[],
     humanPlayerId: json.humanPlayerId as string,
-    minFaan: json.minFaan as number | undefined,
+    minFaan: normaliseMinFaan(json.minFaan),
   };
 }
 

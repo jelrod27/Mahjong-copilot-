@@ -532,4 +532,86 @@ describe('robbing the kong', () => {
       expect(afterWin!.winnerId).toBe('ai_2');
     }
   });
+
+  it('completes the kong if nobody robs it', () => {
+    // AI 1 has an exposed pung of dot-5 and a dot-5 in hand to add
+    // AI 2 has a NON-winning hand (cannot rob)
+    const ai2TenpaiHand = [
+      dot(1, 4), dot(1, 2), dot(1, 3),   // pung
+      bam(2, 3), bam(2, 4), bam(2, 2),   // pung
+      char(3, 4), char(3, 3), char(3, 2), // pung
+      char(7, 4), char(7, 3), char(7, 2), // pung
+      dot(5, 4),                         // needs dot-5 for pair
+    ];
+
+    const kongState: GameState = {
+      id: 'test-unrobbed-kong',
+      variant: 'Hong Kong Mahjong',
+      phase: GamePhase.PLAYING,
+      turnPhase: 'discard',
+      currentPlayerIndex: 1,
+      players: [
+        makePlayer({ id: 'human-1', name: 'Human', isAI: false, seatWind: WindTile.EAST,
+          hand: [dot(6, 1), dot(7, 1), dot(8, 1), dot(9, 1), bam(1, 1), bam(2, 1),
+                 bam(3, 1), bam(4, 1), bam(5, 1), bam(6, 1), bam(7, 1), bam(8, 1), bam(9, 1)] }),
+        makePlayer({ id: 'ai_1', name: 'AI 1', isAI: true, seatWind: WindTile.SOUTH,
+          hand: [dot(5, 2), char(1, 1), char(2, 1), char(3, 1), char(4, 1), char(5, 1),
+                 char(6, 1), char(8, 1), char(9, 1), bam(1, 2), bam(2, 2), bam(3, 2), bam(4, 2), bam(5, 2)],
+          melds: [{ tiles: [dot(5, 1), dot(5, 3), dot(5, 5)], type: 'pung', isConcealed: false }],
+        }),
+        makePlayer({ id: 'ai_2', name: 'AI 2', isAI: true, seatWind: WindTile.WEST,
+          hand: ai2TenpaiHand }),
+        makePlayer({ id: 'ai_3', name: 'AI 3', isAI: true, seatWind: WindTile.NORTH,
+          hand: [char(1, 3), char(2, 3), char(3, 3), char(4, 2), char(5, 2), char(6, 2),
+                 char(7, 5), char(8, 2), char(9, 2), dot(1, 5), dot(2, 2), dot(3, 2), dot(4, 2)] }),
+      ],
+      wall: Array.from({ length: 50 }, (_, i) => bam(1, 200 + i)),
+      deadWall: Array.from({ length: 14 }, (_, i) => char(1, 200 + i)),
+      discardPile: [],
+      playerDiscards: { 'human-1': [], 'ai_1': [], 'ai_2': [], 'ai_3': [] },
+      lastDiscardedTile: undefined,
+      lastDiscardedBy: undefined,
+      lastAction: undefined,
+      pendingClaims: [],
+      claimablePlayers: [],
+      passedPlayers: [],
+      prevailingWind: WindTile.EAST,
+      finalScores: {},
+      createdAt: new Date(),
+      turnHistory: [],
+      turnTimeLimit: 20,
+    };
+
+    const ai1HandSizeBefore = kongState.players[1].hand.length;
+    const ai1MeldsBefore = kongState.players[1].melds.length;
+    const deadWallSizeBefore = kongState.deadWall.length;
+
+    // AI 1 declares kong (adds dot-5 to existing pung)
+    const afterKong = applyAction(kongState, 'ai_1', { type: 'DECLARE_KONG', tile: dot(5, 2) });
+    expect(afterKong).not.toBeNull();
+
+    // Should enter claim phase for potential robbery
+    expect(afterKong!.turnPhase).toBe('claim');
+    expect(afterKong!.isRobKongOpportunity).toBe(true);
+    expect(afterKong!.lastDiscardedTile).toBeDefined();
+    expect(afterKong!.lastDiscardedBy).toBe('ai_1');
+
+    // No one can rob — all non-declarer players must pass
+    let state = afterKong!;
+    while (state.turnPhase === 'claim') {
+      const p = state.players[state.currentPlayerIndex];
+      state = applyAction(state, p.id, { type: 'PASS' })!;
+    }
+
+    // After all pass, kong should complete:
+    expect(state.turnPhase).toBe('discard');
+    expect(state.currentPlayerIndex).toBe(1);
+    expect(state.players[1].hand.length).toBe(ai1HandSizeBefore);
+    expect(state.players[1].melds.length).toBe(ai1MeldsBefore); // pung upgraded, not added
+    expect(state.players[1].melds[0].type).toBe('kong');
+    expect(state.players[1].melds[0].isConcealed).toBe(false);
+    expect(state.players[1].melds[0].tiles.length).toBe(4);
+    expect(state.deadWall.length).toBe(deadWallSizeBefore - 1);
+    expect(state.isRobKongOpportunity).toBeFalsy();
+  });
 });

@@ -12,9 +12,11 @@ import GameHUD from './GameHUD';
 import ActionBar from './ActionBar';
 import ExposedMelds from './ExposedMelds';
 import TutorPanel from './TutorPanel';
+import FaanMeter from './FaanMeter';
 import GameToast from './GameToast';
 import { TutorAdvice } from '@/engine/types';
 import { TenpaiStatus } from './useGameController';
+import { FaanProjection } from '@/engine/faanProjection';
 
 interface GameBoardProps {
   gameState: GameState;
@@ -25,6 +27,7 @@ interface GameBoardProps {
   tutorAdvice?: TutorAdvice | null;
   tenpaiStatus?: TenpaiStatus | null;
   tileClassifications?: Map<string, 'green' | 'orange' | 'red'>;
+  faanProjection?: FaanProjection | null;
   onTileSelect: (tile: Tile) => void;
   onDiscard: () => void;
   onKong: () => void;
@@ -41,7 +44,7 @@ interface GameBoardProps {
 
 export default function GameBoard({
   gameState, match, humanPlayerId, selectedTileId, suggestedTileId, tutorAdvice,
-  tenpaiStatus, tileClassifications,
+  tenpaiStatus, tileClassifications, faanProjection,
   onTileSelect, onDiscard, onKong, onWin, onClaimBest, onSubmitChow, onPass,
   canDeclareKong: canKongProp, canDeclareWin: canWinProp,
   hasClaimOptions: hasClaimsProp, claimOptions = [], claimTimer,
@@ -155,8 +158,10 @@ export default function GameBoard({
           />
         </div>
 
-        {/* Right spacer — desktop only */}
-        <div className="hidden md:block w-48 shrink-0" />
+        {/* Right panel — faan meter (desktop) */}
+        <div className="hidden md:block w-48 shrink-0">
+          {faanProjection && <FaanMeter projection={faanProjection} />}
+        </div>
       </div>
 
       {/* Mobile: minimal HUD bar */}
@@ -172,6 +177,15 @@ export default function GameBoard({
           compact
         />
       </div>
+
+      {/* Mobile: compact faan meter */}
+      {faanProjection && (
+        <div className="flex md:hidden px-2 py-0.5" style={{ flex: '0 0 auto' }}>
+          <div className="flex-1">
+            <FaanMeter projection={faanProjection} compact />
+          </div>
+        </div>
+      )}
 
       {/* Middle row: Left opponent + Discard Pool + Right opponent */}
       <div className="flex-1 flex items-center px-1 md:px-2 gap-1 md:gap-2 min-h-0">

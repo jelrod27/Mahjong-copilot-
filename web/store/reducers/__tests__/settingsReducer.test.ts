@@ -14,6 +14,7 @@ const initialState = {
   notificationsEnabled: true,
   largerUiText: false,
   showTutor: true,
+  liveFaanMeter: true,
 };
 
 describe('settingsReducer', () => {

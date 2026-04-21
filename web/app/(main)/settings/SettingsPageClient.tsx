@@ -9,6 +9,7 @@ import {
   setThemeMode,
   setNotificationsEnabled,
   setShowTutor,
+  setLiveFaanMeter,
   SettingsState,
 } from '@/store/actions/settingsActions';
 import soundManager from '@/lib/soundManager';
@@ -92,6 +93,7 @@ export default function SettingsPageClient() {
     void dispatch(setThemeMode('retro'));
     void dispatch(setNotificationsEnabled(true));
     void dispatch(setShowTutor(true));
+    void dispatch(setLiveFaanMeter(true));
     const defaultPrefs: GamePreferences = { turnTimer: 20, autoPass: false };
     setGamePrefs(defaultPrefs);
     saveGamePreferences(defaultPrefs);
@@ -221,6 +223,14 @@ export default function SettingsPageClient() {
           onChange={(v) => void dispatch(setShowTutor(v))}
           label="Show tutor hints"
           description="In-game discard tips, claim suggestions, and safe-tile hints across all difficulties."
+        />
+
+        {/* Live faan meter */}
+        <ToggleRow
+          checked={settings.liveFaanMeter}
+          onChange={(v) => void dispatch(setLiveFaanMeter(v))}
+          label="Live faan meter"
+          description="During play, show what faan your hand is building toward and whether it meets the 3-faan minimum."
         />
       </section>
 

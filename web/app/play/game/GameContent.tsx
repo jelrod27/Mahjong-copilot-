@@ -15,8 +15,9 @@ export default function GameContent() {
   const difficulty = (searchParams.get('difficulty') || 'easy') as 'easy' | 'medium' | 'hard';
   const mode = (searchParams.get('mode') || 'quick') as GameMode;
   const showTutor = useAppSelector((s) => s.settings.showTutor);
+  const liveFaanMeter = useAppSelector((s) => s.settings.liveFaanMeter);
 
-  const controller = useGameController(difficulty, mode, showTutor);
+  const controller = useGameController(difficulty, mode, showTutor, liveFaanMeter);
 
   if (!controller.game) {
     return (
@@ -39,6 +40,7 @@ export default function GameContent() {
         tutorAdvice={controller.tutorAdvice}
         tenpaiStatus={controller.tenpaiStatus}
         tileClassifications={controller.tileClassifications}
+        faanProjection={controller.faanProjection}
         onTileSelect={controller.selectTile}
         onDiscard={controller.discardSelected}
         onKong={controller.declareKong}

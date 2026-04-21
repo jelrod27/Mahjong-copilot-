@@ -53,7 +53,7 @@ export default function GameBoard({
   // Toast system — track last discard for event messages
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const prevDiscardRef = useRef<string | undefined>();
-  const prevMeldsRef = useRef<number>(0);
+  const prevMeldCountsRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
     // Track new discards
@@ -66,19 +66,20 @@ export default function GameBoard({
       }
     }
 
-    // Track new melds (claims)
-    const totalMelds = gameState.players.reduce((sum, p) => sum + p.melds.length, 0);
-    if (totalMelds > prevMeldsRef.current && prevMeldsRef.current > 0) {
-      const claimer = gameState.players.find(p =>
-        p.melds.length > 0 && p.id !== humanPlayerId
-      );
-      const lastMeld = claimer?.melds[claimer.melds.length - 1];
-      if (claimer && lastMeld) {
+    // Track new melds (claims) — check each player individually
+    for (const player of gameState.players) {
+      const prevCount = prevMeldCountsRef.current[player.id] ?? 0;
+      if (player.melds.length > prevCount && player.id !== humanPlayerId) {
+        const lastMeld = player.melds[player.melds.length - 1];
         const meldName = lastMeld.type.charAt(0).toUpperCase() + lastMeld.type.slice(1);
-        setToastMessage(`${claimer.name} claimed ${meldName}`);
+        setToastMessage(`${player.name} claimed ${meldName}`);
+        break; // Only toast first new meld per render cycle
       }
     }
-    prevMeldsRef.current = totalMelds;
+    // Update the ref with current counts
+    prevMeldCountsRef.current = Object.fromEntries(
+      gameState.players.map(p => [p.id, p.melds.length])
+    );
   }, [gameState.lastDiscardedTile?.id, gameState.lastDiscardedBy, gameState.players, humanPlayerId]);
 
   // Map opponents to positions: right of human = right, across = top, left = left

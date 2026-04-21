@@ -416,6 +416,18 @@ export default function useGameController(
   // Recomputes whenever the human's visible hand changes. Gated on the
   // user-controlled `liveFaanMeter` setting (default on) so learners can
   // see which scoring patterns they're building toward in real time.
+  //
+  // Dep array keys on stable signatures of the human's tiles/melds/flowers
+  // rather than `game.players` — otherwise the effect fires on every
+  // opponent draw/discard/claim/kong and recomputes identical projections.
+  // projectFaan iterates all 34 tile prototypes with canPlayerWin when
+  // tenpai, so this matters for perf.
+  const humanPlayerForFaan = game?.players[humanIndex];
+  const faanHandSig = humanPlayerForFaan?.hand.map(t => t.id).join(',') ?? '';
+  const faanMeldSig = humanPlayerForFaan?.melds
+    .map(m => `${m.type}:${m.tiles.map(t => t.id).join('.')}`)
+    .join('|') ?? '';
+  const faanFlowerSig = humanPlayerForFaan?.flowers.map(t => t.id).join(',') ?? '';
   useEffect(() => {
     if (!liveFaanMeter || !game || game.phase !== GamePhase.PLAYING) {
       setFaanProjection(null);
@@ -435,11 +447,17 @@ export default function useGameController(
         humanPlayer.flowers,
       );
       setFaanProjection(projection);
-    } catch {
+    } catch (err) {
       // Projection is a learning aid — never block the game on a compute error.
+      // In dev, surface the failure so a regression in shanten/pattern detection
+      // doesn't silently ship.
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[faanProjection] compute failed', err);
+      }
       setFaanProjection(null);
     }
-  }, [game?.players, game?.phase, game?.prevailingWind, humanIndex, liveFaanMeter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- signatures below capture all inputs
+  }, [faanHandSig, faanMeldSig, faanFlowerSig, game?.phase, game?.prevailingWind, humanIndex, liveFaanMeter]);
 
   // === Persistent tenpai badge (easy mode, all phases) ===
   useEffect(() => {

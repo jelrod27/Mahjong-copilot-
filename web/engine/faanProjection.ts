@@ -244,32 +244,33 @@ export function projectFaan(
   }
 
   // --- Shanten + best-case projection ---
-  const shanten = calculateShanten(concealed.slice(0, 13));
-  const waits: Tile[] = [];
+  // Compute waits FIRST using canPlayerWin (which correctly accounts for
+  // exposed melds). Deriving shanten from that avoids a subtle bug: running
+  // calculateShanten on just the concealed portion mis-reports tenpai for
+  // hands with exposed melds, which then silently skips wait-finding.
+  const waitTiles = findTenpaiWaits(concealed, exposedMelds);
+  const isTenpai = waitTiles.length > 0;
+  const shanten = isTenpai ? 0 : calculateShanten(concealed);
+  const waits: Tile[] = waitTiles;
   let bestCase: ScoringResult | null = null;
 
-  if (shanten <= 0) {
-    // Tenpai: find wait tiles and compute best-case score
-    const waitTiles = findTenpaiWaits(concealed, exposedMelds);
-    waits.push(...waitTiles);
-
-    for (const wait of waitTiles) {
-      const context: ScoringContext = {
-        winningTile: wait,
-        isSelfDrawn: false, // conservative — don't assume self-draw bonus
-        seatWind,
-        prevailingWind,
-        isConcealed: nonConcealedMelds.length === 0,
-        flowers,
-      };
-      try {
-        const result = calculateScore(concealed, exposedMelds, context);
-        if (!bestCase || result.totalFan > bestCase.totalFan) {
-          bestCase = result;
-        }
-      } catch {
-        // calculateScore may throw on malformed hands — skip.
+  for (const wait of waitTiles) {
+    const candidateHand = [...concealed, wait];
+    const context: ScoringContext = {
+      winningTile: wait,
+      isSelfDrawn: false, // conservative — don't assume self-draw bonus
+      seatWind,
+      prevailingWind,
+      isConcealed: nonConcealedMelds.length === 0,
+      flowers,
+    };
+    try {
+      const result = calculateScore(candidateHand, exposedMelds, context);
+      if (!bestCase || result.totalFan > bestCase.totalFan) {
+        bestCase = result;
       }
+    } catch {
+      // calculateScore may throw on malformed hands — skip.
     }
   }
 
@@ -357,15 +358,29 @@ function tileKeyFor(t: Tile): string {
 /**
  * Find tiles that would complete the hand if drawn/claimed. Iterates
  * all 34 tile types and tests winning-hand validity.
+ *
+ * Skips tiles for which the player already holds all four copies (no draw
+ * is possible). We can only count visible copies in the player's own hand
+ * and melds — opponent discards/melds aren't passed in here — but that's
+ * enough to avoid the most misleading case: teaching a learner to wait on
+ * a tile whose last copy is already in their own pung.
  */
 function findTenpaiWaits(hand: Tile[], melds: MeldInfo[]): Tile[] {
   const prototypes = allTilePrototypes();
   const waits: Tile[] = [];
   const seen = new Set<string>();
+  const visibleCounts = new Map<string, number>();
+
+  for (const tile of [...hand, ...melds.flatMap(m => m.tiles)]) {
+    const key = tileKeyFor(tile);
+    visibleCounts.set(key, (visibleCounts.get(key) ?? 0) + 1);
+  }
+
   for (const proto of prototypes) {
     const key = tileKeyFor(proto);
     if (seen.has(key)) continue;
     seen.add(key);
+    if ((visibleCounts.get(key) ?? 0) >= 4) continue;
     if (canPlayerWin([...hand, proto], melds)) {
       waits.push(proto);
     }

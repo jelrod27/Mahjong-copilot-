@@ -171,6 +171,39 @@ describe('projectFaan', () => {
       expect(result.waits).toHaveLength(0);
       expect(result.bestCase).toBeNull();
     });
+
+    it('detects tenpai when the player has exposed melds', () => {
+      // Regression: calculateShanten on concealed-only missed tenpai for
+      // hands with claimed melds. Waits must be derived via canPlayerWin
+      // which accounts for exposed melds. 3 chows + 1 lone bamboo + an
+      // exposed pung = tenpai waiting for a second bam(1) to pair up.
+      const melds: MeldInfo[] = [
+        { type: 'pung', tiles: [dragonTile(DragonTile.RED), dragonTile(DragonTile.RED, 2), dragonTile(DragonTile.RED, 3)], isConcealed: false },
+      ];
+      const hand = [
+        dot(1), dot(2), dot(3),
+        bam(4), bam(5), bam(6),
+        char(7), char(8), char(9),
+        bam(1),
+      ];
+      const result = projectFaan(hand, melds, WindTile.EAST, WindTile.EAST);
+      expect(result.waits.length).toBeGreaterThan(0);
+      expect(result.shanten).toBe(0);
+      expect(result.bestCase).not.toBeNull();
+    });
+
+    it('does not report waits when all four copies are already held', () => {
+      // Player holds all 4 East winds — can't draw a 5th.
+      const hand = [
+        windTile(WindTile.EAST, 1), windTile(WindTile.EAST, 2),
+        windTile(WindTile.EAST, 3), windTile(WindTile.EAST, 4),
+        dot(1), dot(2), dot(3),
+        bam(4), bam(5), bam(6),
+        char(7), char(8), char(9),
+      ];
+      const result = projectFaan(hand, EMPTY_MELDS, WindTile.EAST, WindTile.EAST);
+      expect(result.waits).not.toContain('east Wind');
+    });
   });
 
   describe('faan range', () => {
@@ -199,11 +232,18 @@ describe('projectFaan', () => {
     });
 
     it('filters out bonus tiles from main hand analysis', () => {
-      // Flowers passed in main hand should be separated and not affect suit counts
-      const hand = [dot(1), dot(2), dot(3), flowerTile('Plum', 1)];
-      // Flower in main hand is a mis-use pattern; function should still run.
+      // Flower in main hand is a mis-use pattern (flowers belong in `flowers`),
+      // but the function must still handle it. Compare against the same hand
+      // without the flower to prove bonus tiles don't affect suit counts or
+      // in-progress projections.
+      const baseHand = [dot(1), dot(2), dot(3)];
+      const hand = [...baseHand, flowerTile('Plum', 1)];
       const result = projectFaan(hand, EMPTY_MELDS, WindTile.EAST, WindTile.EAST);
-      expect(result).toBeDefined();
+      const withoutFlower = projectFaan(baseHand, EMPTY_MELDS, WindTile.EAST, WindTile.EAST);
+
+      expect(result.inProgress).toEqual(withoutFlower.inProgress);
+      expect(result.projectedMin).toBe(withoutFlower.projectedMin);
+      expect(result.projectedMax).toBe(withoutFlower.projectedMax);
     });
   });
 });

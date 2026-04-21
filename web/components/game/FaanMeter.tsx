@@ -19,11 +19,21 @@ export default function FaanMeter({ projection, minFaan = 3, compact = false }: 
 
   const { lockedIn, inProgress, projectedMin, projectedMax, shanten, waits, bestCase } = projection;
   const isTenpai = shanten <= 0;
-  const meetsMin = (bestCase?.totalFan ?? projectedMax) >= minFaan;
+  // "LEGAL" is reserved for confirmed tenpai hands whose best-case score
+  // actually clears the min-faan gate. Non-tenpai "projections" only include
+  // speculative in-progress faan that may never materialise, so we separate
+  // them out to avoid misleading learners.
+  const meetsMin = isTenpai && bestCase !== null && bestCase.totalFan >= minFaan;
+  const projectedMeetsMin = projectedMax >= minFaan;
   const displayMax = bestCase ? bestCase.totalFan : projectedMax;
 
-  // Color the max number by whether it clears the legal-win threshold.
-  const maxColor = meetsMin ? 'text-retro-green' : 'text-retro-accent';
+  // Colour key: green = confirmed legal win, cyan = plausible projection,
+  // pink (retro-accent) = short of the minimum either way.
+  const maxColor = meetsMin
+    ? 'text-retro-green'
+    : (!isTenpai && projectedMeetsMin)
+      ? 'text-retro-cyan'
+      : 'text-retro-accent';
 
   // Compact header — always visible
   const header = (
@@ -106,7 +116,14 @@ export default function FaanMeter({ projection, minFaan = 3, compact = false }: 
                       </div>
                       <span className="text-retro-cyan font-retro shrink-0">+{fan.fan}</span>
                     </div>
-                    <div className="mt-0.5 h-1 w-full bg-retro-bg rounded-sm overflow-hidden">
+                    <div
+                      className="mt-0.5 h-1 w-full bg-retro-bg rounded-sm overflow-hidden"
+                      role="progressbar"
+                      aria-label={`${fan.name} progress`}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={Math.round(fan.progress * 100)}
+                    >
                       <div
                         className="h-full bg-retro-cyan/60 transition-[width] duration-500"
                         style={{ width: `${Math.round(fan.progress * 100)}%` }}
@@ -138,8 +155,18 @@ export default function FaanMeter({ projection, minFaan = 3, compact = false }: 
             <span className="text-retro-textDim font-retro">
               Need {minFaan}+ faan to win
             </span>
-            <span className={`font-pixel ${meetsMin ? 'text-retro-green' : 'text-retro-accent'}`}>
-              {meetsMin ? '✓ LEGAL' : '✗ SHORT'}
+            <span
+              className={`font-pixel ${
+                meetsMin
+                  ? 'text-retro-green'
+                  : (!isTenpai && projectedMeetsMin)
+                    ? 'text-retro-cyan'
+                    : 'text-retro-accent'
+              }`}
+            >
+              {isTenpai
+                ? (meetsMin ? '✓ LEGAL' : '✗ SHORT')
+                : (projectedMeetsMin ? 'PROJECTED' : '✗ SHORT')}
             </span>
           </div>
         </div>

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { GameMode } from '@/models/MatchState';
+import { hasSavedGame } from '@/lib/matchStorage';
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 
@@ -10,9 +11,19 @@ export default function PlayPage() {
   const router = useRouter();
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [mode, setMode] = useState<GameMode>('quick');
+  const [canResume, setCanResume] = useState(false);
+
+  useEffect(() => {
+    setCanResume(hasSavedGame());
+  }, []);
 
   const handleStart = () => {
+    localStorage.removeItem('mahjong_match_in_progress');
     router.push(`/play/game?difficulty=${difficulty}&mode=${mode}`);
+  };
+
+  const handleResume = () => {
+    router.push('/play/game');
   };
 
   return (
@@ -98,6 +109,15 @@ export default function PlayPage() {
       >
         [ START GAME ]
       </button>
+
+      {canResume && (
+        <button
+          onClick={handleResume}
+          className="retro-btn font-pixel text-xs md:text-sm px-6 md:px-8 py-3 mt-2 min-h-[44px] border-retro-amber text-retro-gold"
+        >
+          [ RESUME GAME ]
+        </button>
+      )}
 
       {/* Multiplayer */}
       <button

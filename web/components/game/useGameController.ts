@@ -17,6 +17,7 @@ import { calculatePayment } from '@/engine/scoring';
 import { getAIDecision, getAIClaimDecision } from '@/engine/ai';
 import { getTutorAdvice } from '@/engine/tutor';
 import soundManager from '@/lib/soundManager';
+import { saveGame, loadGame, clearSavedGame, hasSavedGame, canResume } from '@/lib/matchStorage';
 
 const HUMAN_ID = 'human-player';
 
@@ -66,6 +67,10 @@ export interface GameController {
   pass: () => void;
   startNewGame: (difficulty: 'easy' | 'medium' | 'hard', mode?: GameMode) => void;
   continueToNextHand: () => void;
+  /** Resume an in-progress match from localStorage. */
+  resumeGame: () => boolean;
+  /** Clear any saved match and reset to a fresh game. */
+  clearSavedGame: () => void;
   canDeclareKong: boolean;
   canDeclareWin: boolean;
 }
@@ -129,10 +134,53 @@ export default function useGameController(
     resetHandState();
   }, [mode, resetHandState]);
 
-  // Initialize game on mount
+  // Initialize game on mount — resume saved match if one exists and is active
   useEffect(() => {
+    const saved = loadGame();
+    if (saved?.match && saved.match.phase !== 'finished') {
+      setMatch(saved.match);
+      setGame(saved.game ?? saved.match.currentHand ?? null);
+      setDifficulty(saved.match.difficulty);
+      setMode(saved.match.mode);
+    } else {
+      startNewGame(initialDifficulty, initialMode);
+    }
+  }, [initialDifficulty, initialMode, startNewGame]);
+
+  /** Try to resume a saved match from localStorage. Returns true on success. */
+  const resumeGame = useCallback((): boolean => {
+    const saved = loadGame();
+    if (!saved || !saved.match) return false;
+
+    setMatch(saved.match);
+    setGame(saved.game ?? saved.match.currentHand ?? null);
+
+    // Carry over difficulty/mode from the saved match
+    setDifficulty(saved.match.difficulty);
+    setMode(saved.match.mode);
+
+    return true;
+  }, []);
+
+  /** Clear any saved match and reset to a fresh game. */
+  const clearSavedGameAndReset = useCallback(() => {
+    clearSavedGame();
     startNewGame(initialDifficulty, initialMode);
-  }, [initialDifficulty, initialMode]);
+  }, [initialDifficulty, initialMode, startNewGame]);
+
+  // Auto-save match + game after every state change
+  useEffect(() => {
+    if (match) {
+      saveGame(match, game);
+    }
+  }, [match, game]);
+
+  // Clear saved game when match ends (win, draw, or abort)
+  useEffect(() => {
+    if (match?.phase === 'finished') {
+      clearSavedGame();
+    }
+  }, [match?.phase]);
 
   const continueToNextHand = useCallback(() => {
     const currentMatch = matchRef.current;
@@ -209,7 +257,8 @@ export default function useGameController(
     const entries = Array.from(counts.values());
     for (const tiles of entries) {
       if (tiles.length === 4) {
-        doAction(HUMAN_ID, { type: 'DECLARE_KONG', tile: tiles[0] });
+        const next = doAction(HUMAN_ID, { type: 'DECLARE_KONG', tile: tiles[0] });
+        if (next) soundManager.play('kong');
         return;
       }
     }
@@ -220,7 +269,8 @@ export default function useGameController(
       if (meld.type === 'pung') {
         const match = hand.find(t => tilesMatch(t, meld.tiles[0]));
         if (match) {
-          doAction(HUMAN_ID, { type: 'DECLARE_KONG', tile: match });
+          const next = doAction(HUMAN_ID, { type: 'DECLARE_KONG', tile: match });
+          if (next) soundManager.play('kong');
           return;
         }
       }
@@ -657,6 +707,7 @@ export default function useGameController(
     tileClassifications, claimOptions, claimTimer, isGameOver, isMatchOver,
     scoringResult, selectTile, discardSelected, declareKong, declareWin,
     submitClaim, submitChow, claimBest, pass, startNewGame, continueToNextHand,
+    resumeGame, clearSavedGame: clearSavedGameAndReset,
     canDeclareKong, canDeclareWin,
   };
 }

@@ -260,6 +260,8 @@ export default function useMultiplayerGame(
     pass: handlePass,
     startNewGame,
     continueToNextHand: () => {},
+    resumeGame: () => false,
+    clearSavedGame: () => {},
     canDeclareKong,
     canDeclareWin,
     connectionStatus,

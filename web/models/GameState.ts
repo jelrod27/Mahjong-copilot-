@@ -89,6 +89,8 @@ export interface GameState {
   minFaan?: number;
   /** Wall-exhaustion draw settlement (set when the game ends as a draw). */
   drawResult?: DrawResult;
+  /** Total number of kongs declared in this hand. Game ends in a draw when this reaches 4. */
+  totalKongsDeclared?: number;
 }
 
 /**
@@ -163,6 +165,7 @@ export const gameStateFromJson = (json: Record<string, any>): GameState => {
     lastDiscardedTile: json.lastDiscardedTile ? tileFromJson(json.lastDiscardedTile) : undefined,
     lastDiscardedBy: json.lastDiscardedBy as string | undefined,
     lastAction: json.lastAction as PlayerAction | undefined,
+    totalKongsDeclared: (json.totalKongsDeclared as number) ?? 0,
     pendingClaims: (json.pendingClaims as any[])?.map((c: any) => ({
       ...c,
       tiles: c.tiles?.map((t: any) => tileFromJson(t)) ?? [],
@@ -186,7 +189,7 @@ export const gameStateFromJson = (json: Record<string, any>): GameState => {
   };
 };
 
-function meldToJson(meld: MeldInfo): Record<string, any> {
+export function meldToJson(meld: MeldInfo): Record<string, any> {
   return {
     tiles: meld.tiles.map(t => tileToJson(t)),
     type: meld.type,
@@ -194,7 +197,7 @@ function meldToJson(meld: MeldInfo): Record<string, any> {
   };
 }
 
-function meldFromJson(json: any): MeldInfo {
+export function meldFromJson(json: any): MeldInfo {
   return {
     tiles: (json.tiles as any[])?.map((t: any) => tileFromJson(t)) ?? [],
     type: json.type as 'chow' | 'pung' | 'kong' | 'pair',

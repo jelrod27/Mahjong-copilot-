@@ -3,7 +3,7 @@
  * No external sound files needed — generates 8-bit style sounds programmatically.
  */
 
-type SoundName = 'tilePlace' | 'tileDraw' | 'claim' | 'win' | 'pass' | 'turnAlert';
+type SoundName = 'tilePlace' | 'tileDraw' | 'claim' | 'win' | 'pass' | 'turnAlert' | 'kong';
 
 class SoundManager {
   private ctx: AudioContext | null = null;
@@ -56,6 +56,13 @@ class SoundManager {
         this.playTone(ctx, 500, 0.08, 'square');
         this.playTone(ctx, 700, 0.08, 'square', 0.08);
         this.playTone(ctx, 1000, 0.1, 'square', 0.16);
+        break;
+      case 'kong':
+        // Deep, resonant boom + high chime — sounds heavier than a claim
+        this.playTone(ctx, 250, 0.14, 'sawtooth');
+        this.playTone(ctx, 350, 0.12, 'sawtooth', 0.06);
+        this.playTone(ctx, 600, 0.12, 'square', 0.14);
+        this.playTone(ctx, 900, 0.14, 'square', 0.26);
         break;
       case 'win':
         this.playTone(ctx, 523, 0.12, 'square');

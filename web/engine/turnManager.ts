@@ -26,6 +26,77 @@ import { meetsMinFaan } from './scoring';
  */
 export const NOTEN_PENALTY_PER_NOTEN = 1500;
 
+function applyDeferredKong(state: GameState, declarerIndex: number, kongTile: Tile): GameState {
+  const player = state.players[declarerIndex];
+
+  // Find the exposed pung to upgrade
+  const pungMeldIndex = player.melds.findIndex(
+    m => m.type === 'pung' && tilesMatch(m.tiles[0], kongTile)
+  );
+  if (pungMeldIndex === -1) {
+    // Fallback: should never happen, just end claim phase normally
+    return {
+      ...state,
+      currentPlayerIndex: (declarerIndex + 1) % state.players.length,
+      turnPhase: 'draw',
+      pendingClaims: [],
+      claimablePlayers: [],
+      passedPlayers: [],
+      isRobKongOpportunity: undefined,
+      turnStartedAt: new Date(),
+    };
+  }
+
+  const newPlayers = [...state.players];
+  const newMelds = [...newPlayers[declarerIndex].melds];
+  newMelds[pungMeldIndex] = {
+    ...newMelds[pungMeldIndex],
+    tiles: [...newMelds[pungMeldIndex].tiles, kongTile],
+    type: 'kong',
+  };
+  newPlayers[declarerIndex] = {
+    ...newPlayers[declarerIndex],
+    hand: newPlayers[declarerIndex].hand.filter(t => t.id !== kongTile.id),
+    melds: newMelds,
+  };
+
+  // Draw replacement from dead wall
+  let updatedState: GameState = {
+    ...state,
+    players: newPlayers,
+    pendingClaims: [],
+    claimablePlayers: [],
+    passedPlayers: [],
+    isRobKongOpportunity: undefined,
+    turnPhase: 'discard',
+    currentPlayerIndex: declarerIndex,
+    turnStartedAt: new Date(),
+  };
+
+  if (state.deadWall.length === 0 && state.wall.length === 0) {
+    return handleWallExhaustion(updatedState);
+  }
+
+  const sourceWall = state.deadWall.length > 0 ? state.deadWall : state.wall;
+  const replacement = sourceWall[0];
+  const newSourceWall = sourceWall.slice(1);
+
+  newPlayers[declarerIndex] = {
+    ...newPlayers[declarerIndex],
+    hand: [...newPlayers[declarerIndex].hand, replacement],
+  };
+
+  const wallKey = state.deadWall.length > 0 ? 'deadWall' : 'wall';
+
+  return {
+    ...updatedState,
+    players: newPlayers,
+    [wallKey]: newSourceWall,
+    lastDrawnTile: replacement,
+    isKongReplacement: true,
+  };
+}
+
 // ============================================
 // Game initialization
 // ============================================
@@ -626,6 +697,10 @@ function handlePass(state: GameState, playerIndex: number): GameState | null {
     // Everyone has acted — resolve any pending claims or end claim phase
     if (state.pendingClaims.length > 0) {
       return resolveAndApplyClaim({ ...state, passedPlayers: newPassedPlayers }, state.pendingClaims);
+    }
+    // If this was a deferred kong (robbing opportunity) and nobody claimed, complete it
+    if (state.isRobKongOpportunity && state.lastDiscardedTile) {
+      return applyDeferredKong(state, discarderIndex, state.lastDiscardedTile);
     }
     return {
       ...state,

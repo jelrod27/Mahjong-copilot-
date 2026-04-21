@@ -21,8 +21,9 @@ test.describe('Progress tracking', () => {
       page.getByText('Play your first game to start tracking stats!'),
     ).toBeVisible();
 
-    // "PLAY NOW" link should be present
-    await expect(page.locator('a[href="/play"]')).toBeVisible();
+    // "PLAY NOW" link should be present (scope by accessible name to avoid
+    // matching the bottom-nav's /play entry as well).
+    await expect(page.getByRole('link', { name: /PLAY NOW/ })).toBeVisible();
   });
 
   test('progress page loads and shows stats structure after games are played', async ({ page }) => {

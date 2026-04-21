@@ -3,9 +3,10 @@ import { test, expect } from '@playwright/test';
 const mainRoutes: { path: string; expectText: string | RegExp }[] = [
   { path: '/learn', expectText: /LEARN MAHJONG|Hong Kong Mahjong/i },
   { path: '/play', expectText: 'SELECT DIFFICULTY' },
-  { path: '/practice', expectText: 'PRACTICE MODE' },
-  { path: '/reference', expectText: 'Tile Reference' },
-  { path: '/progress', expectText: 'Your Progress' },
+  // Each page's post-redesign identifying copy.
+  { path: '/practice', expectText: 'Sharpen Your Skills' },
+  { path: '/reference', expectText: 'Quick Reference' },
+  { path: '/progress', expectText: /YOUR PROGRESS/i },
 ];
 
 test.describe('Main app routes', () => {

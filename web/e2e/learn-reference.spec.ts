@@ -55,7 +55,10 @@ test.describe('Reference page', () => {
 
     await expect(page.getByText('PAYMENT FORMULA')).toBeVisible();
     await expect(page.getByText('FAN TABLE')).toBeVisible();
-    await expect(page.getByText('Chicken Hand')).toBeVisible();
+    // "Chicken Hand" is intentionally rendered twice on the Scoring tab
+    // (once in the FAN TABLE, once as a row label in the PAYMENT TABLE),
+    // so we just assert at least one is visible.
+    await expect(page.getByText('Chicken Hand').first()).toBeVisible();
   });
 
   test('Hands tab shows limit hands', async ({ page }) => {
@@ -72,16 +75,21 @@ test.describe('Reference page', () => {
     await page.getByRole('button', { name: 'Glossary' }).click();
 
     await expect(page.getByText(/\d+ terms/)).toBeVisible();
-    await expect(page.getByText('Chow')).toBeVisible();
-    await expect(page.getByText('Pung')).toBeVisible();
-    await expect(page.getByText('Kong')).toBeVisible();
+    // Exact-match to avoid matching the word "chow" inside other entries'
+    // definitions (e.g. "A valid set of tiles: chow, pung, or kong.").
+    await expect(page.getByText('Chow', { exact: true })).toBeVisible();
+    await expect(page.getByText('Pung', { exact: true })).toBeVisible();
+    await expect(page.getByText('Kong', { exact: true })).toBeVisible();
   });
 });
 
 test.describe('Practice page', () => {
   test('shows quiz mode buttons', async ({ page }) => {
     await page.goto('/practice');
-    await expect(page.getByText('PRACTICE MODE')).toBeVisible();
+    // Header label + heading — "PRACTICE" is the eyebrow, "Sharpen Your
+    // Skills" is the h1 after the menu redesign.
+    await expect(page.getByText('PRACTICE', { exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Sharpen Your Skills' })).toBeVisible();
 
     // All 4 practice modes should be shown
     await expect(page.getByText('Tile Quiz')).toBeVisible();

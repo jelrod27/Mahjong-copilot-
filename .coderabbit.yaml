@@ -1,0 +1,138 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit AI Review Configuration for 16 Bit Mahjong
+# https://docs.coderabbit.ai/guides/configure-coderabbit
+
+language: en-GB
+early_access: false
+
+tone_instructions: |
+  Be concise and technical. Focus on correctness, edge cases, and maintainability.
+  Avoid filler. When reviewing the game engine, treat state-machine correctness as
+  the highest priority. When reviewing React components, focus on render performance,
+  accessibility, and hook correctness.
+
+reviews:
+  profile: assertive
+  request_changes_workflow: true
+  high_level_summary: true
+  poem: false
+  collapse_walkthrough: true
+  review_status: true
+  sequence_diagrams: false
+  auto_title_instructions: |
+    Summarise the PR in a short, conventional-commit-style title.
+
+  path_filters:
+    - "!**/node_modules/**"
+    - "!**/.next/**"
+    - "!**/package-lock.json"
+    - "!**/yarn.lock"
+    - "!**/*.snap"
+
+  path_instructions:
+    - path: "web/engine/**/*.ts"
+      instructions: |
+        This is the game engine — pure TypeScript, zero framework dependencies,
+        deterministic state machine. CRITICAL PRIORITY checks:
+        - State-machine correctness: every branch must leave the game in a valid state.
+        - No mutation of input objects; always return new state.
+        - Edge cases: wall exhaustion, claim timeouts, multi-player claim resolution.
+        - Tile accounting: total tile count (144) must remain consistent.
+        - Test coverage: new game logic MUST have unit tests in `engine/__tests__/`.
+        Suggest property-based testing for complex state transitions.
+
+    - path: "web/models/*.ts"
+      instructions: |
+        Data models and type definitions. Keep serialisation/deserialisation
+        round-trips safe. Any new GameState field must be handled in `toJSON` and
+        `fromJSON` if present.
+
+    - path: "web/components/**/*.tsx"
+      instructions: |
+        React 18 + Next.js App Router components with Tailwind CSS.
+        Check for:
+        - Missing useEffect cleanup functions
+        - Incorrect or incomplete dependency arrays (especially in game loop hooks)
+        - Accessibility: aria-labels, keyboard navigation, focus management
+        - Unnecessary re-renders — memoise expensive tile renders
+        - Proper Suspense boundaries where async data is fetched
+
+    - path: "web/app/**/*.tsx"
+      instructions: |
+        Next.js App Router pages. Ensure:
+        - Server/Client boundary is respected ('use client' only where needed)
+        - Loading and error states are handled
+        - Metadata API is used for SEO where appropriate
+
+    - path: "web/hooks/**/*.ts"
+      instructions: |
+        Custom React hooks. Must follow Rules of Hooks strictly.
+        Dependencies arrays should be explicit and correct.
+        Game-loop hooks (e.g. useGameController) should avoid stale closures.
+
+    - path: "web/store/**/*.ts"
+      instructions: |
+        Redux Toolkit reducers and actions. Ensure:
+        - Immutability: use Immer or spread patterns correctly
+        - Action types are typed with PayloadAction
+        - No side effects in reducers (async goes in thunks / middleware)
+
+    - path: "web/__tests__/**/*.ts"
+      instructions: |
+        Test files. Verify:
+        - Tests describe behaviour, not implementation
+        - Edge cases are covered (null, empty arrays, boundary values)
+        - Mock data is realistic for Mahjong tile structures
+
+    - path: "web/e2e/**/*.spec.ts"
+      instructions: |
+        Playwright E2E tests. Ensure selectors are resilient
+        (prefer data-testid > text > CSS class). Check for proper
+        test isolation and no hard-coded waits.
+
+    - path: "**/*.test.ts"
+      instructions: |
+        All test files. Ensure one behaviour per test, clear descriptive names.
+        If a test name contains "and" it should probably be split.
+
+  auto_review:
+    enabled: true
+    auto_incremental_review: enabled
+    drafts: false
+    base_branches:
+      - main
+    ignore_title_keywords:
+      - "WIP"
+      - "wip"
+      - "[skip review]"
+      - "Draft"
+
+  tools:
+    ast-grep:
+      rules_folder: ast-grep-rules
+    github-checks:
+      enabled: true
+      timeout_ms: 90000
+    languagetool:
+      enabled: true
+      enabled_rules:
+        - TYPOS
+        - GRAMMAR
+      disabled_rules:
+        - EN_QUOTES
+      enabled_only: false
+      level: default
+
+chat:
+  auto_reply: true
+  integrations:
+    jira:
+      usage: auto
+    linear:
+      usage: auto
+
+code_generation:
+  instructions: |
+    When generating code, prefer TypeScript strict mode patterns.
+    Use functional React components with explicit return types where
+    the component is exported. Avoid `any` types.

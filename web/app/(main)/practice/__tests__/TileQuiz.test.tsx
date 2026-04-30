@@ -30,7 +30,7 @@ describe('TileQuiz', () => {
     expect(screen.getByText(/Question 1 of 10/)).toBeDefined();
   });
 
-  it('clicking an answer option shows feedback', () => {
+  it('clicking an answer option shows educational feedback', () => {
     renderWithProvider(<TileQuiz onBack={onBack} />);
     // Get all option buttons (there should be 4)
     const buttons = screen.getAllByRole('button').filter(
@@ -42,6 +42,9 @@ describe('TileQuiz', () => {
     expect(optionButtons.length).toBeGreaterThanOrEqual(4);
 
     fireEvent.click(optionButtons[0]);
+
+    expect(screen.getByText(/why:/i)).toBeInTheDocument();
+    expect(screen.getByText(/correct answer:/i)).toBeInTheDocument();
 
     // After clicking, a "Next Question" or "See Results" button should appear
     const nextBtn = screen.queryByText('Next Question') || screen.queryByText('See Results');

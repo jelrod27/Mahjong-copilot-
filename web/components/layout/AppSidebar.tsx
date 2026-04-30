@@ -1,9 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
-import { LogOut, User } from "lucide-react";
+import { usePathname } from "next/navigation";
 import {
   Sidebar,
   SidebarContent,
@@ -16,19 +14,9 @@ import {
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { navItems } from "@/constants/navItems";
-import { useAppSelector, useAppDispatch } from "@/store/hooks";
-import { signOut } from "@/store/actions/authActions";
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const dispatch = useAppDispatch();
-  const user = useAppSelector((state) => state.auth.user);
-
-  const handleSignOut = async () => {
-    await dispatch(signOut() as any);
-    router.push("/login");
-  };
 
   return (
     <Sidebar>
@@ -53,8 +41,11 @@ export function AppSidebar() {
                     <SidebarMenuButton
                       isActive={isActive}
                       className="h-10 text-retro-text hover:text-retro-accent transition-colors"
-                      render={<Link href={href} />}
+                      render={<Link href={href} aria-current={isActive ? "page" : undefined} />}
                     >
+                      <span aria-hidden className={isActive ? "text-retro-accent" : "text-retro-textDim"}>
+                        {isActive ? "►" : " "}
+                      </span>
                       <Icon size={18} className={isActive ? "text-retro-accent" : ""} />
                       <span className="font-medium">{label}</span>
                     </SidebarMenuButton>
@@ -66,47 +57,14 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="p-4 border-t border-retro-border/10 bg-retro-bgLight/50 backdrop-blur-sm">
-        {user ? (
-          <div className="flex items-center gap-3">
-            {user.photoUrl ? (
-              <Image
-                src={user.photoUrl}
-                alt={user.displayName || "User"}
-                width={32}
-                height={32}
-                className="w-8 h-8 rounded-sm border border-retro-border/30"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-sm bg-retro-panel border border-retro-border/30 flex items-center justify-center">
-                <User size={14} className="text-retro-textDim" />
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-retro-text font-medium truncate">
-                {user.displayName || user.email}
-              </p>
-              {user.displayName && (
-                <p className="text-[10px] text-retro-textDim truncate font-mono uppercase">
-                  {user.email}
-                </p>
-              )}
-            </div>
-            <button
-              onClick={handleSignOut}
-              className="p-1.5 rounded-sm text-retro-textDim hover:text-retro-accent hover:bg-retro-accent/10 transition-colors"
-              title="Sign out"
-            >
-              <LogOut size={16} />
-            </button>
-          </div>
-        ) : (
-          <Link
-            href="/login"
-            className="flex items-center justify-center gap-2 h-10 w-full rounded-sm border-2 border-retro-border/50 bg-retro-accent/10 text-retro-text text-sm font-pixel tracking-tighter hover:bg-retro-accent/20 hover:border-retro-border transition-all"
-          >
-            SIGN IN
-          </Link>
-        )}
+        <div className="rounded-sm border border-retro-cyan/20 bg-retro-cyan/5 p-3 text-center">
+          <p className="font-pixel text-[9px] text-retro-cyan tracking-tighter">
+            LOCAL MODE
+          </p>
+          <p className="mt-2 font-sans text-xs text-retro-textDim leading-relaxed">
+            Progress stays on this device. Accounts return with multiplayer.
+          </p>
+        </div>
       </SidebarFooter>
     </Sidebar>
   );

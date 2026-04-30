@@ -80,7 +80,13 @@ export default function GameBoard({
     prevMeldCountsRef.current = Object.fromEntries(
       gameState.players.map(p => [p.id, p.melds.length])
     );
-  }, [gameState.lastDiscardedTile?.id, gameState.lastDiscardedBy, gameState.players, humanPlayerId]);
+  }, [
+    gameState.lastDiscardedTile?.id,
+    gameState.lastDiscardedTile?.nameEnglish,
+    gameState.lastDiscardedBy,
+    gameState.players,
+    humanPlayerId,
+  ]);
 
   // Map opponents to positions: right of human = right, across = top, left = left
   const getOpponent = (offset: number) => {
@@ -93,6 +99,7 @@ export default function GameBoard({
   const leftPlayer = getOpponent(3);
 
   const canDiscard = isHumanTurn && gameState.turnPhase === 'discard' && !!selectedTileId;
+  const selectedTile = humanPlayer.hand.find(tile => tile.id === selectedTileId);
   const canDeclareWin = canWinProp ?? false;
   const canDeclareKong = canKongProp ?? false;
   const hasClaimOptions = hasClaimsProp ?? false;
@@ -240,6 +247,7 @@ export default function GameBoard({
           hasClaimOptions={hasClaimOptions}
           claimOptions={claimOptions}
           discardedTile={gameState.lastDiscardedTile}
+          selectedTileName={selectedTile?.nameEnglish}
           onDiscard={onDiscard}
           onKong={onKong}
           onWin={onWin}
@@ -265,6 +273,15 @@ export default function GameBoard({
             <span className="text-retro-cyan">Score: {humanPlayer.score}</span>
           </div>
         </div>
+
+        {/* Beginner Assist legend */}
+        {tileClassifications && tileClassifications.size > 0 && (
+          <div className="flex justify-center gap-2 px-1 font-retro text-[9px] md:text-xs text-retro-textDim">
+            <span><span className="text-retro-green font-bold">GOOD</span> = strong discard</span>
+            <span><span className="text-retro-gold font-bold">OK</span> = neutral</span>
+            <span><span className="text-retro-accent font-bold">KEEP</span> = useful tile</span>
+          </div>
+        )}
 
         {/* Tenpai badge — persistent across all phases in easy mode */}
         {tenpaiStatus?.isTenpai && (

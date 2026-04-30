@@ -32,8 +32,8 @@ test.describe('Solo play', () => {
 test.describe('Practice mode', () => {
   test('setup screen then in-game HUD', async ({ page }) => {
     await page.goto('/practice');
-    await expect(page.getByRole('heading', { name: 'Play with Hints' })).toBeVisible();
-    await page.getByRole('button', { name: 'Start Practice' }).click();
+    await expect(page.getByText('Play with Hints')).toBeVisible();
+    await page.getByRole('button', { name: /Play with Hints/i }).click();
     await expectGameBoardReady(page);
   });
 });
@@ -45,7 +45,7 @@ test.describe('Minimal interaction smoke', () => {
     await page.goto('/play/game?difficulty=easy');
     await expectGameBoardReady(page);
 
-    const discardBtn = page.getByRole('button', { name: '[ DISCARD ]' });
+    const discardBtn = page.getByRole('button', { name: /\[ DISCARD/ });
     await discardBtn.waitFor({ state: 'visible', timeout: 60_000 });
 
     const tiles = page.locator('[data-testid="human-hand-tile"]');

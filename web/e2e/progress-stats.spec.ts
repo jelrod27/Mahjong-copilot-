@@ -22,7 +22,7 @@ test.describe('Progress tracking', () => {
     ).toBeVisible();
 
     // "PLAY NOW" link should be present
-    await expect(page.locator('a[href="/play"]')).toBeVisible();
+    await expect(page.getByRole('link', { name: /PLAY NOW/i })).toBeVisible();
   });
 
   test('progress page loads and shows stats structure after games are played', async ({ page }) => {

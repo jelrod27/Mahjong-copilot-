@@ -30,7 +30,7 @@ test.describe('Quick Game flow', () => {
     await expectGameBoardReady(page);
 
     // Wait for human discard turn
-    const discardBtn = page.getByRole('button', { name: '[ DISCARD ]' });
+    const discardBtn = page.getByRole('button', { name: /\[ DISCARD/ });
     await discardBtn.waitFor({ state: 'visible', timeout: 60_000 });
 
     // Count discard pool tiles before

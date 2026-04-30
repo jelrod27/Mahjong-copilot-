@@ -12,29 +12,30 @@ interface TileQuestion {
   question: string;
   options: string[];
   answer: string;
+  explanation: string;
 }
 
 const TILE_QUESTIONS: TileQuestion[] = [
-  { question: 'A tile showing 5 circles arranged in an X pattern.', options: ['5 Bamboo', '5 Dot', '5 Character', 'White Dragon'], answer: '5 Dot' },
-  { question: 'A tile with a bird on it (not a number).', options: ['1 Bamboo', '1 Dot', 'Green Dragon', 'Flower'], answer: '1 Bamboo' },
-  { question: 'A tile showing the character 中 in red.', options: ['Red Dragon', 'Green Dragon', 'East Wind', 'South Wind'], answer: 'Red Dragon' },
-  { question: 'A blank or plain-framed tile.', options: ['White Dragon', 'Flower', 'Season', 'Joker'], answer: 'White Dragon' },
-  { question: 'A tile with three horizontal lines above 萬.', options: ['3 Character', '3 Dot', '3 Bamboo', 'West Wind'], answer: '3 Character' },
-  { question: 'A tile showing the character 東.', options: ['East Wind', 'South Wind', 'West Wind', 'North Wind'], answer: 'East Wind' },
-  { question: 'A tile showing the character 發 in green.', options: ['Green Dragon', 'Red Dragon', 'White Dragon', 'Spring Season'], answer: 'Green Dragon' },
-  { question: 'A tile with 9 circles in a 3x3 grid.', options: ['9 Dot', '9 Bamboo', '9 Character', 'North Wind'], answer: '9 Dot' },
-  { question: 'A tile with two bamboo sticks.', options: ['2 Bamboo', '2 Dot', '2 Character', 'Pair tile'], answer: '2 Bamboo' },
-  { question: 'A tile showing the character 北.', options: ['North Wind', 'South Wind', 'East Wind', 'West Wind'], answer: 'North Wind' },
-  { question: 'A tile showing the character 南.', options: ['South Wind', 'North Wind', 'East Wind', 'West Wind'], answer: 'South Wind' },
-  { question: 'A tile showing the character 西.', options: ['West Wind', 'East Wind', 'South Wind', 'North Wind'], answer: 'West Wind' },
-  { question: 'A tile showing one horizontal line above 萬.', options: ['1 Character', '1 Dot', '1 Bamboo', 'East Wind'], answer: '1 Character' },
-  { question: 'A tile depicting a plum blossom.', options: ['Plum Flower', 'Orchid Flower', 'Spring Season', 'Red Dragon'], answer: 'Plum Flower' },
-  { question: 'A tile showing 7 bamboo sticks.', options: ['7 Bamboo', '7 Dot', '7 Character', 'White Dragon'], answer: '7 Bamboo' },
-  { question: 'A tile that is one of only 8 unique tiles in the entire set.', options: ['Bonus tile (Flower/Season)', 'Dragon tile', 'Wind tile', 'Suit tile'], answer: 'Bonus tile (Flower/Season)' },
-  { question: 'A tile showing 4 circles in a square pattern.', options: ['4 Dot', '4 Bamboo', '4 Character', 'West Wind'], answer: '4 Dot' },
-  { question: 'A tile with one large ornate circle.', options: ['1 Dot', '1 Bamboo', '1 Character', 'White Dragon'], answer: '1 Dot' },
-  { question: 'A tile showing the character 八 above 萬.', options: ['8 Character', '8 Dot', '8 Bamboo', 'North Wind'], answer: '8 Character' },
-  { question: 'A tile depicting the Summer season.', options: ['Summer Season', 'Spring Season', 'Autumn Season', 'Orchid Flower'], answer: 'Summer Season' },
+  { question: 'A tile showing 5 circles arranged in an X pattern.', options: ['5 Bamboo', '5 Dot', '5 Character', 'White Dragon'], answer: '5 Dot', explanation: 'Dots, also called circles, are identified by circular pips. Five Dot is usually arranged like the five side of a die.' },
+  { question: 'A tile with a bird on it (not a number).', options: ['1 Bamboo', '1 Dot', 'Green Dragon', 'Flower'], answer: '1 Bamboo', explanation: 'The 1 Bamboo tile is commonly drawn as a bird instead of a single bamboo stick.' },
+  { question: 'A tile showing the character 中 in red.', options: ['Red Dragon', 'Green Dragon', 'East Wind', 'South Wind'], answer: 'Red Dragon', explanation: 'Red Dragon uses the red Chinese character 中. Dragon pungs are valuable scoring elements.' },
+  { question: 'A blank or plain-framed tile.', options: ['White Dragon', 'Flower', 'Season', 'Joker'], answer: 'White Dragon', explanation: 'White Dragon is often blank or shown with a simple border, depending on the tile set.' },
+  { question: 'A tile with three horizontal lines above 萬.', options: ['3 Character', '3 Dot', '3 Bamboo', 'West Wind'], answer: '3 Character', explanation: 'Character tiles show Chinese numerals above 萬. 三 means three.' },
+  { question: 'A tile showing the character 東.', options: ['East Wind', 'South Wind', 'West Wind', 'North Wind'], answer: 'East Wind', explanation: '東 is East. Wind tiles are honor tiles and can form pungs or your winning pair.' },
+  { question: 'A tile showing the character 發 in green.', options: ['Green Dragon', 'Red Dragon', 'White Dragon', 'Spring Season'], answer: 'Green Dragon', explanation: 'Green Dragon is marked with 發 and is one of the three dragon tiles.' },
+  { question: 'A tile with 9 circles in a 3x3 grid.', options: ['9 Dot', '9 Bamboo', '9 Character', 'North Wind'], answer: '9 Dot', explanation: 'Dots are circular pips. Nine Dot is usually shown as a full 3x3 block.' },
+  { question: 'A tile with two bamboo sticks.', options: ['2 Bamboo', '2 Dot', '2 Character', 'Pair tile'], answer: '2 Bamboo', explanation: 'Bamboo tiles are counted by sticks, except 1 Bamboo, which is usually a bird.' },
+  { question: 'A tile showing the character 北.', options: ['North Wind', 'South Wind', 'East Wind', 'West Wind'], answer: 'North Wind', explanation: '北 is North. Winds are honor tiles, not suited number tiles.' },
+  { question: 'A tile showing the character 南.', options: ['South Wind', 'North Wind', 'East Wind', 'West Wind'], answer: 'South Wind', explanation: '南 is South. A pung of your seat wind can score fan.' },
+  { question: 'A tile showing the character 西.', options: ['West Wind', 'East Wind', 'South Wind', 'North Wind'], answer: 'West Wind', explanation: '西 is West. It belongs to the four wind honor tiles.' },
+  { question: 'A tile showing one horizontal line above 萬.', options: ['1 Character', '1 Dot', '1 Bamboo', 'East Wind'], answer: '1 Character', explanation: '一 means one, and 萬 identifies the character suit.' },
+  { question: 'A tile depicting a plum blossom.', options: ['Plum Flower', 'Orchid Flower', 'Spring Season', 'Red Dragon'], answer: 'Plum Flower', explanation: 'Plum is one of the four flower bonus tiles. Bonus tiles are set aside when drawn.' },
+  { question: 'A tile showing 7 bamboo sticks.', options: ['7 Bamboo', '7 Dot', '7 Character', 'White Dragon'], answer: '7 Bamboo', explanation: 'Bamboo tiles use stick counts. Seven Bamboo shows seven sticks.' },
+  { question: 'A tile that is one of only 8 unique tiles in the entire set.', options: ['Bonus tile (Flower/Season)', 'Dragon tile', 'Wind tile', 'Suit tile'], answer: 'Bonus tile (Flower/Season)', explanation: 'Flowers and seasons are bonus tiles with only one copy each. Normal suit and honor tiles have four copies.' },
+  { question: 'A tile showing 4 circles in a square pattern.', options: ['4 Dot', '4 Bamboo', '4 Character', 'West Wind'], answer: '4 Dot', explanation: 'Circle pips identify the dot suit. Four Dot usually appears as a square of four pips.' },
+  { question: 'A tile with one large ornate circle.', options: ['1 Dot', '1 Bamboo', '1 Character', 'White Dragon'], answer: '1 Dot', explanation: 'One Dot is typically one large decorated circle.' },
+  { question: 'A tile showing the character 八 above 萬.', options: ['8 Character', '8 Dot', '8 Bamboo', 'North Wind'], answer: '8 Character', explanation: '八 means eight, and 萬 marks the character suit.' },
+  { question: 'A tile depicting the Summer season.', options: ['Summer Season', 'Spring Season', 'Autumn Season', 'Orchid Flower'], answer: 'Summer Season', explanation: 'Summer is one of the four season bonus tiles, separate from suited and honor tiles.' },
 ];
 
 function shuffle<T>(arr: T[]): T[] {
@@ -186,6 +187,16 @@ export default function TileQuiz({ onBack }: { onBack: () => void }) {
             );
           })}
         </div>
+
+        {selected !== null && (
+          <div className="retro-card mt-4 p-4 border-retro-cyan/40 bg-retro-cyan/5">
+            <p className="font-pixel text-[10px] text-retro-cyan tracking-wider mb-2">WHY:</p>
+            <p className="text-sm font-retro text-retro-text leading-relaxed">
+              <span className="text-retro-gold">Correct answer: {current.answer}.</span>{' '}
+              {current.explanation}
+            </p>
+          </div>
+        )}
 
         {/* Next */}
         {selected !== null && (

@@ -2,7 +2,6 @@ import {
   Home,
   BookOpen,
   Swords,
-  Users,
   Dice5,
   Library,
   TrendingUp,
@@ -21,7 +20,6 @@ export const navItems: NavItem[] = [
   { href: "/", label: "Home", icon: Home },
   { href: "/learn", label: "Learn", icon: BookOpen },
   { href: "/play", label: "Play", icon: Swords },
-  { href: "/multiplayer/lobby", label: "Online", icon: Users },
   { href: "/practice", label: "Practice", icon: Dice5 },
   { href: "/reference", label: "Reference", icon: Library },
   { href: "/progress", label: "Progress", icon: TrendingUp },
@@ -38,7 +36,6 @@ export const bottomNavPrimaryItems: NavItem[] = [
 
 /** Shown in the bottom “More” sheet (reduces crowding on small screens). */
 export const bottomNavMoreItems: NavItem[] = [
-  { href: "/multiplayer/lobby", label: "Online", icon: Users },
   { href: "/reference", label: "Reference", icon: Library },
   { href: "/progress", label: "Progress", icon: TrendingUp },
   { href: "/settings", label: "Settings", icon: Settings },

@@ -8,6 +8,8 @@ import {
   SETTINGS_SET_NOTIFICATIONS_ENABLED,
   SETTINGS_SET_LARGER_UI_TEXT,
   SETTINGS_SET_SHOW_TUTOR,
+  SETTINGS_SET_LIVE_FAAN_METER,
+  SETTINGS_SET_TILE_VOICE,
 } from '../actions/settingsActions';
 
 const initialState: SettingsState = {
@@ -18,6 +20,8 @@ const initialState: SettingsState = {
   notificationsEnabled: true,
   largerUiText: false,
   showTutor: true,
+  liveFaanMeter: true,
+  tileVoice: 'off',
 };
 
 export const settingsReducer = (
@@ -41,6 +45,10 @@ export const settingsReducer = (
       return { ...state, largerUiText: action.payload };
     case SETTINGS_SET_SHOW_TUTOR:
       return { ...state, showTutor: action.payload };
+    case SETTINGS_SET_LIVE_FAAN_METER:
+      return { ...state, liveFaanMeter: action.payload };
+    case SETTINGS_SET_TILE_VOICE:
+      return { ...state, tileVoice: action.payload };
     default:
       return state;
   }

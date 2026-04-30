@@ -12,9 +12,12 @@ import GameHUD from './GameHUD';
 import ActionBar from './ActionBar';
 import ExposedMelds from './ExposedMelds';
 import TutorPanel from './TutorPanel';
+import FaanMeter from './FaanMeter';
+import DiscardReadingPanel from './DiscardReadingPanel';
 import GameToast from './GameToast';
 import { TutorAdvice } from '@/engine/types';
 import { TenpaiStatus } from './useGameController';
+import { FaanProjection } from '@/engine/faanProjection';
 
 interface GameBoardProps {
   gameState: GameState;
@@ -25,6 +28,7 @@ interface GameBoardProps {
   tutorAdvice?: TutorAdvice | null;
   tenpaiStatus?: TenpaiStatus | null;
   tileClassifications?: Map<string, 'green' | 'orange' | 'red'>;
+  faanProjection?: FaanProjection | null;
   onTileSelect: (tile: Tile) => void;
   onDiscard: () => void;
   onKong: () => void;
@@ -41,7 +45,7 @@ interface GameBoardProps {
 
 export default function GameBoard({
   gameState, match, humanPlayerId, selectedTileId, suggestedTileId, tutorAdvice,
-  tenpaiStatus, tileClassifications,
+  tenpaiStatus, tileClassifications, faanProjection,
   onTileSelect, onDiscard, onKong, onWin, onClaimBest, onSubmitChow, onPass,
   canDeclareKong: canKongProp, canDeclareWin: canWinProp,
   hasClaimOptions: hasClaimsProp, claimOptions = [], claimTimer,
@@ -162,8 +166,14 @@ export default function GameBoard({
           />
         </div>
 
-        {/* Right spacer — desktop only */}
-        <div className="hidden md:block w-48 shrink-0" />
+        {/* Right panel — faan meter + discard reading (desktop).
+            min-h-0 + overflow-y-auto so an expanded reading scrolls inside
+            the rail instead of inflating the top row and pushing the
+            discard pool down. */}
+        <div className="hidden md:flex md:flex-col md:gap-1 w-48 shrink-0 min-h-0 max-h-[calc(100vh-160px)] overflow-y-auto">
+          {faanProjection && <FaanMeter projection={faanProjection} />}
+          <DiscardReadingPanel game={gameState} humanPlayerId={humanPlayerId} />
+        </div>
       </div>
 
       {/* Mobile: minimal HUD bar */}
@@ -178,6 +188,12 @@ export default function GameBoard({
           playerScores={match?.playerScores}
           compact
         />
+      </div>
+
+      {/* Mobile: compact learning panels stacked */}
+      <div className="flex md:hidden flex-col gap-0.5 px-2 py-0.5" style={{ flex: '0 0 auto' }}>
+        {faanProjection && <FaanMeter projection={faanProjection} compact />}
+        <DiscardReadingPanel game={gameState} humanPlayerId={humanPlayerId} compact />
       </div>
 
       {/* Middle row: Left opponent + Discard Pool + Right opponent */}

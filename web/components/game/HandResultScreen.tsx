@@ -7,6 +7,7 @@ import { ScoringResult } from '@/engine/types';
 import { analyzeHandPerformance, ReviewInsight } from '@/engine/reviewAnalyzer';
 import RetroTile from './RetroTile';
 import ExposedMelds from './ExposedMelds';
+import HandReplayScrubber from './HandReplayScrubber';
 
 interface HandResultScreenProps {
   gameState: GameState;
@@ -203,6 +204,9 @@ export default function HandResultScreen({
             );
           })}
         </div>
+
+        {/* Hand replay — timeline of every turn */}
+        <HandReplayScrubber gameState={gameState} />
 
         {/* Post-hand review — surfaced on every difficulty */}
         {(() => {

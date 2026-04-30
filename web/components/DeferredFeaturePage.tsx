@@ -50,10 +50,10 @@ export default function DeferredFeaturePage({
 
         <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
           <Link href={primaryHref} className="retro-btn-green font-pixel text-xs px-5 py-3">
-            [ {primaryLabel} ]
+            <span aria-hidden="true">[ </span>{primaryLabel}<span aria-hidden="true"> ]</span>
           </Link>
           <Link href={secondaryHref} className="retro-btn font-pixel text-xs px-5 py-3">
-            [ {secondaryLabel} ]
+            <span aria-hidden="true">[ </span>{secondaryLabel}<span aria-hidden="true"> ]</span>
           </Link>
         </div>
       </Card>

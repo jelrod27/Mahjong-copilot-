@@ -13,6 +13,7 @@ interface RetroTileProps {
   onClick?: () => void;
   disabled?: boolean;
   tutorColor?: 'green' | 'orange' | 'red';
+  tutorLabel?: 'GOOD' | 'OK' | 'KEEP';
 }
 
 const SIZES = {
@@ -72,10 +73,16 @@ const TUTOR_COLORS: Record<string, string> = {
 export default function RetroTile({
   tile, size = 'md', showBack = false, isSelected = false, isSuggested = false,
   isLastDiscarded = false, isNewlyDrawn = false, onClick, disabled = false,
-  tutorColor,
+  tutorColor, tutorLabel,
 }: RetroTileProps) {
   const { w, h } = SIZES[size];
   const suitColor = SUIT_COLORS[tile.suit] || '#a1a1aa';
+  const accessibilityState = [
+    isSelected ? 'selected' : null,
+    isSuggested ? 'suggested discard' : null,
+    tutorLabel ? `Beginner Assist: ${tutorLabel}` : null,
+  ].filter(Boolean).join(', ');
+  const tileAriaLabel = `Mahjong tile: ${tile.nameEnglish}${accessibilityState ? `. ${accessibilityState}.` : ''}`;
 
   if (showBack) {
     const backContent = (
@@ -147,7 +154,7 @@ export default function RetroTile({
         onClick={onClick}
         disabled={disabled}
         type="button"
-        aria-label={`Mahjong tile: ${tile.nameEnglish}`}
+        aria-label={tileAriaLabel}
         className="transition-transform duration-100 disabled:opacity-50 disabled:cursor-not-allowed hover:enabled:scale-105 hover:enabled:-translate-y-0.5"
       >
         {tileContent}

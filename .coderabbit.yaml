@@ -6,10 +6,7 @@ language: en-GB
 early_access: false
 
 tone_instructions: |
-  Be concise and technical. Focus on correctness, edge cases, and maintainability.
-  Avoid filler. When reviewing the game engine, treat state-machine correctness as
-  the highest priority. When reviewing React components, focus on render performance,
-  accessibility, and hook correctness.
+  Be concise and technical. Prioritize correctness, edge cases, maintainability, game-engine state-machine safety, React performance, accessibility, and hook correctness.
 
 reviews:
   profile: assertive
@@ -97,7 +94,7 @@ reviews:
 
   auto_review:
     enabled: true
-    auto_incremental_review: enabled
+    auto_incremental_review: true
     drafts: false
     base_branches:
       - main
@@ -109,7 +106,8 @@ reviews:
 
   tools:
     ast-grep:
-      rules_folder: ast-grep-rules
+      rule_dirs:
+        - ast-grep-rules
     github-checks:
       enabled: true
       timeout_ms: 90000
@@ -130,9 +128,3 @@ chat:
       usage: auto
     linear:
       usage: auto
-
-code_generation:
-  instructions: |
-    When generating code, prefer TypeScript strict mode patterns.
-    Use functional React components with explicit return types where
-    the component is exported. Avoid `any` types.

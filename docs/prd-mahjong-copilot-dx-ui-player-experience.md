@@ -251,7 +251,7 @@ P1.
 
 ---
 
-# 6. Game UI Requirements
+## 6. Game UI Requirements
 
 ## 6.1 GAME-01: Beginner Assist Mode
 
@@ -531,7 +531,7 @@ P1.
 
 ---
 
-# 7. Learning Experience Requirements
+## 7. Learning Experience Requirements
 
 ## 7.1 LEARN-01: Clear Learning Path
 
@@ -624,7 +624,7 @@ P2.
 
 ---
 
-# 8. Practice and Quiz Requirements
+## 8. Practice and Quiz Requirements
 
 ## 8.1 PRACTICE-01: Practice Card Metadata
 
@@ -754,7 +754,7 @@ P2.
 
 ---
 
-# 9. Reference Requirements
+## 9. Reference Requirements
 
 ## 9.1 REF-01: Searchable Reference
 
@@ -835,7 +835,7 @@ P1.
 
 ---
 
-# 10. Navigation and Accessibility Requirements
+## 10. Navigation and Accessibility Requirements
 
 ## 10.1 A11Y-01: Active Navigation State
 
@@ -925,7 +925,7 @@ P2.
 
 ---
 
-# 11. Content Requirements
+## 11. Content Requirements
 
 ## 11.1 Glossary MVP Entries
 
@@ -971,7 +971,7 @@ For Tile Quiz MVP, each tile or tile category should include:
 
 ---
 
-# 12. Data and State Requirements
+## 12. Data and State Requirements
 
 ## 12.1 Local Progress Support
 
@@ -1009,7 +1009,7 @@ P1.
 
 ---
 
-# 13. Analytics Requirements
+## 13. Analytics Requirements
 
 No external analytics are required for this PRD.
 
@@ -1025,7 +1025,7 @@ If no analytics infrastructure exists, do not add one just for this release. Tha
 
 ---
 
-# 14. Technical Constraints
+## 14. Technical Constraints
 
 - Preserve engine purity: no UI or storage side effects in `web/engine/`.
 - Keep rule logic engine-driven.
@@ -1038,7 +1038,7 @@ If no analytics infrastructure exists, do not add one just for this release. Tha
 
 ---
 
-# 15. Proposed Implementation Phases
+## 15. Proposed Implementation Phases
 
 This section is a product implementation sequence, not authorization to start coding.
 
@@ -1132,7 +1132,7 @@ Priority: P1/P2.
 
 ---
 
-# 16. Suggested Work Breakdown
+## 16. Suggested Work Breakdown
 
 ## Epic A: Developer Experience Foundation
 
@@ -1199,7 +1199,7 @@ Priority: P1/P2.
 
 ---
 
-# 17. MVP Cutline
+## 17. MVP Cutline
 
 If time gets tight, ship this minimum package:
 
@@ -1216,7 +1216,7 @@ Do not cut offline boot. If the app does not boot cleanly for a contributor, eve
 
 ---
 
-# 18. Success Metrics
+## 18. Success Metrics
 
 Because no external analytics are required, success should be validated through product checks and optional manual testing.
 
@@ -1238,7 +1238,7 @@ Because no external analytics are required, success should be validated through 
 
 ---
 
-# 19. Risks and Mitigations
+## 19. Risks and Mitigations
 
 | Risk | Impact | Mitigation |
 |---|---|---|
@@ -1251,7 +1251,7 @@ Because no external analytics are required, success should be validated through 
 
 ---
 
-# 20. Open Questions
+## 20. Open Questions
 
 1. Should Beginner Assist be enabled by default only for Easy, or for all first-time games regardless of difficulty?
 2. Should progress remain purely local when signed out, or should signed-in cloud progress supersede local progress?
@@ -1271,7 +1271,7 @@ Recommended defaults:
 
 ---
 
-# 21. Release Checklist
+## 21. Release Checklist
 
 Before release:
 
@@ -1294,7 +1294,7 @@ Before release:
 
 ---
 
-# 22. Final Recommendation
+## 22. Final Recommendation
 
 Build this in the order listed: DX foundation first, active game clarity second, learning/practice polish third, reference/accessibility fourth.
 

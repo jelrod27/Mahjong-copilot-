@@ -21,8 +21,10 @@ test.describe('Progress tracking', () => {
       page.getByText('Play your first game to start tracking stats!'),
     ).toBeVisible();
 
-    // "PLAY NOW" link should be present
-    await expect(page.getByRole('link', { name: /PLAY NOW/i })).toBeVisible();
+    // "PLAY NOW" link should send players back into solo play
+    const playNowLink = page.getByRole('link', { name: /PLAY NOW/i });
+    await expect(playNowLink).toBeVisible();
+    await expect(playNowLink).toHaveAttribute('href', '/play');
   });
 
   test('progress page loads and shows stats structure after games are played', async ({ page }) => {

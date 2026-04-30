@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useAppDispatch } from '@/store/hooks';
 import { quizCompleted } from '@/store/actions/progressActions';
 
@@ -60,9 +60,16 @@ export default function TileQuiz({ onBack }: { onBack: () => void }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
+  const whyRef = useRef<HTMLDivElement>(null);
   const dispatch = useAppDispatch();
 
   const current = questions[index];
+
+  useEffect(() => {
+    if (selected !== null) {
+      whyRef.current?.focus();
+    }
+  }, [selected]);
 
   const handleSelect = useCallback((answer: string) => {
     if (selected) return;
@@ -189,7 +196,14 @@ export default function TileQuiz({ onBack }: { onBack: () => void }) {
         </div>
 
         {selected !== null && (
-          <div className="retro-card mt-4 p-4 border-retro-cyan/40 bg-retro-cyan/5">
+          <div
+            ref={whyRef}
+            className="retro-card mt-4 p-4 border-retro-cyan/40 bg-retro-cyan/5"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            tabIndex={-1}
+          >
             <p className="font-pixel text-[10px] text-retro-cyan tracking-wider mb-2">WHY:</p>
             <p className="text-sm font-retro text-retro-text leading-relaxed">
               <span className="text-retro-gold">Correct answer: {current.answer}.</span>{' '}

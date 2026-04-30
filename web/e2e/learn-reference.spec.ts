@@ -7,8 +7,10 @@ test.describe('Learn page', () => {
     await expect(page.getByText('Hong Kong Mahjong')).toBeVisible();
     await expect(page.getByText('YOUR PATH')).toBeVisible();
 
-    const levelCards = page.locator('.retro-card');
-    await expect(levelCards).toHaveCount(7, { timeout: 10_000 });
+    const levelCards = page.getByTestId('learn-level-card');
+    await expect(levelCards).toHaveCount(6, { timeout: 10_000 });
+    await expect(levelCards.first()).toContainText('Know Your Tiles');
+    await expect(page.getByText(/Locked — complete/)).toHaveCount(5);
   });
 
   test('clicking first level expands to show lessons', async ({ page }) => {

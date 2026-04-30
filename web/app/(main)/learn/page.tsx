@@ -74,6 +74,7 @@ export default function LearnPage() {
             <Link
               key={level.id}
               href={`/learn/${level.id}`}
+              data-testid="learn-level-card"
               className={`block retro-card p-5 transition-colors ${
                 isComplete ? 'border-retro-green/50' : 'hover:border-retro-cyan/50'
               }`}
@@ -89,6 +90,7 @@ export default function LearnPage() {
           ) : (
             <div
               key={level.id}
+              data-testid="learn-level-card"
               className="block retro-card p-5 opacity-50"
             >
               <LevelCard

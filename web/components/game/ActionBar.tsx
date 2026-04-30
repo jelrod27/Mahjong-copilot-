@@ -13,6 +13,7 @@ interface ActionBarProps {
   hasClaimOptions: boolean;
   claimOptions: AvailableClaim[];
   discardedTile?: Tile;
+  selectedTileName?: string;
   onDiscard: () => void;
   onKong: () => void;
   onWin: () => void;
@@ -42,30 +43,38 @@ function claimSummaryLabel(claimType: string): string {
 
 export default function ActionBar({
   canDiscard, canDeclareKong, canDeclareWin, hasClaimOptions,
-  claimOptions, discardedTile,
+  claimOptions, discardedTile, selectedTileName,
   onDiscard, onKong, onWin, onClaimBest, onSubmitChow, onPass,
   turnPhase, isHumanTurn, claimTimer = 0, claimTimeout = 10000,
 }: ActionBarProps) {
   if (turnPhase === 'discard' && isHumanTurn) {
+    const discardLabel = selectedTileName ? `[ DISCARD ${selectedTileName.toUpperCase()} ]` : '[ DISCARD SELECTED TILE ]';
     return (
-      <div className="flex items-center justify-center gap-2 py-1 md:py-2">
-        <button
-          className="retro-btn-accent min-h-[44px] px-4 md:px-6"
-          onClick={onDiscard}
-          disabled={!canDiscard}
-        >
-          [ DISCARD ]
-        </button>
-        {canDeclareKong && (
-          <button type="button" className="retro-btn-gold min-h-[44px] px-4 md:px-6" onClick={onKong}>
-            [ KONG ]
+      <div className="space-y-1 py-1 md:py-2">
+        <p className="text-center font-retro text-xs text-retro-textDim">
+          {selectedTileName
+            ? `Selected: ${selectedTileName}. Discard it or choose another tile.`
+            : 'Choose one tile to discard.'}
+        </p>
+        <div className="flex items-center justify-center gap-2">
+          <button
+            className="retro-btn-accent min-h-[44px] px-4 md:px-6"
+            onClick={onDiscard}
+            disabled={!canDiscard}
+          >
+            {discardLabel}
           </button>
-        )}
-        {canDeclareWin && (
-          <button type="button" className="retro-btn-green min-h-[44px] px-4 md:px-6" onClick={onWin}>
-            [ WIN! ]
-          </button>
-        )}
+          {canDeclareKong && (
+            <button type="button" className="retro-btn-gold min-h-[44px] px-4 md:px-6" onClick={onKong}>
+              [ KONG ]
+            </button>
+          )}
+          {canDeclareWin && (
+            <button type="button" className="retro-btn-green min-h-[44px] px-4 md:px-6" onClick={onWin}>
+              [ WIN! ]
+            </button>
+          )}
+        </div>
       </div>
     );
   }

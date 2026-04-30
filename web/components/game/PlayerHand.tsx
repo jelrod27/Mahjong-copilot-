@@ -27,6 +27,7 @@ export default function PlayerHand({
       {tiles.map((tile) => {
         const isLastDrawn = tile.id === lastDrawnTileId;
         const tutorColor = tileClassifications?.get(tile.id);
+        const tutorLabel = tutorColor === 'green' ? 'GOOD' : tutorColor === 'orange' ? 'OK' : tutorColor === 'red' ? 'KEEP' : null;
         return (
           <div
             key={tile.id}
@@ -42,7 +43,13 @@ export default function PlayerHand({
               onClick={() => onTileSelect(tile)}
               disabled={disabled}
               tutorColor={tutorColor}
+              tutorLabel={tutorLabel ?? undefined}
             />
+            {tutorLabel && (
+              <div className="mt-0.5 text-center font-pixel text-[6px] text-retro-textDim" aria-hidden="true">
+                {tutorLabel}
+              </div>
+            )}
           </div>
         );
       })}

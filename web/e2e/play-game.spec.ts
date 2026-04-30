@@ -48,7 +48,7 @@ test.describe('Minimal interaction smoke', () => {
     await page.goto('/play/game?difficulty=easy');
     await expectGameBoardReady(page);
 
-    const discardBtn = page.getByRole('button', { name: '[ DISCARD ]' });
+    const discardBtn = page.getByRole('button', { name: /\[ DISCARD/ });
     await discardBtn.waitFor({ state: 'visible', timeout: 60_000 });
 
     const tiles = page.locator('[data-testid="human-hand-tile"]');

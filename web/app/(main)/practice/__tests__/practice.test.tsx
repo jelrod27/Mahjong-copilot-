@@ -26,6 +26,8 @@ describe('PracticePage', () => {
     expect(screen.getByText('Scoring Quiz')).toBeDefined();
     expect(screen.getByText('Hand Recognition')).toBeDefined();
     expect(screen.getByText('Play with Hints')).toBeDefined();
+    expect(screen.getByText(/recommended/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/10 questions/i).length).toBeGreaterThan(0);
   });
 
   it('each mode button is clickable and navigates to the mode', () => {

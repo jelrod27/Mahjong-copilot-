@@ -51,13 +51,15 @@ function PracticeMenu({ onSelect }: { onSelect: (mode: Mode) => void }) {
     ? JSON.parse(localStorage.getItem('16bit-mahjong-practice') || '{}')
     : {};
 
-  const modes: { key: Mode; title: string; desc: string; icon: string; color: string }[] = [
+  const modes: { key: Mode; title: string; desc: string; icon: string; color: string; meta: string; recommended?: boolean }[] = [
     {
       key: 'tile-quiz',
       title: 'Tile Quiz',
       desc: 'Identify tile types from descriptions. 10 questions per round.',
       icon: '?',
       color: 'text-retro-cyan',
+      meta: '10 questions · ~3 min',
+      recommended: true,
     },
     {
       key: 'scoring-quiz',
@@ -65,6 +67,7 @@ function PracticeMenu({ onSelect }: { onSelect: (mode: Mode) => void }) {
       desc: 'Calculate fan count for described hands. Test your scoring knowledge.',
       icon: '#',
       color: 'text-retro-gold',
+      meta: '10 questions · fan practice',
     },
     {
       key: 'hand-recognition',
@@ -72,6 +75,7 @@ function PracticeMenu({ onSelect }: { onSelect: (mode: Mode) => void }) {
       desc: 'Is this a valid winning hand? Yes or no. Quick-fire decisions.',
       icon: '!',
       color: 'text-retro-green',
+      meta: 'Fast drill · pattern recognition',
     },
     {
       key: 'practice-game',
@@ -79,6 +83,7 @@ function PracticeMenu({ onSelect }: { onSelect: (mode: Mode) => void }) {
       desc: 'Full game against Easy AI with shanten, safe tiles, and tutor advice.',
       icon: '>',
       color: 'text-retro-accent',
+      meta: 'Guided game · beginner assist',
     },
   ];
 
@@ -109,6 +114,14 @@ function PracticeMenu({ onSelect }: { onSelect: (mode: Mode) => void }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[17px] font-retro text-retro-text mb-0.5">{m.title}</p>
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  {m.recommended && (
+                    <span className="rounded bg-retro-cyan/15 px-2 py-0.5 font-pixel text-[8px] text-retro-cyan">
+                      Recommended
+                    </span>
+                  )}
+                  <span className="text-xs font-retro text-retro-gold">{m.meta}</span>
+                </div>
                 <p className="text-sm font-retro text-retro-textDim">{m.desc}</p>
                 {bestScores[m.key] !== undefined && (
                   <p className="text-xs font-retro text-retro-gold mt-1">

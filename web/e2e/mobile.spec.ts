@@ -45,7 +45,7 @@ test.describe('Mobile viewport tests', () => {
     await expectGameBoardReady(page);
 
     // Wait for human turn with discard button
-    const discardBtn = page.getByRole('button', { name: '[ DISCARD ]' });
+    const discardBtn = page.getByRole('button', { name: /\[ DISCARD/ });
     await discardBtn.waitFor({ state: 'visible', timeout: 60_000 });
 
     // Tiles in hand should be visible

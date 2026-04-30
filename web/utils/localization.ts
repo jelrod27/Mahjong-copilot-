@@ -11,17 +11,7 @@ const localizedStrings: Record<string, Record<string, string>> = {
     nav_progress: 'Progress',
     nav_settings: 'Settings',
     
-    // Authentication
-    auth_sign_in: 'Sign In',
-    auth_sign_up: 'Sign Up',
-    auth_sign_out: 'Sign Out',
-    auth_email: 'Email',
-    auth_password: 'Password',
-    auth_welcome_back: 'Welcome Back',
-    auth_create_account: 'Create Account',
-    auth_already_have_account: 'Already have an account? Sign In',
-    auth_no_account: 'Don\'t have an account? Sign Up',
-    
+
     // Learning
     learn_tile_recognition: 'Tile Recognition',
     learn_learning_path: 'Learning Path',
@@ -87,15 +77,7 @@ const localizedStrings: Record<string, Record<string, string>> = {
     nav_progress: '进度',
     nav_settings: '设置',
     
-    // Authentication
-    auth_sign_in: '登录',
-    auth_sign_up: '注册',
-    auth_sign_out: '登出',
-    auth_email: '电子邮箱',
-    auth_password: '密码',
-    auth_welcome_back: '欢迎回来',
-    auth_create_account: '创建账户',
-    
+
     // Common
     common_loading: '加载中...',
     common_error: '错误',

@@ -6,6 +6,8 @@ type TabKey = 'tiles' | 'scoring' | 'hands' | 'glossary';
 
 export default function ReferencePage() {
   const [activeTab, setActiveTab] = useState<TabKey>('tiles');
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchResults = getReferenceSearchResults(searchQuery);
 
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'tiles', label: 'Tiles' },
@@ -22,9 +24,18 @@ export default function ReferencePage() {
           REFERENCE
         </p>
         <h1 className="font-pixel text-lg text-retro-white mb-2">Quick Reference</h1>
-        <p className="text-base text-retro-text/80 font-retro">
+        <p className="text-base text-retro-text/80 font-retro mb-4">
           Everything you need at a glance.
         </p>
+        <label className="sr-only" htmlFor="reference-search">Search reference</label>
+        <input
+          id="reference-search"
+          type="search"
+          value={searchQuery}
+          onChange={event => setSearchQuery(event.target.value)}
+          placeholder="Search tiles, scoring, hands, glossary..."
+          className="w-full rounded-lg border-2 border-retro-border/30 bg-retro-bgLight px-3 py-3 font-retro text-sm text-retro-text placeholder:text-retro-textDim focus:border-retro-cyan focus:outline-none"
+        />
       </div>
 
       {/* Tab Bar */}
@@ -46,10 +57,16 @@ export default function ReferencePage() {
 
       {/* Tab Content */}
       <div className="p-4">
-        {activeTab === 'tiles' && <TilesTab />}
-        {activeTab === 'scoring' && <ScoringTab />}
-        {activeTab === 'hands' && <HandsTab />}
-        {activeTab === 'glossary' && <GlossaryTab />}
+        {searchQuery.trim() ? (
+          <SearchResults query={searchQuery} results={searchResults} />
+        ) : (
+          <>
+            {activeTab === 'tiles' && <TilesTab />}
+            {activeTab === 'scoring' && <ScoringTab />}
+            {activeTab === 'hands' && <HandsTab />}
+            {activeTab === 'glossary' && <GlossaryTab />}
+          </>
+        )}
       </div>
     </div>
   );
@@ -431,6 +448,84 @@ function GlossaryTab() {
           </p>
         </div>
       ))}
+    </div>
+  );
+}
+
+interface ReferenceSearchResult {
+  title: string;
+  category: string;
+  description: string;
+}
+
+function getReferenceSearchResults(query: string): ReferenceSearchResult[] {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return [];
+
+  const tileResults = [
+    ...SUIT_TILES.flatMap(group => group.tiles.map(tile => ({
+      title: tile.name,
+      category: group.suit,
+      description: `${tile.chinese} — ${group.suit} tile.`,
+    }))),
+    ...HONOR_TILES.map(tile => ({
+      title: tile.name,
+      category: 'Honor Tiles',
+      description: `${tile.chinese} — wind or dragon honor tile.`,
+    })),
+    ...BONUS_TILES.map(tile => ({
+      title: tile.name,
+      category: 'Bonus Tiles',
+      description: `${tile.chinese} — flower or season bonus tile.`,
+    })),
+  ];
+
+  const scoringResults = FAN_TABLE.map(entry => ({
+    title: entry.name,
+    category: 'Scoring',
+    description: `${entry.fan} fan — ${entry.description}`,
+  }));
+
+  const handResults = LIMIT_HANDS.map(hand => ({
+    title: hand.name,
+    category: 'Limit Hands',
+    description: `${hand.chinese} — ${hand.description}`,
+  }));
+
+  const glossaryResults = GLOSSARY.map(entry => ({
+    title: entry.term,
+    category: 'Glossary',
+    description: `${entry.chinese} — ${entry.definition}`,
+  }));
+
+  return [...tileResults, ...scoringResults, ...handResults, ...glossaryResults]
+    .filter(item => `${item.title} ${item.category} ${item.description}`.toLowerCase().includes(normalized))
+    .slice(0, 12);
+}
+
+function SearchResults({ query, results }: { query: string; results: ReferenceSearchResult[] }) {
+  return (
+    <div className="space-y-3">
+      <p className="font-pixel text-[10px] text-retro-cyan tracking-wider">
+        Search results for &quot;{query.trim()}&quot;
+      </p>
+      {results.length === 0 ? (
+        <div className="retro-card p-4">
+          <p className="font-retro text-sm text-retro-textDim">No reference entries found. Try “dragon”, “fan”, “kong”, or “wall”.</p>
+        </div>
+      ) : (
+        results.map(result => (
+          <div key={`${result.category}-${result.title}`} className="retro-card p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-retro text-base text-retro-text font-bold">{result.title}</h3>
+              <span className="rounded bg-retro-cyan/10 px-2 py-0.5 font-pixel text-[8px] text-retro-cyan">
+                {result.category}
+              </span>
+            </div>
+            <p className="font-retro text-sm text-retro-textDim leading-relaxed">{result.description}</p>
+          </div>
+        ))
+      )}
     </div>
   );
 }

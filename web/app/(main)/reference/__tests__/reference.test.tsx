@@ -39,4 +39,16 @@ describe('ReferencePage', () => {
     expect(screen.getByText('Thirteen Orphans')).toBeDefined();
     expect(screen.getByText('LIMIT HANDS')).toBeDefined();
   });
+
+  it('searches across reference content without forcing a tab switch', () => {
+    render(<ReferencePage />);
+
+    fireEvent.change(screen.getByRole('searchbox', { name: /search reference/i }), {
+      target: { value: 'dragon' },
+    });
+
+    expect(screen.getByText(/Search results for "dragon"/i)).toBeInTheDocument();
+    expect(screen.getByText('Red Dragon')).toBeInTheDocument();
+    expect(screen.getByText('Dragon Pung')).toBeInTheDocument();
+  });
 });

@@ -59,6 +59,12 @@ export default function LearnPage() {
 
       {/* Level Grid */}
       <div className="p-4 space-y-3">
+        <div className="retro-card p-4 border-retro-cyan/40 bg-retro-cyan/5">
+          <p className="font-pixel text-[10px] text-retro-cyan tracking-wider mb-2">YOUR PATH</p>
+          <p className="font-retro text-sm text-retro-textDim leading-relaxed">
+            Tiles → Sets → Winning Hands → Scoring → Strategy → Full Game
+          </p>
+        </div>
         {AllLevels.map((level, index) => {
           const unlocked = isLevelUnlocked(index);
           const progress = getLevelProgress(level.id);
@@ -68,18 +74,32 @@ export default function LearnPage() {
             <Link
               key={level.id}
               href={`/learn/${level.id}`}
+              data-testid="learn-level-card"
               className={`block retro-card p-5 transition-colors ${
                 isComplete ? 'border-retro-green/50' : 'hover:border-retro-cyan/50'
               }`}
             >
-              <LevelCard level={level} progress={progress} unlocked={unlocked} isComplete={isComplete} />
+              <LevelCard
+                level={level}
+                progress={progress}
+                unlocked={unlocked}
+                isComplete={isComplete}
+                previousLevelTitle={index > 0 ? AllLevels[index - 1]?.title : undefined}
+              />
             </Link>
           ) : (
             <div
               key={level.id}
+              data-testid="learn-level-card"
               className="block retro-card p-5 opacity-50"
             >
-              <LevelCard level={level} progress={progress} unlocked={unlocked} isComplete={false} />
+              <LevelCard
+                level={level}
+                progress={progress}
+                unlocked={unlocked}
+                isComplete={false}
+                previousLevelTitle={index > 0 ? AllLevels[index - 1]?.title : undefined}
+              />
             </div>
           );
         })}
@@ -104,11 +124,13 @@ function LevelCard({
   progress,
   unlocked,
   isComplete,
+  previousLevelTitle,
 }: {
   level: { id: number; title: string; description: string; lessons: { id: string }[] };
   progress: { completed: number; total: number; percent: number };
   unlocked: boolean;
   isComplete: boolean;
+  previousLevelTitle?: string;
 }) {
   return (
     <div className="flex items-center">
@@ -138,6 +160,11 @@ function LevelCard({
         </p>
         <p className={`text-sm font-retro mb-2 ${!unlocked ? 'text-retro-textDim/50' : 'text-retro-textDim'}`}>
           {level.description}
+        </p>
+        <p className={`text-xs font-retro mb-2 ${!unlocked ? 'text-retro-textDim/50' : 'text-retro-gold'}`}>
+          {unlocked
+            ? `${level.lessons.length} lessons · ~${Math.max(level.lessons.length * 2, 5)} min${level.id === 1 ? ' · Start here if you are new' : ''}`
+            : `Locked — complete “${previousLevelTitle}” to unlock.`}
         </p>
 
         {/* Progress bar */}

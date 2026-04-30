@@ -6,9 +6,7 @@ language: en-GB
 early_access: false
 
 tone_instructions: |
-  Be concise and technical. Focus on correctness, edge cases, and maintainability.
-  For the game engine, state-machine correctness is top priority. For React, focus
-  on render performance, accessibility, and hook correctness.
+  Be concise and technical. Prioritize correctness, edge cases, maintainability, game-engine state-machine safety, React performance, accessibility, and hook correctness.
 
 reviews:
   profile: assertive
@@ -127,9 +125,3 @@ chat:
       usage: auto
     linear:
       usage: auto
-
-code_generation:
-  instructions: |
-    When generating code, prefer TypeScript strict mode patterns.
-    Use functional React components with explicit return types where
-    the component is exported. Avoid `any` types.

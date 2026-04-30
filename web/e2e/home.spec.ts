@@ -5,7 +5,7 @@ test.describe('Home', () => {
     await page.goto('/');
 
     await expect(page.getByRole('main').getByRole('heading', { name: /16 BIT MAHJONG/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /sync progress/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /local progress/i })).toBeVisible();
     await expect(page.locator('a[href="/learn"]').filter({ hasText: /Know Your Tiles/i })).toBeVisible();
   });
 

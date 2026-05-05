@@ -6,6 +6,7 @@ import {
   hasSavedGame,
   canResume,
 } from '../matchStorage';
+import StorageService from '../storageService';
 import { MatchState } from '@/models/MatchState';
 import { GameState } from '@/models/GameState';
 import { WindTile } from '@/models/Tile';
@@ -130,5 +131,56 @@ describe('storageService', () => {
     expect(loaded!.game!.id).toBe('test-hand');
     expect(loaded!.game!.createdAt).toBeInstanceOf(Date);
     expect(loaded!.match!.currentRound).toBe(WindTile.EAST);
+  });
+});
+
+describe('StorageService.clear() selective key removal', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it('removes app-owned keys with known prefixes', async () => {
+    localStorage.setItem('16bit-mahjong-settings', '{}');
+    localStorage.setItem('16bit-mahjong-stats', '{}');
+    localStorage.setItem('16bit-mahjong-redux-settings', '{}');
+    localStorage.setItem('16bit-mahjong-practice', '{}');
+    localStorage.setItem('@mahjong_completed_lessons', '[]');
+    localStorage.setItem('mahjong_match_in_progress', '{}');
+    localStorage.setItem('progress_user123', '{}');
+    localStorage.setItem('game_abc', '{}');
+    localStorage.setItem('current_game_id', 'abc');
+
+    await StorageService.clear();
+
+    expect(localStorage.getItem('16bit-mahjong-settings')).toBeNull();
+    expect(localStorage.getItem('16bit-mahjong-stats')).toBeNull();
+    expect(localStorage.getItem('16bit-mahjong-redux-settings')).toBeNull();
+    expect(localStorage.getItem('16bit-mahjong-practice')).toBeNull();
+    expect(localStorage.getItem('@mahjong_completed_lessons')).toBeNull();
+    expect(localStorage.getItem('mahjong_match_in_progress')).toBeNull();
+    expect(localStorage.getItem('progress_user123')).toBeNull();
+    expect(localStorage.getItem('game_abc')).toBeNull();
+    expect(localStorage.getItem('current_game_id')).toBeNull();
+  });
+
+  it('preserves keys that do not belong to the app', async () => {
+    localStorage.setItem('other-app-data', 'precious');
+    localStorage.setItem('auth-token', 'secret');
+    localStorage.setItem('16bit-mahjong-stats', '{}');
+
+    await StorageService.clear();
+
+    expect(localStorage.getItem('other-app-data')).toBe('precious');
+    expect(localStorage.getItem('auth-token')).toBe('secret');
+    expect(localStorage.getItem('16bit-mahjong-stats')).toBeNull();
+  });
+
+  it('handles empty localStorage without error', async () => {
+    await expect(StorageService.clear()).resolves.toBeUndefined();
+    expect(localStorage.length).toBe(0);
   });
 });

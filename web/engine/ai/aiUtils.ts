@@ -181,6 +181,25 @@ export function detectOpponentSuitFocus(
   return focused;
 }
 
+/**
+ * Resolve a player's discards from `playerDiscards` record.
+ * Handles both player-ID keys and numeric-index fallback keys (MC-012).
+ */
+export function resolvePlayerDiscards(
+  gameState: GameState,
+  playerId: string,
+  playerIndex: number,
+): Tile[] {
+  if (gameState.playerDiscards[playerId]) {
+    return gameState.playerDiscards[playerId];
+  }
+  const indexKey = String(playerIndex);
+  if (gameState.playerDiscards[indexKey]) {
+    return gameState.playerDiscards[indexKey];
+  }
+  return [];
+}
+
 export function tileDiscardPriority(tile: Tile): number {
   // Honor tiles (winds/dragons) — generally safer early
   if (tile.type === TileType.HONOR) return 1;

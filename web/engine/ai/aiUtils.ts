@@ -32,10 +32,13 @@ export function countVisibleTiles(gameState: GameState, playerIndex: number): Ma
     }
   }
 
-  // Own concealed melds
+  // Own concealed melds — skip tiles already counted in hand to avoid double-count (MC-004)
+  const handIds = new Set(gameState.players[playerIndex].hand.map(t => t.id));
   for (const meld of gameState.players[playerIndex].melds) {
     if (meld.isConcealed) {
-      for (const t of meld.tiles) inc(t);
+      for (const t of meld.tiles) {
+        if (!handIds.has(t.id)) inc(t);
+      }
     }
   }
 
@@ -60,8 +63,9 @@ export function isSafeTile(tile: Tile, gameState: GameState, playerIndex: number
   if (count >= 4) return true;
 
   // Tile was already discarded and not claimed — somewhat safe
+  // Only safe if 3+ copies are in the discard pile (1 or fewer remain) — MC-005
   const discardKeys = gameState.discardPile.map(t => tileKey(t));
-  if (discardKeys.filter(k => k === key).length >= 2) return true;
+  if (discardKeys.filter(k => k === key).length >= 3) return true;
 
   return false;
 }

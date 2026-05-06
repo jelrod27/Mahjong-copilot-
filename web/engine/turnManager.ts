@@ -404,7 +404,20 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
     };
 
     // Draw replacement from dead wall
-    if (state.deadWall.length === 0 && state.wall.length === 0) return null;
+    if (state.deadWall.length === 0 && state.wall.length === 0) {
+      // Kong is valid but no replacement tile exists — transition to draw game
+      return handleWallExhaustion({
+        ...state,
+        players: newPlayers,
+        pendingClaims: [],
+        claimablePlayers: [],
+        passedPlayers: [],
+        isRobKongOpportunity: undefined,
+        turnPhase: 'discard',
+        currentPlayerIndex: playerIndex,
+        turnStartedAt: new Date(),
+      });
+    }
     const sourceWall = state.deadWall.length > 0 ? state.deadWall : state.wall;
     const replacement = sourceWall[0];
 
@@ -479,7 +492,20 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
       };
 
       // Draw replacement
-      if (state.deadWall.length === 0 && state.wall.length === 0) return null;
+      if (state.deadWall.length === 0 && state.wall.length === 0) {
+        // Kong is valid but no replacement tile exists — transition to draw game
+        return handleWallExhaustion({
+          ...state,
+          players: newPlayers,
+          pendingClaims: [],
+          claimablePlayers: [],
+          passedPlayers: [],
+          isRobKongOpportunity: undefined,
+          turnPhase: 'discard',
+          currentPlayerIndex: playerIndex,
+          turnStartedAt: new Date(),
+        });
+      }
       const sourceWall = state.deadWall.length > 0 ? state.deadWall : state.wall;
       const replacement = sourceWall[0];
 
@@ -671,6 +697,14 @@ function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameSta
         turnPhase: 'discard',
         isKongReplacement: true,
       };
+    } else {
+      // Both walls empty — kong is valid but no replacement. Transition to draw game.
+      return handleWallExhaustion({
+        ...newState,
+        players: newPlayers,
+        turnPhase: 'discard',
+        currentPlayerIndex: winnerIndex,
+      });
     }
   }
 

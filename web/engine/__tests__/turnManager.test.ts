@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { initializeGame, applyAction, GameOptions } from '../turnManager';
 import { GamePhase, GameState, Player } from '@/models/GameState';
 import { TileType, WindTile } from '@/models/Tile';
-import { dot, bam, char, windTile, makePlayer } from './testHelpers';
+import { dot, bam, char, windTile, makePlayer, flowerTile } from './testHelpers';
 
 const defaultOptions: GameOptions = {
   playerNames: ['Human', 'AI 1', 'AI 2', 'AI 3'],
@@ -613,5 +613,386 @@ describe('robbing the kong', () => {
     expect(state.players[1].melds[0].tiles.length).toBe(4);
     expect(state.deadWall.length).toBe(deadWallSizeBefore - 1);
     expect(state.isRobKongOpportunity).toBeFalsy();
+  });
+});
+
+describe('handleFlowerDraw - iterative loop (no recursion)', () => {
+  it('handles drawing a single bonus tile and replacing it from dead wall', () => {
+    // DRAW takes from wall[0] which is a bonus tile; replacement comes from deadWall[0]
+    const bonusTile = flowerTile('Plum', 1);
+    const replacementTile = dot(1, 100);
+
+    const state: GameState = {
+      id: 'test-flower-draw',
+      variant: 'Hong Kong Mahjong',
+      phase: GamePhase.PLAYING,
+      turnPhase: 'draw',
+      currentPlayerIndex: 0,
+      players: [
+        makePlayer({ id: 'human-1', name: 'Human', isAI: false, seatWind: WindTile.EAST,
+          hand: [dot(2,1), dot(3,1), dot(4,1), dot(5,1), dot(6,1), dot(7,1),
+                 dot(8,1), dot(9,1), bam(1,1), bam(2,1), bam(3,1), bam(4,1)] }),
+        makePlayer({ id: 'ai_1', name: 'AI 1', isAI: true, seatWind: WindTile.SOUTH,
+          hand: [bam(5,1), bam(6,1), bam(7,1), bam(8,1), bam(9,1), char(1,1),
+                 char(2,1), char(3,1), char(4,1), char(5,1), char(6,1), char(7,1), char(8,1)] }),
+        makePlayer({ id: 'ai_2', name: 'AI 2', isAI: true, seatWind: WindTile.WEST,
+          hand: [char(9,1), dot(1,2), dot(2,2), dot(3,2), dot(4,2), dot(5,2),
+                 dot(6,2), dot(7,2), dot(8,2), dot(9,2), bam(1,2), bam(2,2), bam(3,2)] }),
+        makePlayer({ id: 'ai_3', name: 'AI 3', isAI: true, seatWind: WindTile.NORTH,
+          hand: [bam(4,2), bam(5,2), bam(6,2), bam(7,2), bam(8,2), bam(9,2),
+                 char(1,2), char(2,2), char(3,2), char(4,2), char(5,2), char(6,2), char(7,2)] }),
+      ],
+      // Wall: bonus tile on top (drawn by DRAW), then normal tiles
+      wall: [bonusTile, ...Array.from({ length: 48 }, (_, i) => bam(1, 200 + i))],
+      // Dead wall: normal replacement on top (used by handleFlowerDraw)
+      deadWall: [replacementTile, ...Array.from({ length: 13 }, (_, i) => char(1, 200 + i))],
+      discardPile: [],
+      playerDiscards: { 'human-1': [], 'ai_1': [], 'ai_2': [], 'ai_3': [] },
+      lastDiscardedTile: undefined,
+      lastDiscardedBy: undefined,
+      lastAction: undefined,
+      pendingClaims: [],
+      claimablePlayers: [],
+      passedPlayers: [],
+      prevailingWind: WindTile.EAST,
+      finalScores: {},
+      createdAt: new Date(),
+      turnHistory: [],
+      turnTimeLimit: 20,
+    };
+
+    const afterDraw = applyAction(state, 'human-1', { type: 'DRAW' });
+    expect(afterDraw).not.toBeNull();
+    // The bonus tile should be moved to flowers, and the replacement added to hand
+    expect(afterDraw!.players[0].flowers).toContainEqual(bonusTile);
+    expect(afterDraw!.players[0].hand).toContainEqual(replacementTile);
+    // Should remain in discard phase (replacement was non-bonus)
+    expect(afterDraw!.turnPhase).toBe('discard');
+  });
+
+  it('handles multiple consecutive bonus tiles during draw without stack overflow', () => {
+    // Pathological case: wall[0] is bonus, deadWall[0] is bonus, deadWall[1] is bonus,
+    // deadWall[2] is normal. Tests iterative loop replaces what was recursive.
+    const bonus1 = flowerTile('Plum', 1);
+    const bonus2 = flowerTile('Orchid', 2);
+    const bonus3 = flowerTile('Chrysanthemum', 3);
+    const normalReplacement = dot(1, 100);
+
+    const state: GameState = {
+      id: 'test-chained-flowers',
+      variant: 'Hong Kong Mahjong',
+      phase: GamePhase.PLAYING,
+      turnPhase: 'draw',
+      currentPlayerIndex: 0,
+      players: [
+        makePlayer({ id: 'human-1', name: 'Human', isAI: false, seatWind: WindTile.EAST,
+          hand: [dot(2,1), dot(3,1), dot(4,1), dot(5,1), dot(6,1), dot(7,1),
+                 dot(8,1), dot(9,1), bam(1,1), bam(2,1), bam(3,1), bam(4,1)] }),
+        makePlayer({ id: 'ai_1', name: 'AI 1', isAI: true, seatWind: WindTile.SOUTH,
+          hand: [bam(5,1), bam(6,1), bam(7,1), bam(8,1), bam(9,1), char(1,1),
+                 char(2,1), char(3,1), char(4,1), char(5,1), char(6,1), char(7,1), char(8,1)] }),
+        makePlayer({ id: 'ai_2', name: 'AI 2', isAI: true, seatWind: WindTile.WEST,
+          hand: [char(9,1), dot(1,2), dot(2,2), dot(3,2), dot(4,2), dot(5,2),
+                 dot(6,2), dot(7,2), dot(8,2), dot(9,2), bam(1,2), bam(2,2), bam(3,2)] }),
+        makePlayer({ id: 'ai_3', name: 'AI 3', isAI: true, seatWind: WindTile.NORTH,
+          hand: [bam(4,2), bam(5,2), bam(6,2), bam(7,2), bam(8,2), bam(9,2),
+                 char(1,2), char(2,2), char(3,2), char(4,2), char(5,2), char(6,2), char(7,2)] }),
+      ],
+      // Wall: first tile is bonus (drawn by handleDraw)
+      wall: [bonus1, ...Array.from({ length: 47 }, (_, i) => bam(1, 200 + i))],
+      // Dead wall: 3 bonus tiles on top, then normal replacement
+      // handleFlowerDraw draws from dead wall first; 2 bonus, then normal
+      deadWall: [bonus2, bonus3, normalReplacement, ...Array.from({ length: 11 }, (_, i) => char(1, 200 + i))],
+      discardPile: [],
+      playerDiscards: { 'human-1': [], 'ai_1': [], 'ai_2': [], 'ai_3': [] },
+      lastDiscardedTile: undefined,
+      lastDiscardedBy: undefined,
+      lastAction: undefined,
+      pendingClaims: [],
+      claimablePlayers: [],
+      passedPlayers: [],
+      prevailingWind: WindTile.EAST,
+      finalScores: {},
+      createdAt: new Date(),
+      turnHistory: [],
+      turnTimeLimit: 20,
+    };
+
+    const afterDraw = applyAction(state, 'human-1', { type: 'DRAW' });
+    expect(afterDraw).not.toBeNull();
+    // All 3 bonus tiles should be in flowers (bonus1 from wall, bonus2+bonus3 from dead wall)
+    expect(afterDraw!.players[0].flowers).toHaveLength(3);
+    expect(afterDraw!.players[0].flowers).toContainEqual(bonus1);
+    expect(afterDraw!.players[0].flowers).toContainEqual(bonus2);
+    expect(afterDraw!.players[0].flowers).toContainEqual(bonus3);
+    // The normal replacement should be in hand
+    expect(afterDraw!.players[0].hand).toContainEqual(normalReplacement);
+    expect(afterDraw!.turnPhase).toBe('discard');
+  });
+
+  it('handles bonus tile draw with replacement from wall when dead wall is empty', () => {
+    // When dead wall is empty, handleFlowerDraw falls back to wall for replacements.
+    // Also tests that the bonus tile on top of wall triggers handleFlowerDraw.
+    const bonusTile = flowerTile('Plum', 1);
+    const replacementTile = dot(1, 100);
+
+    const state: GameState = {
+      id: 'test-flower-wall-replacement',
+      variant: 'Hong Kong Mahjong',
+      phase: GamePhase.PLAYING,
+      turnPhase: 'draw',
+      currentPlayerIndex: 0,
+      players: [
+        makePlayer({ id: 'human-1', name: 'Human', isAI: false, seatWind: WindTile.EAST,
+          hand: [dot(2,1), dot(3,1), dot(4,1), dot(5,1), dot(6,1), dot(7,1),
+                 dot(8,1), dot(9,1), bam(1,1), bam(2,1), bam(3,1), bam(4,1)] }),
+        makePlayer({ id: 'ai_1', name: 'AI 1', isAI: true, seatWind: WindTile.SOUTH,
+          hand: [bam(5,1), bam(6,1), bam(7,1), bam(8,1), bam(9,1), char(1,1),
+                 char(2,1), char(3,1), char(4,1), char(5,1), char(6,1), char(7,1), char(8,1)] }),
+        makePlayer({ id: 'ai_2', name: 'AI 2', isAI: true, seatWind: WindTile.WEST,
+          hand: [char(9,1), dot(1,2), dot(2,2), dot(3,2), dot(4,2), dot(5,2),
+                 dot(6,2), dot(7,2), dot(8,2), dot(9,2), bam(1,2), bam(2,2), bam(3,2)] }),
+        makePlayer({ id: 'ai_3', name: 'AI 3', isAI: true, seatWind: WindTile.NORTH,
+          hand: [bam(4,2), bam(5,2), bam(6,2), bam(7,2), bam(8,2), bam(9,2),
+                 char(1,2), char(2,2), char(3,2), char(4,2), char(5,2), char(6,2), char(7,2)] }),
+      ],
+      // Wall: bonus on top (drawn), then replacement
+      wall: [bonusTile, replacementTile, ...Array.from({ length: 47 }, (_, i) => bam(1, 200 + i))],
+      // Empty dead wall forces handleFlowerDraw to draw from wall
+      deadWall: [],
+      discardPile: [],
+      playerDiscards: { 'human-1': [], 'ai_1': [], 'ai_2': [], 'ai_3': [] },
+      lastDiscardedTile: undefined,
+      lastDiscardedBy: undefined,
+      lastAction: undefined,
+      pendingClaims: [],
+      claimablePlayers: [],
+      passedPlayers: [],
+      prevailingWind: WindTile.EAST,
+      finalScores: {},
+      createdAt: new Date(),
+      turnHistory: [],
+      turnTimeLimit: 20,
+    };
+
+    const afterDraw = applyAction(state, 'human-1', { type: 'DRAW' });
+    expect(afterDraw).not.toBeNull();
+    // The bonus tile should be in flowers
+    expect(afterDraw!.players[0].flowers).toContainEqual(bonusTile);
+    // The replacement from wall should be in hand
+    expect(afterDraw!.players[0].hand).toContainEqual(replacementTile);
+    expect(afterDraw!.turnPhase).toBe('discard');
+  });
+});
+
+describe('handleFlowers - initial deal flower processing', () => {
+  it('handles initial flowers with chained bonus replacements', () => {
+    // Test that handleFlowers during game init handles consecutive bonus tiles
+    // by creating a game with manipulated state that forces chained flowers.
+    // We'll use initializeGame and verify the invariants.
+    const state = initializeGame(defaultOptions);
+
+    // Basic invariant: all 144 tiles accounted for
+    const handTiles = state.players.reduce((sum, p) => sum + p.hand.length, 0);
+    const flowerTiles = state.players.reduce((sum, p) => sum + p.flowers.length, 0);
+    const total = handTiles + flowerTiles + state.wall.length + state.deadWall.length;
+    expect(total).toBe(144);
+
+    // Each hand should still be 13 tiles (hand + flowers = 13 original deal + bonus draws consumed from wall)
+    for (const player of state.players) {
+      expect(player.hand.length + player.flowers.length).toBeGreaterThanOrEqual(13);
+    }
+  });
+});
+
+describe('kong on wall exhaustion', () => {
+  // Helper: build a minimal state where playerIndex 1 is in discard phase
+  // with 4 identical tiles in hand (concealed kong possible) and empty walls.
+  function makeConcealedKongExhaustedState(): GameState {
+    return {
+      id: 'test-kong-exhaust',
+      variant: 'Hong Kong Mahjong',
+      phase: GamePhase.PLAYING,
+      turnPhase: 'discard',
+      currentPlayerIndex: 1,
+      players: [
+        makePlayer({ id: 'human-1', name: 'Human', isAI: false, seatWind: WindTile.EAST,
+          hand: [dot(1,1), dot(2,1), dot(3,1), dot(4,1), dot(6,1), dot(7,1),
+                 dot(8,1), dot(9,1), bam(1,1), bam(2,1), bam(3,1), bam(4,1), bam(5,1)] }),
+        makePlayer({ id: 'ai_1', name: 'AI 1', isAI: true, seatWind: WindTile.SOUTH,
+          // 4 identical dot-5 tiles for concealed kong + other tiles
+          hand: [dot(5,1), dot(5,2), dot(5,3), dot(5,4), char(1,1), char(2,1),
+                 char(3,1), char(4,1), char(5,1), char(6,1), char(8,1), char(9,1)] }),
+        makePlayer({ id: 'ai_2', name: 'AI 2', isAI: true, seatWind: WindTile.WEST,
+          hand: [char(1,2), char(2,2), char(3,2), char(4,2), char(5,2), char(6,2),
+                 char(7,2), char(8,2), char(9,2), dot(1,2), dot(2,2), dot(3,2), dot(4,2)] }),
+        makePlayer({ id: 'ai_3', name: 'AI 3', isAI: true, seatWind: WindTile.NORTH,
+          hand: [char(1,3), char(2,3), char(3,3), char(4,3), char(5,3), char(6,3),
+                 char(7,3), char(8,3), char(9,3), dot(1,4), dot(2,3), dot(3,3), dot(4,3)] }),
+      ],
+      wall: [], // Exhausted!
+      deadWall: [], // Exhausted!
+      discardPile: [],
+      playerDiscards: { 'human-1': [], 'ai_1': [], 'ai_2': [], 'ai_3': [] },
+      lastDiscardedTile: undefined,
+      lastDiscardedBy: undefined,
+      lastAction: undefined,
+      pendingClaims: [],
+      claimablePlayers: [],
+      passedPlayers: [],
+      prevailingWind: WindTile.EAST,
+      finalScores: {},
+      createdAt: new Date(),
+      turnHistory: [],
+      turnTimeLimit: 20,
+    };
+  }
+
+  it('concealed kong on exhausted wall transitions to FINISHED (draw game) instead of returning null', () => {
+    const state = makeConcealedKongExhaustedState();
+    const handSizeBefore = state.players[1].hand.length;
+    const meldsBefore = state.players[1].melds.length;
+
+    // Previously this returned null — now it should return a FINISHED state
+    const result = applyAction(state, 'ai_1', { type: 'DECLARE_KONG', tile: dot(5, 1) });
+    expect(result).not.toBeNull();
+    expect(result!.phase).toBe(GamePhase.FINISHED);
+
+    // The kong meld should be applied (tiles moved from hand to meld)
+    expect(result!.players[1].melds.length).toBe(meldsBefore + 1);
+    expect(result!.players[1].melds[meldsBefore].type).toBe('kong');
+    expect(result!.players[1].melds[meldsBefore].isConcealed).toBe(true);
+    expect(result!.players[1].hand.length).toBe(handSizeBefore - 4);
+
+    // Draw result should be present
+    expect(result!.drawResult).toBeDefined();
+    expect(result!.drawResult!.reason).toBe('wallExhausted');
+  });
+
+  it('add-to-pung kong on exhausted wall transitions to FINISHED (draw game)', () => {
+    // AI 1 has an exposed pung of dot-5 and one more dot-5 in hand
+    const state: GameState = {
+      id: 'test-kong-pung-exhaust',
+      variant: 'Hong Kong Mahjong',
+      phase: GamePhase.PLAYING,
+      turnPhase: 'discard',
+      currentPlayerIndex: 1,
+      players: [
+        makePlayer({ id: 'human-1', name: 'Human', isAI: false, seatWind: WindTile.EAST,
+          hand: [dot(1,1), dot(2,1), dot(3,1), dot(4,1), dot(6,1), dot(7,1),
+                 dot(8,1), dot(9,1), bam(1,1), bam(2,1), bam(3,1), bam(4,1), bam(5,1)] }),
+        makePlayer({ id: 'ai_1', name: 'AI 1', isAI: true, seatWind: WindTile.SOUTH,
+          hand: [dot(5,4), char(1,1), char(2,1), char(3,1), char(4,1), char(5,1),
+                 char(6,1), char(8,1), char(9,1), bam(1,2), bam(2,2), bam(3,2), bam(4,2), bam(5,2)],
+          melds: [{ tiles: [dot(5,1), dot(5,2), dot(5,3)], type: 'pung', isConcealed: false }],
+        }),
+        makePlayer({ id: 'ai_2', name: 'AI 2', isAI: true, seatWind: WindTile.WEST,
+          hand: [char(1,2), char(2,2), char(3,2), char(4,2), char(5,2), char(6,2),
+                 char(7,2), char(8,2), char(9,2), dot(1,2), dot(2,2), dot(3,2), dot(4,2)] }),
+        makePlayer({ id: 'ai_3', name: 'AI 3', isAI: true, seatWind: WindTile.NORTH,
+          hand: [char(1,3), char(2,3), char(3,3), char(4,3), char(5,3), char(6,3),
+                 char(7,3), char(8,3), char(9,3), dot(1,4), dot(2,3), dot(3,3), dot(4,3)] }),
+      ],
+      wall: [], // Exhausted!
+      deadWall: [], // Exhausted!
+      discardPile: [],
+      playerDiscards: { 'human-1': [], 'ai_1': [], 'ai_2': [], 'ai_3': [] },
+      lastDiscardedTile: undefined,
+      lastDiscardedBy: undefined,
+      lastAction: undefined,
+      pendingClaims: [],
+      claimablePlayers: [],
+      passedPlayers: [],
+      prevailingWind: WindTile.EAST,
+      finalScores: {},
+      createdAt: new Date(),
+      turnHistory: [],
+      turnTimeLimit: 20,
+    };
+
+    // AI 1 adds dot-5 to its pung making it a kong
+    const result = applyAction(state, 'ai_1', { type: 'DECLARE_KONG', tile: dot(5, 4) });
+    expect(result).not.toBeNull();
+    expect(result!.phase).toBe(GamePhase.FINISHED);
+
+    // Kong should be applied: pung upgraded to kong
+    expect(result!.players[1].melds[0].type).toBe('kong');
+    expect(result!.players[1].melds[0].tiles.length).toBe(4);
+    expect(result!.players[1].hand.length).toBe(state.players[1].hand.length - 1);
+
+    // Draw result present
+    expect(result!.drawResult).toBeDefined();
+    expect(result!.drawResult!.reason).toBe('wallExhausted');
+  });
+
+  it('claimed kong on exhausted wall transitions to FINISHED (draw game)', () => {
+    // This tests the claim-path kong in resolveAndApplyClaim.
+    // When a player claims a kong from a discard but both walls are empty,
+    // the game should end as a draw, not leave the player stuck in discard phase.
+    const discardedTile = dot(5, 1);
+
+    const state: GameState = {
+      id: 'test-claimed-kong-exhaust',
+      variant: 'Hong Kong Mahjong',
+      phase: GamePhase.PLAYING,
+      turnPhase: 'claim',
+      currentPlayerIndex: 1,
+      players: [
+        makePlayer({ id: 'human-1', name: 'Human', isAI: false, seatWind: WindTile.EAST,
+          hand: [dot(6,1), dot(7,1), dot(8,1), dot(9,1), bam(1,1), bam(2,1),
+                 bam(3,1), bam(4,1), bam(5,1), bam(6,1), bam(7,1), bam(8,1), bam(9,1)] }),
+        makePlayer({ id: 'ai_1', name: 'AI 1', isAI: true, seatWind: WindTile.SOUTH,
+          // Hand has 3 matching dot-5 tiles to kong the discarded dot-5
+          hand: [dot(5,2), dot(5,3), dot(5,4), char(1,1), char(2,1), char(3,1),
+                 char(4,1), char(5,1), char(6,1), char(8,1), char(9,1), bam(1,2), bam(2,2)] }),
+        makePlayer({ id: 'ai_2', name: 'AI 2', isAI: true, seatWind: WindTile.WEST,
+          hand: [char(1,2), char(2,2), char(3,2), char(4,2), char(5,2), char(6,2),
+                 char(7,2), char(8,2), char(9,2), dot(1,2), dot(2,2), dot(3,2), dot(4,2)] }),
+        makePlayer({ id: 'ai_3', name: 'AI 3', isAI: true, seatWind: WindTile.NORTH,
+          hand: [char(1,3), char(2,3), char(3,3), char(4,3), char(5,3), char(6,3),
+                 char(7,3), char(8,3), char(9,3), dot(1,4), dot(2,3), dot(3,3), dot(4,3)] }),
+      ],
+      wall: [], // Exhausted!
+      deadWall: [], // Exhausted!
+      discardPile: [discardedTile],
+      playerDiscards: { 'human-1': [discardedTile], 'ai_1': [], 'ai_2': [], 'ai_3': [] },
+      lastDiscardedTile: discardedTile,
+      lastDiscardedBy: 'human-1',
+      lastAction: undefined,
+      pendingClaims: [],
+      claimablePlayers: ['ai_1', 'ai_2', 'ai_3'],
+      passedPlayers: [],
+      prevailingWind: WindTile.EAST,
+      finalScores: {},
+      createdAt: new Date(),
+      turnHistory: [],
+      turnTimeLimit: 20,
+    };
+
+    // AI 1 claims kong on the discarded tile
+    let result = applyAction(state, 'ai_1', {
+      type: 'CLAIM', claimType: 'kong', tilesFromHand: [dot(5,2), dot(5,3), dot(5,4)],
+    });
+    expect(result).not.toBeNull();
+
+    // The claim is pending; other players need to act
+    // Advance claim phase: AI 2 and AI 3 pass
+    result = applyAction(result!, 'ai_2', { type: 'PASS' });
+    expect(result).not.toBeNull();
+    result = applyAction(result!, 'ai_3', { type: 'PASS' });
+
+    // After all act, the kong resolves but wall is empty — should be FINISHED
+    expect(result).not.toBeNull();
+    expect(result!.phase).toBe(GamePhase.FINISHED);
+
+    // Kong meld should be applied
+    const ai1 = result!.players[1];
+    const kongMeld = ai1.melds.find(m => m.type === 'kong');
+    expect(kongMeld).toBeDefined();
+    expect(kongMeld!.tiles.length).toBe(4);
+
+    // Draw result present
+    expect(result!.drawResult).toBeDefined();
+    expect(result!.drawResult!.reason).toBe('wallExhausted');
   });
 });

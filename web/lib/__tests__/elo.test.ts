@@ -56,6 +56,19 @@ describe('calculateElo', () => {
     expect(Math.abs(newWinner.change)).toBeGreaterThan(Math.abs(expWinner.change));
   });
 
+  it('returns empty array when placements length mismatches players', () => {
+    const twoPlayers = basePlayers.slice(0, 2);
+    const result = calculateElo(twoPlayers, ['p1', 'p2', 'p3', 'p4']);
+    expect(result).toEqual([]);
+  });
+
+  it('throws when a player ID is missing from placements', () => {
+    const badPlacements = ['p2', 'p3', 'p4', 'p5']; // p5 not in players, p1 missing
+    expect(() => calculateElo(basePlayers, badPlacements)).toThrow(
+      'Player p1 missing from placements',
+    );
+  });
+
   it('ELO never drops below 100', () => {
     const lowPlayers = [
       { id: 'p1', elo: 110, gamesPlayed: 0 },

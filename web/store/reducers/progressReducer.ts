@@ -1,4 +1,4 @@
-import { ProgressState } from '../actions/progressActions';
+import { ProgressState, ProgressAction } from '../actions/progressActions';
 import { UserProgress } from '@/models/UserProgress';
 import {
   PROGRESS_LOAD_START,
@@ -21,7 +21,7 @@ const initialState: ProgressState = {
 
 export const progressReducer = (
   state: ProgressState = initialState,
-  action: any
+  action: ProgressAction
 ): ProgressState => {
   switch (action.type) {
     case PROGRESS_LOAD_START:
@@ -35,7 +35,7 @@ export const progressReducer = (
     case PROGRESS_ADD_ACHIEVEMENT:
       return {
         ...state,
-        progress: action.payload as UserProgress,
+        progress: action.payload,
         isLoading: false,
         errorMessage: null,
       };
@@ -44,11 +44,11 @@ export const progressReducer = (
       // Payload: { progress: UserProgress | null, quiz: { mode, score, best } }
       // We only overwrite Redux progress when a fresh UserProgress object was
       // produced. The localStorage quiz stats are persisted by the thunk.
-      const { progress } = action.payload ?? {};
+      const { progress } = action.payload;
       if (!progress) return state;
       return {
         ...state,
-        progress: progress as UserProgress,
+        progress,
         isLoading: false,
         errorMessage: null,
       };

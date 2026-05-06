@@ -265,40 +265,43 @@ function handleDraw(state: GameState, playerIndex: number): GameState | null {
 }
 
 function handleFlowerDraw(state: GameState, playerIndex: number, flowerTile: Tile): GameState {
-  const newPlayers = [...state.players];
-  const player = { ...newPlayers[playerIndex] };
+  let currentState = state;
+  let currentTile: Tile | null = flowerTile;
 
-  // Remove flower from hand, add to flowers
-  player.hand = player.hand.filter(t => t.id !== flowerTile.id);
-  player.flowers = [...player.flowers, flowerTile];
-  newPlayers[playerIndex] = player;
+  while (currentTile && currentTile.type === TileType.BONUS) {
+    const newPlayers = [...currentState.players];
+    const player = { ...newPlayers[playerIndex] };
 
-  // Draw replacement from dead wall
-  if (state.deadWall.length === 0 && state.wall.length === 0) {
-    return handleWallExhaustion({ ...state, players: newPlayers });
+    // Remove flower from hand, add to flowers
+    player.hand = player.hand.filter(t => t.id !== currentTile!.id);
+    player.flowers = [...player.flowers, currentTile];
+    newPlayers[playerIndex] = player;
+
+    // Draw replacement from dead wall (prefer dead wall, fall back to wall)
+    if (currentState.deadWall.length === 0 && currentState.wall.length === 0) {
+      return handleWallExhaustion({ ...currentState, players: newPlayers });
+    }
+
+    const replacementSource = currentState.deadWall.length > 0 ? 'deadWall' : 'wall';
+    const sourceWall = replacementSource === 'deadWall' ? currentState.deadWall : currentState.wall;
+    const replacement = sourceWall[0];
+    const newSourceWall = sourceWall.slice(1);
+
+    player.hand = [...player.hand, replacement];
+    newPlayers[playerIndex] = player;
+
+    currentState = {
+      ...currentState,
+      players: newPlayers,
+      [replacementSource]: newSourceWall,
+      lastDrawnTile: replacement,
+    };
+
+    // If replacement is also a bonus tile, loop again; otherwise we're done
+    currentTile = replacement.type === TileType.BONUS ? replacement : null;
   }
 
-  const replacementSource = state.deadWall.length > 0 ? 'deadWall' : 'wall';
-  const sourceWall = replacementSource === 'deadWall' ? state.deadWall : state.wall;
-  const replacement = sourceWall[0];
-  const newSourceWall = sourceWall.slice(1);
-
-  player.hand = [...player.hand, replacement];
-  newPlayers[playerIndex] = player;
-
-  let newState: GameState = {
-    ...state,
-    players: newPlayers,
-    [replacementSource]: newSourceWall,
-    lastDrawnTile: replacement,
-  };
-
-  // If replacement is also a flower, recurse
-  if (replacement.type === TileType.BONUS) {
-    newState = handleFlowerDraw(newState, playerIndex, replacement);
-  }
-
-  return newState;
+  return currentState;
 }
 
 function handleDiscard(state: GameState, playerIndex: number, tile: Tile): GameState | null {
@@ -404,7 +407,20 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
     };
 
     // Draw replacement from dead wall
-    if (state.deadWall.length === 0 && state.wall.length === 0) return null;
+    if (state.deadWall.length === 0 && state.wall.length === 0) {
+      // Kong is valid but no replacement tile exists — transition to draw game
+      return handleWallExhaustion({
+        ...state,
+        players: newPlayers,
+        pendingClaims: [],
+        claimablePlayers: [],
+        passedPlayers: [],
+        isRobKongOpportunity: undefined,
+        turnPhase: 'discard',
+        currentPlayerIndex: playerIndex,
+        turnStartedAt: new Date(),
+      });
+    }
     const sourceWall = state.deadWall.length > 0 ? state.deadWall : state.wall;
     const replacement = sourceWall[0];
 
@@ -479,7 +495,20 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
       };
 
       // Draw replacement
-      if (state.deadWall.length === 0 && state.wall.length === 0) return null;
+      if (state.deadWall.length === 0 && state.wall.length === 0) {
+        // Kong is valid but no replacement tile exists — transition to draw game
+        return handleWallExhaustion({
+          ...state,
+          players: newPlayers,
+          pendingClaims: [],
+          claimablePlayers: [],
+          passedPlayers: [],
+          isRobKongOpportunity: undefined,
+          turnPhase: 'discard',
+          currentPlayerIndex: playerIndex,
+          turnStartedAt: new Date(),
+        });
+      }
       const sourceWall = state.deadWall.length > 0 ? state.deadWall : state.wall;
       const replacement = sourceWall[0];
 
@@ -671,6 +700,14 @@ function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameSta
         turnPhase: 'discard',
         isKongReplacement: true,
       };
+    } else {
+      // Both walls empty — kong is valid but no replacement. Transition to draw game.
+      return handleWallExhaustion({
+        ...newState,
+        players: newPlayers,
+        turnPhase: 'discard',
+        currentPlayerIndex: winnerIndex,
+      });
     }
   }
 
@@ -858,18 +895,22 @@ function getAllClaims(
 
 function handleFlowers(state: GameState, playerIndex: number): GameState {
   const player = state.players[playerIndex];
-  const flowers = player.hand.filter(t => t.type === TileType.BONUS);
-  if (flowers.length === 0) return state;
+  const initialFlowers = player.hand.filter(t => t.type === TileType.BONUS);
+  if (initialFlowers.length === 0) return state;
 
   const newPlayers = [...state.players];
   let hand = player.hand.filter(t => t.type !== TileType.BONUS);
-  const playerFlowers = [...player.flowers, ...flowers];
+  const playerFlowers: Tile[] = [...player.flowers, ...initialFlowers];
 
   // Draw replacements
   let wall = [...state.wall];
   let deadWall = [...state.deadWall];
 
-  for (let i = 0; i < flowers.length; i++) {
+  // Use an explicit growing-index loop instead of mutating a `const` array
+  // with for-loop push, which is fragile and violates the const naming.
+  const flowersToProcess: Tile[] = [...initialFlowers];
+  let i = 0;
+  while (i < flowersToProcess.length) {
     const sourceWall = deadWall.length > 0 ? deadWall : wall;
     if (sourceWall.length === 0) break;
     const replacement = sourceWall[0];
@@ -881,11 +922,12 @@ function handleFlowers(state: GameState, playerIndex: number): GameState {
 
     if (replacement.type === TileType.BONUS) {
       playerFlowers.push(replacement);
-      // Need another replacement
-      flowers.push(replacement); // trick: extend loop
+      // Queue another iteration for the bonus replacement
+      flowersToProcess.push(replacement);
     } else {
       hand.push(replacement);
     }
+    i++;
   }
 
   newPlayers[playerIndex] = {

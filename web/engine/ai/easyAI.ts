@@ -101,13 +101,13 @@ export function getEasyClaimDecision(
 
   // Claim pung on valuable tiles (dragons, seat wind) with 70% probability
   const pungClaim = availableClaims.find(c => c.claimType === 'pung');
-  if (pungClaim && pungClaim.tilesFromHand[0]) {
+  if (pungClaim && pungClaim.tilesFromHand[0] && pungClaim.tilesFromHand[0].length > 0) {
     const tile = pungClaim.tilesFromHand[0][0];
     const player = gameState.players[playerIndex];
-    const isDragon = tile?.suit === TileSuit.DRAGON;
-    const isSeatWind = tile?.suit === TileSuit.WIND && tile?.wind === player.seatWind;
+    const isDragon = tile.suit === TileSuit.DRAGON;
+    const isSeatWind = tile.suit === TileSuit.WIND && tile.wind === player.seatWind;
 
-    if ((isDragon || isSeatWind) && Math.random() < 0.7) {
+    if (tile && (isDragon || isSeatWind) && Math.random() < 0.7) {
       return {
         action: {
           type: 'CLAIM',

@@ -43,6 +43,16 @@ export function calculateElo(
   players: EloPlayer[],
   placements: string[],
 ): EloResult[] {
+  // Validate that every player appears in placements
+  if (players.length !== placements.length) {
+    return [];
+  }
+  for (const p of players) {
+    if (!placements.includes(p.id)) {
+      throw new Error(`Player ${p.id} missing from placements`);
+    }
+  }
+
   const results: EloResult[] = [];
 
   for (const player of players) {

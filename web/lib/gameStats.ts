@@ -103,8 +103,11 @@ export function recordMatchResult(result: MatchResult): GameStats {
     stats.gamesWon++;
   }
 
-  // Update placement counts
-  stats.placementCounts[result.humanPlacement - 1]++;
+  // Update placement counts (bounds-check: humanPlacement must be 1-4)
+  const placementIdx = result.humanPlacement - 1;
+  if (placementIdx >= 0 && placementIdx < stats.placementCounts.length) {
+    stats.placementCounts[placementIdx]++;
+  }
 
   // Difficulty breakdown
   stats.byDifficulty[result.difficulty].played++;

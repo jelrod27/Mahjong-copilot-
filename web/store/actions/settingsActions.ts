@@ -17,16 +17,28 @@ export interface SettingsState {
   tileVoice: 'off' | 'cantonese' | 'english';
 }
 
-export const SETTINGS_INITIALIZE = 'SETTINGS_INITIALIZE';
-export const SETTINGS_SET_VARIANT = 'SETTINGS_SET_VARIANT';
-export const SETTINGS_SET_LOCALE = 'SETTINGS_SET_LOCALE';
-export const SETTINGS_SET_THEME_MODE = 'SETTINGS_SET_THEME_MODE';
-export const SETTINGS_SET_SOUND_ENABLED = 'SETTINGS_SET_SOUND_ENABLED';
-export const SETTINGS_SET_NOTIFICATIONS_ENABLED = 'SETTINGS_SET_NOTIFICATIONS_ENABLED';
-export const SETTINGS_SET_LARGER_UI_TEXT = 'SETTINGS_SET_LARGER_UI_TEXT';
-export const SETTINGS_SET_SHOW_TUTOR = 'SETTINGS_SET_SHOW_TUTOR';
-export const SETTINGS_SET_LIVE_FAAN_METER = 'SETTINGS_SET_LIVE_FAAN_METER';
-export const SETTINGS_SET_TILE_VOICE = 'SETTINGS_SET_TILE_VOICE';
+export const SETTINGS_INITIALIZE = 'SETTINGS_INITIALIZE' as const;
+export const SETTINGS_SET_VARIANT = 'SETTINGS_SET_VARIANT' as const;
+export const SETTINGS_SET_LOCALE = 'SETTINGS_SET_LOCALE' as const;
+export const SETTINGS_SET_THEME_MODE = 'SETTINGS_SET_THEME_MODE' as const;
+export const SETTINGS_SET_SOUND_ENABLED = 'SETTINGS_SET_SOUND_ENABLED' as const;
+export const SETTINGS_SET_NOTIFICATIONS_ENABLED = 'SETTINGS_SET_NOTIFICATIONS_ENABLED' as const;
+export const SETTINGS_SET_LARGER_UI_TEXT = 'SETTINGS_SET_LARGER_UI_TEXT' as const;
+export const SETTINGS_SET_SHOW_TUTOR = 'SETTINGS_SET_SHOW_TUTOR' as const;
+export const SETTINGS_SET_LIVE_FAAN_METER = 'SETTINGS_SET_LIVE_FAAN_METER' as const;
+export const SETTINGS_SET_TILE_VOICE = 'SETTINGS_SET_TILE_VOICE' as const;
+
+export type SettingsAction =
+  | { type: typeof SETTINGS_INITIALIZE; payload: SettingsState }
+  | { type: typeof SETTINGS_SET_VARIANT; payload: string }
+  | { type: typeof SETTINGS_SET_LOCALE; payload: string }
+  | { type: typeof SETTINGS_SET_THEME_MODE; payload: SettingsState['themeMode'] }
+  | { type: typeof SETTINGS_SET_SOUND_ENABLED; payload: boolean }
+  | { type: typeof SETTINGS_SET_NOTIFICATIONS_ENABLED; payload: boolean }
+  | { type: typeof SETTINGS_SET_LARGER_UI_TEXT; payload: boolean }
+  | { type: typeof SETTINGS_SET_SHOW_TUTOR; payload: boolean }
+  | { type: typeof SETTINGS_SET_LIVE_FAAN_METER; payload: boolean }
+  | { type: typeof SETTINGS_SET_TILE_VOICE; payload: SettingsState['tileVoice'] };
 
 export const initializeSettings = () => async (dispatch: any) => {
   try {

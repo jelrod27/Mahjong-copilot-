@@ -10,17 +10,30 @@ export interface GameReduxState {
   isPaused: boolean;
 }
 
-export const GAME_CREATE_START = 'GAME_CREATE_START';
-export const GAME_CREATE_SUCCESS = 'GAME_CREATE_SUCCESS';
-export const GAME_CREATE_FAILURE = 'GAME_CREATE_FAILURE';
-export const GAME_LOAD_START = 'GAME_LOAD_START';
-export const GAME_LOAD_SUCCESS = 'GAME_LOAD_SUCCESS';
-export const GAME_LOAD_FAILURE = 'GAME_LOAD_FAILURE';
-export const GAME_MAKE_MOVE = 'GAME_MAKE_MOVE';
-export const GAME_PAUSE = 'GAME_PAUSE';
-export const GAME_RESUME = 'GAME_RESUME';
-export const GAME_CLEAR = 'GAME_CLEAR';
-export const GAME_CLEAR_ERROR = 'GAME_CLEAR_ERROR';
+export const GAME_CREATE_START = 'GAME_CREATE_START' as const;
+export const GAME_CREATE_SUCCESS = 'GAME_CREATE_SUCCESS' as const;
+export const GAME_CREATE_FAILURE = 'GAME_CREATE_FAILURE' as const;
+export const GAME_LOAD_START = 'GAME_LOAD_START' as const;
+export const GAME_LOAD_SUCCESS = 'GAME_LOAD_SUCCESS' as const;
+export const GAME_LOAD_FAILURE = 'GAME_LOAD_FAILURE' as const;
+export const GAME_MAKE_MOVE = 'GAME_MAKE_MOVE' as const;
+export const GAME_PAUSE = 'GAME_PAUSE' as const;
+export const GAME_RESUME = 'GAME_RESUME' as const;
+export const GAME_CLEAR = 'GAME_CLEAR' as const;
+export const GAME_CLEAR_ERROR = 'GAME_CLEAR_ERROR' as const;
+
+export type GameReduxAction =
+  | { type: typeof GAME_CREATE_START }
+  | { type: typeof GAME_CREATE_SUCCESS; payload: GameState }
+  | { type: typeof GAME_CREATE_FAILURE; payload: string }
+  | { type: typeof GAME_LOAD_START }
+  | { type: typeof GAME_LOAD_SUCCESS; payload: GameState }
+  | { type: typeof GAME_LOAD_FAILURE; payload: string }
+  | { type: typeof GAME_MAKE_MOVE; payload: GameState }
+  | { type: typeof GAME_PAUSE; payload: GameState }
+  | { type: typeof GAME_RESUME; payload: GameState }
+  | { type: typeof GAME_CLEAR }
+  | { type: typeof GAME_CLEAR_ERROR };
 
 export const createNewGame = (
   userId: string,

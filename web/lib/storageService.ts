@@ -1,6 +1,20 @@
 import { UserProgress, userProgressToJson, userProgressFromJson } from '@/models/UserProgress';
 import { GameState, gameStateToJson, gameStateFromJson } from '@/models/GameState';
 
+/**
+ * Prefixes used by this app's localStorage keys.
+ * `clear()` only removes keys matching one of these prefixes,
+ * so other apps on the same origin are not affected.
+ */
+const APP_KEY_PREFIXES = [
+  '16bit-mahjong-',
+  '@mahjong_',
+  'mahjong_',
+  'progress_',
+  'game_',
+  'current_game_id',
+];
+
 class StorageService {
   static async setString(key: string, value: string): Promise<void> {
     try {
@@ -100,7 +114,16 @@ class StorageService {
 
   static async clear(): Promise<void> {
     try {
-      localStorage.clear();
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && APP_KEY_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+          keysToRemove.push(key);
+        }
+      }
+      for (const key of keysToRemove) {
+        localStorage.removeItem(key);
+      }
     } catch (error) {
       console.error('StorageService.clear error:', error);
     }

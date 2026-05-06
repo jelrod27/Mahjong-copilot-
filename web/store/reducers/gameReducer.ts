@@ -1,4 +1,4 @@
-import { GameReduxState } from '../actions/gameActions';
+import { GameReduxState, GameReduxAction } from '../actions/gameActions';
 import { GameState, GamePhase } from '@/models/GameState';
 import {
   GAME_CREATE_START,
@@ -23,7 +23,7 @@ const initialState: GameReduxState = {
 
 export const gameReducer = (
   state: GameReduxState = initialState,
-  action: any
+  action: GameReduxAction
 ): GameReduxState => {
   switch (action.type) {
     case GAME_CREATE_START:
@@ -35,7 +35,7 @@ export const gameReducer = (
     case GAME_MAKE_MOVE:
       return {
         ...state,
-        currentGame: action.payload as GameState,
+        currentGame: action.payload,
         isLoading: false,
         errorMessage: null,
         isPaused: action.payload.phase === GamePhase.PAUSED,
@@ -46,10 +46,10 @@ export const gameReducer = (
       return { ...state, isLoading: false, errorMessage: action.payload };
 
     case GAME_PAUSE:
-      return { ...state, currentGame: action.payload as GameState, isPaused: true };
+      return { ...state, currentGame: action.payload, isPaused: true };
 
     case GAME_RESUME:
-      return { ...state, currentGame: action.payload as GameState, isPaused: false };
+      return { ...state, currentGame: action.payload, isPaused: false };
 
     case GAME_CLEAR:
       return { ...initialState };

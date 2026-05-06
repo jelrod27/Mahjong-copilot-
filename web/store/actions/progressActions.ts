@@ -9,23 +9,36 @@ export interface ProgressState {
   errorMessage: string | null;
 }
 
-export const PROGRESS_INITIALIZE = 'PROGRESS_INITIALIZE';
-export const PROGRESS_LOAD_START = 'PROGRESS_LOAD_START';
-export const PROGRESS_LOAD_SUCCESS = 'PROGRESS_LOAD_SUCCESS';
-export const PROGRESS_LOAD_FAILURE = 'PROGRESS_LOAD_FAILURE';
-export const PROGRESS_UPDATE_LEVEL = 'PROGRESS_UPDATE_LEVEL';
-export const PROGRESS_INCREMENT_GAMES = 'PROGRESS_INCREMENT_GAMES';
-export const PROGRESS_INCREMENT_WINS = 'PROGRESS_INCREMENT_WINS';
-export const PROGRESS_ADD_TIME = 'PROGRESS_ADD_TIME';
-export const PROGRESS_ADD_ACHIEVEMENT = 'PROGRESS_ADD_ACHIEVEMENT';
-export const PROGRESS_QUIZ_COMPLETED = 'PROGRESS_QUIZ_COMPLETED';
-export const PROGRESS_CLEAR_ERROR = 'PROGRESS_CLEAR_ERROR';
+export const PROGRESS_INITIALIZE = 'PROGRESS_INITIALIZE' as const;
+export const PROGRESS_LOAD_START = 'PROGRESS_LOAD_START' as const;
+export const PROGRESS_LOAD_SUCCESS = 'PROGRESS_LOAD_SUCCESS' as const;
+export const PROGRESS_LOAD_FAILURE = 'PROGRESS_LOAD_FAILURE' as const;
+export const PROGRESS_UPDATE_LEVEL = 'PROGRESS_UPDATE_LEVEL' as const;
+export const PROGRESS_INCREMENT_GAMES = 'PROGRESS_INCREMENT_GAMES' as const;
+export const PROGRESS_INCREMENT_WINS = 'PROGRESS_INCREMENT_WINS' as const;
+export const PROGRESS_ADD_TIME = 'PROGRESS_ADD_TIME' as const;
+export const PROGRESS_ADD_ACHIEVEMENT = 'PROGRESS_ADD_ACHIEVEMENT' as const;
+export const PROGRESS_QUIZ_COMPLETED = 'PROGRESS_QUIZ_COMPLETED' as const;
+export const PROGRESS_CLEAR_ERROR = 'PROGRESS_CLEAR_ERROR' as const;
 
 export interface QuizCompletedPayload {
   mode: QuizMode;
   score: number;
   best: number;
 }
+
+export type ProgressAction =
+  | { type: typeof PROGRESS_INITIALIZE }
+  | { type: typeof PROGRESS_LOAD_START }
+  | { type: typeof PROGRESS_LOAD_SUCCESS; payload: UserProgress }
+  | { type: typeof PROGRESS_LOAD_FAILURE; payload: string }
+  | { type: typeof PROGRESS_UPDATE_LEVEL; payload: UserProgress }
+  | { type: typeof PROGRESS_INCREMENT_GAMES; payload: UserProgress }
+  | { type: typeof PROGRESS_INCREMENT_WINS; payload: UserProgress }
+  | { type: typeof PROGRESS_ADD_TIME; payload: UserProgress }
+  | { type: typeof PROGRESS_ADD_ACHIEVEMENT; payload: UserProgress }
+  | { type: typeof PROGRESS_QUIZ_COMPLETED; payload: { progress: UserProgress | null; quiz: QuizCompletedPayload } }
+  | { type: typeof PROGRESS_CLEAR_ERROR };
 
 const DEFAULT_USER_ID = 'local_user';
 

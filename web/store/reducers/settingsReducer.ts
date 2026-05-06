@@ -1,4 +1,4 @@
-import { SettingsState } from '../actions/settingsActions';
+import { SettingsState, SettingsAction } from '../actions/settingsActions';
 import {
   SETTINGS_INITIALIZE,
   SETTINGS_SET_VARIANT,
@@ -26,7 +26,7 @@ const initialState: SettingsState = {
 
 export const settingsReducer = (
   state: SettingsState = initialState,
-  action: any
+  action: SettingsAction
 ): SettingsState => {
   switch (action.type) {
     case SETTINGS_INITIALIZE:

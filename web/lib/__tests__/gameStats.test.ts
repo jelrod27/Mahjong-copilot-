@@ -96,6 +96,52 @@ describe('gameStats', () => {
     expect(stats.bestHandName).toBe('Pure One Suit');
   });
 
+  it('recordMatchResult with humanPlacement=0 does not corrupt placementCounts', () => {
+    localStorage.setItem('16bit-mahjong-stats', JSON.stringify(CLEAN_STATS));
+    const result: MatchResult = {
+      difficulty: 'easy',
+      mode: 'quick',
+      humanPlacement: 0,
+      totalHandsPlayed: 4,
+      bestFanThisMatch: 1,
+      bestHandNameThisMatch: null,
+    };
+    const stats = recordMatchResult(result);
+    // placement 0 is invalid; placementCounts should remain unchanged
+    expect(stats.placementCounts).toEqual([0, 0, 0, 0]);
+    expect(stats.gamesPlayed).toBe(1);
+  });
+
+  it('recordMatchResult with humanPlacement=5 does not corrupt placementCounts', () => {
+    localStorage.setItem('16bit-mahjong-stats', JSON.stringify(CLEAN_STATS));
+    const result: MatchResult = {
+      difficulty: 'easy',
+      mode: 'quick',
+      humanPlacement: 5,
+      totalHandsPlayed: 4,
+      bestFanThisMatch: 1,
+      bestHandNameThisMatch: null,
+    };
+    const stats = recordMatchResult(result);
+    expect(stats.placementCounts).toEqual([0, 0, 0, 0]);
+    expect(stats.gamesPlayed).toBe(1);
+  });
+
+  it('recordMatchResult with negative humanPlacement does not corrupt placementCounts', () => {
+    localStorage.setItem('16bit-mahjong-stats', JSON.stringify(CLEAN_STATS));
+    const result: MatchResult = {
+      difficulty: 'easy',
+      mode: 'quick',
+      humanPlacement: -1,
+      totalHandsPlayed: 4,
+      bestFanThisMatch: 1,
+      bestHandNameThisMatch: null,
+    };
+    const stats = recordMatchResult(result);
+    expect(stats.placementCounts).toEqual([0, 0, 0, 0]);
+    expect(stats.gamesPlayed).toBe(1);
+  });
+
   it('multiple calls accumulate correctly', () => {
     localStorage.setItem('16bit-mahjong-stats', JSON.stringify(CLEAN_STATS));
 

@@ -8,6 +8,7 @@ import { analyzeHandPerformance, ReviewInsight } from '@/engine/reviewAnalyzer';
 import RetroTile from './RetroTile';
 import ExposedMelds from './ExposedMelds';
 import HandReplayScrubber from './HandReplayScrubber';
+import Confetti from './Confetti';
 
 interface HandResultScreenProps {
   gameState: GameState;
@@ -24,6 +25,7 @@ export default function HandResultScreen({
     ? gameState.players.find(p => p.id === gameState.winnerId)
     : null;
   const isDraw = !winner;
+  const humanWon = winner?.id === match.humanPlayerId;
 
   const [showContent, setShowContent] = useState(false);
   const [displayedPoints, setDisplayedPoints] = useState(0);
@@ -58,6 +60,7 @@ export default function HandResultScreen({
 
   return (
     <div className="fixed inset-0 bg-black/80 z-40 flex items-center justify-center p-2 md:p-4">
+      {humanWon && showContent && <Confetti />}
       <div className={`retro-panel p-3 md:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto ${showContent ? 'animate-slide-up' : 'opacity-0'}`}>
         {/* Round + Hand header */}
         <div className="text-center mb-1">
@@ -116,28 +119,41 @@ export default function HandResultScreen({
           </div>
         )}
 
-        {/* Scoring breakdown */}
+        {/* Scoring breakdown — fans stagger in one row at a time. */}
         {scoringResult && (
           <div className="mb-4">
             <div className="font-pixel text-xs text-retro-gold mb-2">SCORING</div>
             <div className="space-y-1">
               {scoringResult.fans.map((fan, i) => (
-                <div key={i} className="flex justify-between font-retro text-sm">
+                <div
+                  key={i}
+                  className="flex justify-between font-retro text-sm animate-fan-row-in"
+                  style={{ animationDelay: `${0.15 + i * 0.12}s` }}
+                >
                   <span className="text-retro-text">{fan.name}</span>
                   <span className="text-retro-cyan">+{fan.fan} fan</span>
                 </div>
               ))}
               <div className="border-t border-retro-border my-1" />
-              <div className="flex justify-between font-retro text-sm">
+              <div
+                className="flex justify-between font-retro text-sm animate-fan-row-in"
+                style={{ animationDelay: `${0.15 + scoringResult.fans.length * 0.12}s` }}
+              >
                 <span className="text-retro-gold">Total Fan</span>
                 <span className="text-retro-gold retro-glow">{scoringResult.totalFan}</span>
               </div>
-              <div className="flex justify-between font-retro text-lg">
+              <div
+                className="flex justify-between font-retro text-lg animate-fan-row-in"
+                style={{ animationDelay: `${0.27 + scoringResult.fans.length * 0.12}s` }}
+              >
                 <span className="text-retro-green">Points</span>
                 <span className="text-retro-green retro-glow-strong">{displayedPoints}</span>
               </div>
               {scoringResult.handName && (
-                <div className="text-center font-pixel text-xs text-retro-accent mt-1">
+                <div
+                  className="text-center font-pixel text-xs text-retro-accent mt-1 animate-fan-row-in"
+                  style={{ animationDelay: `${0.4 + scoringResult.fans.length * 0.12}s` }}
+                >
                   {scoringResult.handName}
                 </div>
               )}

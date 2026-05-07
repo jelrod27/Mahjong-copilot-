@@ -18,6 +18,10 @@ const IGNORABLE_CONSOLE_NOISE = [
   // Vercel Analytics's debug script is CSP-blocked in local dev — analytics
   // degrades gracefully and this is unrelated to the offline beginner path.
   /va\.vercel-scripts\.com.*Content Security Policy/i,
+  // Next.js dev-mode HMR: when the dev server restarts mid-test the client
+  // briefly fails to fetch the RSC payload and gracefully falls back to a
+  // browser navigation. Not a product bug.
+  /Failed to fetch RSC payload/i,
 ];
 
 test.describe('Beginner smoke — offline solo path', () => {

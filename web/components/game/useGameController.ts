@@ -728,8 +728,6 @@ export default function useGameController(
     if (game.winnerId) {
       const winner = game.players.find(p => p.id === game.winnerId);
       if (winner && game.winningTile) {
-        soundManager.play('win');
-
         try {
           const isSelfDrawn = game.isSelfDrawn ?? false;
           let winMethod: WinMethod = isSelfDrawn ? 'selfDraw' : 'discard';
@@ -766,6 +764,15 @@ export default function useGameController(
         } catch {
           // Scoring may fail on edge cases
         }
+
+        // Pick the win sound after scoring so we know if it was a limit hand.
+        // Limit hands or anything 10+ fan get the bigger fanfare; self-draws
+        // get a triumphant fifth on top of the standard win arpeggio.
+        const isLimitHand = result?.handName !== undefined || (result?.totalFan ?? 0) >= 10;
+        const isSelfDrawnFinal = game.isSelfDrawn ?? false;
+        soundManager.play(
+          isLimitHand ? 'winLimitHand' : isSelfDrawnFinal ? 'winSelfDraw' : 'win',
+        );
       }
     }
 

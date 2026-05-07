@@ -170,6 +170,45 @@ body {
   animation: slide-up 0.3s ease-out;
 }
 
+/* Win-celebration confetti — pixel particles falling across the viewport. */
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-10vh) translateX(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) translateX(var(--confetti-drift, 0)) rotate(var(--confetti-rotation, 360deg));
+    opacity: 0;
+  }
+}
+
+.animate-confetti-fall {
+  animation-name: confetti-fall;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+/* Staggered fan/score row reveal — each row slides in from the right. */
+@keyframes fan-row-in {
+  0% { opacity: 0; transform: translateX(12px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+.animate-fan-row-in {
+  opacity: 0;
+  animation: fan-row-in 0.35s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-confetti-fall,
+  .animate-fan-row-in {
+    animation: none !important;
+  }
+  .animate-fan-row-in {
+    opacity: 1;
+  }
+}
+
 /* Discard pool tile arrival */
 @keyframes tile-arrive {
   0% { opacity: 0; transform: scale(0.6) translateY(-8px); }

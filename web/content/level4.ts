@@ -7,6 +7,7 @@ export const Level4: Level = {
   id: 4,
   title: "Scoring Fundamentals",
   description: "Master fan counting, payment calculation, and common scoring patterns",
+  recommendedAction: "Get fluent with fan, the currency of mahjong scoring.",
   unlockRequirement: "Complete Level 3",
   lessons: [
     {

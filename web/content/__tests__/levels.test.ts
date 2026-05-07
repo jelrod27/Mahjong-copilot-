@@ -65,4 +65,34 @@ describe('Content Levels', () => {
     expect(allText).toMatch(/fan/i);
     expect(allText).toMatch(/point/i);
   });
+
+  describe('PRD LEARN-01: recommendedAction', () => {
+    it('every level has a non-empty recommendedAction', () => {
+      for (const level of AllLevels) {
+        expect(level.recommendedAction, `level ${level.id} missing recommendedAction`).toBeTruthy();
+        expect(level.recommendedAction!.length).toBeGreaterThan(0);
+      }
+    });
+  });
+
+  describe('PRD LEARN-02: lesson takeaways and next-lesson links', () => {
+    it('every Level 1 lesson has at least 2 keyTakeaways', () => {
+      const level1 = getLevelById(1)!;
+      for (const lesson of level1.lessons) {
+        expect(lesson.keyTakeaways, `lesson ${lesson.id} missing keyTakeaways`).toBeDefined();
+        expect(lesson.keyTakeaways!.length).toBeGreaterThanOrEqual(2);
+      }
+    });
+
+    it('every Level 1 lesson except the last has a nextLessonId pointing to a real sibling', () => {
+      const level1 = getLevelById(1)!;
+      const ids = new Set(level1.lessons.map(l => l.id));
+      const lastId = level1.lessons[level1.lessons.length - 1].id;
+      for (const lesson of level1.lessons) {
+        if (lesson.id === lastId) continue;
+        expect(lesson.nextLessonId, `lesson ${lesson.id} missing nextLessonId`).toBeDefined();
+        expect(ids.has(lesson.nextLessonId!), `nextLessonId ${lesson.nextLessonId} is not a sibling`).toBe(true);
+      }
+    });
+  });
 });

@@ -78,7 +78,7 @@ describe('getTutorAdvice — phase gating', () => {
 });
 
 describe('getTutorAdvice — discard phase', () => {
-  it('detects a winning hand and tells the player to declare', () => {
+  it('returns general-type advice when the hand is winning', () => {
     const player = makePlayer({ hand: buildAllPungsHand() });
     const state = makeGameState({ players: [player] });
 
@@ -86,20 +86,29 @@ describe('getTutorAdvice — discard phase', () => {
 
     expect(advice).not.toBeNull();
     expect(advice!.type).toBe('general');
+  });
+
+  it('tells the player to declare when the hand is winning', () => {
+    const player = makePlayer({ hand: buildAllPungsHand() });
+    const state = makeGameState({ players: [player] });
+
+    const advice = getTutorAdvice(state, 0);
+
     expect(advice!.message.toLowerCase()).toContain('win');
   });
 
-  it('flags tenpai and lists the waiting tiles', () => {
-    // 4 pungs + a single 5-dot — needs another 5-dot to win.
-    // Hand has 13 tiles (no draw yet) so we are evaluating "what to keep."
-    const hand = [
-      dot(1, 1), dot(1, 2), dot(1, 3),
-      dot(2, 1), dot(2, 2), dot(2, 3),
-      dot(3, 1), dot(3, 2), dot(3, 3),
-      dot(4, 1), dot(4, 2), dot(4, 3),
-      dot(5, 1),
-    ];
-    const player = makePlayer({ hand });
+  // Tenpai fixture: 4 pungs + a single 5-dot — needs another 5-dot to win.
+  // 13 tiles (no draw yet) so we are evaluating "what to keep."
+  const tenpaiHand = () => [
+    dot(1, 1), dot(1, 2), dot(1, 3),
+    dot(2, 1), dot(2, 2), dot(2, 3),
+    dot(3, 1), dot(3, 2), dot(3, 3),
+    dot(4, 1), dot(4, 2), dot(4, 3),
+    dot(5, 1),
+  ];
+
+  it('flags isTenpai on a one-away hand', () => {
+    const player = makePlayer({ hand: tenpaiHand() });
     const state = makeGameState({ players: [player] });
 
     const advice = getTutorAdvice(state, 0);
@@ -107,6 +116,14 @@ describe('getTutorAdvice — discard phase', () => {
     expect(advice).not.toBeNull();
     expect(advice!.type).toBe('discard');
     expect(advice!.isTenpai).toBe(true);
+  });
+
+  it('lists the waiting tiles for a tenpai hand', () => {
+    const player = makePlayer({ hand: tenpaiHand() });
+    const state = makeGameState({ players: [player] });
+
+    const advice = getTutorAdvice(state, 0);
+
     expect(advice!.tenpaiWaits).toBeDefined();
     expect(advice!.tenpaiWaits!.length).toBeGreaterThan(0);
     expect(advice!.tenpaiWaits!.join(' ').toLowerCase()).toContain('dot');

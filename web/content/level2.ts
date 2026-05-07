@@ -7,6 +7,7 @@ export const Level2: Level = {
   id: 2,
   title: "Sets & Basic Hands",
   description: "Learn to combine tiles into Pungs, Chows, and Kongs to build winning hands",
+  recommendedAction: "Learn how tiles combine into pungs, chows, and kongs.",
   unlockRequirement: "Complete Level 1",
   lessons: [
     // LESSON 1: Introduction to Sets

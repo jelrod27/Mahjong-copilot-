@@ -7,6 +7,7 @@ export const Level5: Level = {
   id: 5,
   title: "Advanced Hands & Limit Hands",
   description: "Master rare and valuable hand patterns worth maximum points",
+  recommendedAction: "Aim for the high-value hands that score limit points.",
   unlockRequirement: "Complete Level 4",
   lessons: [
     // LESSON 1: Introduction to Limit Hands

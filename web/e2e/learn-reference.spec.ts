@@ -97,14 +97,25 @@ test.describe('Practice page', () => {
   test('start tile quiz, answer a question, verify feedback', async ({ page }) => {
     await page.goto('/practice');
 
-    await page.getByText('Tile Quiz').click();
+    await page.getByTestId('practice-card-tile-quiz').click();
 
     await expect(page.getByText('TILE QUIZ')).toBeVisible();
-    await expect(page.getByText('IDENTIFY THIS TILE')).toBeVisible();
+    // After PRACTICE-03 the round mixes three prompt types; the header is one of three.
+    await expect(
+      page
+        .getByText('IDENTIFY THIS TILE')
+        .or(page.getByText('WHAT IS THIS TILE?'))
+        .or(page.getByText('PICK THE MATCHING TILE')),
+    ).toBeVisible();
     await expect(page.getByText(/Question 1 of 10/)).toBeVisible();
 
-    const options = page.locator('button').filter({ hasText: /Dot|Bamboo|Character|Dragon|Wind|Flower|Season|Bonus/i });
-    await options.first().click();
+    // Click the first answer option. For description-to-name and image-to-name
+    // these are text buttons; for name-to-image they are tile buttons. Both
+    // route to the same feedback panel.
+    const optionButtons = page.locator(
+      'button[aria-label^="Tile option:"], button:has-text("Dot"), button:has-text("Bamboo"), button:has-text("Character"), button:has-text("Dragon"), button:has-text("Wind"), button:has-text("Flower"), button:has-text("Season"), button:has-text("Bonus")',
+    );
+    await optionButtons.first().click();
 
     await expect(
       page.getByText('Next Question').or(page.getByText('See Results')),

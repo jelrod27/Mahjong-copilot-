@@ -18,7 +18,7 @@ export default function LessonPage() {
   const level = getLevelById(levelId);
   const lesson = level?.lessons.find(l => l.id === lessonId);
 
-  const { markComplete } = useCompletedLessons();
+  const { completedLessons, markComplete } = useCompletedLessons();
 
   const [currentSection, setCurrentSection] = useState<'content' | 'quiz' | 'interactive'>('content');
   const [quizIndex, setQuizIndex] = useState(0);
@@ -88,21 +88,111 @@ export default function LessonPage() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Completion Modal */}
-      {showCompletionModal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="retro-card p-8 text-center max-w-sm w-full border-2 border-retro-gold rounded-xl animate-slide-up">
-            <p className="text-4xl mb-3">{hasQuiz ? '🎉' : '✓'}</p>
-            <h2 className="font-pixel text-sm text-retro-gold retro-glow mb-2">Lesson Complete!</h2>
-            <p className="text-retro-textDim font-retro mb-6">{completionMessage}</p>
-            <button
-              className="retro-btn-green w-full py-3 text-lg"
-              onClick={() => router.push(backToLevel)}
-            >
-              Continue
-            </button>
+      {showCompletionModal && (() => {
+        // The state update from markComplete may not have flushed yet, so
+        // count the just-completed lesson manually to get the "after" total.
+        const completedInLevelAfter = level
+          ? level.lessons.filter(
+              l => completedLessons.includes(l.id) || l.id === lesson.id,
+            ).length
+          : 0;
+        const totalInLevel = level?.lessons.length ?? 0;
+        const nextLesson = lesson.nextLessonId
+          ? level?.lessons.find(l => l.id === lesson.nextLessonId)
+          : undefined;
+
+        const handleNextLesson = () => {
+          if (nextLesson) {
+            router.push(`/learn/${levelId}/${nextLesson.id}`);
+          } else {
+            router.push(backToLevel);
+          }
+        };
+
+        const handleQuickReview = () => {
+          setShowCompletionModal(false);
+          setCurrentSection('content');
+        };
+
+        return (
+          <div
+            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+            data-testid="lesson-completion-modal"
+          >
+            <div className="retro-card p-6 max-w-sm w-full max-h-[90vh] overflow-y-auto border-2 border-retro-gold rounded-xl animate-slide-up">
+              <div className="text-center mb-4">
+                <p className="text-4xl mb-2">{hasQuiz ? '🎉' : '✓'}</p>
+                <h2 className="font-pixel text-sm text-retro-gold retro-glow mb-1">Lesson Complete!</h2>
+                <p className="text-retro-textDim font-retro text-sm">{completionMessage}</p>
+              </div>
+
+              {lesson.keyTakeaways && lesson.keyTakeaways.length > 0 && (
+                <div className="mb-4">
+                  <p className="font-pixel text-[10px] text-retro-cyan tracking-wider mb-2">
+                    YOU LEARNED
+                  </p>
+                  <ul className="space-y-1.5" data-testid="lesson-takeaways">
+                    {lesson.keyTakeaways.map((takeaway, i) => (
+                      <li
+                        key={i}
+                        className="flex gap-2 text-sm font-retro text-retro-text leading-snug"
+                      >
+                        <span className="text-retro-gold shrink-0" aria-hidden>
+                          •
+                        </span>
+                        <span>{takeaway}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {totalInLevel > 0 && (
+                <div className="mb-5">
+                  <p className="font-pixel text-[10px] text-retro-cyan tracking-wider mb-2">
+                    PROGRESS
+                  </p>
+                  <p
+                    className="text-sm font-retro text-retro-text"
+                    data-testid="lesson-progress-gain"
+                  >
+                    {completedInLevelAfter} of {totalInLevel} lessons in {level?.title}
+                  </p>
+                  <div className="mt-1.5 h-1.5 bg-retro-bgLight rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-retro-gold rounded-full transition-all duration-500"
+                      style={{ width: `${(completedInLevelAfter / totalInLevel) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <button
+                  className="retro-btn-green w-full py-3 text-base font-retro"
+                  onClick={handleNextLesson}
+                  data-testid="next-lesson-button"
+                >
+                  {nextLesson ? `Next: ${nextLesson.title}` : 'Back to Level'}
+                </button>
+                <button
+                  className="retro-btn w-full py-2.5 bg-retro-bgLight text-sm font-retro"
+                  onClick={handleQuickReview}
+                  data-testid="quick-review-button"
+                >
+                  Quick Review
+                </button>
+                <button
+                  className="w-full py-2 text-xs font-pixel text-retro-textDim hover:text-retro-cyan transition-colors"
+                  onClick={() => router.push(backToLevel)}
+                >
+                  Back to {level?.title ?? 'Level'}
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Header */}
       <div className="flex items-center p-4 border-b border-retro-border/20 bg-retro-bgLight">

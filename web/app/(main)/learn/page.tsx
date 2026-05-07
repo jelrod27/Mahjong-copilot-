@@ -5,6 +5,19 @@ import Link from 'next/link';
 import { AllLevels } from '@/content';
 import useCompletedLessons from '@/hooks/useCompletedLessons';
 
+/**
+ * Top-level path visualization. Pulled from level data — order and titles
+ * mirror what each level teaches so this stays in sync if levels are renamed.
+ */
+const PATH_STEPS: string[] = [
+  'Tiles',
+  'Sets',
+  'Winning Hands',
+  'Scoring',
+  'Strategy',
+  'Full Game',
+];
+
 
 export default function LearnPage() {
   const { completedLessons } = useCompletedLessons();
@@ -62,7 +75,7 @@ export default function LearnPage() {
         <div className="retro-card p-4 border-retro-cyan/40 bg-retro-cyan/5">
           <p className="font-pixel text-[10px] text-retro-cyan tracking-wider mb-2">YOUR PATH</p>
           <p className="font-retro text-sm text-retro-textDim leading-relaxed">
-            Tiles → Sets → Winning Hands → Scoring → Strategy → Full Game
+            {PATH_STEPS.join(' → ')}
           </p>
         </div>
         {AllLevels.map((level, index) => {
@@ -126,12 +139,13 @@ function LevelCard({
   isComplete,
   previousLevelTitle,
 }: {
-  level: { id: number; title: string; description: string; lessons: { id: string }[] };
+  level: { id: number; title: string; description: string; lessons: { id: string }[]; recommendedAction?: string };
   progress: { completed: number; total: number; percent: number };
   unlocked: boolean;
   isComplete: boolean;
   previousLevelTitle?: string;
 }) {
+  const minutes = Math.max(level.lessons.length * 2, 5);
   return (
     <div className="flex items-center">
       {/* Level number */}
@@ -158,12 +172,20 @@ function LevelCard({
         <p className={`text-[17px] font-retro mb-0.5 ${!unlocked ? 'text-retro-textDim' : 'text-retro-text'}`}>
           {level.title}
         </p>
-        <p className={`text-sm font-retro mb-2 ${!unlocked ? 'text-retro-textDim/50' : 'text-retro-textDim'}`}>
+        <p className={`text-sm font-retro mb-1 ${!unlocked ? 'text-retro-textDim/50' : 'text-retro-textDim'}`}>
           {level.description}
         </p>
+        {unlocked && level.recommendedAction && (
+          <p
+            className="text-xs font-retro italic text-retro-cyan mb-1.5"
+            data-testid={`recommended-action-${level.id}`}
+          >
+            {level.recommendedAction}
+          </p>
+        )}
         <p className={`text-xs font-retro mb-2 ${!unlocked ? 'text-retro-textDim/50' : 'text-retro-gold'}`}>
           {unlocked
-            ? `${level.lessons.length} lessons · ~${Math.max(level.lessons.length * 2, 5)} min${level.id === 1 ? ' · Start here if you are new' : ''}`
+            ? `${level.lessons.length} lessons · ~${minutes} min`
             : `Locked — complete “${previousLevelTitle}” to unlock.`}
         </p>
 

@@ -12,6 +12,7 @@ import GameHUD from './GameHUD';
 import ActionBar from './ActionBar';
 import ExposedMelds from './ExposedMelds';
 import TutorPanel from './TutorPanel';
+import GlossaryTerm from './GlossaryTerm';
 import FaanMeter from './FaanMeter';
 import DiscardReadingPanel from './DiscardReadingPanel';
 import GameToast from './GameToast';
@@ -284,7 +285,9 @@ export default function GameBoard({
           </div>
           <div className="flex items-center gap-2 md:gap-3 font-retro text-xs md:text-sm">
             {humanPlayer.flowers.length > 0 && (
-              <span className="text-retro-gold">🌸 ×{humanPlayer.flowers.length}</span>
+              <GlossaryTerm term="Bonus Tile">
+                <span className="text-retro-gold">🌸 ×{humanPlayer.flowers.length}</span>
+              </GlossaryTerm>
             )}
             <span className="text-retro-cyan">Score: {humanPlayer.score}</span>
           </div>
@@ -302,9 +305,11 @@ export default function GameBoard({
         {/* Tenpai badge — persistent across all phases in easy mode */}
         {tenpaiStatus?.isTenpai && (
           <div className="text-center">
-            <span className="font-pixel text-[8px] md:text-xs text-retro-green retro-glow animate-pulse">
-              TENPAI — ONE TILE AWAY
-            </span>
+            <GlossaryTerm term="Tenpai">
+              <span className="font-pixel text-[8px] md:text-xs text-retro-green retro-glow animate-pulse">
+                TENPAI — ONE TILE AWAY
+              </span>
+            </GlossaryTerm>
             {tenpaiStatus.waits.length > 0 && tenpaiStatus.waits[0] !== 'Already winning!' && (
               <span className="font-retro text-[10px] md:text-xs text-retro-cyan ml-1 md:ml-2">
                 Waiting: {tenpaiStatus.waits.slice(0, 3).join(', ')}

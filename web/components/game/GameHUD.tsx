@@ -8,6 +8,7 @@ import { TurnPhase } from '@/models/GameState';
 import soundManager from '@/lib/soundManager';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setShowTutor } from '@/store/actions/settingsActions';
+import GlossaryTerm from './GlossaryTerm';
 
 interface GameHUDProps {
   wallCount: number;
@@ -68,7 +69,9 @@ export default function GameHUD({
             {WIND_CHARS[prevailingWind]}
             {handNumber != null && <span className="text-retro-textDim ml-0.5">H{handNumber}</span>}
           </span>
-          <span className="text-retro-cyan">W:{wallCount}</span>
+          <GlossaryTerm term="Wall">
+            <span className="text-retro-cyan">W:{wallCount}</span>
+          </GlossaryTerm>
           <span className="text-retro-green text-[10px]">{PHASE_LABELS[turnPhase]}</span>
         </div>
         <div className="flex items-center gap-1">
@@ -146,13 +149,15 @@ export default function GameHUD({
 
       {/* Wind & Wall */}
       <div className="flex justify-between items-center mb-1">
-        <span className="text-retro-gold retro-glow">
-          {WIND_CHARS[prevailingWind]} Round
-          {handNumber != null && <span className="text-retro-textDim text-xs ml-1">H{handNumber}</span>}
-        </span>
-        <span className="text-retro-cyan">
-          Wall: {wallCount}
-        </span>
+        <GlossaryTerm term="Prevailing Wind">
+          <span className="text-retro-gold retro-glow">
+            {WIND_CHARS[prevailingWind]} Round
+            {handNumber != null && <span className="text-retro-textDim text-xs ml-1">H{handNumber}</span>}
+          </span>
+        </GlossaryTerm>
+        <GlossaryTerm term="Wall">
+          <span className="text-retro-cyan">Wall: {wallCount}</span>
+        </GlossaryTerm>
       </div>
 
       {/* Phase */}

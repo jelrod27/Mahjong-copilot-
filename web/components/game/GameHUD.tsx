@@ -6,6 +6,8 @@ import { Player } from '@/models/GameState';
 import { WindTile } from '@/models/Tile';
 import { TurnPhase } from '@/models/GameState';
 import soundManager from '@/lib/soundManager';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { setShowTutor } from '@/store/actions/settingsActions';
 
 interface GameHUDProps {
   wallCount: number;
@@ -34,6 +36,8 @@ export default function GameHUD({
 }: GameHUDProps) {
   const router = useRouter();
   const [soundOn, setSoundOn] = useState(soundManager.isEnabled());
+  const showTutor = useAppSelector(s => s.settings.showTutor);
+  const dispatch = useAppDispatch();
 
   const leaveToMenu = () => {
     if (
@@ -51,6 +55,10 @@ export default function GameHUD({
     if (next) soundManager.play('tilePlace');
   };
 
+  const toggleAssist = () => {
+    dispatch(setShowTutor(!showTutor));
+  };
+
   // Mobile compact mode: single-line bar
   if (compact) {
     return (
@@ -64,6 +72,19 @@ export default function GameHUD({
           <span className="text-retro-green text-[10px]">{PHASE_LABELS[turnPhase]}</span>
         </div>
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={toggleAssist}
+            className={`font-pixel text-[7px] px-1.5 py-0.5 rounded-sm border min-h-[28px] transition-colors ${
+              showTutor
+                ? 'border-retro-cyan/60 text-retro-cyan'
+                : 'border-retro-border/40 text-retro-textDim hover:text-retro-cyan'
+            }`}
+            aria-pressed={showTutor}
+            aria-label={showTutor ? 'Hide Beginner Assist hints' : 'Show Beginner Assist hints'}
+          >
+            HINT
+          </button>
           <button
             type="button"
             onClick={toggleSound}
@@ -91,6 +112,19 @@ export default function GameHUD({
       <div className="flex justify-between items-center gap-1 mb-1">
         <span className="text-retro-accent text-xs font-pixel shrink-0">╔══ GAME ══╗</span>
         <div className="flex items-center gap-0.5 shrink-0">
+          <button
+            type="button"
+            onClick={toggleAssist}
+            className={`font-pixel text-[8px] px-1.5 py-0.5 rounded-sm border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-retro-cyan/50 ${
+              showTutor
+                ? 'border-retro-cyan/60 text-retro-cyan'
+                : 'border-retro-border/40 text-retro-textDim hover:text-retro-cyan hover:border-retro-cyan/50'
+            }`}
+            aria-pressed={showTutor}
+            aria-label={showTutor ? 'Hide Beginner Assist hints' : 'Show Beginner Assist hints'}
+          >
+            HINT
+          </button>
           <button
             type="button"
             onClick={toggleSound}

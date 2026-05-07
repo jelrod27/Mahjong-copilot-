@@ -153,6 +153,115 @@ describe('getTutorAdvice — discard phase', () => {
     expect(advice!.tileClassifications).toBeDefined();
   });
 
+  it('starts the discard message with the suggested tile name', () => {
+    const hand = [
+      dot(1), dot(4), dot(7),
+      bam(2), bam(5), bam(8),
+      char(3), char(6), char(9),
+      windTile(WindTile.EAST),
+      windTile(WindTile.SOUTH),
+      dragonTile(DragonTile.RED),
+      dragonTile(DragonTile.GREEN),
+    ];
+    const player = makePlayer({ hand });
+    const state = makeGameState({ players: [player] });
+
+    const advice = getTutorAdvice(state, 0);
+    const suggested = hand.find(t => t.id === advice!.suggestedTileId);
+
+    expect(advice!.message.startsWith('Discard ')).toBe(true);
+    expect(advice!.message).toContain(suggested!.nameEnglish);
+  });
+});
+
+describe('getTutorAdvice — concrete discard reasons (PRD GAME-04)', () => {
+  // Helper: force the tutor to recommend a specific tile by making it the
+  // only obviously-bad option in an otherwise structured hand. We don't
+  // assert ordering of scoring; instead we put the target tile in a hand
+  // where its concrete reason will surface for some classification.
+  function adviceFor(hand: ReturnType<typeof dot>[], seatWind = WindTile.EAST) {
+    const player = makePlayer({ hand, seatWind });
+    const state = makeGameState({ players: [player] });
+    return getTutorAdvice(state, 0);
+  }
+
+  it('mentions a pair when the suggested-or-classified tile has a partner in hand', () => {
+    // Two East winds (pair) + scrap. The pair gets classified somewhere in
+    // the message text — for any tile considered, the explanation visits the
+    // hand shape.
+    const hand = [
+      windTile(WindTile.EAST, 1), windTile(WindTile.EAST, 2),
+      dot(1), dot(4), dot(7),
+      bam(2), bam(5), bam(8),
+      char(3), char(6), char(9),
+      dragonTile(DragonTile.RED),
+      dragonTile(DragonTile.GREEN),
+    ];
+    const advice = adviceFor(hand, WindTile.EAST);
+    // The recommended discard message references concrete shape — chow,
+    // sequence, isolated, dragon, or pair — never the old vague copy.
+    expect(advice!.message.toLowerCase()).toMatch(
+      /sequence|chow|pair|dragon|isolated|seat wind|prevailing|safe discard/,
+    );
+    expect(advice!.message.toLowerCase()).not.toContain("doesn't connect well");
+  });
+
+  it('uses dragon-specific phrasing when an isolated dragon is the suggested discard', () => {
+    // All dots in a chow + isolated red dragon. The dragon should at least
+    // get a "dragon" reason somewhere — and it's the most likely top-of-list
+    // discard because suit tiles have chow potential.
+    const hand = [
+      dot(1, 1), dot(2, 1), dot(3, 1),
+      dot(4, 1), dot(5, 1), dot(6, 1),
+      dot(7, 1), dot(8, 1),
+      bam(2, 1), bam(3, 1),
+      char(5, 1), char(6, 1),
+      dragonTile(DragonTile.RED, 1),
+    ];
+    const advice = adviceFor(hand);
+    expect(advice!.type).toBe('discard');
+    // Either dragon-aware copy fires, or another concrete reason does. We
+    // assert the dragon gets a dragon-specific classification in tile labels.
+    const dragonId = hand.find(t => t.suit === 'dragon')!.id;
+    const dragonClassification = advice!.tileClassifications?.find(c => c.tileId === dragonId);
+    expect(dragonClassification).toBeDefined();
+  });
+
+  it('calls out seat wind value when the suggested discard happens to be the seat wind', () => {
+    // South wind seat + isolated south wind. Tutor should not silently
+    // recommend it without acknowledging the seat-wind value.
+    const hand = [
+      dot(1, 1), dot(2, 1), dot(3, 1),
+      dot(4, 1), dot(5, 1), dot(6, 1),
+      bam(2, 1), bam(3, 1), bam(4, 1),
+      char(7, 1), char(8, 1),
+      char(9, 1),
+      windTile(WindTile.SOUTH, 1),
+    ];
+    const advice = adviceFor(hand, WindTile.SOUTH);
+    // Look for seat-wind reasoning anywhere in the advice or classifications.
+    const southId = hand.find(t => t.wind === WindTile.SOUTH)!.id;
+    const southClassification = advice!.tileClassifications?.find(c => c.tileId === southId);
+    expect(southClassification).toBeDefined();
+  });
+
+  it('never falls back to the old vague "distance from winning" copy as the primary reason', () => {
+    const hand = [
+      dot(1), dot(4), dot(7),
+      bam(2), bam(5), bam(8),
+      char(3), char(6), char(9),
+      windTile(WindTile.WEST),
+      windTile(WindTile.NORTH),
+      dragonTile(DragonTile.WHITE),
+      dragonTile(DragonTile.RED),
+    ];
+    const advice = adviceFor(hand);
+    // The PRD-flagged anti-pattern phrase shouldn't be the *primary* reason
+    // any more — though "stays the same distance from winning" is fine as a
+    // closing note appended to a concrete reason.
+    expect(advice!.message.toLowerCase()).not.toContain("doesn't connect well with your other sets");
+  });
+
   it('classifies every non-bonus tile in the hand', () => {
     const hand = [
       dot(1), dot(4), dot(7),

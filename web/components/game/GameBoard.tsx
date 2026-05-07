@@ -6,7 +6,14 @@ import { MatchState } from '@/models/MatchState';
 import type { AvailableClaim } from '@/engine/types';
 import type { Tile } from '@/models/Tile';
 import PlayerHand from './PlayerHand';
-import OpponentHand from './OpponentHand';
+import OpponentSeat from './OpponentSeat';
+import { NpcId } from '@/content/npcs';
+
+const NPC_BY_POSITION: Record<'left' | 'top' | 'right', NpcId> = {
+  left: 'mei',
+  top: 'hana',
+  right: 'yuki',
+};
 import DiscardPool from './DiscardPool';
 import GameHUD from './GameHUD';
 import ActionBar from './ActionBar';
@@ -113,11 +120,8 @@ export default function GameBoard({
 
   return (
     <div
-      className="h-screen w-full flex flex-col overflow-hidden"
+      className="h-screen w-full flex flex-col overflow-hidden game-table-felt"
       data-testid="game-board-root"
-      style={{
-        background: 'radial-gradient(ellipse at center, #1e2a22 0%, #0f1610 50%, #110e1a 100%)',
-      }}
     >
       <GameToast message={toastMessage} />
 
@@ -138,32 +142,44 @@ export default function GameBoard({
 
         {/* Mobile: compact top bar with all 3 opponents + minimal HUD */}
         <div className="flex md:hidden flex-1 items-center justify-between gap-1 px-1">
-          <OpponentHand
+          <OpponentSeat
             player={leftPlayer}
             position="left"
             isCurrentTurn={gameState.currentPlayerIndex === gameState.players.indexOf(leftPlayer)}
+            npcId={NPC_BY_POSITION.left}
+            gameState={gameState}
+            playerIndex={gameState.players.indexOf(leftPlayer)}
             compact
           />
-          <OpponentHand
+          <OpponentSeat
             player={topPlayer}
             position="top"
             isCurrentTurn={gameState.currentPlayerIndex === gameState.players.indexOf(topPlayer)}
+            npcId={NPC_BY_POSITION.top}
+            gameState={gameState}
+            playerIndex={gameState.players.indexOf(topPlayer)}
             compact
           />
-          <OpponentHand
+          <OpponentSeat
             player={rightPlayer}
             position="right"
             isCurrentTurn={gameState.currentPlayerIndex === gameState.players.indexOf(rightPlayer)}
+            npcId={NPC_BY_POSITION.right}
+            gameState={gameState}
+            playerIndex={gameState.players.indexOf(rightPlayer)}
             compact
           />
         </div>
 
         {/* Desktop: Top opponent centered */}
         <div className="hidden md:flex flex-1 justify-center">
-          <OpponentHand
+          <OpponentSeat
             player={topPlayer}
             position="top"
             isCurrentTurn={gameState.currentPlayerIndex === gameState.players.indexOf(topPlayer)}
+            npcId={NPC_BY_POSITION.top}
+            gameState={gameState}
+            playerIndex={gameState.players.indexOf(topPlayer)}
           />
         </div>
 
@@ -200,11 +216,14 @@ export default function GameBoard({
       {/* Middle row: Left opponent + Discard Pool + Right opponent */}
       <div className="flex-1 flex items-center px-1 md:px-2 gap-1 md:gap-2 min-h-0">
         {/* Left opponent — desktop only (mobile shows in top bar) */}
-        <div className="hidden md:flex w-24 shrink-0 justify-center">
-          <OpponentHand
+        <div className="hidden md:flex w-32 shrink-0 justify-center">
+          <OpponentSeat
             player={leftPlayer}
             position="left"
             isCurrentTurn={gameState.currentPlayerIndex === gameState.players.indexOf(leftPlayer)}
+            npcId={NPC_BY_POSITION.left}
+            gameState={gameState}
+            playerIndex={gameState.players.indexOf(leftPlayer)}
           />
         </div>
 
@@ -245,11 +264,14 @@ export default function GameBoard({
         </div>
 
         {/* Right opponent — desktop only (mobile shows in top bar) */}
-        <div className="hidden md:flex w-24 shrink-0 justify-center">
-          <OpponentHand
+        <div className="hidden md:flex w-32 shrink-0 justify-center">
+          <OpponentSeat
             player={rightPlayer}
             position="right"
             isCurrentTurn={gameState.currentPlayerIndex === gameState.players.indexOf(rightPlayer)}
+            npcId={NPC_BY_POSITION.right}
+            gameState={gameState}
+            playerIndex={gameState.players.indexOf(rightPlayer)}
           />
         </div>
       </div>

@@ -277,6 +277,7 @@ export default function TileQuiz({ onBack }: { onBack: () => void }) {
               return (
                 <button
                   key={option}
+                  data-testid={`tile-option-${option}`}
                   className={`w-full p-4 rounded-lg border-2 text-left font-retro text-lg transition-colors
                     ${!showResult ? 'bg-retro-bgLight border-retro-border/30 text-retro-text hover:border-retro-cyan/50' : ''}
                     ${showResult && isCorrect ? 'bg-retro-green/10 border-retro-green text-retro-text' : ''}

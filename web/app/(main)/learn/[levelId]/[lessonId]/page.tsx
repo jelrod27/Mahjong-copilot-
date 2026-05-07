@@ -116,14 +116,18 @@ export default function LessonPage() {
 
         return (
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="lesson-complete-title"
+            aria-describedby="lesson-complete-summary"
             className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
             data-testid="lesson-completion-modal"
           >
             <div className="retro-card p-6 max-w-sm w-full max-h-[90vh] overflow-y-auto border-2 border-retro-gold rounded-xl animate-slide-up">
               <div className="text-center mb-4">
                 <p className="text-4xl mb-2">{hasQuiz ? '🎉' : '✓'}</p>
-                <h2 className="font-pixel text-sm text-retro-gold retro-glow mb-1">Lesson Complete!</h2>
-                <p className="text-retro-textDim font-retro text-sm">{completionMessage}</p>
+                <h2 id="lesson-complete-title" className="font-pixel text-sm text-retro-gold retro-glow mb-1">Lesson Complete!</h2>
+                <p id="lesson-complete-summary" className="text-retro-textDim font-retro text-sm">{completionMessage}</p>
               </div>
 
               {lesson.keyTakeaways && lesson.keyTakeaways.length > 0 && (
@@ -172,6 +176,7 @@ export default function LessonPage() {
                   className="retro-btn-green w-full py-3 text-base font-retro"
                   onClick={handleNextLesson}
                   data-testid="next-lesson-button"
+                  autoFocus
                 >
                   {nextLesson ? `Next: ${nextLesson.title}` : 'Back to Level'}
                 </button>

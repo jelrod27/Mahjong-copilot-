@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { MatchState } from '@/models/MatchState';
 import { computeFinalRankings } from '@/engine/matchManager';
 import { recordMatchResult } from '@/lib/gameStats';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 interface MatchOverScreenProps {
   match: MatchState;
@@ -51,15 +52,24 @@ export default function MatchOverScreen({
   const rankColors = ['text-retro-gold', 'text-retro-cyan', 'text-retro-text', 'text-retro-textDim'];
   const rankLabels = ['1st', '2nd', '3rd', '4th'];
 
+  const modalRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(modalRef, showContent);
+
   return (
     <div className="fixed inset-0 bg-black/80 z-40 flex items-center justify-center p-2 md:p-4">
-      <div className={`retro-panel p-3 md:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto ${showContent ? 'animate-slide-up' : 'opacity-0'}`}>
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="match-over-heading"
+        className={`retro-panel p-3 md:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto ${showContent ? 'animate-slide-up' : 'opacity-0'}`}
+      >
         {/* Header */}
         <div className="text-center mb-3 md:mb-4">
           <div className="font-retro text-retro-accent text-xs md:text-sm">
             ╔════════════════════════╗
           </div>
-          <h2 className="font-pixel text-sm md:text-lg text-retro-gold retro-glow-strong my-1 md:my-2">
+          <h2 id="match-over-heading" className="font-pixel text-sm md:text-lg text-retro-gold retro-glow-strong my-1 md:my-2">
             GAME OVER
           </h2>
           <div className="font-retro text-retro-accent text-xs md:text-sm">

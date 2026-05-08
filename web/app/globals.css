@@ -25,7 +25,9 @@ body {
 
   .retro-btn {
     @apply font-retro text-lg px-4 py-2 border-2 border-retro-border text-retro-text
-           rounded-md transition-all duration-100 cursor-pointer select-none;
+           rounded-md transition-all duration-100 cursor-pointer select-none
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-retro-cyan/60
+           focus-visible:ring-offset-2 focus-visible:ring-offset-retro-bg;
     box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
   }
 

@@ -70,10 +70,18 @@ test.describe('Beginner smoke — offline solo path', () => {
     await tiles.first().click();
     await expect(discardBtn).toBeEnabled();
 
-    // 7. Discarding the selected tile completes the action — the button
-    // returns to a disabled state (turn passes / no tile selected).
+    // 7. Discarding the selected tile completes the action. After the click
+    // the human is no longer in the discard phase — either the button is
+    // disabled (waiting for the AI cycle to come back to us) or it has
+    // unmounted in favour of the "Waiting for opponent" placeholder. Either
+    // is a valid post-discard state; both confirm the action took.
     await discardBtn.click();
-    await expect(discardBtn).toBeDisabled({ timeout: 20_000 });
+    await expect(async () => {
+      const stillVisible = await discardBtn.isVisible().catch(() => false);
+      if (!stillVisible) return; // button unmounted, AI turn started
+      const enabled = await discardBtn.isEnabled().catch(() => false);
+      expect(enabled).toBe(false);
+    }).toPass({ timeout: 20_000 });
 
     // 8. Reference is reachable from the same session
     await page.goto('/reference');

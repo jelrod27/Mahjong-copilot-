@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { Player } from '@/models/GameState';
 import { WindTile } from '@/models/Tile';
 import { GameState } from '@/models/GameState';
@@ -7,7 +8,15 @@ import RetroTile from './RetroTile';
 import ExposedMelds from './ExposedMelds';
 import CharacterPortrait from '@/components/npc/CharacterPortrait';
 import { useNpcEmotion } from '@/components/npc/useNpcEmotion';
-import { NPCS, NpcId } from '@/content/npcs';
+import { NPCS, NpcId, NpcEmotion } from '@/content/npcs';
+
+/** Emotions that warrant a one-shot wiggle animation when entered. */
+const REACTIVE_EMOTIONS: ReadonlySet<NpcEmotion> = new Set([
+  'smug',
+  'surprised',
+  'triumphant',
+  'frustrated',
+]);
 
 interface OpponentSeatProps {
   player: Player;
@@ -47,6 +56,21 @@ export default function OpponentSeat({
   const isVertical = position === 'left' || position === 'right';
   const tileCount = player.hand.length;
 
+  // Track emotion transitions so the portrait wrapper can replay a one-shot
+  // wiggle animation each time the NPC enters a reactive emotion. Using an
+  // incrementing key forces React to remount the wrapper, which restarts the
+  // CSS animation cleanly — adding/removing the class alone wouldn't replay.
+  const [reactKey, setReactKey] = useState(0);
+  const prevEmotionRef = useRef<NpcEmotion>(emotion);
+  useEffect(() => {
+    if (emotion !== prevEmotionRef.current && REACTIVE_EMOTIONS.has(emotion)) {
+      setReactKey(k => k + 1);
+    }
+    prevEmotionRef.current = emotion;
+  }, [emotion]);
+
+  const haloClass = isCurrentTurn ? 'animate-ai-thinking-halo' : '';
+
   // Compact mobile layout: tiny portrait + single-line stats.
   if (compact) {
     return (
@@ -56,8 +80,10 @@ export default function OpponentSeat({
         }`}
         data-testid={`opponent-seat-${npcId}`}
       >
-        <div className="shrink-0 relative">
-          <CharacterPortrait character={npcId} emotion={emotion} size="sm" />
+        <div className={`shrink-0 relative ${haloClass}`} data-testid={`portrait-wrapper-${npcId}`}>
+          <div key={reactKey} className="animate-portrait-react">
+            <CharacterPortrait character={npcId} emotion={emotion} size="sm" />
+          </div>
           {voiceLine && <CompactBubble line={voiceLine} />}
         </div>
         <div className="flex flex-col min-w-0">
@@ -111,8 +137,13 @@ export default function OpponentSeat({
       data-testid={`opponent-seat-${npcId}`}
     >
       {/* Portrait + voice bubble */}
-      <div className="relative">
-        <CharacterPortrait character={npcId} emotion={emotion} size="md" />
+      <div
+        className={`relative ${haloClass}`}
+        data-testid={`portrait-wrapper-${npcId}`}
+      >
+        <div key={reactKey} className="animate-portrait-react">
+          <CharacterPortrait character={npcId} emotion={emotion} size="md" />
+        </div>
         {voiceLine && (
           <SpeechBubble line={voiceLine} side={position === 'right' ? 'left' : 'right'} />
         )}

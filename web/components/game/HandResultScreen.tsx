@@ -29,14 +29,20 @@ export default function HandResultScreen({
 
   const [showContent, setShowContent] = useState(false);
   const [displayedPoints, setDisplayedPoints] = useState(0);
+  // Bumped each time the count finishes — used as the React key on the
+  // score span so the punch animation replays on remount.
+  const [punchKey, setPunchKey] = useState(0);
   const targetPoints = scoringResult?.totalPoints ?? 0;
 
+  // Hold the modal back for ~750ms so the winner-spotlight cinematic plays
+  // before the score panel slides in. On a draw we skip the spotlight beat.
   useEffect(() => {
-    const timer = setTimeout(() => setShowContent(true), 300);
+    const delay = winner ? 800 : 250;
+    const timer = setTimeout(() => setShowContent(true), delay);
     return () => clearTimeout(timer);
-  }, []);
+  }, [winner]);
 
-  // Score counter animation
+  // Score counter animation — count up, then trigger one-shot punch on land.
   useEffect(() => {
     if (!showContent || targetPoints === 0) return;
     const duration = 1000;
@@ -47,6 +53,7 @@ export default function HandResultScreen({
       current += increment;
       if (current >= targetPoints) {
         setDisplayedPoints(targetPoints);
+        setPunchKey(k => k + 1);
         clearInterval(interval);
       } else {
         setDisplayedPoints(Math.floor(current));
@@ -61,6 +68,9 @@ export default function HandResultScreen({
   return (
     <div className="fixed inset-0 bg-black/80 z-40 flex items-center justify-center p-2 md:p-4">
       {humanWon && showContent && <Confetti />}
+      {winner && !showContent && (
+        <WinnerSpotlight name={winner.name} isHuman={humanWon} />
+      )}
       <div className={`retro-panel p-3 md:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto ${showContent ? 'animate-slide-up' : 'opacity-0'}`}>
         {/* Round + Hand header */}
         <div className="text-center mb-1">
@@ -147,7 +157,13 @@ export default function HandResultScreen({
                 style={{ animationDelay: `${0.27 + scoringResult.fans.length * 0.12}s` }}
               >
                 <span className="text-retro-green">Points</span>
-                <span className="text-retro-green retro-glow-strong">{displayedPoints}</span>
+                <span
+                  key={punchKey}
+                  className="text-retro-green retro-glow-strong animate-score-punch inline-block"
+                  data-testid="score-punch"
+                >
+                  {displayedPoints}
+                </span>
               </div>
               {scoringResult.handName && (
                 <div
@@ -265,6 +281,31 @@ export default function HandResultScreen({
             [ NEXT HAND ]
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Brief pre-modal winner cinematic. Big animated text overlay that holds
+ * for ~800ms, then the score panel slides up over it. Cheaper than a portrait
+ * pop since we don't have to map winner identity to an NpcId.
+ */
+function WinnerSpotlight({ name, isHuman }: { name: string; isHuman: boolean }) {
+  return (
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none px-4"
+      data-testid="winner-spotlight"
+      aria-hidden
+    >
+      <div className="animate-winner-spotlight text-center">
+        <p
+          className={`font-pixel text-3xl sm:text-5xl md:text-6xl retro-glow-strong ${
+            isHuman ? 'text-retro-green' : 'text-retro-gold'
+          }`}
+        >
+          {isHuman ? 'YOU WIN!' : `${name.toUpperCase()} WINS!`}
+        </p>
       </div>
     </div>
   );

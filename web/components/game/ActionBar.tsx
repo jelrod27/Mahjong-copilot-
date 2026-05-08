@@ -41,6 +41,31 @@ function claimSummaryLabel(claimType: string): string {
   }
 }
 
+/**
+ * Per-claim consequence + beginner recommendation. PRD GAME-06: each claim
+ * option needs to explain what set forms, whether it opens the hand, and
+ * give a starter recommendation. Keep copy short (one sentence each).
+ */
+function claimConsequence(claimType: string, tileName: string | undefined): string {
+  const tile = tileName ?? 'this tile';
+  switch (claimType) {
+    case 'win':
+      return `${tile} completes a winning hand — declare Mahjong!`;
+    case 'kong':
+      return `Forms an exposed Kong (four of a kind). Strong on dragons and your seat wind; you draw a replacement tile.`;
+    case 'pung':
+      return `Forms an exposed Pung (three of a kind). Reveals part of your hand, but locks in a useful set.`;
+    case 'chow':
+      return `Forms an exposed Chow (sequence). Reveals part of your hand — only worth it if it speeds up your shape.`;
+    default:
+      return 'Take this tile.';
+  }
+}
+
+/** PRD GAME-06: Pass should be explained as a strategic choice, not a dismiss. */
+const PASS_HINT =
+  'Keeping your hand concealed is often better — pass if the claim does not improve your shape.';
+
 export default function ActionBar({
   canDiscard, canDeclareKong, canDeclareWin, hasClaimOptions,
   claimOptions, discardedTile, selectedTileName,
@@ -141,9 +166,21 @@ export default function ActionBar({
           </button>
         </div>
         {best && (
-          <p className="text-center font-retro text-xs text-retro-textDim px-2">
-            {claimSummaryLabel(best.claimType)} — adds the highlighted discard to your hand.
-          </p>
+          <div className="space-y-0.5 px-2 text-center">
+            <p
+              className="font-retro text-xs text-retro-text leading-snug"
+              data-testid="claim-consequence"
+            >
+              <span className="font-bold text-retro-cyan">{claimSummaryLabel(best.claimType)}.</span>{' '}
+              {claimConsequence(best.claimType, discardedTile?.nameEnglish)}
+            </p>
+            <p
+              className="font-retro text-[10px] text-retro-textDim leading-snug"
+              data-testid="claim-pass-hint"
+            >
+              <span className="font-bold text-retro-textDim">Pass:</span> {PASS_HINT}
+            </p>
+          </div>
         )}
       </div>
     );

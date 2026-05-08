@@ -18,8 +18,13 @@ interface ChowSelectorProps {
 export default function ChowSelector({ options, discardedTile, onSelect, onPass }: ChowSelectorProps) {
   return (
     <div className="space-y-1 md:space-y-2 py-1 md:py-2 px-1 md:px-2">
-      <div className="font-pixel text-[10px] md:text-xs text-retro-cyan text-center mb-1">
-        Choose your Chow:
+      <div className="text-center mb-1">
+        <p className="font-pixel text-[10px] md:text-xs text-retro-cyan">
+          Choose your Chow:
+        </p>
+        <p className="font-retro text-[10px] text-retro-textDim mt-0.5 px-2">
+          A Chow reveals part of your hand — pick the sequence that best fits your shape, or pass to stay concealed.
+        </p>
       </div>
       <div className="flex flex-col items-center gap-1.5 md:gap-2">
         {options.map((handTiles, i) => {

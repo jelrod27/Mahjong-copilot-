@@ -61,28 +61,18 @@ export default function PlayPage() {
           GAME MODE
         </div>
         <div className="flex flex-col gap-2">
-          <button
+          <SelectableButton
+            selected={mode === 'quick'}
             onClick={() => setMode('quick')}
-            className={`retro-btn text-center w-full text-left ${
-              mode === 'quick'
-                ? 'bg-retro-accent text-white border-retro-gold'
-                : 'bg-retro-bgLight'
-            }`}
-          >
-            <div>► QUICK GAME</div>
-            <div className="font-retro text-xs text-retro-textDim mt-0.5">East round only (~4 hands)</div>
-          </button>
-          <button
+            primary="QUICK GAME"
+            secondary="East round only (~4 hands)"
+          />
+          <SelectableButton
+            selected={mode === 'full'}
             onClick={() => setMode('full')}
-            className={`retro-btn text-center w-full text-left ${
-              mode === 'full'
-                ? 'bg-retro-accent text-white border-retro-gold'
-                : 'bg-retro-bgLight'
-            }`}
-          >
-            <div>► FULL GAME</div>
-            <div className="font-retro text-xs text-retro-textDim mt-0.5">All 4 rounds (~16 hands)</div>
-          </button>
+            primary="FULL GAME"
+            secondary="All 4 rounds (~16 hands)"
+          />
         </div>
       </div>
 
@@ -92,21 +82,21 @@ export default function PlayPage() {
           SELECT DIFFICULTY
         </div>
         <div className="flex flex-col gap-2">
-          {(['easy', 'medium', 'hard'] as Difficulty[]).map((d) => (
-            <button
-              key={d}
-              onClick={() => setDifficulty(d)}
-              className={`retro-btn text-center w-full ${
-                difficulty === d
-                  ? 'bg-retro-accent text-white border-retro-gold'
-                  : 'bg-retro-bgLight'
-              }`}
-            >
-              {d === 'easy' && '► EASY — Random AI'}
-              {d === 'medium' && '► MEDIUM — Smart AI'}
-              {d === 'hard' && '► HARD — Strategic AI'}
-            </button>
-          ))}
+          {(['easy', 'medium', 'hard'] as Difficulty[]).map((d) => {
+            const primary: Record<Difficulty, string> = {
+              easy: 'EASY — Random AI',
+              medium: 'MEDIUM — Smart AI',
+              hard: 'HARD — Strategic AI',
+            };
+            return (
+              <SelectableButton
+                key={d}
+                selected={difficulty === d}
+                onClick={() => setDifficulty(d)}
+                primary={primary[d]}
+              />
+            );
+          })}
         </div>
       </div>
 
@@ -117,21 +107,13 @@ export default function PlayPage() {
         </div>
         <div className="flex flex-col gap-2">
           {MIN_FAAN_OPTIONS.map((opt) => (
-            <button
+            <SelectableButton
               key={opt.value}
-              type="button"
+              selected={minFaan === opt.value}
               onClick={() => setMinFaan(opt.value)}
-              aria-pressed={minFaan === opt.value}
-              aria-label={`${opt.label}: ${opt.description}`}
-              className={`retro-btn text-center w-full text-left ${
-                minFaan === opt.value
-                  ? 'bg-retro-accent text-white border-retro-gold'
-                  : 'bg-retro-bgLight'
-              }`}
-            >
-              <div>► {opt.label}</div>
-              <div className="font-retro text-xs text-retro-textDim mt-0.5">{opt.description}</div>
-            </button>
+              primary={opt.label}
+              secondary={opt.description}
+            />
           ))}
         </div>
       </div>
@@ -172,5 +154,60 @@ export default function PlayPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Reusable selector button — distinguishes selected state with both color
+ * AND a leading checkmark / arrow glyph + ARIA, satisfying PRD A11Y-02
+ * (no color-only state). Used by all three Play-screen selectors.
+ */
+function SelectableButton({
+  selected,
+  onClick,
+  primary,
+  secondary,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  primary: string;
+  secondary?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`retro-btn text-left w-full ${
+        selected
+          ? 'bg-retro-accent text-white border-retro-gold'
+          : 'bg-retro-bgLight'
+      }`}
+    >
+      <div className="flex items-start gap-2">
+        <span
+          className={`font-pixel text-xs mt-0.5 shrink-0 ${
+            selected ? 'text-retro-green' : 'text-retro-textDim'
+          }`}
+          aria-hidden
+        >
+          {selected ? '✓' : '►'}
+        </span>
+        <div className="flex-1 min-w-0">
+          <div>{primary}</div>
+          {secondary && (
+            <div className="font-retro text-xs text-retro-textDim mt-0.5">{secondary}</div>
+          )}
+        </div>
+        {selected && (
+          <span
+            className="font-pixel text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-retro-green/25 text-retro-green shrink-0"
+            data-testid="selected-badge"
+          >
+            Selected
+          </span>
+        )}
+      </div>
+    </button>
   );
 }

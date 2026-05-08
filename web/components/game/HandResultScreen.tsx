@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { GameState } from '@/models/GameState';
 import { MatchState, HandResult } from '@/models/MatchState';
 import { ScoringResult } from '@/engine/types';
@@ -9,6 +9,7 @@ import RetroTile from './RetroTile';
 import ExposedMelds from './ExposedMelds';
 import HandReplayScrubber from './HandReplayScrubber';
 import Confetti from './Confetti';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 interface HandResultScreenProps {
   gameState: GameState;
@@ -65,13 +66,22 @@ export default function HandResultScreen({
   const roundName = match.currentRound.toUpperCase();
   const handNum = lastResult?.handNumber ?? match.handNumber;
 
+  const modalRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(modalRef, showContent);
+
   return (
     <div className="fixed inset-0 bg-black/80 z-40 flex items-center justify-center p-2 md:p-4">
       {humanWon && showContent && <Confetti />}
       {winner && !showContent && (
         <WinnerSpotlight name={winner.name} isHuman={humanWon} />
       )}
-      <div className={`retro-panel p-3 md:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto ${showContent ? 'animate-slide-up' : 'opacity-0'}`}>
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="hand-result-heading"
+        className={`retro-panel p-3 md:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto ${showContent ? 'animate-slide-up' : 'opacity-0'}`}
+      >
         {/* Round + Hand header */}
         <div className="text-center mb-1">
           <span className="font-retro text-xs text-retro-textDim">
@@ -85,11 +95,11 @@ export default function HandResultScreen({
             ╔════════════════════════╗
           </div>
           {isDraw ? (
-            <h2 className="font-pixel text-sm md:text-lg text-retro-gold retro-glow my-1 md:my-2">
+            <h2 id="hand-result-heading" className="font-pixel text-sm md:text-lg text-retro-gold retro-glow my-1 md:my-2">
               DRAW GAME
             </h2>
           ) : (
-            <h2 className="font-pixel text-sm md:text-lg text-retro-green retro-glow my-1 md:my-2">
+            <h2 id="hand-result-heading" className="font-pixel text-sm md:text-lg text-retro-green retro-glow my-1 md:my-2">
               {winner?.id === 'human-player' ? 'YOU WIN!' : `${winner?.name} WINS`}
             </h2>
           )}

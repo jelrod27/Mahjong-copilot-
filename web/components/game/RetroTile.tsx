@@ -1,6 +1,8 @@
 'use client';
 
 import { Tile, TileType, TileSuit, WindTile, DragonTile } from '@/models/Tile';
+import { useTilePalette } from './TilePaletteContext';
+import { TilePalette } from '@/lib/cosmetics';
 
 interface RetroTileProps {
   tile: Tile;
@@ -14,6 +16,8 @@ interface RetroTileProps {
   disabled?: boolean;
   tutorColor?: 'green' | 'orange' | 'red';
   tutorLabel?: 'GOOD' | 'OK' | 'KEEP';
+  /** Override the contextual palette (used by cosmetics preview thumbnails). */
+  paletteOverride?: TilePalette;
 }
 
 const SIZES = {
@@ -21,16 +25,6 @@ const SIZES = {
   sm: { w: 32, h: 48 },
   md: { w: 44, h: 66 },
   lg: { w: 56, h: 84 },
-};
-
-const SUIT_COLORS: Record<string, string> = {
-  [TileSuit.BAMBOO]: '#4CAF50',
-  [TileSuit.CHARACTER]: '#ef4444',
-  [TileSuit.DOT]: '#3b82f6',
-  [TileSuit.WIND]: '#a1a1aa',
-  [TileSuit.DRAGON]: '#a1a1aa',
-  [TileSuit.FLOWER]: '#f5b731',
-  [TileSuit.SEASON]: '#f5b731',
 };
 
 function getSymbol(tile: Tile): string {
@@ -73,10 +67,14 @@ const TUTOR_COLORS: Record<string, string> = {
 export default function RetroTile({
   tile, size = 'md', showBack = false, isSelected = false, isSuggested = false,
   isLastDiscarded = false, isNewlyDrawn = false, onClick, disabled = false,
-  tutorColor, tutorLabel,
+  tutorColor, tutorLabel, paletteOverride,
 }: RetroTileProps) {
+  const ctxPalette = useTilePalette();
+  const palette = paletteOverride ?? ctxPalette;
   const { w, h } = SIZES[size];
-  const suitColor = SUIT_COLORS[tile.suit] || '#a1a1aa';
+  const suitColor = palette.suitColors[tile.suit] || '#a1a1aa';
+  const faceBg = palette.faceBg;
+  const stripeHeight = palette.stripeHeight;
   const accessibilityState = [
     isSelected ? 'selected' : null,
     isSuggested ? 'suggested discard' : null,
@@ -117,10 +115,10 @@ export default function RetroTile({
         ${isNewlyDrawn ? 'animate-tile-draw' : ''}
         ${isSuggested && !isSelected ? 'animate-pulse-gold' : ''}
       `}
-      style={{ width: w, height: h, backgroundColor: '#FFF8E1' }}
+      style={{ width: w, height: h, backgroundColor: faceBg }}
     >
       {/* Suit color bar + tutor indicator */}
-      <div className="h-1 w-full" style={{ backgroundColor: suitColor }} />
+      <div style={{ height: stripeHeight, width: '100%', backgroundColor: suitColor }} />
       {tutorColor && (
         <div
           className="h-[3px] w-full"

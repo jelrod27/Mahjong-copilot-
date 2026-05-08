@@ -11,9 +11,9 @@ const ALL_EMOTIONS: NpcEmotion[] = [
 ];
 
 describe('NPC roster', () => {
-  it('has exactly 3 characters', () => {
-    expect(Object.keys(NPCS)).toHaveLength(3);
-    expect(Object.keys(NPCS).sort()).toEqual(['hana', 'mei', 'yuki']);
+  it('has both rosters: original (Mei/Hana/Yuki) and alt (Riko/Aki/Sora)', () => {
+    expect(Object.keys(NPCS)).toHaveLength(6);
+    expect(Object.keys(NPCS).sort()).toEqual(['aki', 'hana', 'mei', 'riko', 'sora', 'yuki']);
   });
 
   it('every character has a name, archetype, and blurb', () => {

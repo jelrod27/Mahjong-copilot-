@@ -35,6 +35,30 @@ export default function CharacterPortrait({
   const traits = npc.visualTraits;
   const px = SIZE_PX[size];
 
+  // Round 2 art-swap path: when an image override exists for this emotion,
+  // render it directly. Falls back to the SVG rig for emotions without art
+  // so partial art sets are valid.
+  const imageOverride = npc.portraitImageSet?.[emotion];
+  if (imageOverride) {
+    // Plain <img> rather than next/image: portraitImageSet entries may be
+    // arbitrary data/blob/remote URLs that the consumer supplies at runtime,
+    // and we don't want to force every drop-in art set through a domain
+    // allowlist. Lazy + async hints offset most of the LCP cost.
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={imageOverride}
+        alt={`${npc.name}, ${emotion}`}
+        width={px}
+        height={px * 1.2}
+        data-testid={`portrait-${character}-${emotion}`}
+        className="select-none object-contain"
+        loading="lazy"
+        decoding="async"
+      />
+    );
+  }
+
   return (
     <svg
       viewBox="0 0 200 240"

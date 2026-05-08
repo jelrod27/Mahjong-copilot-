@@ -43,6 +43,9 @@ export class AppConstants {
   static readonly SHOW_TUTOR_KEY = 'show_tutor';
   static readonly LIVE_FAAN_METER_KEY = 'live_faan_meter';
   static readonly TILE_VOICE_KEY = 'tile_voice';
+  static readonly TILE_PALETTE_KEY = 'tile_palette';
+  static readonly TABLE_FELT_KEY = 'table_felt';
+  static readonly NPC_ROSTER_KEY = 'npc_roster';
   static readonly OFFLINE_PROGRESS_KEY = 'offline_progress';
 }
 

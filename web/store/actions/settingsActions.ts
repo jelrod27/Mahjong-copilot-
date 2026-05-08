@@ -79,19 +79,21 @@ export const initializeSettings = () => async (dispatch: any) => {
 
     const tilePaletteRaw = await StorageService.getString(AppConstants.TILE_PALETTE_KEY);
     const tilePalette: TilePaletteId =
-      tilePaletteRaw && tilePaletteRaw in TILE_PALETTES
+      tilePaletteRaw && Object.hasOwn(TILE_PALETTES, tilePaletteRaw)
         ? (tilePaletteRaw as TilePaletteId)
         : DEFAULT_TILE_PALETTE;
 
     const tableFeltRaw = await StorageService.getString(AppConstants.TABLE_FELT_KEY);
     const tableFelt: TableFeltId =
-      tableFeltRaw && tableFeltRaw in TABLE_FELTS
+      tableFeltRaw && Object.hasOwn(TABLE_FELTS, tableFeltRaw)
         ? (tableFeltRaw as TableFeltId)
         : DEFAULT_TABLE_FELT;
 
     const rosterRaw = await StorageService.getString(AppConstants.NPC_ROSTER_KEY);
     const npcRoster: RosterId =
-      rosterRaw && rosterRaw in ROSTERS ? (rosterRaw as RosterId) : DEFAULT_ROSTER;
+      rosterRaw && Object.hasOwn(ROSTERS, rosterRaw)
+        ? (rosterRaw as RosterId)
+        : DEFAULT_ROSTER;
 
     dispatch({
       type: SETTINGS_INITIALIZE,

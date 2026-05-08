@@ -121,9 +121,9 @@ export default function GameBoard({
   const roster = getRoster(rosterId);
   const felt = getTableFelt(feltId);
   const NPC_BY_POSITION: Record<'left' | 'top' | 'right', NpcId> = {
-    left: roster.seats.left as NpcId,
-    top: roster.seats.top as NpcId,
-    right: roster.seats.right as NpcId,
+    left: roster.seats.left,
+    top: roster.seats.top,
+    right: roster.seats.right,
   };
 
   return (

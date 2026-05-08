@@ -90,10 +90,12 @@ describe('lookup helpers fall back to defaults on bad input', () => {
   it('getTableFelt returns classic-green for unknown id', () => {
     expect(getTableFelt('not-a-felt' as never).id).toBe('classic-green');
     expect(getTableFelt(undefined).id).toBe('classic-green');
+    expect(getTableFelt(null).id).toBe('classic-green');
   });
 
   it('getRoster returns default for unknown id', () => {
     expect(getRoster('not-a-roster' as never).id).toBe('default');
     expect(getRoster(undefined).id).toBe('default');
+    expect(getRoster(null).id).toBe('default');
   });
 });

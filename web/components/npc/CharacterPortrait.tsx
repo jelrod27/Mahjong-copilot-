@@ -55,6 +55,7 @@ export default function CharacterPortrait({
         className="select-none object-contain"
         loading="lazy"
         decoding="async"
+        referrerPolicy="no-referrer"
       />
     );
   }

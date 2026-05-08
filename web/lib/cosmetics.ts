@@ -6,6 +6,7 @@
  */
 
 import { TileSuit } from '@/models/Tile';
+import type { NpcId } from '@/content/npcs';
 
 export type TilePaletteId = 'retro' | 'ivory' | 'neon' | 'bone-wood';
 
@@ -154,7 +155,7 @@ export interface RosterMeta {
   label: string;
   description: string;
   /** Which NPC ids fill the left/top/right seats for this roster. */
-  seats: { left: string; top: string; right: string };
+  seats: { left: NpcId; top: NpcId; right: NpcId };
 }
 
 export const ROSTERS: Record<RosterId, RosterMeta> = {

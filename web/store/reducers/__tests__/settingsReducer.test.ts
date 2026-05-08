@@ -17,6 +17,9 @@ const initialState = {
   showTutor: true,
   liveFaanMeter: true,
   tileVoice: 'off' as const,
+  tilePalette: 'retro' as const,
+  tableFelt: 'classic-green' as const,
+  npcRoster: 'default' as const,
 };
 
 describe('settingsReducer', () => {

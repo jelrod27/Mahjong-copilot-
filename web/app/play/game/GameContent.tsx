@@ -7,6 +7,7 @@ import GameErrorBoundary from '@/components/game/GameErrorBoundary';
 import HandResultScreen from '@/components/game/HandResultScreen';
 import MatchOverScreen from '@/components/game/MatchOverScreen';
 import VoiceSubtitle from '@/components/game/VoiceSubtitle';
+import { TilePaletteProvider } from '@/components/game/TilePaletteContext';
 import { GameMode } from '@/models/MatchState';
 import { useAppSelector } from '@/store/hooks';
 
@@ -46,6 +47,7 @@ export default function GameContent() {
 
   return (
     <GameErrorBoundary>
+      <TilePaletteProvider>
       <VoiceSubtitle />
       <GameBoard
         gameState={controller.game}
@@ -89,6 +91,7 @@ export default function GameContent() {
           onBackToMenu={() => router.push('/play')}
         />
       )}
+      </TilePaletteProvider>
     </GameErrorBoundary>
   );
 }

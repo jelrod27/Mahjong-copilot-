@@ -7,13 +7,9 @@ import type { AvailableClaim } from '@/engine/types';
 import type { Tile } from '@/models/Tile';
 import PlayerHand from './PlayerHand';
 import OpponentSeat from './OpponentSeat';
+import { useAppSelector } from '@/store/hooks';
+import { getRoster, getTableFelt } from '@/lib/cosmetics';
 import { NpcId } from '@/content/npcs';
-
-const NPC_BY_POSITION: Record<'left' | 'top' | 'right', NpcId> = {
-  left: 'mei',
-  top: 'hana',
-  right: 'yuki',
-};
 import DiscardPool from './DiscardPool';
 import GameHUD from './GameHUD';
 import ActionBar from './ActionBar';
@@ -118,9 +114,21 @@ export default function GameBoard({
   const showClaimHighlight =
     gameState.turnPhase === 'claim' && hasClaimOptions && isHumanTurn;
 
+  // Cosmetic preferences: which roster fills the seats, which felt paints the
+  // table. Both fall back to defaults if settings aren't yet hydrated.
+  const rosterId = useAppSelector(s => s.settings.npcRoster);
+  const feltId = useAppSelector(s => s.settings.tableFelt);
+  const roster = getRoster(rosterId);
+  const felt = getTableFelt(feltId);
+  const NPC_BY_POSITION: Record<'left' | 'top' | 'right', NpcId> = {
+    left: roster.seats.left,
+    top: roster.seats.top,
+    right: roster.seats.right,
+  };
+
   return (
     <div
-      className="h-screen w-full flex flex-col overflow-hidden game-table-felt"
+      className={`h-screen w-full flex flex-col overflow-hidden game-table-felt ${felt.className}`}
       data-testid="game-board-root"
     >
       <GameToast message={toastMessage} />

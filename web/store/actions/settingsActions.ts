@@ -1,5 +1,16 @@
 import StorageService from '@/lib/storageService';
 import { AppConstants } from '@/constants/appConstants';
+import {
+  TilePaletteId,
+  TableFeltId,
+  RosterId,
+  TILE_PALETTES,
+  TABLE_FELTS,
+  ROSTERS,
+  DEFAULT_TILE_PALETTE,
+  DEFAULT_TABLE_FELT,
+  DEFAULT_ROSTER,
+} from '@/lib/cosmetics';
 
 export interface SettingsState {
   selectedVariant: string;
@@ -15,6 +26,12 @@ export interface SettingsState {
   liveFaanMeter: boolean;
   /** Voice callouts for discarded tiles: 'off', 'cantonese' (preferred), or 'english'. */
   tileVoice: 'off' | 'cantonese' | 'english';
+  /** Cosmetic preference for the tile face artwork. */
+  tilePalette: TilePaletteId;
+  /** Cosmetic preference for the table felt background. */
+  tableFelt: TableFeltId;
+  /** Which NPC roster fills the opponent seats. */
+  npcRoster: RosterId;
 }
 
 export const SETTINGS_INITIALIZE = 'SETTINGS_INITIALIZE' as const;
@@ -27,6 +44,9 @@ export const SETTINGS_SET_LARGER_UI_TEXT = 'SETTINGS_SET_LARGER_UI_TEXT' as cons
 export const SETTINGS_SET_SHOW_TUTOR = 'SETTINGS_SET_SHOW_TUTOR' as const;
 export const SETTINGS_SET_LIVE_FAAN_METER = 'SETTINGS_SET_LIVE_FAAN_METER' as const;
 export const SETTINGS_SET_TILE_VOICE = 'SETTINGS_SET_TILE_VOICE' as const;
+export const SETTINGS_SET_TILE_PALETTE = 'SETTINGS_SET_TILE_PALETTE' as const;
+export const SETTINGS_SET_TABLE_FELT = 'SETTINGS_SET_TABLE_FELT' as const;
+export const SETTINGS_SET_NPC_ROSTER = 'SETTINGS_SET_NPC_ROSTER' as const;
 
 export type SettingsAction =
   | { type: typeof SETTINGS_INITIALIZE; payload: SettingsState }
@@ -38,7 +58,10 @@ export type SettingsAction =
   | { type: typeof SETTINGS_SET_LARGER_UI_TEXT; payload: boolean }
   | { type: typeof SETTINGS_SET_SHOW_TUTOR; payload: boolean }
   | { type: typeof SETTINGS_SET_LIVE_FAAN_METER; payload: boolean }
-  | { type: typeof SETTINGS_SET_TILE_VOICE; payload: SettingsState['tileVoice'] };
+  | { type: typeof SETTINGS_SET_TILE_VOICE; payload: SettingsState['tileVoice'] }
+  | { type: typeof SETTINGS_SET_TILE_PALETTE; payload: TilePaletteId }
+  | { type: typeof SETTINGS_SET_TABLE_FELT; payload: TableFeltId }
+  | { type: typeof SETTINGS_SET_NPC_ROSTER; payload: RosterId };
 
 export const initializeSettings = () => async (dispatch: any) => {
   try {
@@ -54,6 +77,24 @@ export const initializeSettings = () => async (dispatch: any) => {
     const tileVoice: SettingsState['tileVoice'] =
       tileVoiceRaw === 'cantonese' || tileVoiceRaw === 'english' ? tileVoiceRaw : 'off';
 
+    const tilePaletteRaw = await StorageService.getString(AppConstants.TILE_PALETTE_KEY);
+    const tilePalette: TilePaletteId =
+      tilePaletteRaw && Object.hasOwn(TILE_PALETTES, tilePaletteRaw)
+        ? (tilePaletteRaw as TilePaletteId)
+        : DEFAULT_TILE_PALETTE;
+
+    const tableFeltRaw = await StorageService.getString(AppConstants.TABLE_FELT_KEY);
+    const tableFelt: TableFeltId =
+      tableFeltRaw && Object.hasOwn(TABLE_FELTS, tableFeltRaw)
+        ? (tableFeltRaw as TableFeltId)
+        : DEFAULT_TABLE_FELT;
+
+    const rosterRaw = await StorageService.getString(AppConstants.NPC_ROSTER_KEY);
+    const npcRoster: RosterId =
+      rosterRaw && Object.hasOwn(ROSTERS, rosterRaw)
+        ? (rosterRaw as RosterId)
+        : DEFAULT_ROSTER;
+
     dispatch({
       type: SETTINGS_INITIALIZE,
       payload: {
@@ -66,6 +107,9 @@ export const initializeSettings = () => async (dispatch: any) => {
         showTutor,
         liveFaanMeter,
         tileVoice,
+        tilePalette,
+        tableFelt,
+        npcRoster,
       },
     });
   } catch (error) {
@@ -116,4 +160,19 @@ export const setLiveFaanMeter = (enabled: boolean) => async (dispatch: any) => {
 export const setTileVoice = (mode: SettingsState['tileVoice']) => async (dispatch: any) => {
   await StorageService.setString(AppConstants.TILE_VOICE_KEY, mode);
   dispatch({ type: SETTINGS_SET_TILE_VOICE, payload: mode });
+};
+
+export const setTilePalette = (id: TilePaletteId) => async (dispatch: any) => {
+  await StorageService.setString(AppConstants.TILE_PALETTE_KEY, id);
+  dispatch({ type: SETTINGS_SET_TILE_PALETTE, payload: id });
+};
+
+export const setTableFelt = (id: TableFeltId) => async (dispatch: any) => {
+  await StorageService.setString(AppConstants.TABLE_FELT_KEY, id);
+  dispatch({ type: SETTINGS_SET_TABLE_FELT, payload: id });
+};
+
+export const setNpcRoster = (id: RosterId) => async (dispatch: any) => {
+  await StorageService.setString(AppConstants.NPC_ROSTER_KEY, id);
+  dispatch({ type: SETTINGS_SET_NPC_ROSTER, payload: id });
 };

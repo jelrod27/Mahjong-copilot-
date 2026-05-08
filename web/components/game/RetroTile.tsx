@@ -112,7 +112,7 @@ export default function RetroTile({
     <div
       className={`
         flex flex-col rounded-sm border-2 overflow-hidden transition-all duration-100
-        ${isSelected ? 'border-retro-cyan -translate-y-2 shadow-[0_0_10px_#45b7d160]' : isSuggested ? 'border-retro-gold shadow-[0_0_10px_#f5b73160]' : 'border-retro-textDim'}
+        ${isSelected ? 'border-retro-cyan -translate-y-2 -rotate-1 animate-select-pulse' : isSuggested ? 'border-retro-gold shadow-[0_0_10px_#f5b73160]' : 'border-retro-textDim'}
         ${isLastDiscarded ? 'animate-pulse-gold' : ''}
         ${isNewlyDrawn ? 'animate-tile-draw' : ''}
         ${isSuggested && !isSelected ? 'animate-pulse-gold' : ''}

@@ -48,17 +48,17 @@ export default function CosmeticsPage() {
 
   return (
     <div className="min-h-screen pb-12">
-      <div className="bg-gradient-to-b from-retro-panel to-retro-bg px-6 pt-8 pb-6 rounded-b-2xl">
-        <p className="font-pixel text-[10px] text-retro-cyan tracking-[1.5px] mb-1">COSMETICS</p>
-        <h1 className="font-pixel text-lg text-retro-white mb-2">Style the table.</h1>
-        <p className="text-base text-retro-text/80 font-retro">
+      <div className="bg-gradient-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
+        <p className="font-display text-[10px] text-info tracking-[1.5px] mb-1">COSMETICS</p>
+        <h1 className="font-display text-lg text-foreground mb-2">Style the table.</h1>
+        <p className="text-base text-foreground/80 font-sans">
           Pick a tile palette, table felt, and opponent roster. All free, all stored locally.
         </p>
       </div>
 
       {/* Tile palettes */}
       <section className="px-4 pt-6">
-        <h2 className="font-pixel text-xs text-retro-gold tracking-wider mb-3">TILE PALETTE</h2>
+        <h2 className="font-display text-xs text-highlight tracking-wider mb-3">TILE PALETTE</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {Object.values(TILE_PALETTES).map(palette => (
             <CosmeticCard
@@ -84,7 +84,7 @@ export default function CosmeticsPage() {
 
       {/* Table felts */}
       <section className="px-4 pt-8">
-        <h2 className="font-pixel text-xs text-retro-gold tracking-wider mb-3">TABLE FELT</h2>
+        <h2 className="font-display text-xs text-highlight tracking-wider mb-3">TABLE FELT</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {Object.values(TABLE_FELTS).map(felt => (
             <CosmeticCard
@@ -106,7 +106,7 @@ export default function CosmeticsPage() {
 
       {/* NPC roster */}
       <section className="px-4 pt-8">
-        <h2 className="font-pixel text-xs text-retro-gold tracking-wider mb-3">OPPONENT ROSTER</h2>
+        <h2 className="font-display text-xs text-highlight tracking-wider mb-3">OPPONENT ROSTER</h2>
         <div className="grid grid-cols-1 gap-3">
           {Object.values(ROSTERS).map(roster => (
             <CosmeticCard
@@ -155,22 +155,22 @@ function CosmeticCard({
       onClick={onClick}
       data-testid={testId}
       aria-pressed={active}
-      className={`text-left retro-card p-4 transition-all ${
+      className={`text-left ds-card p-4 transition-all ${
         active
-          ? 'border-retro-cyan bg-retro-cyan/10 shadow-[0_0_18px_rgba(69,183,209,0.35)]'
-          : 'hover:border-retro-cyan/50'
+          ? 'border-info bg-info/10 shadow-[0_0_18px_rgba(69,183,209,0.35)]'
+          : 'hover:border-info/50'
       }`}
     >
       <div className="mb-3">{children}</div>
       <div className="flex items-center justify-between gap-2">
-        <p className="font-retro text-base text-retro-text">{label}</p>
+        <p className="font-sans text-base text-foreground">{label}</p>
         {active && (
-          <span className="rounded bg-retro-cyan/20 px-2 py-0.5 font-pixel text-[8px] text-retro-cyan">
+          <span className="rounded bg-info/20 px-2 py-0.5 font-display text-[8px] text-info">
             ACTIVE
           </span>
         )}
       </div>
-      <p className="text-sm font-retro text-retro-textDim mt-0.5">{description}</p>
+      <p className="text-sm font-sans text-muted-foreground mt-0.5">{description}</p>
     </button>
   );
 }
@@ -188,7 +188,7 @@ function RosterPreviewMember({ id }: { id: NpcId }) {
   return (
     <div className="flex flex-col items-center">
       <CharacterPortrait character={id} emotion="idle" size="sm" showAura={false} />
-      <span className="font-pixel text-[9px] text-retro-text mt-1">{npc.name}</span>
+      <span className="font-display text-[9px] text-foreground mt-1">{npc.name}</span>
     </div>
   );
 }

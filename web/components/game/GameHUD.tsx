@@ -63,25 +63,25 @@ export default function GameHUD({
   // Mobile compact mode: single-line bar
   if (compact) {
     return (
-      <div className="flex items-center justify-between w-full gap-2 font-retro text-xs">
+      <div className="flex items-center justify-between w-full gap-2 font-sans text-xs">
         <div className="flex items-center gap-2">
-          <span className="text-retro-gold retro-glow font-pixel text-[8px]">
+          <span className="text-highlight ds-text-glow font-display text-[8px]">
             {WIND_CHARS[prevailingWind]}
-            {handNumber != null && <span className="text-retro-textDim ml-0.5">H{handNumber}</span>}
+            {handNumber != null && <span className="text-muted-foreground ml-0.5">H{handNumber}</span>}
           </span>
           <GlossaryTerm term="Wall">
-            <span className="text-retro-cyan">W:{wallCount}</span>
+            <span className="text-info">W:{wallCount}</span>
           </GlossaryTerm>
-          <span className="text-retro-green text-[10px]">{PHASE_LABELS[turnPhase]}</span>
+          <span className="text-success text-[10px]">{PHASE_LABELS[turnPhase]}</span>
         </div>
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={toggleAssist}
-            className={`font-pixel text-[7px] px-1.5 py-0.5 rounded-sm border min-h-[28px] transition-colors ${
+            className={`font-display text-[7px] px-1.5 py-0.5 rounded-sm border min-h-[28px] transition-colors ${
               showTutor
-                ? 'border-retro-cyan/60 text-retro-cyan'
-                : 'border-retro-border/40 text-retro-textDim hover:text-retro-cyan'
+                ? 'border-info/60 text-info'
+                : 'border-border/40 text-muted-foreground hover:text-info'
             }`}
             aria-pressed={showTutor}
             aria-label={showTutor ? 'Hide Beginner Assist hints' : 'Show Beginner Assist hints'}
@@ -91,7 +91,7 @@ export default function GameHUD({
           <button
             type="button"
             onClick={toggleSound}
-            className="text-xs px-1 py-0.5 rounded-sm hover:text-retro-cyan min-w-[28px] min-h-[28px] flex items-center justify-center"
+            className="text-xs px-1 py-0.5 rounded-sm hover:text-info min-w-[28px] min-h-[28px] flex items-center justify-center"
             aria-pressed={soundOn}
             aria-label={soundOn ? 'Mute game sounds' : 'Unmute game sounds'}
           >
@@ -100,7 +100,7 @@ export default function GameHUD({
           <button
             type="button"
             onClick={leaveToMenu}
-            className="font-pixel text-[7px] px-1.5 py-0.5 rounded-sm border border-retro-border/40 text-retro-textDim hover:text-retro-cyan min-h-[28px]"
+            className="font-display text-[7px] px-1.5 py-0.5 rounded-sm border border-border/40 text-muted-foreground hover:text-info min-h-[28px]"
           >
             MENU
           </button>
@@ -110,18 +110,18 @@ export default function GameHUD({
   }
 
   return (
-    <div className="retro-panel p-2 font-retro text-sm">
+    <div className="ds-panel p-2 font-sans text-sm">
       {/* Title bar with sound toggle */}
       <div className="flex justify-between items-center gap-1 mb-1">
-        <span className="text-retro-accent text-xs font-pixel shrink-0">╔══ GAME ══╗</span>
+        <span className="text-accent text-xs font-display shrink-0">╔══ GAME ══╗</span>
         <div className="flex items-center gap-0.5 shrink-0">
           <button
             type="button"
             onClick={toggleAssist}
-            className={`font-pixel text-[8px] px-1.5 py-0.5 rounded-sm border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-retro-cyan/50 ${
+            className={`font-display text-[8px] px-1.5 py-0.5 rounded-sm border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/50 ${
               showTutor
-                ? 'border-retro-cyan/60 text-retro-cyan'
-                : 'border-retro-border/40 text-retro-textDim hover:text-retro-cyan hover:border-retro-cyan/50'
+                ? 'border-info/60 text-info'
+                : 'border-border/40 text-muted-foreground hover:text-info hover:border-info/50'
             }`}
             aria-pressed={showTutor}
             aria-label={showTutor ? 'Hide Beginner Assist hints' : 'Show Beginner Assist hints'}
@@ -131,7 +131,7 @@ export default function GameHUD({
           <button
             type="button"
             onClick={toggleSound}
-            className="text-xs px-1.5 py-0.5 rounded-sm hover:text-retro-cyan hover:bg-retro-bg/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-retro-cyan/50"
+            className="text-xs px-1.5 py-0.5 rounded-sm hover:text-info hover:bg-background/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/50"
             aria-pressed={soundOn}
             aria-label={soundOn ? 'Mute game sounds' : 'Unmute game sounds'}
           >
@@ -140,7 +140,7 @@ export default function GameHUD({
           <button
             type="button"
             onClick={leaveToMenu}
-            className="font-pixel text-[8px] px-1.5 py-0.5 rounded-sm border border-retro-border/40 text-retro-textDim hover:text-retro-cyan hover:border-retro-cyan/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-retro-cyan/50"
+            className="font-display text-[8px] px-1.5 py-0.5 rounded-sm border border-border/40 text-muted-foreground hover:text-info hover:border-info/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/50"
           >
             MENU
           </button>
@@ -150,18 +150,18 @@ export default function GameHUD({
       {/* Wind & Wall */}
       <div className="flex justify-between items-center mb-1">
         <GlossaryTerm term="Prevailing Wind">
-          <span className="text-retro-gold retro-glow">
+          <span className="text-highlight ds-text-glow">
             {WIND_CHARS[prevailingWind]} Round
-            {handNumber != null && <span className="text-retro-textDim text-xs ml-1">H{handNumber}</span>}
+            {handNumber != null && <span className="text-muted-foreground text-xs ml-1">H{handNumber}</span>}
           </span>
         </GlossaryTerm>
         <GlossaryTerm term="Wall">
-          <span className="text-retro-cyan">Wall: {wallCount}</span>
+          <span className="text-info">Wall: {wallCount}</span>
         </GlossaryTerm>
       </div>
 
       {/* Phase */}
-      <div className="text-center text-retro-green text-xs mb-1">
+      <div className="text-center text-success text-xs mb-1">
         {PHASE_LABELS[turnPhase]}
       </div>
 
@@ -171,14 +171,14 @@ export default function GameHUD({
           <div
             key={player.id}
             className={`flex items-center gap-1 ${
-              i === currentPlayerIndex ? 'text-retro-cyan' : 'text-retro-textDim'
+              i === currentPlayerIndex ? 'text-info' : 'text-muted-foreground'
             }`}
           >
-            {i === currentPlayerIndex && <span className="animate-blink text-retro-green">▸</span>}
+            {i === currentPlayerIndex && <span className="animate-blink text-success">▸</span>}
             {i !== currentPlayerIndex && <span className="w-2" />}
-            <span className="text-retro-gold w-3">{WIND_CHARS[player.seatWind]}</span>
+            <span className="text-highlight w-3">{WIND_CHARS[player.seatWind]}</span>
             <span className="flex-1 truncate">{player.name}</span>
-            <span className="text-retro-gold">{playerScores ? playerScores[i] : player.score}</span>
+            <span className="text-highlight">{playerScores ? playerScores[i] : player.score}</span>
           </div>
         ))}
       </div>

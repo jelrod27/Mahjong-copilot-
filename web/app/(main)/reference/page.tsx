@@ -20,12 +20,12 @@ export default function ReferencePage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="bg-gradient-to-b from-retro-panel to-retro-bg px-6 pt-8 pb-6 rounded-b-2xl">
-        <p className="font-pixel text-[10px] text-retro-cyan tracking-[1.5px] mb-1">
+      <div className="bg-gradient-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
+        <p className="font-display text-[10px] text-info tracking-[1.5px] mb-1">
           REFERENCE
         </p>
-        <h1 className="font-pixel text-lg text-retro-white mb-2">Quick Reference</h1>
-        <p className="text-base text-retro-text/80 font-retro mb-4">
+        <h1 className="font-display text-lg text-foreground mb-2">Quick Reference</h1>
+        <p className="text-base text-foreground/80 font-sans mb-4">
           Everything you need at a glance.
         </p>
         <label className="sr-only" htmlFor="reference-search">Search reference</label>
@@ -35,20 +35,20 @@ export default function ReferencePage() {
           value={searchQuery}
           onChange={event => setSearchQuery(event.target.value)}
           placeholder="Search tiles, scoring, hands, glossary..."
-          className="w-full rounded-lg border-2 border-retro-border/30 bg-retro-bgLight px-3 py-3 font-retro text-sm text-retro-text placeholder:text-retro-textDim focus:border-retro-cyan focus:outline-none"
+          className="w-full rounded-lg border-2 border-border/30 bg-elevated px-3 py-3 font-sans text-sm text-foreground placeholder:text-muted-foreground focus:border-info focus:outline-none"
         />
       </div>
 
       {/* Tab Bar */}
-      <div className="flex border-b border-retro-border/20 bg-retro-bgLight sticky top-0 z-10">
+      <div className="flex border-b border-border/20 bg-elevated sticky top-0 z-10">
         {tabs.map(tab => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 py-3 text-sm font-retro transition-colors ${
+            className={`flex-1 py-3 text-sm font-sans transition-colors ${
               activeTab === tab.key
-                ? 'text-retro-cyan border-b-2 border-retro-cyan'
-                : 'text-retro-textDim hover:text-retro-text'
+                ? 'text-info border-b-2 border-info'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {tab.label}
@@ -136,11 +136,11 @@ const BONUS_TILES: TileInfo[] = [
 
 function TileChip({ tile, color }: { tile: TileInfo; color?: string }) {
   return (
-    <div className="retro-card p-2 text-center min-w-[70px]">
-      <p className={`text-lg font-bold font-retro ${color || 'text-retro-text'}`}>
+    <div className="ds-card p-2 text-center min-w-[70px]">
+      <p className={`text-lg font-bold font-sans ${color || 'text-foreground'}`}>
         {tile.chinese}
       </p>
-      <p className="text-[10px] text-retro-textDim font-retro mt-0.5 leading-tight">
+      <p className="text-[10px] text-muted-foreground font-sans mt-0.5 leading-tight">
         {tile.name}
       </p>
     </div>
@@ -151,26 +151,26 @@ function TilesTab() {
   return (
     <div className="space-y-6">
       {/* Suit overview */}
-      <div className="retro-card p-4">
-        <p className="font-pixel text-[10px] text-retro-gold tracking-wider mb-2">TILE COUNT</p>
-        <p className="text-sm font-retro text-retro-text leading-relaxed">
-          3 suits x 9 tiles x 4 copies = <span className="text-retro-gold">108</span> suit tiles
+      <div className="ds-card p-4">
+        <p className="font-display text-[10px] text-highlight tracking-wider mb-2">TILE COUNT</p>
+        <p className="text-sm font-sans text-foreground leading-relaxed">
+          3 suits x 9 tiles x 4 copies = <span className="text-highlight">108</span> suit tiles
           <br />
-          4 winds x 4 copies = <span className="text-retro-gold">16</span> honor tiles
+          4 winds x 4 copies = <span className="text-highlight">16</span> honor tiles
           <br />
-          3 dragons x 4 copies = <span className="text-retro-gold">12</span> honor tiles
+          3 dragons x 4 copies = <span className="text-highlight">12</span> honor tiles
           <br />
-          4 flowers + 4 seasons = <span className="text-retro-gold">8</span> bonus tiles
+          4 flowers + 4 seasons = <span className="text-highlight">8</span> bonus tiles
           <br />
-          <span className="text-retro-cyan font-bold">Total: 144 tiles</span>
+          <span className="text-info font-bold">Total: 144 tiles</span>
         </p>
       </div>
 
       {/* Suit tiles */}
       {SUIT_TILES.map(group => (
         <div key={group.suit}>
-          <h3 className="font-pixel text-xs text-retro-cyan mb-3">{group.suit.toUpperCase()}</h3>
-          <p className="text-xs text-retro-textDim font-retro mb-2">9 tiles, 4 copies each (36 total)</p>
+          <h3 className="font-display text-xs text-info mb-3">{group.suit.toUpperCase()}</h3>
+          <p className="text-xs text-muted-foreground font-sans mb-2">9 tiles, 4 copies each (36 total)</p>
           <div className="flex flex-wrap gap-2">
             {group.tiles.map(tile => (
               <TileChip key={tile.id} tile={tile} color={group.color} />
@@ -181,14 +181,14 @@ function TilesTab() {
 
       {/* Honor tiles */}
       <div>
-        <h3 className="font-pixel text-xs text-retro-cyan mb-3">HONOR TILES</h3>
-        <p className="text-xs text-retro-textDim font-retro mb-2">7 types, 4 copies each (28 total)</p>
+        <h3 className="font-display text-xs text-info mb-3">HONOR TILES</h3>
+        <p className="text-xs text-muted-foreground font-sans mb-2">7 types, 4 copies each (28 total)</p>
         <div className="flex flex-wrap gap-2">
           {HONOR_TILES.map(tile => (
             <TileChip
               key={tile.id}
               tile={tile}
-              color={tile.id.startsWith('dragon') ? 'text-retro-gold' : 'text-purple-400'}
+              color={tile.id.startsWith('dragon') ? 'text-highlight' : 'text-purple-400'}
             />
           ))}
         </div>
@@ -196,11 +196,11 @@ function TilesTab() {
 
       {/* Bonus tiles */}
       <div>
-        <h3 className="font-pixel text-xs text-retro-cyan mb-3">BONUS TILES</h3>
-        <p className="text-xs text-retro-textDim font-retro mb-2">8 unique tiles (1 copy each)</p>
+        <h3 className="font-display text-xs text-info mb-3">BONUS TILES</h3>
+        <p className="text-xs text-muted-foreground font-sans mb-2">8 unique tiles (1 copy each)</p>
         <div className="flex flex-wrap gap-2">
           {BONUS_TILES.map(tile => (
-            <TileChip key={tile.id} tile={tile} color="text-retro-green" />
+            <TileChip key={tile.id} tile={tile} color="text-success" />
           ))}
         </div>
       </div>
@@ -247,28 +247,28 @@ function ScoringTab() {
   return (
     <div className="space-y-6">
       {/* Formula */}
-      <div className="retro-card p-4 border-l-4 border-retro-gold">
-        <p className="font-pixel text-[10px] text-retro-gold tracking-wider mb-2">PAYMENT FORMULA</p>
-        <p className="text-lg font-retro text-retro-cyan font-bold">
+      <div className="ds-card p-4 border-l-4 border-highlight">
+        <p className="font-display text-[10px] text-highlight tracking-wider mb-2">PAYMENT FORMULA</p>
+        <p className="text-lg font-sans text-info font-bold">
           Payment = 8 x 2<sup>fan</sup>
         </p>
-        <p className="text-sm font-retro text-retro-textDim mt-1">
+        <p className="text-sm font-sans text-muted-foreground mt-1">
           Capped at 256 points per payer (limit hand).
         </p>
       </div>
 
       {/* Fan Table */}
       <div>
-        <h3 className="font-pixel text-xs text-retro-cyan mb-3">FAN TABLE</h3>
+        <h3 className="font-display text-xs text-info mb-3">FAN TABLE</h3>
         <div className="space-y-1">
           {FAN_TABLE.map(entry => (
-            <div key={entry.name} className="retro-card p-3 flex items-start gap-3">
-              <span className="shrink-0 bg-retro-gold/20 text-retro-gold px-2 py-0.5 rounded text-sm font-retro font-bold min-w-[55px] text-center">
+            <div key={entry.name} className="ds-card p-3 flex items-start gap-3">
+              <span className="shrink-0 bg-highlight/20 text-highlight px-2 py-0.5 rounded text-sm font-sans font-bold min-w-[55px] text-center">
                 {entry.fan}
               </span>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-retro text-retro-text font-bold">{entry.name}</p>
-                <p className="text-xs font-retro text-retro-textDim leading-relaxed">{entry.description}</p>
+                <p className="text-sm font-sans text-foreground font-bold">{entry.name}</p>
+                <p className="text-xs font-sans text-muted-foreground leading-relaxed">{entry.description}</p>
               </div>
             </div>
           ))}
@@ -277,11 +277,11 @@ function ScoringTab() {
 
       {/* Payment Table */}
       <div>
-        <h3 className="font-pixel text-xs text-retro-cyan mb-3">PAYMENT TABLE (PER PAYER)</h3>
-        <div className="retro-card overflow-hidden">
-          <table className="w-full text-sm font-retro">
+        <h3 className="font-display text-xs text-info mb-3">PAYMENT TABLE (PER PAYER)</h3>
+        <div className="ds-card overflow-hidden">
+          <table className="w-full text-sm font-sans">
             <thead>
-              <tr className="bg-retro-bgLight text-retro-textDim">
+              <tr className="bg-elevated text-muted-foreground">
                 <th className="text-left p-2">Fan</th>
                 <th className="text-right p-2">Points</th>
                 <th className="text-right p-2">Note</th>
@@ -289,16 +289,16 @@ function ScoringTab() {
             </thead>
             <tbody>
               {PAYMENT_TABLE.map(row => (
-                <tr key={row.fan} className="border-t border-retro-border/10">
-                  <td className="p-2 text-retro-gold font-bold">{row.fan}</td>
-                  <td className="p-2 text-right text-retro-text">{row.payment}</td>
-                  <td className="p-2 text-right text-retro-textDim text-xs">{row.label}</td>
+                <tr key={row.fan} className="border-t border-border/10">
+                  <td className="p-2 text-highlight font-bold">{row.fan}</td>
+                  <td className="p-2 text-right text-foreground">{row.payment}</td>
+                  <td className="p-2 text-right text-muted-foreground text-xs">{row.label}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <p className="text-xs font-retro text-retro-textDim mt-2">
+        <p className="text-xs font-sans text-muted-foreground mt-2">
           Win by discard: 1 player pays. Self-draw: all 3 opponents pay.
         </p>
       </div>
@@ -371,24 +371,24 @@ const LIMIT_HANDS: LimitHand[] = [
 function HandsTab() {
   return (
     <div className="space-y-4">
-      <div className="retro-card p-4 border-l-4 border-retro-accent">
-        <p className="font-pixel text-[10px] text-retro-accent tracking-wider mb-1">LIMIT HANDS</p>
-        <p className="text-sm font-retro text-retro-textDim">
+      <div className="ds-card p-4 border-l-4 border-accent">
+        <p className="font-display text-[10px] text-accent tracking-wider mb-1">LIMIT HANDS</p>
+        <p className="text-sm font-sans text-muted-foreground">
           Worth maximum points (256 per payer). These are 10+ fan or special patterns.
         </p>
       </div>
 
       {LIMIT_HANDS.map(hand => (
-        <div key={hand.name} className="retro-card p-4">
+        <div key={hand.name} className="ds-card p-4">
           <div className="flex items-center gap-2 mb-1">
-            <h4 className="text-base font-retro text-retro-text font-bold">{hand.name}</h4>
-            <span className="text-sm text-retro-gold font-retro">{hand.chinese}</span>
+            <h4 className="text-base font-sans text-foreground font-bold">{hand.name}</h4>
+            <span className="text-sm text-highlight font-sans">{hand.chinese}</span>
           </div>
-          <p className="text-sm font-retro text-retro-textDim leading-relaxed mb-2">
+          <p className="text-sm font-sans text-muted-foreground leading-relaxed mb-2">
             {hand.description}
           </p>
-          <div className="bg-retro-bgLight rounded px-3 py-1.5">
-            <p className="text-xs font-retro text-retro-cyan">{hand.example}</p>
+          <div className="bg-elevated rounded px-3 py-1.5">
+            <p className="text-xs font-sans text-info">{hand.example}</p>
           </div>
         </div>
       ))}
@@ -403,16 +403,16 @@ function HandsTab() {
 function GlossaryTab() {
   return (
     <div className="space-y-2">
-      <p className="text-sm font-retro text-retro-textDim mb-4">
+      <p className="text-sm font-sans text-muted-foreground mb-4">
         {GLOSSARY.length} terms — common Hong Kong Mahjong vocabulary.
       </p>
       {GLOSSARY.map(entry => (
-        <div key={entry.term} className="retro-card p-3">
+        <div key={entry.term} className="ds-card p-3">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-base font-retro text-retro-cyan font-bold">{entry.term}</span>
-            <span className="text-sm text-retro-gold font-retro">{entry.chinese}</span>
+            <span className="text-base font-sans text-info font-bold">{entry.term}</span>
+            <span className="text-sm text-highlight font-sans">{entry.chinese}</span>
           </div>
-          <p className="text-sm font-retro text-retro-textDim leading-relaxed">
+          <p className="text-sm font-sans text-muted-foreground leading-relaxed">
             {entry.definition}
           </p>
         </div>
@@ -475,23 +475,23 @@ function getReferenceSearchResults(query: string): ReferenceSearchResult[] {
 function SearchResults({ query, results }: { query: string; results: ReferenceSearchResult[] }) {
   return (
     <div className="space-y-3">
-      <p className="font-pixel text-[10px] text-retro-cyan tracking-wider">
+      <p className="font-display text-[10px] text-info tracking-wider">
         Search results for &quot;{query.trim()}&quot;
       </p>
       {results.length === 0 ? (
-        <div className="retro-card p-4">
-          <p className="font-retro text-sm text-retro-textDim">No reference entries found. Try “dragon”, “fan”, “kong”, or “wall”.</p>
+        <div className="ds-card p-4">
+          <p className="font-sans text-sm text-muted-foreground">No reference entries found. Try “dragon”, “fan”, “kong”, or “wall”.</p>
         </div>
       ) : (
         results.map(result => (
-          <div key={`${result.category}-${result.title}`} className="retro-card p-4">
+          <div key={`${result.category}-${result.title}`} className="ds-card p-4">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-retro text-base text-retro-text font-bold">{result.title}</h3>
-              <span className="rounded bg-retro-cyan/10 px-2 py-0.5 font-pixel text-[8px] text-retro-cyan">
+              <h3 className="font-sans text-base text-foreground font-bold">{result.title}</h3>
+              <span className="rounded bg-info/10 px-2 py-0.5 font-display text-[8px] text-info">
                 {result.category}
               </span>
             </div>
-            <p className="font-retro text-sm text-retro-textDim leading-relaxed">{result.description}</p>
+            <p className="font-sans text-sm text-muted-foreground leading-relaxed">{result.description}</p>
           </div>
         ))
       )}

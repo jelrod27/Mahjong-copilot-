@@ -27,17 +27,17 @@ export default function OpponentHand({ player, position, isCurrentTurn, compact 
     return (
       <div className={`
         flex flex-col items-center gap-0.5 rounded-md px-2 py-1 transition-all duration-300
-        ${isCurrentTurn ? 'ring-1 ring-retro-gold/50 bg-retro-gold/5' : ''}
+        ${isCurrentTurn ? 'ring-1 ring-highlight/50 bg-highlight/5' : ''}
       `}>
         <div className={`
-          flex items-center gap-1 font-pixel text-[8px]
-          ${isCurrentTurn ? 'text-retro-cyan retro-glow' : 'text-retro-textDim'}
+          flex items-center gap-1 font-display text-[8px]
+          ${isCurrentTurn ? 'text-info ds-text-glow' : 'text-muted-foreground'}
         `}>
-          <span className="text-retro-gold">{WIND_LABELS[player.seatWind]}</span>
+          <span className="text-highlight">{WIND_LABELS[player.seatWind]}</span>
           <span className="truncate max-w-[48px]">{player.name}</span>
           {isCurrentTurn && <span className="animate-blink">▸</span>}
         </div>
-        <div className="font-retro text-[10px] text-retro-textDim">
+        <div className="font-sans text-[10px] text-muted-foreground">
           {tileCount} tiles
           {player.melds.length > 0 && ` · ${player.melds.length}m`}
           {player.flowers.length > 0 && ` · 🌸${player.flowers.length}`}
@@ -60,14 +60,14 @@ export default function OpponentHand({ player, position, isCurrentTurn, compact 
     <div className={`
       flex flex-col items-center gap-1 ${isVertical ? 'justify-center' : ''}
       rounded-lg p-1 transition-all duration-300
-      ${isCurrentTurn ? 'ring-2 ring-retro-gold/50 shadow-[0_0_12px_rgba(245,183,49,0.3)]' : ''}
+      ${isCurrentTurn ? 'ring-2 ring-highlight/50 shadow-[0_0_12px_rgba(245,183,49,0.3)]' : ''}
     `}>
       {/* Player info */}
       <div className={`
-        flex items-center gap-1 text-xs font-pixel
-        ${isCurrentTurn ? 'text-retro-cyan retro-glow' : 'text-retro-textDim'}
+        flex items-center gap-1 text-xs font-display
+        ${isCurrentTurn ? 'text-info ds-text-glow' : 'text-muted-foreground'}
       `}>
-        <span className="text-retro-gold">{WIND_LABELS[player.seatWind]}</span>
+        <span className="text-highlight">{WIND_LABELS[player.seatWind]}</span>
         <span>{player.name}</span>
         {isCurrentTurn && <span className="animate-blink">▸</span>}
       </div>
@@ -84,7 +84,7 @@ export default function OpponentHand({ player, position, isCurrentTurn, compact 
 
       {/* Flowers */}
       {player.flowers.length > 0 && (
-        <div className="text-xs text-retro-gold font-retro">
+        <div className="text-xs text-highlight font-sans">
           🌸 ×{player.flowers.length}
         </div>
       )}

@@ -139,24 +139,24 @@ export default function ScoringQuiz({ onBack }: { onBack: () => void }) {
   if (finished) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="retro-card p-8 max-w-sm w-full text-center border-2 border-retro-gold rounded-xl">
+        <div className="ds-card p-8 max-w-sm w-full text-center border-2 border-highlight rounded-xl">
           <p className="text-4xl mb-3">{score >= 8 ? '!!!' : score >= 5 ? '!' : '...'}</p>
-          <p className="font-pixel text-sm text-retro-gold retro-glow mb-2">Quiz Complete</p>
-          <p className="text-3xl font-retro text-retro-text font-bold mb-1">
+          <p className="font-display text-sm text-highlight ds-text-glow mb-2">Quiz Complete</p>
+          <p className="text-3xl font-sans text-foreground font-bold mb-1">
             {score}/{QUESTIONS_PER_ROUND}
           </p>
-          <p className="text-sm font-retro text-retro-textDim mb-6">
+          <p className="text-sm font-sans text-muted-foreground mb-6">
             {score >= 9 ? 'Scoring expert!' : score >= 7 ? 'Solid fan counting!' : score >= 5 ? 'Getting there.' : 'Review the scoring rules!'}
           </p>
           <div className="space-y-2">
             <button
-              className="retro-btn-green w-full py-3 text-lg"
+              className="ds-btn-success w-full py-3 text-lg"
               onClick={() => { setIndex(0); setSelected(null); setScore(0); setFinished(false); }}
             >
               Try Again
             </button>
             <button
-              className="retro-btn w-full py-3 text-lg bg-retro-bgLight"
+              className="ds-btn w-full py-3 text-lg bg-elevated"
               onClick={onBack}
             >
               Back to Practice
@@ -170,28 +170,28 @@ export default function ScoringQuiz({ onBack }: { onBack: () => void }) {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <div className="flex items-center p-4 border-b border-retro-border/20 bg-retro-bgLight">
-        <button onClick={onBack} className="mr-4 text-lg text-retro-cyan font-retro">
+      <div className="flex items-center p-4 border-b border-border/20 bg-elevated">
+        <button onClick={onBack} className="mr-4 text-lg text-info font-sans">
           &#x2039; Back
         </button>
         <div className="flex-1">
-          <p className="font-pixel text-xs text-retro-gold">SCORING QUIZ</p>
+          <p className="font-display text-xs text-highlight">SCORING QUIZ</p>
         </div>
-        <div className="bg-retro-green px-3 py-1.5 rounded-full">
-          <span className="text-black font-bold text-sm font-retro">{score}/{index + 1}</span>
+        <div className="bg-success px-3 py-1.5 rounded-full">
+          <span className="text-black font-bold text-sm font-sans">{score}/{index + 1}</span>
         </div>
       </div>
 
       {/* Progress */}
       <div className="px-4 pt-4">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-sm text-retro-textDim font-retro">
+          <span className="text-sm text-muted-foreground font-sans">
             Question {index + 1} of {QUESTIONS_PER_ROUND}
           </span>
         </div>
-        <div className="h-1.5 bg-retro-bgLight rounded-full">
+        <div className="h-1.5 bg-elevated rounded-full">
           <div
-            className="h-full bg-retro-gold rounded-full transition-all"
+            className="h-full bg-highlight rounded-full transition-all"
             style={{ width: `${((index + 1) / QUESTIONS_PER_ROUND) * 100}%` }}
           />
         </div>
@@ -199,12 +199,12 @@ export default function ScoringQuiz({ onBack }: { onBack: () => void }) {
 
       {/* Question */}
       <div className="flex-1 p-6">
-        <div className="retro-card p-5 mb-4">
-          <p className="font-pixel text-[10px] text-retro-gold tracking-wider mb-2">HOW MANY FANS?</p>
-          <p className="text-lg font-retro text-retro-text leading-7 mb-3">{current.description}</p>
-          <div className="bg-retro-bgLight rounded px-3 py-2">
+        <div className="ds-card p-5 mb-4">
+          <p className="font-display text-[10px] text-highlight tracking-wider mb-2">HOW MANY FANS?</p>
+          <p className="text-lg font-sans text-foreground leading-7 mb-3">{current.description}</p>
+          <div className="bg-elevated rounded px-3 py-2">
             {current.details.map((d, i) => (
-              <p key={i} className="text-sm font-retro text-retro-cyan">{d}</p>
+              <p key={i} className="text-sm font-sans text-info">{d}</p>
             ))}
           </div>
         </div>
@@ -219,19 +219,19 @@ export default function ScoringQuiz({ onBack }: { onBack: () => void }) {
             return (
               <button
                 key={option}
-                className={`w-full p-4 rounded-lg border-2 text-left font-retro text-lg transition-colors
-                  ${!showResult ? 'bg-retro-bgLight border-retro-border/30 text-retro-text hover:border-retro-cyan/50' : ''}
-                  ${showResult && isCorrect ? 'bg-retro-green/10 border-retro-green text-retro-text' : ''}
-                  ${showResult && isSelected && !isCorrect ? 'bg-retro-accent/10 border-retro-accent text-retro-text' : ''}
-                  ${showResult && !isCorrect && !isSelected ? 'bg-retro-bgLight border-retro-border/20 text-retro-textDim' : ''}
+                className={`w-full p-4 rounded-lg border-2 text-left font-sans text-lg transition-colors
+                  ${!showResult ? 'bg-elevated border-border/30 text-foreground hover:border-info/50' : ''}
+                  ${showResult && isCorrect ? 'bg-success/10 border-success text-foreground' : ''}
+                  ${showResult && isSelected && !isCorrect ? 'bg-accent/10 border-accent text-foreground' : ''}
+                  ${showResult && !isCorrect && !isSelected ? 'bg-elevated border-border/20 text-muted-foreground' : ''}
                 `}
                 onClick={() => handleSelect(option)}
                 disabled={selected !== null}
               >
                 <div className="flex items-center justify-between">
                   <span>{option}</span>
-                  {showResult && isCorrect && <span className="text-xl text-retro-green font-bold">&#x2713;</span>}
-                  {showResult && isSelected && !isCorrect && <span className="text-xl text-retro-accent font-bold">&#x2717;</span>}
+                  {showResult && isCorrect && <span className="text-xl text-success font-bold">&#x2713;</span>}
+                  {showResult && isSelected && !isCorrect && <span className="text-xl text-accent font-bold">&#x2717;</span>}
                 </div>
               </button>
             );
@@ -240,17 +240,17 @@ export default function ScoringQuiz({ onBack }: { onBack: () => void }) {
 
         {/* Explanation */}
         {selected !== null && (
-          <div className={`mt-4 retro-card p-4 border-l-4 ${
-            selected === current.answer ? 'border-retro-green' : 'border-retro-accent'
+          <div className={`mt-4 ds-card p-4 border-l-4 ${
+            selected === current.answer ? 'border-success' : 'border-accent'
           }`}>
-            <p className="font-retro text-sm text-retro-text/80 leading-relaxed">{current.explanation}</p>
+            <p className="font-sans text-sm text-foreground/80 leading-relaxed">{current.explanation}</p>
           </div>
         )}
 
         {/* Next */}
         {selected !== null && (
           <button
-            className="retro-btn-green w-full mt-4 py-4 text-lg"
+            className="ds-btn-success w-full mt-4 py-4 text-lg"
             onClick={handleNext}
           >
             {index + 1 >= QUESTIONS_PER_ROUND ? 'See Results' : 'Next Question'}

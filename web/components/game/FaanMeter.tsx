@@ -30,29 +30,29 @@ export default function FaanMeter({ projection, minFaan = 3, compact = false }: 
   // Colour key: green = confirmed legal win, cyan = plausible projection,
   // pink (retro-accent) = short of the minimum either way.
   const maxColor = meetsMin
-    ? 'text-retro-green'
+    ? 'text-success'
     : (!isTenpai && projectedMeetsMin)
-      ? 'text-retro-cyan'
-      : 'text-retro-accent';
+      ? 'text-info'
+      : 'text-accent';
 
   // Compact header — always visible
   const header = (
     <button
       type="button"
       onClick={() => setExpanded(v => !v)}
-      className="w-full flex items-center justify-between gap-2 px-2 py-1 hover:bg-retro-bg/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-retro-cyan/50 rounded-sm"
+      className="w-full flex items-center justify-between gap-2 px-2 py-1 hover:bg-background/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/50 rounded-sm"
       aria-expanded={expanded}
       aria-label={expanded ? 'Collapse faan meter' : 'Expand faan meter'}
     >
-      <span className="flex items-center gap-1 font-pixel text-[8px] md:text-[10px] text-retro-gold tracking-widest uppercase">
-        <Target size={12} className="text-retro-gold" aria-hidden />
+      <span className="flex items-center gap-1 font-display text-[8px] md:text-[10px] text-highlight tracking-widest uppercase">
+        <Target size={12} className="text-highlight" aria-hidden />
         Faan
       </span>
-      <span className="flex items-center gap-2 font-retro text-xs">
-        <span className="text-retro-textDim">{projectedMin}</span>
-        <span className="text-retro-textDim">→</span>
-        <span className={`${maxColor} retro-glow font-semibold`}>{displayMax}</span>
-        <span className="text-retro-textDim text-[10px]">
+      <span className="flex items-center gap-2 font-sans text-xs">
+        <span className="text-muted-foreground">{projectedMin}</span>
+        <span className="text-muted-foreground">→</span>
+        <span className={`${maxColor} ds-text-glow font-semibold`}>{displayMax}</span>
+        <span className="text-muted-foreground text-[10px]">
           {isTenpai ? 'TENPAI' : `${shanten + 1}-away`}
         </span>
         {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -61,21 +61,21 @@ export default function FaanMeter({ projection, minFaan = 3, compact = false }: 
   );
 
   if (compact && !expanded) {
-    return <div className="retro-panel" data-testid="faan-meter">{header}</div>;
+    return <div className="ds-panel" data-testid="faan-meter">{header}</div>;
   }
 
   return (
-    <div className="retro-panel" data-testid="faan-meter">
+    <div className="ds-panel" data-testid="faan-meter">
       {header}
 
       {expanded && (
-        <div className="px-2 pb-2 space-y-2 border-t border-retro-border/20 pt-2">
+        <div className="px-2 pb-2 space-y-2 border-t border-border/20 pt-2">
           {/* Locked-in section */}
           {lockedIn.length > 0 && (
             <section>
               <header className="flex items-center gap-1 mb-1">
-                <Lock size={10} className="text-retro-green" aria-hidden />
-                <span className="font-pixel text-[7px] md:text-[9px] uppercase tracking-widest text-retro-green">
+                <Lock size={10} className="text-success" aria-hidden />
+                <span className="font-display text-[7px] md:text-[9px] uppercase tracking-widest text-success">
                   Locked in
                 </span>
               </header>
@@ -83,12 +83,12 @@ export default function FaanMeter({ projection, minFaan = 3, compact = false }: 
                 {lockedIn.map((fan, idx) => (
                   <li key={`locked-${idx}-${fan.name}`} className="flex items-start justify-between gap-2 text-[11px] md:text-xs">
                     <div className="flex-1 min-w-0">
-                      <span className="text-retro-text font-retro">{fan.name}</span>
-                      <span className="block text-[10px] text-retro-textDim italic truncate">
+                      <span className="text-foreground font-sans">{fan.name}</span>
+                      <span className="block text-[10px] text-muted-foreground italic truncate">
                         {fan.description}
                       </span>
                     </div>
-                    <span className="text-retro-green font-retro shrink-0">+{fan.fan}</span>
+                    <span className="text-success font-sans shrink-0">+{fan.fan}</span>
                   </li>
                 ))}
               </ul>
@@ -99,8 +99,8 @@ export default function FaanMeter({ projection, minFaan = 3, compact = false }: 
           {inProgress.length > 0 && (
             <section>
               <header className="flex items-center gap-1 mb-1">
-                <Target size={10} className="text-retro-cyan" aria-hidden />
-                <span className="font-pixel text-[7px] md:text-[9px] uppercase tracking-widest text-retro-cyan">
+                <Target size={10} className="text-info" aria-hidden />
+                <span className="font-display text-[7px] md:text-[9px] uppercase tracking-widest text-info">
                   In progress
                 </span>
               </header>
@@ -109,15 +109,15 @@ export default function FaanMeter({ projection, minFaan = 3, compact = false }: 
                   <li key={`ip-${idx}-${fan.name}`} className="text-[11px] md:text-xs">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <span className="text-retro-text font-retro">{fan.name}</span>
-                        <span className="block text-[10px] text-retro-textDim italic">
+                        <span className="text-foreground font-sans">{fan.name}</span>
+                        <span className="block text-[10px] text-muted-foreground italic">
                           {fan.hint}
                         </span>
                       </div>
-                      <span className="text-retro-cyan font-retro shrink-0">+{fan.fan}</span>
+                      <span className="text-info font-sans shrink-0">+{fan.fan}</span>
                     </div>
                     <div
-                      className="mt-0.5 h-1 w-full bg-retro-bg rounded-sm overflow-hidden"
+                      className="mt-0.5 h-1 w-full bg-background rounded-sm overflow-hidden"
                       role="progressbar"
                       aria-label={`${fan.name} progress`}
                       aria-valuemin={0}
@@ -125,7 +125,7 @@ export default function FaanMeter({ projection, minFaan = 3, compact = false }: 
                       aria-valuenow={Math.round(fan.progress * 100)}
                     >
                       <div
-                        className="h-full bg-retro-cyan/60 transition-[width] duration-500"
+                        className="h-full bg-info/60 transition-[width] duration-500"
                         style={{ width: `${Math.round(fan.progress * 100)}%` }}
                       />
                     </div>
@@ -137,31 +137,31 @@ export default function FaanMeter({ projection, minFaan = 3, compact = false }: 
 
           {/* Wait tiles when tenpai */}
           {isTenpai && waits.length > 0 && (
-            <section className="pt-1 border-t border-retro-border/20">
+            <section className="pt-1 border-t border-border/20">
               <header className="flex items-center gap-1 mb-0.5">
-                <span className="font-pixel text-[7px] md:text-[9px] uppercase tracking-widest text-retro-gold">
+                <span className="font-display text-[7px] md:text-[9px] uppercase tracking-widest text-highlight">
                   Waiting on
                 </span>
               </header>
-              <p className="text-[11px] md:text-xs text-retro-text font-retro leading-snug">
+              <p className="text-[11px] md:text-xs text-foreground font-sans leading-snug">
                 {waits.slice(0, 4).join(', ')}
-                {waits.length > 4 && <span className="text-retro-textDim"> +{waits.length - 4} more</span>}
+                {waits.length > 4 && <span className="text-muted-foreground"> +{waits.length - 4} more</span>}
               </p>
             </section>
           )}
 
           {/* Min-faan status line — tells the learner whether they can legally win */}
-          <div className="flex items-center justify-between pt-1 border-t border-retro-border/20 text-[10px]">
-            <span className="text-retro-textDim font-retro">
+          <div className="flex items-center justify-between pt-1 border-t border-border/20 text-[10px]">
+            <span className="text-muted-foreground font-sans">
               Need {minFaan}+ faan to win
             </span>
             <span
-              className={`font-pixel ${
+              className={`font-display ${
                 meetsMin
-                  ? 'text-retro-green'
+                  ? 'text-success'
                   : (!isTenpai && projectedMeetsMin)
-                    ? 'text-retro-cyan'
-                    : 'text-retro-accent'
+                    ? 'text-info'
+                    : 'text-accent'
               }`}
             >
               {isTenpai

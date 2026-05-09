@@ -12,10 +12,10 @@ const QUIZ_LABELS: Record<QuizMode, string> = {
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="retro-panel p-3 text-center">
-      <div className="font-pixel text-[9px] text-retro-textDim mb-1">{label}</div>
-      <div className="font-pixel text-sm text-retro-gold retro-glow">{value}</div>
-      {sub && <div className="font-retro text-xs text-retro-textDim mt-0.5">{sub}</div>}
+    <div className="ds-panel p-3 text-center">
+      <div className="font-display text-[9px] text-muted-foreground mb-1">{label}</div>
+      <div className="font-display text-sm text-highlight ds-text-glow">{value}</div>
+      {sub && <div className="font-sans text-xs text-muted-foreground mt-0.5">{sub}</div>}
     </div>
   );
 }
@@ -24,7 +24,7 @@ function PlacementBar({ counts }: { counts: [number, number, number, number] }) 
   const total = counts.reduce((a, b) => a + b, 0);
   if (total === 0) return null;
 
-  const colors = ['bg-retro-gold', 'bg-retro-cyan', 'bg-retro-text', 'bg-retro-textDim'];
+  const colors = ['bg-highlight', 'bg-info', 'bg-foreground', 'bg-muted-foreground'];
   const labels = ['1st', '2nd', '3rd', '4th'];
 
   return (
@@ -42,7 +42,7 @@ function PlacementBar({ counts }: { counts: [number, number, number, number] }) 
           );
         })}
       </div>
-      <div className="flex justify-between font-retro text-xs text-retro-textDim">
+      <div className="flex justify-between font-sans text-xs text-muted-foreground">
         {labels.map((label, i) => (
           <span key={i}>{label}: {counts[i]}</span>
         ))}
@@ -61,7 +61,7 @@ export default function ProgressPage() {
   if (!stats) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="font-pixel text-retro-cyan retro-glow text-sm">LOADING...</div>
+        <div className="font-display text-info ds-text-glow text-sm">LOADING...</div>
       </div>
     );
   }
@@ -88,23 +88,23 @@ export default function ProgressPage() {
     <div className="min-h-screen px-4 py-8 max-w-md mx-auto">
       {/* Header */}
       <div className="text-center mb-6">
-        <TrendingUp size={32} className="text-retro-gold mx-auto mb-2" />
-        <h1 className="font-pixel text-sm text-retro-cyan retro-glow mb-1">YOUR PROGRESS</h1>
-        <div className="font-retro text-xs text-retro-textDim">
+        <TrendingUp size={32} className="text-highlight mx-auto mb-2" />
+        <h1 className="font-display text-sm text-info ds-text-glow mb-1">YOUR PROGRESS</h1>
+        <div className="font-sans text-xs text-muted-foreground">
           Track your mahjong journey
         </div>
       </div>
 
       {/* Practice quiz stats — shown whenever any quiz has been completed */}
       {hasQuizzed && (
-        <div className="retro-panel p-3 mb-4" data-testid="quiz-stats">
-          <div className="font-pixel text-[9px] text-retro-cyan mb-2">PRACTICE QUIZZES</div>
+        <div className="ds-panel p-3 mb-4" data-testid="quiz-stats">
+          <div className="font-display text-[9px] text-info mb-2">PRACTICE QUIZZES</div>
           <div className="space-y-1">
             {quizEntries.map(([mode, s]) => (
-              <div key={mode} className="flex justify-between font-retro text-sm">
-                <span className="text-retro-text">{QUIZ_LABELS[mode]}</span>
-                <span className="text-retro-textDim">
-                  <span className="text-retro-gold">{s.best}/10 best</span>
+              <div key={mode} className="flex justify-between font-sans text-sm">
+                <span className="text-foreground">{QUIZ_LABELS[mode]}</span>
+                <span className="text-muted-foreground">
+                  <span className="text-highlight">{s.best}/10 best</span>
                   <span className="mx-1">&middot;</span>
                   {s.played} played
                 </span>
@@ -115,14 +115,14 @@ export default function ProgressPage() {
       )}
 
       {!hasPlayed ? (
-        <div className="retro-panel p-6 text-center">
-          <div className="font-pixel text-xs text-retro-gold mb-2">NO GAMES YET</div>
-          <p className="font-retro text-sm text-retro-textDim">
+        <div className="ds-panel p-6 text-center">
+          <div className="font-display text-xs text-highlight mb-2">NO GAMES YET</div>
+          <p className="font-sans text-sm text-muted-foreground">
             Play your first game to start tracking stats!
           </p>
           <a
             href="/play"
-            className="inline-block mt-4 retro-btn-green font-pixel text-xs"
+            className="inline-block mt-4 ds-btn-success font-display text-xs"
           >
             [ PLAY NOW ]
           </a>
@@ -137,36 +137,36 @@ export default function ProgressPage() {
           </div>
 
           {/* Placement distribution */}
-          <div className="retro-panel p-3">
-            <div className="font-pixel text-[9px] text-retro-cyan mb-2">PLACEMENT DISTRIBUTION</div>
+          <div className="ds-panel p-3">
+            <div className="font-display text-[9px] text-info mb-2">PLACEMENT DISTRIBUTION</div>
             <PlacementBar counts={stats.placementCounts} />
           </div>
 
           {/* Best hand */}
           {stats.bestFan > 0 && (
-            <div className="retro-panel p-3 text-center">
-              <div className="font-pixel text-[9px] text-retro-gold mb-1">BEST HAND</div>
-              <div className="font-pixel text-sm text-retro-accent retro-glow">
+            <div className="ds-panel p-3 text-center">
+              <div className="font-display text-[9px] text-highlight mb-1">BEST HAND</div>
+              <div className="font-display text-sm text-accent ds-text-glow">
                 {stats.bestHandName ?? `${stats.bestFan} Fan`}
               </div>
-              <div className="font-retro text-xs text-retro-textDim mt-0.5">
+              <div className="font-sans text-xs text-muted-foreground mt-0.5">
                 {stats.bestFan} fan
               </div>
             </div>
           )}
 
           {/* Difficulty breakdown */}
-          <div className="retro-panel p-3">
-            <div className="font-pixel text-[9px] text-retro-cyan mb-2">BY DIFFICULTY</div>
+          <div className="ds-panel p-3">
+            <div className="font-display text-[9px] text-info mb-2">BY DIFFICULTY</div>
             <div className="space-y-1">
               {(['easy', 'medium', 'hard'] as const).map(d => {
                 const data = stats.byDifficulty[d];
                 if (data.played === 0) return null;
                 const rate = Math.round((data.won / data.played) * 100);
                 return (
-                  <div key={d} className="flex justify-between font-retro text-sm">
-                    <span className="text-retro-text capitalize">{d}</span>
-                    <span className="text-retro-textDim">
+                  <div key={d} className="flex justify-between font-sans text-sm">
+                    <span className="text-foreground capitalize">{d}</span>
+                    <span className="text-muted-foreground">
                       {data.won}/{data.played} won ({rate}%)
                     </span>
                   </div>
@@ -176,16 +176,16 @@ export default function ProgressPage() {
           </div>
 
           {/* Mode breakdown */}
-          <div className="retro-panel p-3">
-            <div className="font-pixel text-[9px] text-retro-cyan mb-2">BY MODE</div>
+          <div className="ds-panel p-3">
+            <div className="font-display text-[9px] text-info mb-2">BY MODE</div>
             <div className="space-y-1">
               {(['quick', 'full'] as const).map(m => {
                 const data = stats.byMode[m];
                 if (data.played === 0) return null;
                 return (
-                  <div key={m} className="flex justify-between font-retro text-sm">
-                    <span className="text-retro-text capitalize">{m} game</span>
-                    <span className="text-retro-textDim">
+                  <div key={m} className="flex justify-between font-sans text-sm">
+                    <span className="text-foreground capitalize">{m} game</span>
+                    <span className="text-muted-foreground">
                       {data.won}/{data.played} won
                     </span>
                   </div>
@@ -195,9 +195,9 @@ export default function ProgressPage() {
           </div>
 
           {/* Total hands */}
-          <div className="retro-panel p-3 text-center">
-            <div className="font-pixel text-[9px] text-retro-textDim mb-1">TOTAL HANDS PLAYED</div>
-            <div className="font-pixel text-sm text-retro-cyan">{stats.totalHandsPlayed}</div>
+          <div className="ds-panel p-3 text-center">
+            <div className="font-display text-[9px] text-muted-foreground mb-1">TOTAL HANDS PLAYED</div>
+            <div className="font-display text-sm text-info">{stats.totalHandsPlayed}</div>
           </div>
         </div>
       )}

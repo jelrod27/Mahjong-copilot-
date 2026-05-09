@@ -80,36 +80,36 @@ export default function HandResultScreen({
         role="dialog"
         aria-modal="true"
         aria-labelledby="hand-result-heading"
-        className={`retro-panel p-3 md:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto ${showContent ? 'animate-slide-up' : 'opacity-0'}`}
+        className={`ds-panel p-3 md:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto ${showContent ? 'animate-slide-up' : 'opacity-0'}`}
       >
         {/* Round + Hand header */}
         <div className="text-center mb-1">
-          <span className="font-retro text-xs text-retro-textDim">
+          <span className="font-sans text-xs text-muted-foreground">
             {roundName} ROUND &mdash; Hand {handNum}
           </span>
         </div>
 
         {/* Header */}
         <div className="text-center mb-3 md:mb-4">
-          <div className="font-retro text-retro-accent text-xs md:text-sm">
+          <div className="font-sans text-accent text-xs md:text-sm">
             ╔════════════════════════╗
           </div>
           {isDraw ? (
-            <h2 id="hand-result-heading" className="font-pixel text-sm md:text-lg text-retro-gold retro-glow my-1 md:my-2">
+            <h2 id="hand-result-heading" className="font-display text-sm md:text-lg text-highlight ds-text-glow my-1 md:my-2">
               DRAW GAME
             </h2>
           ) : (
-            <h2 id="hand-result-heading" className="font-pixel text-sm md:text-lg text-retro-green retro-glow my-1 md:my-2">
+            <h2 id="hand-result-heading" className="font-display text-sm md:text-lg text-success ds-text-glow my-1 md:my-2">
               {winner?.id === 'human-player' ? 'YOU WIN!' : `${winner?.name} WINS`}
             </h2>
           )}
-          <div className="font-retro text-retro-accent text-xs md:text-sm">
+          <div className="font-sans text-accent text-xs md:text-sm">
             ╚════════════════════════╝
           </div>
         </div>
 
         {isDraw && (
-          <div className="text-center font-retro text-retro-textDim text-lg mb-4">
+          <div className="text-center font-sans text-muted-foreground text-lg mb-4">
             Wall exhausted — no winner this hand.
           </div>
         )}
@@ -117,7 +117,7 @@ export default function HandResultScreen({
         {/* Winning hand */}
         {winner && (
           <div className="mb-4">
-            <div className="font-pixel text-xs text-retro-cyan mb-2">WINNING HAND</div>
+            <div className="font-display text-xs text-info mb-2">WINNING HAND</div>
             <div className="flex flex-wrap gap-0.5 justify-center mb-2">
               {winner.hand.map(tile => (
                 <div key={tile.id} className="animate-tile-win">
@@ -131,7 +131,7 @@ export default function HandResultScreen({
               </div>
             )}
             {gameState.winningTile && (
-              <div className="text-center font-retro text-sm text-retro-textDim mt-1">
+              <div className="text-center font-sans text-sm text-muted-foreground mt-1">
                 Winning tile: {gameState.winningTile.nameEnglish}
                 {gameState.isSelfDrawn ? ' (self-drawn)' : ' (claimed)'}
               </div>
@@ -142,34 +142,34 @@ export default function HandResultScreen({
         {/* Scoring breakdown — fans stagger in one row at a time. */}
         {scoringResult && (
           <div className="mb-4">
-            <div className="font-pixel text-xs text-retro-gold mb-2">SCORING</div>
+            <div className="font-display text-xs text-highlight mb-2">SCORING</div>
             <div className="space-y-1">
               {scoringResult.fans.map((fan, i) => (
                 <div
                   key={i}
-                  className="flex justify-between font-retro text-sm animate-fan-row-in"
+                  className="flex justify-between font-sans text-sm animate-fan-row-in"
                   style={{ animationDelay: `${0.15 + i * 0.12}s` }}
                 >
-                  <span className="text-retro-text">{fan.name}</span>
-                  <span className="text-retro-cyan">+{fan.fan} fan</span>
+                  <span className="text-foreground">{fan.name}</span>
+                  <span className="text-info">+{fan.fan} fan</span>
                 </div>
               ))}
-              <div className="border-t border-retro-border my-1" />
+              <div className="border-t border-border my-1" />
               <div
-                className="flex justify-between font-retro text-sm animate-fan-row-in"
+                className="flex justify-between font-sans text-sm animate-fan-row-in"
                 style={{ animationDelay: `${0.15 + scoringResult.fans.length * 0.12}s` }}
               >
-                <span className="text-retro-gold">Total Fan</span>
-                <span className="text-retro-gold retro-glow">{scoringResult.totalFan}</span>
+                <span className="text-highlight">Total Fan</span>
+                <span className="text-highlight ds-text-glow">{scoringResult.totalFan}</span>
               </div>
               <div
-                className="flex justify-between font-retro text-lg animate-fan-row-in"
+                className="flex justify-between font-sans text-lg animate-fan-row-in"
                 style={{ animationDelay: `${0.27 + scoringResult.fans.length * 0.12}s` }}
               >
-                <span className="text-retro-green">Points</span>
+                <span className="text-success">Points</span>
                 <span
                   key={punchKey}
-                  className="text-retro-green retro-glow-strong animate-score-punch inline-block"
+                  className="text-success ds-text-glow-strong animate-score-punch inline-block"
                   data-testid="score-punch"
                 >
                   {displayedPoints}
@@ -177,7 +177,7 @@ export default function HandResultScreen({
               </div>
               {scoringResult.handName && (
                 <div
-                  className="text-center font-pixel text-xs text-retro-accent mt-1 animate-fan-row-in"
+                  className="text-center font-display text-xs text-accent mt-1 animate-fan-row-in"
                   style={{ animationDelay: `${0.4 + scoringResult.fans.length * 0.12}s` }}
                 >
                   {scoringResult.handName}
@@ -190,22 +190,22 @@ export default function HandResultScreen({
         {/* Payment breakdown */}
         {scoringResult?.payment && scoringResult.payment.payments.length > 0 && (
           <div className="mb-4">
-            <div className="font-pixel text-xs text-retro-accent mb-2">PAYMENTS</div>
+            <div className="font-display text-xs text-accent mb-2">PAYMENTS</div>
             <div className="space-y-0.5">
               {scoringResult.payment.payments.map((p, i) => (
-                <div key={i} className="flex justify-between font-retro text-sm">
-                  <span className="text-retro-textDim">
+                <div key={i} className="flex justify-between font-sans text-sm">
+                  <span className="text-muted-foreground">
                     {gameState.players[p.fromPlayerIndex]?.name ?? `Player ${p.fromPlayerIndex + 1}`}
                   </span>
                   <span className="text-red-400">-{p.amount} pts</span>
                 </div>
               ))}
-              <div className="border-t border-retro-border my-1" />
-              <div className="flex justify-between font-retro text-sm">
-                <span className="text-retro-green">
+              <div className="border-t border-border my-1" />
+              <div className="flex justify-between font-sans text-sm">
+                <span className="text-success">
                   {winner?.name ?? 'Winner'} receives
                 </span>
-                <span className="text-retro-green retro-glow">
+                <span className="text-success ds-text-glow">
                   +{scoringResult.payment.payments.reduce((sum, p) => sum + p.amount, 0)} pts
                 </span>
               </div>
@@ -215,7 +215,7 @@ export default function HandResultScreen({
 
         {/* Running scores */}
         <div className="mb-4">
-          <div className="font-pixel text-xs text-retro-cyan mb-2">STANDINGS</div>
+          <div className="font-display text-xs text-info mb-2">STANDINGS</div>
           {match.playerNames.map((name, i) => {
             const scoreChange = lastResult?.scoreChanges[i] ?? 0;
             const isWinner = gameState.players[i]?.id === gameState.winnerId;
@@ -223,8 +223,8 @@ export default function HandResultScreen({
             return (
               <div
                 key={i}
-                className={`flex justify-between font-retro text-sm py-0.5 ${
-                  isWinner ? 'text-retro-green' : 'text-retro-textDim'
+                className={`flex justify-between font-sans text-sm py-0.5 ${
+                  isWinner ? 'text-success' : 'text-muted-foreground'
                 }`}
               >
                 <span>
@@ -234,11 +234,11 @@ export default function HandResultScreen({
                 </span>
                 <span className="flex gap-3">
                   {scoreChange !== 0 && (
-                    <span className={scoreChange > 0 ? 'text-retro-green' : 'text-red-400'}>
+                    <span className={scoreChange > 0 ? 'text-success' : 'text-red-400'}>
                       {scoreChange > 0 ? '+' : ''}{scoreChange}
                     </span>
                   )}
-                  <span className="text-retro-gold min-w-[4ch] text-right">
+                  <span className="text-highlight min-w-[4ch] text-right">
                     {match.playerScores[i]}
                   </span>
                 </span>
@@ -258,17 +258,17 @@ export default function HandResultScreen({
           if (insights.length === 0) return null;
           return (
             <div className="mb-4" data-testid="hand-review">
-              <div className="font-pixel text-xs text-retro-green mb-2">REVIEW</div>
+              <div className="font-display text-xs text-success mb-2">REVIEW</div>
               <ul className="space-y-1">
                 {insights.map((insight, i) => {
                   const { symbol, cls, sr } = getInsightGlyph(insight.type);
                   return (
-                    <li key={i} className="flex gap-2 font-retro text-xs items-start" data-insight-type={insight.type}>
-                      <span className={`${cls} font-pixel shrink-0 leading-5`} aria-hidden>
+                    <li key={i} className="flex gap-2 font-sans text-xs items-start" data-insight-type={insight.type}>
+                      <span className={`${cls} font-display shrink-0 leading-5`} aria-hidden>
                         {symbol}
                       </span>
                       <span className="sr-only">{sr}</span>
-                      <span className="text-retro-text leading-snug">{insight.message}</span>
+                      <span className="text-foreground leading-snug">{insight.message}</span>
                     </li>
                   );
                 })}
@@ -278,7 +278,7 @@ export default function HandResultScreen({
         })()}
 
         {/* Next hand info */}
-        <div className="text-center mb-4 font-retro text-sm text-retro-textDim">
+        <div className="text-center mb-4 font-sans text-sm text-muted-foreground">
           Next: {match.currentRound.toUpperCase()} Round &mdash; Hand {match.handNumber}
           {lastResult && lastResult.dealerIndex === match.currentDealerIndex
             ? ' (dealer stays)'
@@ -287,7 +287,7 @@ export default function HandResultScreen({
 
         {/* Action */}
         <div className="flex justify-center">
-          <button className="retro-btn-green font-pixel text-xs" onClick={onContinue}>
+          <button className="ds-btn-success font-display text-xs" onClick={onContinue}>
             [ NEXT HAND ]
           </button>
         </div>
@@ -310,8 +310,8 @@ function WinnerSpotlight({ name, isHuman }: { name: string; isHuman: boolean }) 
     >
       <div className="animate-winner-spotlight text-center">
         <p
-          className={`font-pixel text-3xl sm:text-5xl md:text-6xl retro-glow-strong ${
-            isHuman ? 'text-retro-green' : 'text-retro-gold'
+          className={`font-display text-3xl sm:text-5xl md:text-6xl ds-text-glow-strong ${
+            isHuman ? 'text-success' : 'text-highlight'
           }`}
         >
           {isHuman ? 'YOU WIN!' : `${name.toUpperCase()} WINS!`}
@@ -325,10 +325,10 @@ function WinnerSpotlight({ name, isHuman }: { name: string; isHuman: boolean }) 
 function getInsightGlyph(type: ReviewInsight['type']): { symbol: string; cls: string; sr: string } {
   switch (type) {
     case 'good':
-      return { symbol: '\u2713', cls: 'text-retro-green', sr: 'Good play:' };
+      return { symbol: '\u2713', cls: 'text-success', sr: 'Good play:' };
     case 'mistake':
       return { symbol: '\u2717', cls: 'text-red-400', sr: 'Mistake:' };
     default:
-      return { symbol: '\u2022', cls: 'text-retro-cyan', sr: 'Note:' };
+      return { symbol: '\u2022', cls: 'text-info', sr: 'Note:' };
   }
 }

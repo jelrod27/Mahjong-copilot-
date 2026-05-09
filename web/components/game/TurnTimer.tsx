@@ -14,14 +14,14 @@ export default function TurnTimer({ timeRemaining, totalTime }: TurnTimerProps) 
   const isCritical = pct < 15;
 
   const barColor = isCritical
-    ? 'bg-retro-accent'
+    ? 'bg-accent'
     : isLow
-    ? 'bg-retro-gold'
-    : 'bg-retro-cyan';
+    ? 'bg-highlight'
+    : 'bg-info';
 
   return (
     <div className="flex items-center gap-2 px-4">
-      <div className="flex-1 h-2 bg-retro-bgLight rounded-full overflow-hidden">
+      <div className="flex-1 h-2 bg-elevated rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-100 ${barColor} ${
             isCritical ? 'animate-pulse' : ''
@@ -29,8 +29,8 @@ export default function TurnTimer({ timeRemaining, totalTime }: TurnTimerProps) 
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className={`font-retro text-sm w-6 text-right ${
-        isCritical ? 'text-retro-accent animate-blink' : isLow ? 'text-retro-gold' : 'text-retro-cyan'
+      <span className={`font-sans text-sm w-6 text-right ${
+        isCritical ? 'text-accent animate-blink' : isLow ? 'text-highlight' : 'text-info'
       }`}>
         {seconds}
       </span>

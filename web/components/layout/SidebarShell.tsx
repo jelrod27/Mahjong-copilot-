@@ -43,9 +43,9 @@ export function SidebarShell({ children }: { children: React.ReactNode }) {
     <SidebarProvider open={open} onOpenChange={handleOpenChange}>
       <AppSidebar />
       <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
-        <header className="lg:hidden flex items-center gap-3 p-3 bg-retro-bgLight border-b border-retro-border/20">
+        <header className="lg:hidden flex items-center gap-3 p-3 bg-elevated border-b border-border/20">
           <SidebarTrigger />
-          <span className="font-pixel text-[10px] text-retro-gold retro-glow-strong">
+          <span className="font-display text-[10px] text-highlight ds-text-glow-strong">
             16 BIT MAHJONG
           </span>
         </header>

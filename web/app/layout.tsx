@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, VT323, Press_Start_2P } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import StoreProvider from "@/store/provider";
@@ -11,16 +11,10 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-const vt323 = VT323({
-  weight: "400",
+const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-retro",
-});
-
-const pressStart2P = Press_Start_2P({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-pixel",
+  variable: "--font-display",
+  weight: ["500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -39,8 +33,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={cn(inter.variable, vt323.variable, pressStart2P.variable)}>
-      <body className="min-h-screen bg-retro-bg text-retro-text font-sans antialiased">
+    <html lang="en" className={cn(inter.variable, plusJakarta.variable)}>
+      <body className="min-h-screen bg-background text-foreground font-sans antialiased">
         <StoreProvider>
           <TooltipProvider>
             {children}

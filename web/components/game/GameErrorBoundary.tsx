@@ -34,29 +34,29 @@ export default class GameErrorBoundary extends React.Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center p-4">
-          <div className="retro-panel p-6 max-w-sm w-full text-center space-y-4">
-            <h1 className="font-pixel text-sm text-red-400">
+          <div className="ds-panel p-6 max-w-sm w-full text-center space-y-4">
+            <h1 className="font-display text-sm text-red-400">
               SOMETHING WENT WRONG
             </h1>
-            <p className="font-retro text-sm text-retro-textDim leading-relaxed">
+            <p className="font-sans text-sm text-muted-foreground leading-relaxed">
               An unexpected error occurred during gameplay. You can try again or
               return to the menu.
             </p>
             {this.state.error && (
-              <p className="font-retro text-xs text-retro-textDim/50 break-all">
+              <p className="font-sans text-xs text-muted-foreground/50 break-all">
                 {this.state.error.message}
               </p>
             )}
             <div className="flex flex-col gap-2 pt-2">
               <button
                 onClick={this.handleRetry}
-                className="retro-btn-green font-pixel text-xs px-6 py-2 w-full"
+                className="ds-btn-success font-display text-xs px-6 py-2 w-full"
               >
                 [ TRY AGAIN ]
               </button>
               <Link
                 href="/play"
-                className="retro-btn font-pixel text-xs px-6 py-2 w-full text-center block"
+                className="ds-btn font-display text-xs px-6 py-2 w-full text-center block"
               >
                 [ RETURN TO MENU ]
               </Link>

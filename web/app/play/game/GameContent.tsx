@@ -38,7 +38,7 @@ export default function GameContent() {
   if (!controller.game) {
     return (
       <div className="h-screen flex items-center justify-center">
-        <div className="font-pixel text-retro-cyan retro-glow text-sm">
+        <div className="font-display text-info ds-text-glow text-sm">
           DEALING TILES<span className="animate-blink">...</span>
         </div>
       </div>

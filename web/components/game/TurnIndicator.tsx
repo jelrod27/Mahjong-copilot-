@@ -20,11 +20,11 @@ export default function TurnIndicator({ currentWind, turnPhase, isHumanTurn }: T
     : '⏳ OPPONENT';
 
   return (
-    <div className="inline-block retro-panel px-3 py-1">
+    <div className="inline-block ds-panel px-3 py-1">
       <div className="flex items-center gap-2">
-        <span className="text-retro-gold font-retro text-lg">{WIND_CHARS[currentWind]}</span>
-        <span className={`font-pixel text-xs retro-glow ${
-          isHumanTurn ? 'text-retro-green' : turnPhase === 'claim' ? 'text-retro-accent' : 'text-retro-textDim'
+        <span className="text-highlight font-sans text-lg">{WIND_CHARS[currentWind]}</span>
+        <span className={`font-display text-xs ds-text-glow ${
+          isHumanTurn ? 'text-success' : turnPhase === 'claim' ? 'text-accent' : 'text-muted-foreground'
         }`}>
           {phaseText}
         </span>

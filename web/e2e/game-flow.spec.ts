@@ -67,7 +67,7 @@ test.describe('Quick Game flow', () => {
     // Wait for a turn cycle by checking wall count changes (generous timeout for AI turns)
     await page.waitForFunction(
       (startText) => {
-        const el = document.querySelector('[class*="retro-panel"]');
+        const el = document.querySelector('[class*="ds-panel"]');
         if (!el) return false;
         const match = el.textContent?.match(/Wall:\s*(\d+)|W:(\d+)/);
         return match && el.textContent !== startText;

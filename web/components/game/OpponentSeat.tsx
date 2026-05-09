@@ -76,7 +76,7 @@ export default function OpponentSeat({
     return (
       <div
         className={`flex items-center gap-2 rounded-md px-2 py-1 transition-all duration-300 ${
-          isCurrentTurn ? 'ring-1 ring-retro-gold/60 bg-retro-gold/5' : ''
+          isCurrentTurn ? 'ring-1 ring-highlight/60 bg-highlight/5' : ''
         }`}
         data-testid={`opponent-seat-${npcId}`}
       >
@@ -88,15 +88,15 @@ export default function OpponentSeat({
         </div>
         <div className="flex flex-col min-w-0">
           <div
-            className={`flex items-center gap-1 font-pixel text-[8px] ${
-              isCurrentTurn ? 'text-retro-cyan retro-glow' : 'text-retro-textDim'
+            className={`flex items-center gap-1 font-display text-[8px] ${
+              isCurrentTurn ? 'text-info ds-text-glow' : 'text-muted-foreground'
             }`}
           >
-            <span className="text-retro-gold">{WIND_LABELS[player.seatWind]}</span>
+            <span className="text-highlight">{WIND_LABELS[player.seatWind]}</span>
             <span className="truncate max-w-[64px]">{npc.name}</span>
             {isCurrentTurn && <span className="animate-blink">▸</span>}
           </div>
-          <div className="font-retro text-[10px] text-retro-textDim">
+          <div className="font-sans text-[10px] text-muted-foreground">
             {tileCount} tiles
             {player.melds.length > 0 && ` · ${player.melds.length}m`}
             {player.flowers.length > 0 && ` · 🌸${player.flowers.length}`}
@@ -131,7 +131,7 @@ export default function OpponentSeat({
         isVertical ? 'justify-center' : ''
       } rounded-lg p-1 transition-all duration-300 ${
         isCurrentTurn
-          ? 'ring-2 ring-retro-gold/60 shadow-[0_0_18px_rgba(245,183,49,0.35)]'
+          ? 'ring-2 ring-highlight/60 shadow-[0_0_18px_rgba(245,183,49,0.35)]'
           : ''
       }`}
       data-testid={`opponent-seat-${npcId}`}
@@ -151,11 +151,11 @@ export default function OpponentSeat({
 
       {/* Name + wind */}
       <div
-        className={`flex items-center gap-1 text-xs font-pixel ${
-          isCurrentTurn ? 'text-retro-cyan retro-glow' : 'text-retro-textDim'
+        className={`flex items-center gap-1 text-xs font-display ${
+          isCurrentTurn ? 'text-info ds-text-glow' : 'text-muted-foreground'
         }`}
       >
-        <span className="text-retro-gold">{WIND_LABELS[player.seatWind]}</span>
+        <span className="text-highlight">{WIND_LABELS[player.seatWind]}</span>
         <span>{npc.name}</span>
         {isCurrentTurn && <span className="animate-blink">▸</span>}
       </div>
@@ -170,7 +170,7 @@ export default function OpponentSeat({
 
       {/* Flowers */}
       {player.flowers.length > 0 && (
-        <div className="text-xs text-retro-gold font-retro">🌸 ×{player.flowers.length}</div>
+        <div className="text-xs text-highlight font-sans">🌸 ×{player.flowers.length}</div>
       )}
     </div>
   );
@@ -189,12 +189,12 @@ function SpeechBubble({ line, side }: { line: string; side: 'left' | 'right' }) 
       role="status"
       aria-live="polite"
     >
-      <div className="relative bg-retro-bg border-2 border-retro-cyan/60 rounded-lg px-3 py-1.5 shadow-[0_0_12px_rgba(69,183,209,0.3)]">
-        <span className="font-retro text-xs text-retro-text leading-snug">{line}</span>
+      <div className="relative bg-background border-2 border-info/60 rounded-lg px-3 py-1.5 shadow-[0_0_12px_rgba(69,183,209,0.3)]">
+        <span className="font-sans text-xs text-foreground leading-snug">{line}</span>
         <div
           className={`absolute top-3 ${
             side === 'right' ? '-left-1.5' : '-right-1.5'
-          } w-3 h-3 bg-retro-bg border-l-2 border-b-2 border-retro-cyan/60 ${
+          } w-3 h-3 bg-background border-l-2 border-b-2 border-info/60 ${
             side === 'right' ? 'rotate-45' : '-rotate-[135deg]'
           }`}
         />
@@ -210,8 +210,8 @@ function CompactBubble({ line }: { line: string }) {
       role="status"
       aria-live="polite"
     >
-      <div className="bg-retro-bg border border-retro-cyan/60 rounded px-1.5 py-0.5 shadow-[0_0_8px_rgba(69,183,209,0.3)]">
-        <span className="font-retro text-[9px] text-retro-text leading-tight">{line}</span>
+      <div className="bg-background border border-info/60 rounded px-1.5 py-0.5 shadow-[0_0_8px_rgba(69,183,209,0.3)]">
+        <span className="font-sans text-[9px] text-foreground leading-tight">{line}</span>
       </div>
     </div>
   );

@@ -47,24 +47,24 @@ export default function LearnPage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="bg-gradient-to-b from-retro-panel to-retro-bg px-6 pt-8 pb-6 rounded-b-2xl">
-        <p className="font-pixel text-[10px] text-retro-cyan tracking-[1.5px] mb-1">
+      <div className="bg-gradient-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
+        <p className="font-display text-[10px] text-info tracking-[1.5px] mb-1">
           LEARN MAHJONG
         </p>
-        <h1 className="font-pixel text-lg text-retro-white mb-2">Hong Kong Mahjong</h1>
-        <p className="text-base text-retro-text/80 font-retro mb-4">
+        <h1 className="font-display text-lg text-foreground mb-2">Hong Kong Mahjong</h1>
+        <p className="text-base text-foreground/80 font-sans mb-4">
           Master the game from tiles to strategy across 6 levels.
         </p>
 
         {/* Overall Progress */}
         <div className="mt-2">
-          <div className="h-2 bg-retro-bgLight rounded-full overflow-hidden">
+          <div className="h-2 bg-elevated rounded-full overflow-hidden">
             <div
-              className="h-full bg-retro-gold rounded-full transition-all duration-500"
+              className="h-full bg-highlight rounded-full transition-all duration-500"
               style={{ width: `${overallProgress}%` }}
             />
           </div>
-          <p className="mt-2 text-sm text-retro-text/80 font-retro">
+          <p className="mt-2 text-sm text-foreground/80 font-sans">
             {totalCompleted}/{totalLessons} lessons completed
           </p>
         </div>
@@ -72,9 +72,9 @@ export default function LearnPage() {
 
       {/* Level Grid */}
       <div className="p-4 space-y-3">
-        <div className="retro-card p-4 border-retro-cyan/40 bg-retro-cyan/5">
-          <p className="font-pixel text-[10px] text-retro-cyan tracking-wider mb-2">YOUR PATH</p>
-          <p className="font-retro text-sm text-retro-textDim leading-relaxed">
+        <div className="ds-card p-4 border-info/40 bg-info/5">
+          <p className="font-display text-[10px] text-info tracking-wider mb-2">YOUR PATH</p>
+          <p className="font-sans text-sm text-muted-foreground leading-relaxed">
             {PATH_STEPS.join(' → ')}
           </p>
         </div>
@@ -88,8 +88,8 @@ export default function LearnPage() {
               key={level.id}
               href={`/learn/${level.id}`}
               data-testid="learn-level-card"
-              className={`block retro-card p-5 transition-colors ${
-                isComplete ? 'border-retro-green/50' : 'hover:border-retro-cyan/50'
+              className={`block ds-card p-5 transition-colors ${
+                isComplete ? 'border-success/50' : 'hover:border-info/50'
               }`}
             >
               <LevelCard
@@ -104,7 +104,7 @@ export default function LearnPage() {
             <div
               key={level.id}
               data-testid="learn-level-card"
-              className="block retro-card p-5 opacity-50"
+              className="block ds-card p-5 opacity-50"
             >
               <LevelCard
                 level={level}
@@ -120,10 +120,10 @@ export default function LearnPage() {
 
       {/* All Complete */}
       {totalCompleted === totalLessons && (
-        <div className="mx-4 retro-card p-8 text-center mb-8 border-retro-gold">
+        <div className="mx-4 ds-card p-8 text-center mb-8 border-highlight">
           <p className="text-5xl mb-2">🏆</p>
-          <p className="font-pixel text-sm text-retro-gold retro-glow mb-1">All Levels Complete!</p>
-          <p className="text-base text-retro-textDim font-retro">
+          <p className="font-display text-sm text-highlight ds-text-glow mb-1">All Levels Complete!</p>
+          <p className="text-base text-muted-foreground font-sans">
             You&apos;ve mastered Hong Kong Mahjong. Time to play!
           </p>
         </div>
@@ -152,16 +152,16 @@ function LevelCard({
       <div
         className={`w-12 h-12 rounded-lg flex items-center justify-center mr-4 shrink-0 ${
           isComplete
-            ? 'bg-retro-green'
+            ? 'bg-success'
             : !unlocked
-              ? 'bg-retro-textDim/30'
-              : 'bg-retro-cyan'
+              ? 'bg-muted-foreground/30'
+              : 'bg-info'
         }`}
       >
         {isComplete ? (
           <span className="text-xl font-bold text-black">✓</span>
         ) : (
-          <span className={`font-pixel text-sm ${!unlocked ? 'text-retro-textDim' : 'text-black'}`}>
+          <span className={`font-display text-sm ${!unlocked ? 'text-muted-foreground' : 'text-black'}`}>
             {level.id}
           </span>
         )}
@@ -169,21 +169,21 @@ function LevelCard({
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className={`text-[17px] font-retro mb-0.5 ${!unlocked ? 'text-retro-textDim' : 'text-retro-text'}`}>
+        <p className={`text-[17px] font-sans mb-0.5 ${!unlocked ? 'text-muted-foreground' : 'text-foreground'}`}>
           {level.title}
         </p>
-        <p className={`text-sm font-retro mb-1 ${!unlocked ? 'text-retro-textDim/50' : 'text-retro-textDim'}`}>
+        <p className={`text-sm font-sans mb-1 ${!unlocked ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
           {level.description}
         </p>
         {unlocked && level.recommendedAction && (
           <p
-            className="text-xs font-retro italic text-retro-cyan mb-1.5"
+            className="text-xs font-sans italic text-info mb-1.5"
             data-testid={`recommended-action-${level.id}`}
           >
             {level.recommendedAction}
           </p>
         )}
-        <p className={`text-xs font-retro mb-2 ${!unlocked ? 'text-retro-textDim/50' : 'text-retro-gold'}`}>
+        <p className={`text-xs font-sans mb-2 ${!unlocked ? 'text-muted-foreground/50' : 'text-highlight'}`}>
           {unlocked
             ? `${level.lessons.length} lessons · ~${minutes} min`
             : `Locked — complete “${previousLevelTitle}” to unlock.`}
@@ -192,15 +192,15 @@ function LevelCard({
         {/* Progress bar */}
         {unlocked && (
           <div className="flex items-center gap-2">
-            <div className="flex-1 h-1.5 bg-retro-bgLight rounded-full overflow-hidden">
+            <div className="flex-1 h-1.5 bg-elevated rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
-                  isComplete ? 'bg-retro-green' : 'bg-retro-cyan'
+                  isComplete ? 'bg-success' : 'bg-info'
                 }`}
                 style={{ width: `${progress.percent}%` }}
               />
             </div>
-            <span className="text-xs text-retro-textDim font-retro shrink-0">
+            <span className="text-xs text-muted-foreground font-sans shrink-0">
               {progress.completed}/{progress.total}
             </span>
           </div>
@@ -210,7 +210,7 @@ function LevelCard({
       {/* Arrow / Lock */}
       <div className="ml-2">
         {unlocked ? (
-          <span className="text-3xl text-retro-cyan font-light">›</span>
+          <span className="text-3xl text-info font-light">›</span>
         ) : (
           <span className="text-lg">🔒</span>
         )}

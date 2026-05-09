@@ -86,7 +86,7 @@ Sentry is wired via `instrumentation.ts`, `instrumentation-client.ts`, `sentry.s
 
 ### Styling
 
-Tailwind with a retro theme in `/web/tailwind.config.ts`. Tokens: `retro-bg`, `retro-panel`, `retro-border` (hot pink), `retro-accent`, `retro-gold`, `retro-green`, `retro-cyan`. Headings use the "Press Start 2P" pixel font.
+Tailwind semantic design system in `/web/tailwind.config.ts` and `/web/app/globals.css`. Core tokens: `background`, `foreground`, `surface`, `elevated`, `muted`, `muted-foreground`, `border`, `accent`, `success`, `info`, `highlight`, `destructive`, `ring`. Component classes: `ds-panel`, `ds-card`, `ds-card-elevated`, `ds-btn`, `ds-btn-accent`, `ds-input`. Body uses **Inter**; display / overlines use **Plus Jakarta Sans** (`font-display`). Motion: `duration-fast` / `duration-normal`, `ease-ds-out`, etc.
 
 ## Testing
 

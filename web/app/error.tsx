@@ -15,24 +15,24 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-6 bg-retro-bg text-retro-text">
-      <h1 className="font-pixel text-retro-cyan retro-glow text-lg text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-6 bg-background text-foreground">
+      <h1 className="font-display text-info ds-text-glow text-lg text-center">
         Something went wrong
       </h1>
-      <p className="font-retro text-retro-textDim text-center max-w-md">
+      <p className="font-sans text-muted-foreground text-center max-w-md">
         An unexpected error occurred. You can try again or return home.
       </p>
       <div className="flex flex-wrap gap-3 justify-center">
         <button
           type="button"
           onClick={() => reset()}
-          className="retro-btn-accent px-4 py-2"
+          className="ds-btn-accent px-4 py-2"
         >
           Try again
         </button>
         <Link
           href="/"
-          className="font-retro text-base px-4 py-2 border-2 border-retro-border/60 rounded-md text-retro-text hover:bg-retro-accent/15 transition-colors"
+          className="font-sans text-base px-4 py-2 border-2 border-border/60 rounded-md text-foreground hover:bg-accent/15 transition-colors"
         >
           Home
         </Link>

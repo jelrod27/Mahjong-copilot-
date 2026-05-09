@@ -56,7 +56,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4 border-t border-retro-border/10 bg-retro-bgLight/50 backdrop-blur-sm">
+      <SidebarFooter className="p-4 border-t border-retro-border/10 bg-retro-bgLight/50 backdrop-blur-sm group-data-[collapsible=icon]:hidden">
         <div className="rounded-sm border border-retro-cyan/20 bg-retro-cyan/5 p-3 text-center">
           <p className="font-pixel text-[9px] text-retro-cyan tracking-tighter">
             LOCAL MODE

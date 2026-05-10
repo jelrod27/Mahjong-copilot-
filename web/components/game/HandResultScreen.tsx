@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { Star, Crown } from 'lucide-react';
 import { GameState } from '@/models/GameState';
-import { MatchState, HandResult } from '@/models/MatchState';
+import { MatchState } from '@/models/MatchState';
 import { ScoringResult } from '@/engine/types';
 import { analyzeHandPerformance, ReviewInsight } from '@/engine/reviewAnalyzer';
 import RetroTile from './RetroTile';
@@ -10,6 +11,7 @@ import ExposedMelds from './ExposedMelds';
 import HandReplayScrubber from './HandReplayScrubber';
 import Confetti from './Confetti';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { GameResultsOverlay, GameResultsSheet, GameResultsSectionLabel } from './GameResultsChrome';
 
 interface HandResultScreenProps {
   gameState: GameState;
@@ -30,20 +32,15 @@ export default function HandResultScreen({
 
   const [showContent, setShowContent] = useState(false);
   const [displayedPoints, setDisplayedPoints] = useState(0);
-  // Bumped each time the count finishes — used as the React key on the
-  // score span so the punch animation replays on remount.
   const [punchKey, setPunchKey] = useState(0);
   const targetPoints = scoringResult?.totalPoints ?? 0;
 
-  // Hold the modal back for ~750ms so the winner-spotlight cinematic plays
-  // before the score panel slides in. On a draw we skip the spotlight beat.
   useEffect(() => {
     const delay = winner ? 800 : 250;
     const timer = setTimeout(() => setShowContent(true), delay);
     return () => clearTimeout(timer);
   }, [winner]);
 
-  // Score counter animation — count up, then trigger one-shot punch on land.
   useEffect(() => {
     if (!showContent || targetPoints === 0) return;
     const duration = 1000;
@@ -70,55 +67,56 @@ export default function HandResultScreen({
   useFocusTrap(modalRef, showContent);
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-40 flex items-center justify-center p-2 md:p-4">
+    <GameResultsOverlay>
       {humanWon && showContent && <Confetti />}
       {winner && !showContent && (
         <WinnerSpotlight name={winner.name} isHuman={humanWon} />
       )}
-      <div
+      <GameResultsSheet
         ref={modalRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="hand-result-heading"
-        className={`ds-panel p-3 md:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto ${showContent ? 'animate-slide-up' : 'opacity-0'}`}
+        className={showContent ? 'animate-slide-up' : 'pointer-events-none opacity-0'}
       >
-        {/* Round + Hand header */}
-        <div className="text-center mb-1">
-          <span className="font-sans text-xs text-muted-foreground">
-            {roundName} ROUND &mdash; Hand {handNum}
+        <div className="mb-4 flex flex-col items-center gap-2 text-center">
+          <span className="inline-flex items-center rounded-full border border-border/40 bg-surface/60 px-3 py-1 font-sans text-[11px] text-muted-foreground">
+            {roundName} round · Hand {handNum}
           </span>
-        </div>
-
-        {/* Header */}
-        <div className="text-center mb-3 md:mb-4">
-          <div className="font-sans text-accent text-xs md:text-sm">
-            ╔════════════════════════╗
-          </div>
           {isDraw ? (
-            <h2 id="hand-result-heading" className="font-display text-sm md:text-lg text-highlight ds-text-glow my-1 md:my-2">
-              DRAW GAME
+            <h2
+              id="hand-result-heading"
+              className="font-display text-base text-highlight md:text-lg"
+            >
+              Exhaustive draw
             </h2>
           ) : (
-            <h2 id="hand-result-heading" className="font-display text-sm md:text-lg text-success ds-text-glow my-1 md:my-2">
-              {winner?.id === 'human-player' ? 'YOU WIN!' : `${winner?.name} WINS`}
+            <h2
+              id="hand-result-heading"
+              className="font-display text-base text-success md:text-lg"
+            >
+              {winner?.id === 'human-player' ? 'You win this hand' : `${winner?.name} wins`}
             </h2>
           )}
-          <div className="font-sans text-accent text-xs md:text-sm">
-            ╚════════════════════════╝
-          </div>
+          <p className="max-w-sm font-sans text-xs text-muted-foreground md:text-sm">
+            {isDraw
+              ? 'The wall ran out with no winner. Scores stay put for this hand.'
+              : humanWon
+                ? 'Nice finish — here is how the table settled up.'
+                : 'Hand is sealed. Review scoring and your coach notes below.'}
+          </p>
         </div>
 
         {isDraw && (
-          <div className="text-center font-sans text-muted-foreground text-lg mb-4">
-            Wall exhausted — no winner this hand.
+          <div className="mb-4 rounded-lg border border-border/30 bg-surface/40 p-3 text-center font-sans text-sm text-muted-foreground">
+            No winning hand was declared.
           </div>
         )}
 
-        {/* Winning hand */}
         {winner && (
           <div className="mb-4">
-            <div className="font-display text-xs text-info mb-2">WINNING HAND</div>
-            <div className="flex flex-wrap gap-0.5 justify-center mb-2">
+            <GameResultsSectionLabel>Winning hand</GameResultsSectionLabel>
+            <div className="flex flex-wrap justify-center gap-0.5">
               {winner.hand.map(tile => (
                 <div key={tile.id} className="animate-tile-win">
                   <RetroTile tile={tile} size="sm" />
@@ -126,23 +124,22 @@ export default function HandResultScreen({
               ))}
             </div>
             {winner.melds.length > 0 && (
-              <div className="flex justify-center mt-1">
+              <div className="mt-2 flex justify-center">
                 <ExposedMelds melds={winner.melds} size="sm" />
               </div>
             )}
             {gameState.winningTile && (
-              <div className="text-center font-sans text-sm text-muted-foreground mt-1">
+              <p className="mt-2 text-center font-sans text-xs text-muted-foreground md:text-sm">
                 Winning tile: {gameState.winningTile.nameEnglish}
-                {gameState.isSelfDrawn ? ' (self-drawn)' : ' (claimed)'}
-              </div>
+                {gameState.isSelfDrawn ? ' (self-drawn)' : ' (from discard)'}
+              </p>
             )}
           </div>
         )}
 
-        {/* Scoring breakdown — fans stagger in one row at a time. */}
         {scoringResult && (
           <div className="mb-4">
-            <div className="font-display text-xs text-highlight mb-2">SCORING</div>
+            <GameResultsSectionLabel>Scoring</GameResultsSectionLabel>
             <div className="space-y-1">
               {scoringResult.fans.map((fan, i) => (
                 <div
@@ -154,12 +151,12 @@ export default function HandResultScreen({
                   <span className="text-info">+{fan.fan} fan</span>
                 </div>
               ))}
-              <div className="border-t border-border my-1" />
+              <div className="my-1 border-t border-border" />
               <div
                 className="flex justify-between font-sans text-sm animate-fan-row-in"
                 style={{ animationDelay: `${0.15 + scoringResult.fans.length * 0.12}s` }}
               >
-                <span className="text-highlight">Total Fan</span>
+                <span className="text-highlight">Total fan</span>
                 <span className="text-highlight ds-text-glow">{scoringResult.totalFan}</span>
               </div>
               <div
@@ -169,7 +166,7 @@ export default function HandResultScreen({
                 <span className="text-success">Points</span>
                 <span
                   key={punchKey}
-                  className="text-success ds-text-glow-strong animate-score-punch inline-block"
+                  className="inline-block text-success ds-text-glow-strong animate-score-punch"
                   data-testid="score-punch"
                 >
                   {displayedPoints}
@@ -177,7 +174,7 @@ export default function HandResultScreen({
               </div>
               {scoringResult.handName && (
                 <div
-                  className="text-center font-display text-xs text-accent mt-1 animate-fan-row-in"
+                  className="mt-1 text-center font-display text-xs text-accent animate-fan-row-in"
                   style={{ animationDelay: `${0.4 + scoringResult.fans.length * 0.12}s` }}
                 >
                   {scoringResult.handName}
@@ -187,10 +184,9 @@ export default function HandResultScreen({
           </div>
         )}
 
-        {/* Payment breakdown */}
         {scoringResult?.payment && scoringResult.payment.payments.length > 0 && (
           <div className="mb-4">
-            <div className="font-display text-xs text-accent mb-2">PAYMENTS</div>
+            <GameResultsSectionLabel>Payments</GameResultsSectionLabel>
             <div className="space-y-0.5">
               {scoringResult.payment.payments.map((p, i) => (
                 <div key={i} className="flex justify-between font-sans text-sm">
@@ -200,11 +196,9 @@ export default function HandResultScreen({
                   <span className="text-red-400">-{p.amount} pts</span>
                 </div>
               ))}
-              <div className="border-t border-border my-1" />
+              <div className="my-1 border-t border-border" />
               <div className="flex justify-between font-sans text-sm">
-                <span className="text-success">
-                  {winner?.name ?? 'Winner'} receives
-                </span>
+                <span className="text-success">{winner?.name ?? 'Winner'} receives</span>
                 <span className="text-success ds-text-glow">
                   +{scoringResult.payment.payments.reduce((sum, p) => sum + p.amount, 0)} pts
                 </span>
@@ -213,9 +207,8 @@ export default function HandResultScreen({
           </div>
         )}
 
-        {/* Running scores */}
         <div className="mb-4">
-          <div className="font-display text-xs text-info mb-2">STANDINGS</div>
+          <GameResultsSectionLabel>Standings</GameResultsSectionLabel>
           {match.playerNames.map((name, i) => {
             const scoreChange = lastResult?.scoreChanges[i] ?? 0;
             const isWinner = gameState.players[i]?.id === gameState.winnerId;
@@ -223,34 +216,35 @@ export default function HandResultScreen({
             return (
               <div
                 key={i}
-                className={`flex justify-between font-sans text-sm py-0.5 ${
+                className={`flex justify-between font-sans text-sm py-1 ${
                   isWinner ? 'text-success' : 'text-muted-foreground'
                 }`}
               >
-                <span>
-                  {isWinner && '\u2605 '}
-                  {isDealer && '\u265B '}
-                  {name}
+                <span className="flex min-w-0 items-center gap-1">
+                  {isWinner && (
+                    <Star className="h-3.5 w-3.5 shrink-0 text-success" strokeWidth={2.5} aria-hidden />
+                  )}
+                  {isDealer && (
+                    <Crown className="h-3.5 w-3.5 shrink-0 text-highlight" strokeWidth={2} aria-hidden />
+                  )}
+                  <span className="truncate">{name}</span>
                 </span>
-                <span className="flex gap-3">
+                <span className="flex shrink-0 gap-3">
                   {scoreChange !== 0 && (
                     <span className={scoreChange > 0 ? 'text-success' : 'text-red-400'}>
-                      {scoreChange > 0 ? '+' : ''}{scoreChange}
+                      {scoreChange > 0 ? '+' : ''}
+                      {scoreChange}
                     </span>
                   )}
-                  <span className="text-highlight min-w-[4ch] text-right">
-                    {match.playerScores[i]}
-                  </span>
+                  <span className="min-w-[4ch] text-right text-highlight">{match.playerScores[i]}</span>
                 </span>
               </div>
             );
           })}
         </div>
 
-        {/* Hand replay — timeline of every turn */}
         <HandReplayScrubber gameState={gameState} />
 
-        {/* Post-hand review — surfaced on every difficulty */}
         {(() => {
           const humanIndex = gameState.players.findIndex(p => p.id === match.humanPlayerId);
           if (humanIndex === -1) return null;
@@ -258,17 +252,21 @@ export default function HandResultScreen({
           if (insights.length === 0) return null;
           return (
             <div className="mb-4" data-testid="hand-review">
-              <div className="font-display text-xs text-success mb-2">REVIEW</div>
-              <ul className="space-y-1">
+              <GameResultsSectionLabel>Coach notes</GameResultsSectionLabel>
+              <ul className="game-hud-surface space-y-2 rounded-lg p-3">
                 {insights.map((insight, i) => {
                   const { symbol, cls, sr } = getInsightGlyph(insight.type);
                   return (
-                    <li key={i} className="flex gap-2 font-sans text-xs items-start" data-insight-type={insight.type}>
+                    <li
+                      key={i}
+                      className="flex gap-2 font-sans text-xs items-start md:text-sm"
+                      data-insight-type={insight.type}
+                    >
                       <span className={`${cls} font-display shrink-0 leading-5`} aria-hidden>
                         {symbol}
                       </span>
                       <span className="sr-only">{sr}</span>
-                      <span className="text-foreground leading-snug">{insight.message}</span>
+                      <span className="leading-snug text-foreground">{insight.message}</span>
                     </li>
                   );
                 })}
@@ -277,34 +275,31 @@ export default function HandResultScreen({
           );
         })()}
 
-        {/* Next hand info */}
-        <div className="text-center mb-4 font-sans text-sm text-muted-foreground">
-          Next: {match.currentRound.toUpperCase()} Round &mdash; Hand {match.handNumber}
+        <div className="mb-5 rounded-lg border border-border/25 bg-surface/35 p-3 text-center font-sans text-xs text-muted-foreground md:text-sm">
+          Next up: {match.currentRound.toUpperCase()} round, hand {match.handNumber}
           {lastResult && lastResult.dealerIndex === match.currentDealerIndex
-            ? ' (dealer stays)'
-            : ` (${match.playerNames[match.currentDealerIndex]} deals)`}
+            ? ' — same dealer.'
+            : ` — ${match.playerNames[match.currentDealerIndex]} deals.`}
         </div>
 
-        {/* Action */}
-        <div className="flex justify-center">
-          <button className="ds-btn-success font-display text-xs" onClick={onContinue}>
-            [ NEXT HAND ]
+        <div className="flex justify-center safe-area-pb">
+          <button
+            type="button"
+            className="ds-btn-success min-h-[44px] px-8 font-display text-xs md:text-sm"
+            onClick={onContinue}
+          >
+            Next hand
           </button>
         </div>
-      </div>
-    </div>
+      </GameResultsSheet>
+    </GameResultsOverlay>
   );
 }
 
-/**
- * Brief pre-modal winner cinematic. Big animated text overlay that holds
- * for ~800ms, then the score panel slides up over it. Cheaper than a portrait
- * pop since we don't have to map winner identity to an NpcId.
- */
 function WinnerSpotlight({ name, isHuman }: { name: string; isHuman: boolean }) {
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none px-4"
+      className="pointer-events-none fixed inset-0 z-[45] flex items-center justify-center px-4"
       data-testid="winner-spotlight"
       aria-hidden
     >
@@ -314,14 +309,13 @@ function WinnerSpotlight({ name, isHuman }: { name: string; isHuman: boolean }) 
             isHuman ? 'text-success' : 'text-highlight'
           }`}
         >
-          {isHuman ? 'YOU WIN!' : `${name.toUpperCase()} WINS!`}
+          {isHuman ? 'You win!' : `${name} wins!`}
         </p>
       </div>
     </div>
   );
 }
 
-/** Per-insight visual treatment — green check, red x, cyan bullet. */
 function getInsightGlyph(type: ReviewInsight['type']): { symbol: string; cls: string; sr: string } {
   switch (type) {
     case 'good':

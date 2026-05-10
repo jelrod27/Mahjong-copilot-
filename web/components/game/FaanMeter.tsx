@@ -61,11 +61,11 @@ export default function FaanMeter({ projection, minFaan = 3, compact = false }: 
   );
 
   if (compact && !expanded) {
-    return <div className="ds-panel" data-testid="faan-meter">{header}</div>;
+    return <div className="game-hud-surface" data-testid="faan-meter">{header}</div>;
   }
 
   return (
-    <div className="ds-panel" data-testid="faan-meter">
+    <div className="game-hud-surface" data-testid="faan-meter">
       {header}
 
       {expanded && (

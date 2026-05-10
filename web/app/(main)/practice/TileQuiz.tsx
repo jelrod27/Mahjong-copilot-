@@ -159,24 +159,24 @@ export default function TileQuiz({ onBack }: { onBack: () => void }) {
   if (finished) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="retro-card p-8 max-w-sm w-full text-center border-2 border-retro-gold rounded-xl">
+        <div className="ds-card p-8 max-w-sm w-full text-center border-2 border-highlight rounded-xl">
           <p className="text-4xl mb-3">{score >= 8 ? '!!!' : score >= 5 ? '!' : '...'}</p>
-          <p className="font-pixel text-sm text-retro-gold retro-glow mb-2">Quiz Complete</p>
-          <p className="text-3xl font-retro text-retro-text font-bold mb-1">
+          <p className="font-display text-sm text-highlight ds-text-glow mb-2">Quiz Complete</p>
+          <p className="text-3xl font-sans text-foreground font-bold mb-1">
             {score}/{QUESTIONS_PER_ROUND}
           </p>
-          <p className="text-sm font-retro text-retro-textDim mb-6">
+          <p className="text-sm font-sans text-muted-foreground mb-6">
             {score >= 9 ? 'Tile master!' : score >= 7 ? 'Great job!' : score >= 5 ? 'Not bad, keep practicing.' : 'Keep studying the tiles!'}
           </p>
           <div className="space-y-2">
             <button
-              className="retro-btn-green w-full py-3 text-lg"
+              className="ds-btn-success w-full py-3 text-lg"
               onClick={() => { setIndex(0); setSelected(null); setScore(0); setFinished(false); }}
             >
               Try Again
             </button>
             <button
-              className="retro-btn w-full py-3 text-lg bg-retro-bgLight"
+              className="ds-btn w-full py-3 text-lg bg-elevated"
               onClick={onBack}
             >
               Back to Practice
@@ -190,28 +190,28 @@ export default function TileQuiz({ onBack }: { onBack: () => void }) {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <div className="flex items-center p-4 border-b border-retro-border/20 bg-retro-bgLight">
-        <button onClick={onBack} className="mr-4 text-lg text-retro-cyan font-retro">
+      <div className="flex items-center p-4 border-b border-border/20 bg-elevated">
+        <button onClick={onBack} className="mr-4 text-lg text-info font-sans">
           &#x2039; Back
         </button>
         <div className="flex-1">
-          <p className="font-pixel text-xs text-retro-gold">TILE QUIZ</p>
+          <p className="font-display text-xs text-highlight">TILE QUIZ</p>
         </div>
-        <div className="bg-retro-green px-3 py-1.5 rounded-full">
-          <span className="text-black font-bold text-sm font-retro">{score}/{index + 1}</span>
+        <div className="bg-success px-3 py-1.5 rounded-full">
+          <span className="text-black font-bold text-sm font-sans">{score}/{index + 1}</span>
         </div>
       </div>
 
       {/* Progress */}
       <div className="px-4 pt-4">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-sm text-retro-textDim font-retro">
+          <span className="text-sm text-muted-foreground font-sans">
             Question {index + 1} of {QUESTIONS_PER_ROUND}
           </span>
         </div>
-        <div className="h-1.5 bg-retro-bgLight rounded-full">
+        <div className="h-1.5 bg-elevated rounded-full">
           <div
-            className="h-full bg-retro-cyan rounded-full transition-all"
+            className="h-full bg-info rounded-full transition-all"
             style={{ width: `${((index + 1) / QUESTIONS_PER_ROUND) * 100}%` }}
           />
         </div>
@@ -219,18 +219,18 @@ export default function TileQuiz({ onBack }: { onBack: () => void }) {
 
       {/* Question */}
       <div className="flex-1 p-6">
-        <div className="retro-card p-5 mb-6">
+        <div className="ds-card p-5 mb-6">
           <p
-            className="font-pixel text-[10px] text-retro-cyan tracking-wider mb-2"
+            className="font-display text-[10px] text-info tracking-wider mb-2"
             data-testid="prompt-header"
           >
             {PROMPT_HEADERS[current.promptType]}
           </p>
           {current.promptType === 'description-to-name' && (
-            <p className="text-lg font-retro text-retro-text leading-7">{current.prompt}</p>
+            <p className="text-lg font-sans text-foreground leading-7">{current.prompt}</p>
           )}
           {current.promptType === 'name-to-image' && (
-            <p className="text-2xl font-retro text-retro-text font-bold leading-7">
+            <p className="text-2xl font-sans text-foreground font-bold leading-7">
               {current.prompt}
             </p>
           )}
@@ -253,10 +253,10 @@ export default function TileQuiz({ onBack }: { onBack: () => void }) {
                   key={option}
                   data-testid={`tile-option-${option}`}
                   className={`flex items-center justify-center p-3 rounded-lg border-2 transition-colors min-h-[120px]
-                    ${!showResult ? 'bg-retro-bgLight border-retro-border/30 hover:border-retro-cyan/50' : ''}
-                    ${showResult && isCorrect ? 'bg-retro-green/10 border-retro-green' : ''}
-                    ${showResult && isSelected && !isCorrect ? 'bg-retro-accent/10 border-retro-accent' : ''}
-                    ${showResult && !isCorrect && !isSelected ? 'bg-retro-bgLight border-retro-border/20 opacity-60' : ''}
+                    ${!showResult ? 'bg-elevated border-border/30 hover:border-info/50' : ''}
+                    ${showResult && isCorrect ? 'bg-success/10 border-success' : ''}
+                    ${showResult && isSelected && !isCorrect ? 'bg-accent/10 border-accent' : ''}
+                    ${showResult && !isCorrect && !isSelected ? 'bg-elevated border-border/20 opacity-60' : ''}
                   `}
                   onClick={() => handleSelect(option)}
                   disabled={selected !== null}
@@ -278,19 +278,19 @@ export default function TileQuiz({ onBack }: { onBack: () => void }) {
                 <button
                   key={option}
                   data-testid={`tile-option-${option}`}
-                  className={`w-full p-4 rounded-lg border-2 text-left font-retro text-lg transition-colors
-                    ${!showResult ? 'bg-retro-bgLight border-retro-border/30 text-retro-text hover:border-retro-cyan/50' : ''}
-                    ${showResult && isCorrect ? 'bg-retro-green/10 border-retro-green text-retro-text' : ''}
-                    ${showResult && isSelected && !isCorrect ? 'bg-retro-accent/10 border-retro-accent text-retro-text' : ''}
-                    ${showResult && !isCorrect && !isSelected ? 'bg-retro-bgLight border-retro-border/20 text-retro-textDim' : ''}
+                  className={`w-full p-4 rounded-lg border-2 text-left font-sans text-lg transition-colors
+                    ${!showResult ? 'bg-elevated border-border/30 text-foreground hover:border-info/50' : ''}
+                    ${showResult && isCorrect ? 'bg-success/10 border-success text-foreground' : ''}
+                    ${showResult && isSelected && !isCorrect ? 'bg-accent/10 border-accent text-foreground' : ''}
+                    ${showResult && !isCorrect && !isSelected ? 'bg-elevated border-border/20 text-muted-foreground' : ''}
                   `}
                   onClick={() => handleSelect(option)}
                   disabled={selected !== null}
                 >
                   <div className="flex items-center justify-between">
                     <span>{option}</span>
-                    {showResult && isCorrect && <span className="text-xl text-retro-green font-bold">&#x2713;</span>}
-                    {showResult && isSelected && !isCorrect && <span className="text-xl text-retro-accent font-bold">&#x2717;</span>}
+                    {showResult && isCorrect && <span className="text-xl text-success font-bold">&#x2713;</span>}
+                    {showResult && isSelected && !isCorrect && <span className="text-xl text-accent font-bold">&#x2717;</span>}
                   </div>
                 </button>
               );
@@ -301,15 +301,15 @@ export default function TileQuiz({ onBack }: { onBack: () => void }) {
         {selected !== null && (
           <div
             ref={whyRef}
-            className="retro-card mt-4 p-4 border-retro-cyan/40 bg-retro-cyan/5"
+            className="ds-card mt-4 p-4 border-info/40 bg-info/5"
             role="status"
             aria-live="polite"
             aria-atomic="true"
             tabIndex={-1}
           >
-            <p className="font-pixel text-[10px] text-retro-cyan tracking-wider mb-2">WHY:</p>
-            <p className="text-sm font-retro text-retro-text leading-relaxed">
-              <span className="text-retro-gold">
+            <p className="font-display text-[10px] text-info tracking-wider mb-2">WHY:</p>
+            <p className="text-sm font-sans text-foreground leading-relaxed">
+              <span className="text-highlight">
                 Correct answer:{' '}
                 {current.promptType === 'name-to-image'
                   ? getTileById(current.answer)?.nameEnglish ?? current.answer
@@ -324,7 +324,7 @@ export default function TileQuiz({ onBack }: { onBack: () => void }) {
         {/* Next */}
         {selected !== null && (
           <button
-            className="retro-btn-green w-full mt-6 py-4 text-lg"
+            className="ds-btn-success w-full mt-6 py-4 text-lg"
             onClick={handleNext}
           >
             {index + 1 >= QUESTIONS_PER_ROUND ? 'See Results' : 'Next Question'}
@@ -339,7 +339,7 @@ export default function TileQuiz({ onBack }: { onBack: () => void }) {
 function PromptTile({ id, size = 'md' }: { id: string; size?: 'sm' | 'md' | 'lg' }) {
   const tile = getTileById(id);
   if (!tile) {
-    return <span className="font-retro text-xs text-retro-textDim">[unknown tile: {id}]</span>;
+    return <span className="font-sans text-xs text-muted-foreground">[unknown tile: {id}]</span>;
   }
   return <RetroTile tile={tile} size={size} />;
 }

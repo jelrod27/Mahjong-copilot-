@@ -19,7 +19,7 @@ export default function LevelPage() {
   if (!level) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p className="text-retro-textDim font-retro">Level not found</p>
+        <p className="text-muted-foreground font-sans">Level not found</p>
       </div>
     );
   }
@@ -35,28 +35,28 @@ export default function LevelPage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="bg-gradient-to-b from-retro-panel to-retro-bg px-6 pt-8 pb-6 rounded-b-2xl">
+      <div className="bg-gradient-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
         <button
           onClick={() => router.push('/learn')}
-          className="text-sm text-retro-cyan font-retro mb-3 hover:retro-glow transition-all"
+          className="text-sm text-info font-sans mb-3 hover:ds-text-glow transition-all"
         >
           ‹ All Levels
         </button>
-        <p className="font-pixel text-[10px] text-retro-gold tracking-[1.5px] mb-1">
+        <p className="font-display text-[10px] text-highlight tracking-[1.5px] mb-1">
           LEVEL {level.id}
         </p>
-        <h1 className="font-pixel text-lg text-retro-white mb-2">{level.title}</h1>
-        <p className="text-base text-retro-text/80 font-retro mb-4">{level.description}</p>
+        <h1 className="font-display text-lg text-foreground mb-2">{level.title}</h1>
+        <p className="text-base text-foreground/80 font-sans mb-4">{level.description}</p>
 
         {/* Progress Bar */}
         <div className="mt-2">
-          <div className="h-2 bg-retro-bgLight rounded-full overflow-hidden">
+          <div className="h-2 bg-elevated rounded-full overflow-hidden">
             <div
-              className="h-full bg-retro-gold rounded-full transition-all duration-500"
+              className="h-full bg-highlight rounded-full transition-all duration-500"
               style={{ width: `${progress}%` }}
             />
           </div>
-          <p className="mt-2 text-sm text-retro-text/80 font-retro">
+          <p className="mt-2 text-sm text-foreground/80 font-sans">
             {completedInLevel}/{level.lessons.length} lessons
           </p>
         </div>
@@ -72,8 +72,8 @@ export default function LevelPage() {
             <Link
               key={lesson.id}
               href={`/learn/${levelId}/${lesson.id}`}
-              className={`flex items-center retro-card p-4 mb-3 transition-colors ${
-                isCompleted ? 'border-retro-green/50' : 'hover:border-retro-cyan/50'
+              className={`flex items-center ds-card p-4 mb-3 transition-colors ${
+                isCompleted ? 'border-success/50' : 'hover:border-info/50'
               }`}
             >
               <LessonCard
@@ -86,7 +86,7 @@ export default function LevelPage() {
           ) : (
             <div
               key={lesson.id}
-              className="flex items-center retro-card p-4 mb-3 opacity-50"
+              className="flex items-center ds-card p-4 mb-3 opacity-50"
             >
               <LessonCard
                 index={index}
@@ -101,15 +101,15 @@ export default function LevelPage() {
 
       {/* Completion */}
       {completedInLevel === level.lessons.length && (
-        <div className="mx-4 retro-card p-8 text-center mb-8 border-retro-gold">
+        <div className="mx-4 ds-card p-8 text-center mb-8 border-highlight">
           <p className="text-5xl mb-2">🎉</p>
-          <p className="font-pixel text-sm text-retro-gold retro-glow mb-1">Level Complete!</p>
-          <p className="text-base text-retro-textDim font-retro">
+          <p className="font-display text-sm text-highlight ds-text-glow mb-1">Level Complete!</p>
+          <p className="text-base text-muted-foreground font-sans">
             Ready for the next challenge?
           </p>
           <Link
             href="/learn"
-            className="inline-block mt-4 retro-btn-green px-6 py-3"
+            className="inline-block mt-4 ds-btn-success px-6 py-3"
           >
             Back to Levels
           </Link>
@@ -135,36 +135,36 @@ function LessonCard({
       <div
         className={`w-11 h-11 rounded-full flex items-center justify-center mr-4 shrink-0 ${
           isCompleted
-            ? 'bg-retro-green'
+            ? 'bg-success'
             : !isUnlocked
-              ? 'bg-retro-textDim/30'
-              : 'bg-retro-cyan'
+              ? 'bg-muted-foreground/30'
+              : 'bg-info'
         }`}
       >
         {isCompleted ? (
           <span className="text-xl font-bold text-black">✓</span>
         ) : (
-          <span className={`text-lg font-bold font-retro ${!isUnlocked ? 'text-retro-textDim' : 'text-black'}`}>
+          <span className={`text-lg font-bold font-sans ${!isUnlocked ? 'text-muted-foreground' : 'text-black'}`}>
             {index + 1}
           </span>
         )}
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className={`text-[17px] font-retro mb-0.5 ${!isUnlocked ? 'text-retro-textDim' : 'text-retro-text'}`}>
+        <p className={`text-[17px] font-sans mb-0.5 ${!isUnlocked ? 'text-muted-foreground' : 'text-foreground'}`}>
           {lesson.title}
         </p>
-        <p className={`text-sm font-retro mb-1.5 ${!isUnlocked ? 'text-retro-textDim/50' : 'text-retro-textDim'}`}>
+        <p className={`text-sm font-sans mb-1.5 ${!isUnlocked ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
           {lesson.subtitle}
         </p>
         <div className="flex gap-2">
           {lesson.tiles && lesson.tiles.length > 0 && (
-            <span className="text-xs text-retro-textDim bg-retro-bgLight px-2 py-0.5 rounded font-retro">
+            <span className="text-xs text-muted-foreground bg-elevated px-2 py-0.5 rounded font-sans">
               🀄 {lesson.tiles.length} tiles
             </span>
           )}
           {lesson.quiz && lesson.quiz.length > 0 && (
-            <span className="text-xs text-retro-textDim bg-retro-bgLight px-2 py-0.5 rounded font-retro">
+            <span className="text-xs text-muted-foreground bg-elevated px-2 py-0.5 rounded font-sans">
               ❓ {lesson.quiz.length} quiz
             </span>
           )}
@@ -173,7 +173,7 @@ function LessonCard({
 
       <div className="ml-2">
         {isUnlocked ? (
-          <span className="text-3xl text-retro-cyan font-light">›</span>
+          <span className="text-3xl text-info font-light">›</span>
         ) : (
           <span className="text-lg">🔒</span>
         )}

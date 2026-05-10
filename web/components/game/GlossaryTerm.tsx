@@ -30,7 +30,7 @@ export default function GlossaryTerm({ term, children, buttonClassName = '' }: G
         type="button"
         onClick={() => setOpen(true)}
         aria-label={`What does ${term} mean?`}
-        className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[8px] font-pixel text-retro-textDim border border-retro-border/40 hover:text-retro-cyan hover:border-retro-cyan/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-retro-cyan/60 ${buttonClassName}`}
+        className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[8px] font-display text-muted-foreground border border-border/40 hover:text-info hover:border-info/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/60 ${buttonClassName}`}
       >
         ?
       </button>

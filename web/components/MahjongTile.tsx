@@ -70,18 +70,18 @@ export const MahjongTile: React.FC<MahjongTileProps> = ({
   const containerClass = `
     relative inline-flex flex-col overflow-hidden rounded-sm
     ${isSelected ? 'scale-105 z-10' : 'hover:scale-102'}
-    ${isSuggested && !isSelected ? 'ring-2 ring-retro-gold animate-pulse-gold' : ''}
+    ${isSuggested && !isSelected ? 'ring-2 ring-highlight animate-pulse-gold' : ''}
     transition-all duration-200 ease-out cursor-pointer group
   `;
 
   // 3D Block effect colors
-  const tileFaceColor = '#f7f0e3'; // retro-white
+  const tileFaceColor = '#f7f0e3'; // ivory tile face
   const tileSideColor = '#d3c9b5';
   const tileEdgeColor = '#ede4d3';
 
   const content = showBack ? (
     <div
-      className="flex items-center justify-center bg-retro-green relative border-2 border-retro-green/30"
+      className="flex items-center justify-center bg-success relative border-2 border-success/30"
       style={{ 
         width, 
         height,
@@ -90,7 +90,7 @@ export const MahjongTile: React.FC<MahjongTileProps> = ({
     >
       {/* Shine effect */}
       <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none" />
-      <span className="retro-glow-strong" style={{ fontSize: width * 0.4 }}>🀄</span>
+      <span className="ds-text-glow-strong" style={{ fontSize: width * 0.4 }}>🀄</span>
     </div>
   ) : (
     <div
@@ -130,7 +130,7 @@ export const MahjongTile: React.FC<MahjongTileProps> = ({
         </span>
         {width > 50 && (
           <span
-            className="mt-1.5 text-center text-retro-textDim font-retro leading-tight line-clamp-2 uppercase tracking-tighter"
+            className="mt-1.5 text-center text-muted-foreground font-sans leading-tight line-clamp-2 uppercase tracking-tighter"
             style={{ fontSize: width * 0.14, maxWidth: width - 12 }}
           >
             {tile.nameEnglish}
@@ -140,11 +140,11 @@ export const MahjongTile: React.FC<MahjongTileProps> = ({
 
       {/* Selection border highlight */}
       {isSelected && (
-        <div className="absolute inset-0 border-2 border-retro-gold/50 rounded-sm animate-pulse-gold pointer-events-none" />
+        <div className="absolute inset-0 border-2 border-highlight/50 rounded-sm animate-pulse-gold pointer-events-none" />
       )}
       {/* Suggestion highlight when not selected */}
       {isSuggested && !isSelected && (
-        <div className="absolute inset-0 border-2 border-retro-cyan/40 rounded-sm pointer-events-none" />
+        <div className="absolute inset-0 border-2 border-info/40 rounded-sm pointer-events-none" />
       )}
     </div>
   );

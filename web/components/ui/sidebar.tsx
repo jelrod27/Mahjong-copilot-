@@ -187,7 +187,7 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="w-[var(--sidebar-width)] bg-retro-bg/95 backdrop-blur-xl p-0 text-sidebar-foreground [&>button]:hidden border-r border-retro-border/20"
+          className="w-[var(--sidebar-width)] bg-background/95 backdrop-blur-xl p-0 text-sidebar-foreground [&>button]:hidden border-r border-border/20"
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -240,7 +240,7 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="flex size-full flex-col bg-retro-bgLight/60 backdrop-blur-md border border-retro-border/10 rounded-lg shadow-[8px_8px_0px_0px_rgba(0,0,0,0.3)]"
+          className="flex size-full flex-col bg-elevated/60 backdrop-blur-md border border-border/10 rounded-lg shadow-[8px_8px_0px_0px_rgba(0,0,0,0.3)]"
         >
           {children}
         </div>

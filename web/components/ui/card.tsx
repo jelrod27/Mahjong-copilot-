@@ -12,7 +12,7 @@ function Card({
       data-slot="card"
       data-size={size}
       className={cn(
-        "neo-retro-card",
+        "ds-card-elevated",
         size === "sm" && "p-3",
         className
       )}

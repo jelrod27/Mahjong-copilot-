@@ -49,7 +49,7 @@ export default function MatchOverScreen({
     });
   }, [match, humanRank]);
 
-  const rankColors = ['text-retro-gold', 'text-retro-cyan', 'text-retro-text', 'text-retro-textDim'];
+  const rankColors = ['text-highlight', 'text-info', 'text-foreground', 'text-muted-foreground'];
   const rankLabels = ['1st', '2nd', '3rd', '4th'];
 
   const modalRef = useRef<HTMLDivElement>(null);
@@ -62,17 +62,17 @@ export default function MatchOverScreen({
         role="dialog"
         aria-modal="true"
         aria-labelledby="match-over-heading"
-        className={`retro-panel p-3 md:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto ${showContent ? 'animate-slide-up' : 'opacity-0'}`}
+        className={`ds-panel p-3 md:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto ${showContent ? 'animate-slide-up' : 'opacity-0'}`}
       >
         {/* Header */}
         <div className="text-center mb-3 md:mb-4">
-          <div className="font-retro text-retro-accent text-xs md:text-sm">
+          <div className="font-sans text-accent text-xs md:text-sm">
             ╔════════════════════════╗
           </div>
-          <h2 id="match-over-heading" className="font-pixel text-sm md:text-lg text-retro-gold retro-glow-strong my-1 md:my-2">
+          <h2 id="match-over-heading" className="font-display text-sm md:text-lg text-highlight ds-text-glow-strong my-1 md:my-2">
             GAME OVER
           </h2>
-          <div className="font-retro text-retro-accent text-xs md:text-sm">
+          <div className="font-sans text-accent text-xs md:text-sm">
             ╚════════════════════════╝
           </div>
         </div>
@@ -80,11 +80,11 @@ export default function MatchOverScreen({
         {/* Human placement */}
         <div className="text-center mb-4">
           {humanRank === 1 ? (
-            <div className="font-pixel text-sm text-retro-green retro-glow">
+            <div className="font-display text-sm text-success ds-text-glow">
               YOU FINISHED 1st!
             </div>
           ) : (
-            <div className="font-pixel text-sm text-retro-textDim">
+            <div className="font-display text-sm text-muted-foreground">
               You finished {rankLabels[humanRank - 1]}
             </div>
           )}
@@ -92,11 +92,11 @@ export default function MatchOverScreen({
 
         {/* Rankings */}
         <div className="mb-4">
-          <div className="font-pixel text-xs text-retro-cyan mb-2">FINAL STANDINGS</div>
+          <div className="font-display text-xs text-info mb-2">FINAL STANDINGS</div>
           {rankings.map((entry) => (
             <div
               key={entry.playerIndex}
-              className={`flex justify-between font-retro text-sm py-1 ${rankColors[entry.rank - 1]}`}
+              className={`flex justify-between font-sans text-sm py-1 ${rankColors[entry.rank - 1]}`}
             >
               <span>
                 {rankLabels[entry.rank - 1]}
@@ -104,26 +104,26 @@ export default function MatchOverScreen({
                 {entry.name}
                 {entry.playerIndex === 0 && ' (You)'}
               </span>
-              <span className="retro-glow">{entry.score} pts</span>
+              <span className="ds-text-glow">{entry.score} pts</span>
             </div>
           ))}
         </div>
 
         {/* Match stats */}
         <div className="mb-4">
-          <div className="font-pixel text-xs text-retro-gold mb-2">MATCH STATS</div>
-          <div className="font-retro text-sm text-retro-textDim space-y-0.5">
+          <div className="font-display text-xs text-highlight mb-2">MATCH STATS</div>
+          <div className="font-sans text-sm text-muted-foreground space-y-0.5">
             <div className="flex justify-between">
               <span>Mode</span>
-              <span className="text-retro-text">{match.mode === 'full' ? 'Full Game (4 rounds)' : 'Quick Game (East round)'}</span>
+              <span className="text-foreground">{match.mode === 'full' ? 'Full Game (4 rounds)' : 'Quick Game (East round)'}</span>
             </div>
             <div className="flex justify-between">
               <span>Hands Played</span>
-              <span className="text-retro-text">{match.totalHandsPlayed}</span>
+              <span className="text-foreground">{match.totalHandsPlayed}</span>
             </div>
             <div className="flex justify-between">
               <span>Starting Score</span>
-              <span className="text-retro-text">{match.startingScore}</span>
+              <span className="text-foreground">{match.startingScore}</span>
             </div>
           </div>
         </div>
@@ -131,10 +131,10 @@ export default function MatchOverScreen({
         {/* Hand history summary */}
         {match.handResults.length > 0 && (
           <div className="mb-4">
-            <div className="font-pixel text-xs text-retro-accent mb-2">HAND HISTORY</div>
+            <div className="font-display text-xs text-accent mb-2">HAND HISTORY</div>
             <div className="space-y-0.5 max-h-32 overflow-y-auto">
               {match.handResults.map((hr, i) => (
-                <div key={i} className="flex justify-between font-retro text-xs text-retro-textDim">
+                <div key={i} className="flex justify-between font-sans text-xs text-muted-foreground">
                   <span>
                     {hr.round.toUpperCase()} R{hr.handNumber}
                   </span>
@@ -154,10 +154,10 @@ export default function MatchOverScreen({
 
         {/* Actions */}
         <div className="flex gap-2 md:gap-3 justify-center">
-          <button className="retro-btn-green font-pixel text-[10px] md:text-xs min-h-[44px] px-4 md:px-6" onClick={onPlayAgain}>
+          <button className="ds-btn-success font-display text-[10px] md:text-xs min-h-[44px] px-4 md:px-6" onClick={onPlayAgain}>
             [ PLAY AGAIN ]
           </button>
-          <button className="retro-btn bg-retro-bgLight font-pixel text-[10px] md:text-xs min-h-[44px] px-4 md:px-6" onClick={onBackToMenu}>
+          <button className="ds-btn bg-elevated font-display text-[10px] md:text-xs min-h-[44px] px-4 md:px-6" onClick={onBackToMenu}>
             [ MENU ]
           </button>
         </div>

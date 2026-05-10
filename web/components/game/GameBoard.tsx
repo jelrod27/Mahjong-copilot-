@@ -239,10 +239,10 @@ export default function GameBoard({
         <div className="flex-1 flex flex-col items-center justify-center gap-1 md:gap-2 min-h-0">
           {/* Turn indicator */}
           <div className="text-center">
-            <div className={`inline-block retro-panel px-2 py-0.5 md:px-3 md:py-1 transition-all duration-300 ${
-              isHumanTurn ? 'ring-1 ring-retro-cyan/40' : ''
+            <div className={`inline-block ds-panel px-2 py-0.5 md:px-3 md:py-1 transition-all duration-300 ${
+              isHumanTurn ? 'ring-1 ring-info/40' : ''
             }`}>
-              <span className="text-retro-gold font-pixel text-[8px] md:text-xs retro-glow">
+              <span className="text-highlight font-display text-[8px] md:text-xs ds-text-glow">
                 {gameState.turnPhase === 'claim'
                   ? '⚡ CLAIM WINDOW'
                   : isHumanTurn
@@ -308,27 +308,27 @@ export default function GameBoard({
 
         {/* Player info bar */}
         <div className="flex items-center justify-between px-1 md:px-2">
-          <div className="flex items-center gap-1 md:gap-2 font-pixel text-[8px] md:text-xs">
-            <span className="text-retro-gold retro-glow">{humanPlayer.seatWind.toUpperCase()}</span>
-            <span className="text-retro-text">{humanPlayer.name}</span>
-            {humanPlayer.isDealer && <span className="text-retro-accent">★ DEALER</span>}
+          <div className="flex items-center gap-1 md:gap-2 font-display text-[8px] md:text-xs">
+            <span className="text-highlight ds-text-glow">{humanPlayer.seatWind.toUpperCase()}</span>
+            <span className="text-foreground">{humanPlayer.name}</span>
+            {humanPlayer.isDealer && <span className="text-accent">★ DEALER</span>}
           </div>
-          <div className="flex items-center gap-2 md:gap-3 font-retro text-xs md:text-sm">
+          <div className="flex items-center gap-2 md:gap-3 font-sans text-xs md:text-sm">
             {humanPlayer.flowers.length > 0 && (
               <GlossaryTerm term="Bonus Tile">
-                <span className="text-retro-gold">🌸 ×{humanPlayer.flowers.length}</span>
+                <span className="text-highlight">🌸 ×{humanPlayer.flowers.length}</span>
               </GlossaryTerm>
             )}
-            <span className="text-retro-cyan">Score: {humanPlayer.score}</span>
+            <span className="text-info">Score: {humanPlayer.score}</span>
           </div>
         </div>
 
         {/* Beginner Assist legend */}
         {tileClassifications && tileClassifications.size > 0 && (
-          <div className="flex flex-wrap justify-center gap-x-2 gap-y-1 px-1 text-center font-retro text-[9px] md:text-xs text-retro-textDim whitespace-normal">
-            <span><span className="text-retro-green font-bold">GOOD</span> = strong discard</span>
-            <span><span className="text-retro-gold font-bold">OK</span> = neutral</span>
-            <span><span className="text-retro-accent font-bold">KEEP</span> = useful tile</span>
+          <div className="flex flex-wrap justify-center gap-x-2 gap-y-1 px-1 text-center font-sans text-[9px] md:text-xs text-muted-foreground whitespace-normal">
+            <span><span className="text-success font-bold">GOOD</span> = strong discard</span>
+            <span><span className="text-highlight font-bold">OK</span> = neutral</span>
+            <span><span className="text-accent font-bold">KEEP</span> = useful tile</span>
           </div>
         )}
 
@@ -336,12 +336,12 @@ export default function GameBoard({
         {tenpaiStatus?.isTenpai && (
           <div className="text-center">
             <GlossaryTerm term="Tenpai">
-              <span className="font-pixel text-[8px] md:text-xs text-retro-green retro-glow animate-pulse">
+              <span className="font-display text-[8px] md:text-xs text-success ds-text-glow animate-pulse">
                 TENPAI — ONE TILE AWAY
               </span>
             </GlossaryTerm>
             {tenpaiStatus.waits.length > 0 && tenpaiStatus.waits[0] !== 'Already winning!' && (
-              <span className="font-retro text-[10px] md:text-xs text-retro-cyan ml-1 md:ml-2">
+              <span className="font-sans text-[10px] md:text-xs text-info ml-1 md:ml-2">
                 Waiting: {tenpaiStatus.waits.slice(0, 3).join(', ')}
                 {tenpaiStatus.waits.length > 3 && ` +${tenpaiStatus.waits.length - 3} more`}
               </span>

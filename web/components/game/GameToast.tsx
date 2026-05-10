@@ -26,8 +26,8 @@ export default function GameToast({ message }: GameToastProps) {
 
   return (
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-      <div className="retro-panel px-4 py-2 bg-retro-bg/90 border-retro-gold/40 animate-fade-in">
-        <span className="font-retro text-sm text-retro-text">
+      <div className="ds-panel px-4 py-2 bg-background/90 border-highlight/40 animate-fade-in">
+        <span className="font-sans text-sm text-foreground">
           {displayMessage}
         </span>
       </div>

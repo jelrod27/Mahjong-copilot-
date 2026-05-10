@@ -76,26 +76,26 @@ export default function ActionBar({
     const discardLabel = selectedTileName ? `[ DISCARD ${selectedTileName.toUpperCase()} ]` : '[ DISCARD SELECTED TILE ]';
     return (
       <div className="space-y-1 py-1 md:py-2">
-        <p className="text-center font-retro text-xs text-retro-textDim">
+        <p className="text-center font-sans text-xs text-muted-foreground">
           {selectedTileName
             ? `Selected: ${selectedTileName}. Discard it or choose another tile.`
             : 'Choose one tile to discard.'}
         </p>
         <div className="flex items-center justify-center gap-2">
           <button
-            className="retro-btn-accent min-h-[44px] px-4 md:px-6"
+            className="ds-btn-accent min-h-[44px] px-4 md:px-6"
             onClick={onDiscard}
             disabled={!canDiscard}
           >
             {discardLabel}
           </button>
           {canDeclareKong && (
-            <button type="button" className="retro-btn-gold min-h-[44px] px-4 md:px-6" onClick={onKong}>
+            <button type="button" className="ds-btn-highlight min-h-[44px] px-4 md:px-6" onClick={onKong}>
               [ KONG ]
             </button>
           )}
           {canDeclareWin && (
-            <button type="button" className="retro-btn-green min-h-[44px] px-4 md:px-6" onClick={onWin}>
+            <button type="button" className="ds-btn-success min-h-[44px] px-4 md:px-6" onClick={onWin}>
               [ WIN! ]
             </button>
           )}
@@ -107,7 +107,7 @@ export default function ActionBar({
   if (turnPhase === 'claim' && hasClaimOptions && claimOptions.length > 0) {
     const best = getBestClaimSubmission(claimOptions);
     const timerPct = claimTimer > 0 ? (claimTimer / claimTimeout) * 100 : 0;
-    const timerColor = timerPct > 50 ? 'bg-retro-cyan' : timerPct > 20 ? 'bg-retro-gold' : 'bg-retro-accent';
+    const timerColor = timerPct > 50 ? 'bg-info' : timerPct > 20 ? 'bg-highlight' : 'bg-accent';
 
     // Check if the only/best claim is a chow with multiple combinations
     const chowClaim = claimOptions.find(c => c.claimType === 'chow');
@@ -118,7 +118,7 @@ export default function ActionBar({
     if (bestIsChow && hasMultipleChows && discardedTile) {
       return (
         <div className="space-y-1 md:space-y-2 py-1 md:py-2 px-1 md:px-2">
-          <div className="h-1 bg-retro-bgLight rounded-full mx-1">
+          <div className="h-1 bg-elevated rounded-full mx-1">
             <div
               className={`h-full rounded-full transition-all duration-100 ${timerColor}`}
               style={{ width: `${timerPct}%` }}
@@ -138,7 +138,7 @@ export default function ActionBar({
 
     return (
       <div className="space-y-1 md:space-y-2 py-1 md:py-2 px-1 md:px-2">
-        <div className="h-1 bg-retro-bgLight rounded-full mx-1">
+        <div className="h-1 bg-elevated rounded-full mx-1">
           <div
             className={`h-full rounded-full transition-all duration-100 ${timerColor}`}
             style={{ width: `${timerPct}%` }}
@@ -148,10 +148,10 @@ export default function ActionBar({
           <button
             type="button"
             data-testid="claim-best-button"
-            className={`min-h-[48px] px-6 py-3 font-pixel text-sm sm:text-base rounded-md border-2 transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-retro-cyan/70 ${
+            className={`min-h-[48px] px-6 py-3 font-display text-sm sm:text-base rounded-md border-2 transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/70 ${
               best?.claimType === 'win'
-                ? 'retro-btn-green shadow-[0_0_20px_rgba(0,255,100,0.35)] border-retro-green/50'
-                : 'bg-retro-cyan/25 text-retro-cyan border-retro-cyan/60 shadow-[0_0_16px_rgba(69,183,209,0.35)] hover:bg-retro-cyan/35'
+                ? 'ds-btn-success shadow-[0_0_20px_rgba(0,255,100,0.35)] border-success/50'
+                : 'bg-info/25 text-info border-info/60 shadow-[0_0_16px_rgba(69,183,209,0.35)] hover:bg-info/35'
             }`}
             onClick={onClaimBest}
           >
@@ -159,7 +159,7 @@ export default function ActionBar({
           </button>
           <button
             type="button"
-            className="min-h-[48px] px-5 py-3 retro-btn bg-retro-bgLight border-retro-border/40 font-retro text-base"
+            className="min-h-[48px] px-5 py-3 ds-btn bg-elevated border-border/40 font-sans text-base"
             onClick={onPass}
           >
             [ PASS ]
@@ -168,17 +168,17 @@ export default function ActionBar({
         {best && (
           <div className="space-y-0.5 px-2 text-center">
             <p
-              className="font-retro text-xs text-retro-text leading-snug"
+              className="font-sans text-xs text-foreground leading-snug"
               data-testid="claim-consequence"
             >
-              <span className="font-bold text-retro-cyan">{claimSummaryLabel(best.claimType)}.</span>{' '}
+              <span className="font-bold text-info">{claimSummaryLabel(best.claimType)}.</span>{' '}
               {claimConsequence(best.claimType, discardedTile?.nameEnglish)}
             </p>
             <p
-              className="font-retro text-[10px] text-retro-textDim leading-snug"
+              className="font-sans text-[10px] text-muted-foreground leading-snug"
               data-testid="claim-pass-hint"
             >
-              <span className="font-bold text-retro-textDim">Pass:</span> {PASS_HINT}
+              <span className="font-bold text-muted-foreground">Pass:</span> {PASS_HINT}
             </p>
           </div>
         )}
@@ -189,7 +189,7 @@ export default function ActionBar({
   if (!isHumanTurn) {
     return (
       <div className="flex items-center justify-center py-1 md:py-2">
-        <span className="text-retro-textDim font-retro text-sm md:text-lg">
+        <span className="text-muted-foreground font-sans text-sm md:text-lg">
           Waiting for opponent<span className="animate-blink">...</span>
         </span>
       </div>

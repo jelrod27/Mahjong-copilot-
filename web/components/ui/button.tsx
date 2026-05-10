@@ -7,20 +7,20 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-sm border-2 border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:ring-2 focus-visible:ring-retro-cyan/50 active:translate-y-[1px] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-sm border-2 border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:ring-2 focus-visible:ring-info/50 active:translate-y-[1px] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-retro-accent text-white border-retro-border/20 hover:bg-retro-accent/90 hover:border-retro-border/40 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)]",
-        retro: "retro-btn-modern",
+        default: "bg-accent text-white border-border/20 hover:bg-accent/90 hover:border-border/40 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)]",
+        chip: "ds-btn-chip",
         outline:
-          "border-retro-border/30 bg-transparent text-retro-text hover:bg-retro-accent/10 hover:border-retro-border/60",
+          "border-border/30 bg-transparent text-foreground hover:bg-accent/10 hover:border-border/60",
         secondary:
-          "bg-retro-panel text-retro-text border-retro-border/10 hover:bg-retro-panel/80",
+          "bg-surface text-foreground border-border/10 hover:bg-surface/80",
         ghost:
-          "text-retro-textDim hover:text-retro-text hover:bg-retro-bgLight/50",
-        cyan: "bg-retro-cyan/20 text-retro-cyan border-retro-cyan/30 hover:bg-retro-cyan/30 hover:border-retro-cyan/50",
-        gold: "bg-retro-gold/20 text-retro-gold border-retro-gold/30 hover:bg-retro-gold/30 hover:border-retro-gold/50",
+          "text-muted-foreground hover:text-foreground hover:bg-elevated/50",
+        cyan: "bg-info/20 text-info border-info/30 hover:bg-info/30 hover:border-info/50",
+        gold: "bg-highlight/20 text-highlight border-highlight/30 hover:bg-highlight/30 hover:border-highlight/50",
       },
       size: {
         default: "h-9 px-4 gap-2",

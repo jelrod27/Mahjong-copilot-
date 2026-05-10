@@ -85,13 +85,13 @@ export default function RetroTile({
   if (showBack) {
     const backContent = (
       <div
-        className="flex items-center justify-center border-2 border-retro-textDim rounded-sm"
+        className="flex items-center justify-center border-2 border-muted-foreground rounded-sm"
         style={{
           width: w, height: h,
           background: 'repeating-linear-gradient(45deg, #2a2240, #2a2240 3px, #1c1829 3px, #1c1829 6px)',
         }}
       >
-        <span className="text-retro-textDim" style={{ fontSize: w * 0.3 }} aria-hidden>?</span>
+        <span className="text-muted-foreground" style={{ fontSize: w * 0.3 }} aria-hidden>?</span>
       </div>
     );
     return onClick ? (
@@ -110,7 +110,7 @@ export default function RetroTile({
     <div
       className={`
         flex flex-col rounded-sm border-2 overflow-hidden transition-all duration-100
-        ${isSelected ? 'border-retro-cyan -translate-y-2 -rotate-1 animate-select-pulse' : isSuggested ? 'border-retro-gold shadow-[0_0_10px_#f5b73160]' : 'border-retro-textDim'}
+        ${isSelected ? 'border-info -translate-y-2 -rotate-1 animate-select-pulse' : isSuggested ? 'border-highlight shadow-[0_0_10px_#f5b73160]' : 'border-muted-foreground'}
         ${isLastDiscarded ? 'animate-pulse-gold' : ''}
         ${isNewlyDrawn ? 'animate-tile-draw' : ''}
         ${isSuggested && !isSelected ? 'animate-pulse-gold' : ''}

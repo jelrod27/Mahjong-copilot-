@@ -23,7 +23,7 @@ test.describe('Learn page', () => {
     await expect(page.getByText(/LEVEL/i).first()).toBeVisible();
     await expect(page.getByText(/lessons/i).first()).toBeVisible();
 
-    const lessonCards = page.locator('.retro-card');
+    const lessonCards = page.locator('.ds-card');
     const count = await lessonCards.count();
     expect(count).toBeGreaterThan(0);
   });

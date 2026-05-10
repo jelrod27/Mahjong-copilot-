@@ -129,8 +129,8 @@ export default function DiscardPool({
             </div>
           ))}
           {claimHighlight && lastDiscardedTile && (
-            <p className="mt-1 text-center font-display text-[9px] text-highlight ds-text-glow tracking-wide">
-              LAST DISCARD — USE CLAIM BELOW
+            <p className="mt-1.5 text-center font-sans text-[10px] font-medium text-highlight">
+              Latest discard — use the action bar to call or pass.
             </p>
           )}
         </div>
@@ -169,8 +169,8 @@ export default function DiscardPool({
         </div>
       )}
       {claimHighlight && lastDiscardedTile && (
-        <p className="mt-1 md:mt-2 text-center font-display text-[8px] md:text-[9px] text-highlight ds-text-glow tracking-wide">
-          LAST DISCARD — USE CLAIM BELOW
+        <p className="mt-1.5 text-center font-sans text-[10px] font-medium text-highlight md:mt-2 md:text-xs">
+          Latest discard — use the action bar to call or pass.
         </p>
       )}
     </div>

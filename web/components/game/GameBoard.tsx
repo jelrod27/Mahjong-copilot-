@@ -126,15 +126,36 @@ export default function GameBoard({
     right: roster.seats.right,
   };
 
+  const currentActor = gameState.players[gameState.currentPlayerIndex];
+  const phaseHeadline =
+    gameState.turnPhase === 'claim'
+      ? 'Claims open'
+      : isHumanTurn
+        ? 'Your turn'
+        : `${currentActor?.name ?? 'Opponent'}'s turn`;
+  const phaseSubline =
+    gameState.turnPhase === 'claim'
+      ? 'Call chow, pung, kong, or mahjong — or pass.'
+      : isHumanTurn && gameState.turnPhase === 'discard'
+        ? 'Select a tile, then tap Discard.'
+        : isHumanTurn
+          ? 'Draw from the wall when you are ready.'
+          : 'Sit tight while they choose their move.';
+
   return (
     <div
-      className={`h-screen w-full flex flex-col overflow-hidden game-table-felt ${felt.className}`}
+      className={`relative h-screen w-full flex flex-col overflow-hidden game-table-felt ${felt.className}`}
       data-testid="game-board-root"
     >
+      <div
+        className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_85%_55%_at_50%_42%,transparent_0%,rgb(0_0_0_/_0.22)_78%,rgb(0_0_0_/_0.45)_100%)]"
+        aria-hidden
+      />
+
       <GameToast message={toastMessage} />
 
       {/* Top row: HUD + opponents (mobile: compact bar, desktop: full layout) */}
-      <div className="flex items-start p-1 md:p-2 gap-1 md:gap-2" style={{ flex: '0 0 auto' }}>
+      <div className="relative z-10 flex items-start p-1 md:p-2 gap-1 md:gap-2" style={{ flex: '0 0 auto' }}>
         {/* Left HUD — hidden on mobile, shown on md+ */}
         <div className="hidden md:block w-48 shrink-0">
           <GameHUD
@@ -202,7 +223,7 @@ export default function GameBoard({
       </div>
 
       {/* Mobile: minimal HUD bar */}
-      <div className="flex md:hidden items-center justify-between px-2 py-0.5" style={{ flex: '0 0 auto' }}>
+      <div className="relative z-10 flex md:hidden items-center justify-between px-2 py-0.5" style={{ flex: '0 0 auto' }}>
         <GameHUD
           wallCount={gameState.wall.length}
           prevailingWind={gameState.prevailingWind}
@@ -216,13 +237,13 @@ export default function GameBoard({
       </div>
 
       {/* Mobile: compact learning panels stacked */}
-      <div className="flex md:hidden flex-col gap-0.5 px-2 py-0.5" style={{ flex: '0 0 auto' }}>
+      <div className="relative z-10 flex md:hidden flex-col gap-0.5 px-2 py-0.5" style={{ flex: '0 0 auto' }}>
         {faanProjection && <FaanMeter projection={faanProjection} compact />}
         <DiscardReadingPanel game={gameState} humanPlayerId={humanPlayerId} compact />
       </div>
 
       {/* Middle row: Left opponent + Discard Pool + Right opponent */}
-      <div className="flex-1 flex items-center px-1 md:px-2 gap-1 md:gap-2 min-h-0">
+      <div className="relative z-10 flex min-h-0 flex-1 items-center gap-1 px-1 md:gap-2 md:px-2">
         {/* Left opponent — desktop only (mobile shows in top bar) */}
         <div className="hidden md:flex w-32 shrink-0 justify-center">
           <OpponentSeat
@@ -237,17 +258,21 @@ export default function GameBoard({
 
         {/* Center: Discard pool + wind indicator */}
         <div className="flex-1 flex flex-col items-center justify-center gap-1 md:gap-2 min-h-0">
-          {/* Turn indicator */}
+          {/* Turn indicator — stable test id for e2e */}
           <div className="text-center">
-            <div className={`inline-block ds-panel px-2 py-0.5 md:px-3 md:py-1 transition-all duration-300 ${
-              isHumanTurn ? 'ring-1 ring-info/40' : ''
-            }`}>
-              <span className="text-highlight font-display text-[8px] md:text-xs ds-text-glow">
-                {gameState.turnPhase === 'claim'
-                  ? '⚡ CLAIM WINDOW'
-                  : isHumanTurn
-                    ? `► YOUR TURN — ${gameState.turnPhase === 'discard' ? 'Discard a tile' : 'Draw'}`
-                    : `⏳ ${gameState.players[gameState.currentPlayerIndex]?.name ?? 'Opponent'}`}
+            <div
+              data-testid="game-phase-banner"
+              role="status"
+              aria-live="polite"
+              className={`game-phase-pill max-w-[min(100%,20rem)] transition-all duration-normal ease-ds-out ${
+                isHumanTurn ? 'ring-2 ring-info/35 ring-offset-2 ring-offset-transparent' : ''
+              }`}
+            >
+              <span className="font-display text-[10px] font-bold uppercase tracking-[0.18em] text-highlight md:text-xs">
+                {phaseHeadline}
+              </span>
+              <span className="mt-1 max-w-[18rem] font-sans text-[10px] leading-snug text-muted-foreground md:text-xs">
+                {phaseSubline}
               </span>
             </div>
           </div>
@@ -284,8 +309,9 @@ export default function GameBoard({
         </div>
       </div>
 
-      {/* Bottom row: Player hand + melds + actions */}
-      <div className="p-1 md:p-2 space-y-0.5 md:space-y-1" style={{ flex: '0 0 auto' }}>
+      {/* Bottom dock: actions, identity, hand */}
+      <div className="relative z-10 mt-auto px-1 pb-[env(safe-area-inset-bottom,0px)] md:px-3" style={{ flex: '0 0 auto' }}>
+        <div className="game-dock space-y-2 md:space-y-3">
         {/* Action bar */}
         <ActionBar
           canDiscard={canDiscard}
@@ -307,28 +333,46 @@ export default function GameBoard({
         />
 
         {/* Player info bar */}
-        <div className="flex items-center justify-between px-1 md:px-2">
-          <div className="flex items-center gap-1 md:gap-2 font-display text-[8px] md:text-xs">
-            <span className="text-highlight ds-text-glow">{humanPlayer.seatWind.toUpperCase()}</span>
-            <span className="text-foreground">{humanPlayer.name}</span>
-            {humanPlayer.isDealer && <span className="text-accent">★ DEALER</span>}
+        <div className="flex items-center justify-between border-b border-border/25 px-1 pb-2 md:px-2">
+          <div className="flex min-w-0 items-center gap-2 md:gap-3">
+            <span className="shrink-0 rounded-md border border-highlight/35 bg-highlight/10 px-1.5 py-0.5 font-display text-[9px] font-bold text-highlight md:text-[10px]">
+              {humanPlayer.seatWind.toUpperCase()}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate font-sans text-sm font-semibold text-foreground md:text-base">{humanPlayer.name}</p>
+              {humanPlayer.isDealer && (
+                <p className="font-display text-[9px] font-semibold uppercase tracking-wider text-accent">Dealer</p>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2 md:gap-3 font-sans text-xs md:text-sm">
+          <div className="flex shrink-0 items-center gap-2 md:gap-4 font-sans text-xs md:text-sm">
             {humanPlayer.flowers.length > 0 && (
               <GlossaryTerm term="Bonus Tile">
-                <span className="text-highlight">🌸 ×{humanPlayer.flowers.length}</span>
+                <span className="rounded-full border border-highlight/25 bg-highlight/10 px-2 py-0.5 text-highlight">
+                  Bonus ×{humanPlayer.flowers.length}
+                </span>
               </GlossaryTerm>
             )}
-            <span className="text-info">Score: {humanPlayer.score}</span>
+            <span className="rounded-full border border-info/25 bg-info/10 px-2.5 py-0.5 font-display tabular-nums text-info">
+              {humanPlayer.score}
+            </span>
           </div>
         </div>
 
         {/* Beginner Assist legend */}
         {tileClassifications && tileClassifications.size > 0 && (
-          <div className="flex flex-wrap justify-center gap-x-2 gap-y-1 px-1 text-center font-sans text-[9px] md:text-xs text-muted-foreground whitespace-normal">
-            <span><span className="text-success font-bold">GOOD</span> = strong discard</span>
-            <span><span className="text-highlight font-bold">OK</span> = neutral</span>
-            <span><span className="text-accent font-bold">KEEP</span> = useful tile</span>
+          <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 px-1 text-center font-sans text-[9px] text-muted-foreground md:text-xs">
+            <span>
+              <span className="font-semibold text-success">Good</span> strong discard
+            </span>
+            <span className="text-border">·</span>
+            <span>
+              <span className="font-semibold text-highlight">OK</span> neutral
+            </span>
+            <span className="text-border">·</span>
+            <span>
+              <span className="font-semibold text-accent">Keep</span> useful tile
+            </span>
           </div>
         )}
 
@@ -336,12 +380,12 @@ export default function GameBoard({
         {tenpaiStatus?.isTenpai && (
           <div className="text-center">
             <GlossaryTerm term="Tenpai">
-              <span className="font-display text-[8px] md:text-xs text-success ds-text-glow animate-pulse">
-                TENPAI — ONE TILE AWAY
+              <span className="inline-flex items-center gap-1 rounded-full border border-success/35 bg-success/10 px-3 py-1 font-display text-[9px] font-bold uppercase tracking-wide text-success md:text-[10px]">
+                Tenpai · one tile away
               </span>
             </GlossaryTerm>
             {tenpaiStatus.waits.length > 0 && tenpaiStatus.waits[0] !== 'Already winning!' && (
-              <span className="font-sans text-[10px] md:text-xs text-info ml-1 md:ml-2">
+              <span className="mt-1 block font-sans text-[10px] text-info md:text-xs">
                 Waiting: {tenpaiStatus.waits.slice(0, 3).join(', ')}
                 {tenpaiStatus.waits.length > 3 && ` +${tenpaiStatus.waits.length - 3} more`}
               </span>
@@ -368,6 +412,7 @@ export default function GameBoard({
             <ExposedMelds melds={humanPlayer.melds} size="md" />
           </div>
         )}
+        </div>
       </div>
     </div>
   );

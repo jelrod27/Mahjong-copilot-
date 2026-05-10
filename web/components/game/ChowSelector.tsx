@@ -54,10 +54,11 @@ export default function ChowSelector({ options, discardedTile, onSelect, onPass 
       <div className="flex justify-center">
         <button
           type="button"
-          className="min-h-[44px] px-5 py-2 ds-btn bg-elevated border-border/40 font-sans text-sm"
+          data-testid="chow-pass-button"
+          className="ds-btn min-h-[44px] border-border/50 bg-background/50 px-6 py-2 font-sans text-sm font-semibold text-muted-foreground backdrop-blur-sm hover:text-foreground"
           onClick={onPass}
         >
-          [ PASS ]
+          Pass
         </button>
       </div>
     </div>

@@ -6,9 +6,7 @@ const MOBILE_VIEWPORT = { width: 375, height: 667 };
 /** Wait for game board to be mounted and turn indicator visible. */
 async function expectGameBoardReady(page: Page) {
   await expect(page.getByTestId('game-board-root')).toBeVisible({ timeout: 60_000 });
-  await expect(
-    page.getByText(/YOUR TURN|OPPONENT|CLAIM|Waiting for opponent/).first(),
-  ).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByTestId('game-phase-banner')).toBeVisible({ timeout: 60_000 });
 }
 
 test.describe('Mobile viewport tests', () => {
@@ -21,7 +19,7 @@ test.describe('Mobile viewport tests', () => {
 
     await expect(page.getByText('HONG KONG')).toBeVisible();
     await expect(page.getByText('MAHJONG')).toBeVisible();
-    await expect(page.getByRole('button', { name: '[ START GAME ]' })).toBeVisible();
+    await expect(page.getByTestId('start-game-button')).toBeVisible();
 
     // Difficulty buttons should be visible
     await expect(page.getByRole('button', { name: /EASY/i })).toBeVisible();
@@ -45,7 +43,7 @@ test.describe('Mobile viewport tests', () => {
     await expectGameBoardReady(page);
 
     // Wait for human turn with discard button
-    const discardBtn = page.getByRole('button', { name: /\[ DISCARD/ });
+    const discardBtn = page.getByTestId('discard-tile-button');
     await discardBtn.waitFor({ state: 'visible', timeout: 60_000 });
 
     // Tiles in hand should be visible

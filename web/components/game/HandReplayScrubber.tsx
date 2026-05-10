@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, Rewind, FastForward } from 'lucide-react';
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Rewind, FastForward } from 'lucide-react';
+import { GameResultsSectionLabel } from './GameResultsChrome';
 import { GameState, GameTurn, PlayerAction } from '@/models/GameState';
 import RetroTile from './RetroTile';
 
@@ -51,26 +52,26 @@ export default function HandReplayScrubber({ gameState }: HandReplayScrubberProp
 
   return (
     <div className="mb-4" data-testid="hand-replay-scrubber">
+      <GameResultsSectionLabel>Hand replay</GameResultsSectionLabel>
       <button
         type="button"
         onClick={() => setExpanded(v => !v)}
-        className="w-full flex items-center justify-between gap-2 px-1 py-0.5 mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/50 rounded-sm"
+        className="mb-2 flex w-full items-center justify-between gap-2 rounded-lg border border-border/25 bg-surface/30 px-2 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/50"
         aria-expanded={expanded}
         aria-controls="hand-replay-body"
       >
-        <span className="font-display text-xs text-info tracking-widest">REPLAY</span>
-        <span className="flex items-center gap-2 text-[11px] font-sans text-muted-foreground">
+        <span className="font-sans text-xs font-medium text-foreground">Timeline</span>
+        <span className="flex items-center gap-2 font-sans text-[11px] text-muted-foreground">
           <span>{turns.length} turns</span>
-          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          {expanded ? <ChevronUp size={14} aria-hidden /> : <ChevronDown size={14} aria-hidden />}
         </span>
       </button>
 
       {expanded && (
         <div id="hand-replay-body" className="space-y-2">
-          {/* Active turn callout */}
-          <div className="ds-panel p-2 flex items-center gap-3">
+          <div className="game-hud-surface flex items-center gap-3 rounded-lg p-2">
             <div className="w-10 shrink-0 text-center">
-              <div className="font-display text-[8px] text-highlight tracking-widest uppercase">Turn</div>
+              <div className="font-display text-[8px] uppercase tracking-widest text-highlight">Turn</div>
               <div className="font-sans text-sm text-foreground">{activeTurn.turnNumber}</div>
             </div>
             <div className="flex-1 min-w-0">
@@ -106,9 +107,9 @@ export default function HandReplayScrubber({ gameState }: HandReplayScrubberProp
               onClick={() => step(-1)}
               disabled={scrubberInert || cursorSafe === 0}
               aria-label="Previous turn"
-              className="ds-btn font-display text-[8px] px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="ds-btn px-2 py-1 font-display text-[8px] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              ◀
+              <ChevronLeft size={14} aria-hidden />
             </button>
             <input
               type="range"
@@ -125,9 +126,9 @@ export default function HandReplayScrubber({ gameState }: HandReplayScrubberProp
               onClick={() => step(1)}
               disabled={scrubberInert || cursorSafe >= turns.length - 1}
               aria-label="Next turn"
-              className="ds-btn font-display text-[8px] px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="ds-btn px-2 py-1 font-display text-[8px] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              ▶
+              <ChevronRight size={14} aria-hidden />
             </button>
             <button
               type="button"
@@ -141,7 +142,7 @@ export default function HandReplayScrubber({ gameState }: HandReplayScrubberProp
           </div>
 
           {/* Compact full timeline — click any row to jump */}
-          <ol className="max-h-36 overflow-y-auto border border-border/20 rounded-sm divide-y divide-border/20">
+          <ol className="max-h-36 divide-y divide-border/20 overflow-y-auto rounded-lg border border-border/25 bg-surface/25">
             {turns.map((turn, i) => (
               <li key={`${turn.turnNumber}-${i}`}>
                 <button

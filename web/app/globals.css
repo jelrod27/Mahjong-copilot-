@@ -123,6 +123,57 @@
     box-shadow: 0 2px 8px rgb(0 0 0 / 0.2), 0 1px 2px rgb(0 0 0 / 0.15);
     backdrop-filter: blur(12px);
   }
+
+  /* Post-hand / match-over / practice modals — plain CSS (same rationale as .game-dock). */
+  .game-results-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    background: rgb(6 10 14 / 0.9);
+    background-image: radial-gradient(
+      ellipse 92% 72% at 50% 36%,
+      rgb(18 42 32 / 0.45) 0%,
+      transparent 58%
+    );
+    backdrop-filter: blur(10px);
+  }
+
+  @media (min-width: 768px) {
+    .game-results-overlay {
+      padding: 1rem;
+    }
+  }
+
+  .game-results-sheet {
+    position: relative;
+    z-index: 50;
+    width: 100%;
+    max-width: 32rem;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 1rem;
+    border: 1px solid rgb(255 255 255 / 0.11);
+    background: linear-gradient(
+      168deg,
+      rgb(34 40 54 / 0.97) 0%,
+      rgb(12 16 24 / 0.99) 100%
+    );
+    box-shadow:
+      0 28px 72px rgb(0 0 0 / 0.58),
+      0 0 0 1px rgb(0 0 0 / 0.35);
+    backdrop-filter: blur(22px);
+    padding: 1rem 1rem 1.25rem;
+  }
+
+  @media (min-width: 768px) {
+    .game-results-sheet {
+      padding: 1.5rem 1.75rem 1.5rem;
+    }
+  }
 }
 
 @layer utilities {

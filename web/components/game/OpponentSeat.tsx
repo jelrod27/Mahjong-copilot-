@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Flower2, ChevronRight } from 'lucide-react';
 import { Player } from '@/models/GameState';
 import { WindTile } from '@/models/Tile';
 import { GameState } from '@/models/GameState';
@@ -94,12 +95,18 @@ export default function OpponentSeat({
           >
             <span className="text-highlight">{WIND_LABELS[player.seatWind]}</span>
             <span className="truncate max-w-[64px]">{npc.name}</span>
-            {isCurrentTurn && <span className="animate-blink">▸</span>}
+            {isCurrentTurn && <ChevronRight className="h-3 w-3 shrink-0 animate-blink text-info" aria-hidden />}
           </div>
           <div className="font-sans text-[10px] text-muted-foreground">
             {tileCount} tiles
             {player.melds.length > 0 && ` · ${player.melds.length}m`}
-            {player.flowers.length > 0 && ` · 🌸${player.flowers.length}`}
+            {player.flowers.length > 0 && (
+              <>
+                {' · '}
+                <Flower2 className="inline h-3 w-3 align-text-bottom text-highlight" aria-hidden />
+                {player.flowers.length}
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -157,7 +164,7 @@ export default function OpponentSeat({
       >
         <span className="text-highlight">{WIND_LABELS[player.seatWind]}</span>
         <span>{npc.name}</span>
-        {isCurrentTurn && <span className="animate-blink">▸</span>}
+        {isCurrentTurn && <ChevronRight className="h-3 w-3 shrink-0 animate-blink text-info" aria-hidden />}
       </div>
 
       {/* Face-down tiles */}
@@ -170,7 +177,10 @@ export default function OpponentSeat({
 
       {/* Flowers */}
       {player.flowers.length > 0 && (
-        <div className="text-xs text-highlight font-sans">🌸 ×{player.flowers.length}</div>
+        <div className="flex items-center justify-center gap-1 font-sans text-xs text-highlight">
+          <Flower2 className="h-3.5 w-3.5" aria-hidden />
+          <span>×{player.flowers.length}</span>
+        </div>
       )}
     </div>
   );

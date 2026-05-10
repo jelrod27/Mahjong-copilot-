@@ -70,11 +70,11 @@ export default function DiscardReadingPanel({ game, humanPlayerId, compact = fal
   );
 
   if (compact && !expanded) {
-    return <div className="ds-panel" data-testid="discard-reading-panel">{header}</div>;
+    return <div className="game-hud-surface" data-testid="discard-reading-panel">{header}</div>;
   }
 
   return (
-    <div className="ds-panel" data-testid="discard-reading-panel">
+    <div className="game-hud-surface" data-testid="discard-reading-panel">
       {header}
 
       {expanded && (

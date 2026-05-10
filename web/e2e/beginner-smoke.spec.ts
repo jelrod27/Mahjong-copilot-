@@ -54,7 +54,7 @@ test.describe('Beginner smoke — offline solo path', () => {
 
     // 3. Start an Easy solo game
     await page.getByRole('button', { name: /EASY — Random AI/i }).click();
-    await page.getByRole('button', { name: '[ START GAME ]' }).click();
+    await page.getByTestId('start-game-button').click();
     await expect(page).toHaveURL(/\/play\/game\?difficulty=easy/);
 
     // 4. Game board renders the player's hand
@@ -65,7 +65,7 @@ test.describe('Beginner smoke — offline solo path', () => {
     expect(initialTileCount).toBeGreaterThan(0);
 
     // 5 + 6. Selecting a tile enables the discard CTA
-    const discardBtn = page.getByRole('button', { name: /\[ DISCARD/ });
+    const discardBtn = page.getByTestId('discard-tile-button');
     await discardBtn.waitFor({ state: 'visible', timeout: 60_000 });
     await tiles.first().click();
     await expect(discardBtn).toBeEnabled();

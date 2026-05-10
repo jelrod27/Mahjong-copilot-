@@ -120,27 +120,33 @@ export default function PlayPage() {
 
       {/* Start button */}
       <button
+        type="button"
+        data-testid="start-game-button"
         onClick={handleStart}
-        className="ds-btn-success font-display text-xs md:text-sm px-6 md:px-8 py-3 min-h-[44px]"
+        className="ds-btn-success min-h-[48px] px-8 py-3 font-display text-sm font-bold tracking-wide md:text-base"
       >
-        [ START GAME ]
+        Start game
       </button>
 
       {canResume && (
         <button
+          type="button"
+          data-testid="resume-game-button"
           onClick={handleResume}
-          className="ds-btn font-display text-xs md:text-sm px-6 md:px-8 py-3 mt-2 min-h-[44px] border-highlight text-highlight"
+          className="ds-btn mt-2 min-h-[48px] border-highlight/50 px-8 py-3 font-display text-sm font-semibold text-highlight md:text-base"
         >
-          [ RESUME GAME ]
+          Resume saved game
         </button>
       )}
 
       {/* Multiplayer */}
       <button
+        type="button"
+        data-testid="multiplayer-lobby-button"
         onClick={() => router.push('/play/lobby')}
-        className="ds-btn font-display text-xs md:text-sm px-6 md:px-8 py-3 mt-3 min-h-[44px] border-info text-info"
+        className="ds-btn mt-3 min-h-[48px] border-info/50 px-8 py-3 font-display text-sm font-semibold text-info md:text-base"
       >
-        [ MULTIPLAYER ]
+        Multiplayer lobby
       </button>
 
       {/* Quick reference */}

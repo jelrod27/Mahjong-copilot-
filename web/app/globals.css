@@ -79,6 +79,50 @@
            outline-none transition-colors duration-fast placeholder:text-muted-foreground
            focus:border-info focus:shadow-ds-ring-info;
   }
+
+  /* Solo play — bottom dock + HUD surfaces (felt stays underneath).
+     Plain CSS here: @apply with some opacity utilities failed under Next CSS pipeline. */
+  .game-dock {
+    position: relative;
+    border-radius: 1rem 1rem 0 0;
+    border-top: 1px solid rgb(255 255 255 / 0.1);
+    border-left: 1px solid rgb(255 255 255 / 0.1);
+    border-right: 1px solid rgb(255 255 255 / 0.1);
+    padding: 0.75rem 0.5rem 0.5rem;
+    box-shadow: 0 -16px 48px rgb(0 0 0 / 0.5);
+    backdrop-filter: blur(20px);
+    background: linear-gradient(
+      to bottom,
+      rgb(28 34 48 / 0.94) 0%,
+      rgb(10 12 18 / 0.92) 100%
+    );
+  }
+
+  @media (min-width: 768px) {
+    .game-dock {
+      padding: 1.25rem 1.25rem 1rem;
+    }
+  }
+
+  .game-hud-surface {
+    border-radius: 0.75rem;
+    border: 1px solid rgb(48 56 74 / 0.45);
+    background: rgb(0 0 0 / 0.3);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.28), 0 2px 6px rgb(0 0 0 / 0.18);
+    backdrop-filter: blur(12px);
+  }
+
+  .game-phase-pill {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    border-radius: 1rem;
+    border: 1px solid rgb(255 255 255 / 0.12);
+    background: rgb(0 0 0 / 0.35);
+    padding: 0.5rem 1rem;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.2), 0 1px 2px rgb(0 0 0 / 0.15);
+    backdrop-filter: blur(12px);
+  }
 }
 
 @layer utilities {

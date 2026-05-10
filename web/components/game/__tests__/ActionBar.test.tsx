@@ -24,8 +24,8 @@ describe('ActionBar discard state', () => {
     );
 
     expect(screen.getByRole('button', { name: /discard 1 bamboo/i })).toBeEnabled();
-    expect(screen.getByText(/selected: 1 bamboo/i)).toBeInTheDocument();
-    expect(screen.getByText(/discard it or choose another tile/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/1 Bamboo/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/tap discard to send it out/i)).toBeInTheDocument();
   });
 
   it('prompts the player to choose a tile before discarding', () => {
@@ -48,6 +48,6 @@ describe('ActionBar discard state', () => {
     );
 
     expect(screen.getByRole('button', { name: /discard selected tile/i })).toBeDisabled();
-    expect(screen.getByText(/choose one tile to discard/i)).toBeInTheDocument();
+    expect(screen.getByText(/select one tile from your hand/i)).toBeInTheDocument();
   });
 });

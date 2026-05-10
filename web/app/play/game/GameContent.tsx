@@ -37,9 +37,14 @@ export default function GameContent() {
 
   if (!controller.game) {
     return (
-      <div className="h-screen flex items-center justify-center">
-        <div className="font-display text-info ds-text-glow text-sm">
-          DEALING TILES<span className="animate-blink">...</span>
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-background px-6">
+        <div
+          className="size-12 rounded-full border-2 border-info/30 border-t-info animate-spin"
+          aria-hidden
+        />
+        <div className="text-center">
+          <p className="font-display text-sm font-semibold tracking-wide text-foreground">Setting the table</p>
+          <p className="mt-1 font-sans text-xs text-muted-foreground">Shuffling tiles and seating opponents…</p>
         </div>
       </div>
     );

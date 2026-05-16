@@ -1,18 +1,22 @@
 # 16 Bit Mahjong
 
+*(Formerly/also known as Mahjong Copilot)*
+
 A mahjong learning and solo play platform. Live at [16bitmahjong.co](https://16bitmahjong.co).
 
 Built around a deterministic, dependency-free game engine that handles the full Hong Kong Mahjong ruleset -- dealing, drawing, discarding, claiming (chow/pung/kong/win), scoring, and three AI tiers.
 
 ## Stack
 
-**Web app** (`web/`): Next.js 14, React 18, Redux Toolkit, Supabase, Tailwind CSS
+**Web app** (`web/`): Next.js 15, React 18, Redux Toolkit, Supabase, Tailwind CSS
 
 **Game engine** (`web/engine/`): Pure TypeScript, no dependencies, no side effects. Framework-agnostic and fully testable.
 
 **Mobile** (`src/`): Legacy React Native shell. Not actively developed.
 
 ## Running locally
+
+**Requires Node.js 18.17+ (20.x recommended).**
 
 ```bash
 cd web

@@ -114,25 +114,57 @@ describe('advanceMatch — round progression', () => {
   it('quick game ends after East round', () => {
     let match = initializeMatch(BASE_OPTIONS);
 
-    // Simulate 4 hands where each non-dealer wins, rotating dealer through all 4 players
-    // Hand 1: AI 1 wins → dealer rotates 0→1, initial dealer (0) loses dealership → round advances
-    const hand1 = finishHand(match, 'ai_1');
-    match = advanceMatch(match, hand1, null);
+    // Simulate a full dealer cycle to end East round.
+    // Round advances when dealership returns to the initial dealer.
+    // Hand 1: dealer 0 loses → dealer=1, initialDealerHasRotated=true
+    match = advanceMatch(match, finishHand(match, 'ai_1'), null);
+    expect(match.phase).toBe('betweenHands');
+    match = startNextHand(match);
 
-    // Quick game = East round only, so when initial dealer loses, match should end
+    // Hand 2: dealer 1 loses → dealer=2
+    match = advanceMatch(match, finishHand(match, 'ai_2'), null);
+    expect(match.phase).toBe('betweenHands');
+    match = startNextHand(match);
+
+    // Hand 3: dealer 2 loses → dealer=3
+    match = advanceMatch(match, finishHand(match, 'ai_3'), null);
+    expect(match.phase).toBe('betweenHands');
+    match = startNextHand(match);
+
+    // Hand 4: dealer 3 loses → dealer returns to 0, East round ends
+    match = advanceMatch(match, finishHand(match, 'human-player'), null);
+
+    // Quick game = East round only, so match finishes
     expect(match.phase).toBe('finished');
   });
 
   it('full game progresses through rounds', () => {
     let match = initializeMatch({ ...BASE_OPTIONS, mode: 'full' });
 
-    // Hand 1: AI 1 wins → dealer rotates 0→1, East round ends → advances to South
-    const hand1 = finishHand(match, 'ai_1');
-    match = advanceMatch(match, hand1, null);
+    // Simulate a full dealer cycle to end the East round.
+    // Round advances when dealership returns to the initial dealer.
+    // Hand 1: dealer 0 loses → dealer=1, initialDealerHasRotated=true
+    match = advanceMatch(match, finishHand(match, 'ai_1'), null);
+    expect(match.phase).toBe('betweenHands');
+    match = startNextHand(match);
+
+    // Hand 2: dealer 1 loses → dealer=2
+    match = advanceMatch(match, finishHand(match, 'ai_2'), null);
+    expect(match.phase).toBe('betweenHands');
+    match = startNextHand(match);
+
+    // Hand 3: dealer 2 loses → dealer=3
+    match = advanceMatch(match, finishHand(match, 'ai_3'), null);
+    expect(match.phase).toBe('betweenHands');
+    match = startNextHand(match);
+
+    // Hand 4: dealer 3 loses → dealer returns to 0, East round ends, South begins
+    match = advanceMatch(match, finishHand(match, 'human-player'), null);
 
     expect(match.phase).toBe('betweenHands');
+    // After a full dealer cycle, round advances. Dealer is back to initial (0).
     expect(match.currentRound).toBe(WindTile.SOUTH);
-    expect(match.currentDealerIndex).toBe(1);
+    expect(match.currentDealerIndex).toBe(0);
     expect(match.handNumber).toBe(1);
   });
 
@@ -197,22 +229,28 @@ describe('advanceMatch — score accumulation', () => {
 
 describe('startNextHand', () => {
   it('creates new hand with correct dealer and wind', () => {
-    let match = initializeMatch(BASE_OPTIONS);
-    const completedHand = finishHand(match, 'ai_1');
-    match = advanceMatch(match, completedHand, null);
+    let match = initializeMatch({ ...BASE_OPTIONS, mode: 'full' });
 
-    // Quick game should have ended, test with full mode
-    match = initializeMatch({ ...BASE_OPTIONS, mode: 'full' });
-    const hand1 = finishHand(match, 'ai_1');
-    match = advanceMatch(match, hand1, null);
+    // Simulate 3 hands: advance + start next
+    for (let i = 0; i < 3; i++) {
+      const hand = finishHand(match, 'ai_' + (i + 1));
+      match = advanceMatch(match, hand, null);
+      expect(match.phase).toBe('betweenHands');
+      match = startNextHand(match);
+    }
+
+    // 4th hand: dealer returns to initial, round advances to South
+    match = advanceMatch(match, finishHand(match, 'human-player'), null);
 
     expect(match.phase).toBe('betweenHands');
+    expect(match.currentRound).toBe(WindTile.SOUTH);
+    expect(match.currentDealerIndex).toBe(0);
     match = startNextHand(match);
 
     expect(match.phase).toBe('playing');
     expect(match.currentHand).not.toBeNull();
-    expect(match.currentHand!.players[1].isDealer).toBe(true);
-    expect(match.currentHand!.players[1].seatWind).toBe(WindTile.EAST);
+    expect(match.currentHand!.players[0].isDealer).toBe(true);
+    expect(match.currentHand!.players[0].seatWind).toBe(WindTile.EAST);
     expect(match.currentHand!.prevailingWind).toBe(WindTile.SOUTH);
   });
 

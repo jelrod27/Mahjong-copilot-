@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 16 Bit Mahjong — a Hong Kong Mahjong learning and solo/multiplayer platform. Live at 16bitmahjong.co.
 
 Two codebases:
-- **Web app** (`/web/`): Next.js 14 + React 18 + TypeScript + Redux Toolkit + Tailwind CSS + Supabase + Sentry. Primary active codebase.
+- **Web app** (`/web/`): Next.js 15 + React 18 + TypeScript + Redux Toolkit + Tailwind CSS + Supabase + Sentry. Primary active codebase.
 - **Mobile app** (`/src/`): Legacy React Native 0.73 shell. Not actively developed.
 
 Supabase powers auth and multiplayer. The solo game runs fully offline — Supabase env vars are optional for local dev.

@@ -65,13 +65,23 @@ export function getHardDiscard(gameState: GameState, playerIndex: number): AIDec
       if (shantenWithout <= shantenWith) {
         return {
           action: { type: 'DECLARE_KONG', tile: tiles[0] },
-          reasoning: 'Hard AI: declaring kong',
+          reasoning: `Hard AI: declaring kong (shanten ${shantenWith}→${shantenWithout})`,
         };
       }
     }
   }
 
   const nonBonus = hand.filter(t => t.type !== TileType.BONUS);
+
+  // Guard: bonus-only hand (shouldn't happen in normal play, but prevents crashes)
+  if (nonBonus.length === 0) {
+    const tile = hand[0];
+    return {
+      action: { type: 'DISCARD', tile },
+      reasoning: `Hard AI: discard ${tile?.nameEnglish || 'tile'} (bonus-only)`,
+    };
+  }
+
   const currentShanten = calculateShanten(nonBonus.slice(0, 13));
   const defensive = shouldPlayDefensive(gameState, playerIndex);
 

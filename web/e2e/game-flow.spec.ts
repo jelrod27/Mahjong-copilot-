@@ -3,9 +3,7 @@ import { test, expect, type Page } from '@playwright/test';
 /** Wait for game board to be mounted and turn indicator visible. */
 async function expectGameBoardReady(page: Page) {
   await expect(page.getByTestId('game-board-root')).toBeVisible({ timeout: 60_000 });
-  await expect(
-    page.getByText(/YOUR TURN|OPPONENT|CLAIM|Waiting for opponent/).first(),
-  ).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByTestId('game-phase-banner')).toBeVisible({ timeout: 60_000 });
 }
 
 test.describe('Quick Game flow', () => {
@@ -19,7 +17,7 @@ test.describe('Quick Game flow', () => {
     await page.getByRole('button', { name: /EASY — Random AI/i }).click();
 
     // Quick Game mode should be selected by default
-    await page.getByRole('button', { name: '[ START GAME ]' }).click();
+    await page.getByTestId('start-game-button').click();
     await expect(page).toHaveURL(/\/play\/game\?difficulty=easy/);
 
     await expectGameBoardReady(page);
@@ -30,7 +28,7 @@ test.describe('Quick Game flow', () => {
     await expectGameBoardReady(page);
 
     // Wait for human discard turn
-    const discardBtn = page.getByRole('button', { name: /\[ DISCARD/ });
+    const discardBtn = page.getByTestId('discard-tile-button');
     await discardBtn.waitFor({ state: 'visible', timeout: 60_000 });
 
     // Count discard pool tiles before
@@ -46,10 +44,7 @@ test.describe('Quick Game flow', () => {
     await expect(discardBtn).toBeEnabled();
     await discardBtn.click();
 
-    // Verify the game progresses — wait for the next YOUR TURN or OPPONENT indicator
-    await expect(
-      page.getByText(/YOUR TURN|OPPONENT|CLAIM/).first(),
-    ).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId('game-phase-banner')).toBeVisible({ timeout: 30_000 });
   });
 
   test('game is progressing: turns change over time', async ({ page }) => {
@@ -58,36 +53,36 @@ test.describe('Quick Game flow', () => {
 
     // Wait for at least one turn cycle — the wall count should decrease
     // Initially wall has ~56 tiles (144 - 13*4 - bonus draws). After a few turns it shrinks.
-    const wallText = page.getByText(/Wall:\s*\d+|W:\d+/).first();
-    await expect(wallText).toBeVisible({ timeout: 30_000 });
+    const wallDisplay = page.getByTestId('wall-count-display').filter({ visible: true });
+    await expect(wallDisplay).toBeVisible({ timeout: 30_000 });
 
-    // Get initial wall count text
-    const initialText = await wallText.textContent();
+    const initialText = await wallDisplay.textContent();
 
-    // Wait for a turn cycle by checking wall count changes (generous timeout for AI turns)
-    await page.waitForFunction(
-      (startText) => {
-        const el = document.querySelector('[class*="retro-panel"]');
-        if (!el) return false;
-        const match = el.textContent?.match(/Wall:\s*(\d+)|W:(\d+)/);
-        return match && el.textContent !== startText;
-      },
-      initialText,
-      { timeout: 60_000 },
-    ).catch(() => {
-      // If wall count didn't change, that's acceptable — game may be in claim phase
-    });
+    await page
+      .waitForFunction(
+        (startText) => {
+          const els = document.querySelectorAll('[data-testid="wall-count-display"]');
+          for (const el of els) {
+            const style = window.getComputedStyle(el);
+            if (style.display === 'none' || style.visibility === 'hidden') continue;
+            const t = el.textContent?.trim() ?? '';
+            if (t && t !== startText) return true;
+          }
+          return false;
+        },
+        initialText,
+        { timeout: 60_000 },
+      )
+      .catch(() => {
+        // If wall count didn't change, that's acceptable — game may be in claim phase
+      });
   });
 
   test('HUD shows round wind info', async ({ page }) => {
     await page.goto('/play/game?difficulty=easy');
     await expectGameBoardReady(page);
 
-    // The HUD displays the prevailing wind character followed by "Round"
-    // or in compact mode just the wind character
-    await expect(
-      page.getByText(/[東南西北]\s*Round|[東南西北]/).first(),
-    ).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/Prevailing wind|[東南西北]/).first()).toBeVisible({ timeout: 30_000 });
   });
 });
 
@@ -98,7 +93,7 @@ test.describe('Full Game mode', () => {
     // Select Full Game mode
     await page.getByText('FULL GAME').click();
     await page.getByRole('button', { name: /EASY — Random AI/i }).click();
-    await page.getByRole('button', { name: '[ START GAME ]' }).click();
+    await page.getByTestId('start-game-button').click();
 
     await expect(page).toHaveURL(/mode=full/);
     await expectGameBoardReady(page);

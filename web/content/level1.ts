@@ -13,6 +13,10 @@ export interface Lesson {
     targetSetType?: 'pung' | 'chow' | 'kong' | 'pair';
     availableTileIds?: string[];
   };
+  /** 2-3 short bullets surfaced in the post-lesson completion modal. */
+  keyTakeaways?: string[];
+  /** Lesson id of the next recommended lesson. Surfaced in the completion modal. */
+  nextLessonId?: string;
 }
 
 export interface QuizQuestion {
@@ -31,12 +35,15 @@ export interface Level {
   description: string;
   lessons: Lesson[];
   unlockRequirement?: string;
+  /** One-line motivational copy surfaced under the title on the Learn-page module card. */
+  recommendedAction?: string;
 }
 
 export const Level1: Level = {
   id: 1,
   title: "Know Your Tiles",
   description: "Learn to identify all 144 tiles in a mahjong set",
+  recommendedAction: "Start here if you are new to Mahjong.",
   lessons: [
     // LESSON 1: Introduction
     {
@@ -49,7 +56,13 @@ export const Level1: Level = {
         "Think of it like a deck of cards: once you know the suits, everything clicks.",
         "There are 3 main categories: Suits (numbers), Honors (winds & dragons), and Bonus tiles.",
         "Let's start with the suits — they're the bread and butter of every hand."
-      ]
+      ],
+      keyTakeaways: [
+        "A mahjong set has 144 tiles, but they follow simple repeating patterns.",
+        "Tiles split into three groups: Suits (numbers), Honors (winds and dragons), and Bonus tiles.",
+        "Like learning card suits, once you spot the patterns the whole set clicks.",
+      ],
+      nextLessonId: "1-2",
     },
 
     // LESSON 2: The Dot Suit (Circles/Pins)
@@ -84,7 +97,13 @@ export const Level1: Level = {
           correctAnswer: "4",
           explanation: "Every numbered tile (1-9) has exactly 4 copies in the set."
         }
-      ]
+      ],
+      keyTakeaways: [
+        "Dot tiles are circles — just count the pips to read the number 1 through 9.",
+        "There are 4 copies of each Dot tile, for 36 Dot tiles total.",
+        "9 Dot is easy to spot: nine circles arranged in a clean 3×3 grid.",
+      ],
+      nextLessonId: "1-3",
     },
 
     // LESSON 3: The Bamboo Suit (Sticks/Sou)
@@ -111,7 +130,13 @@ export const Level1: Level = {
           correctAnswer: "A bird",
           explanation: "The 1 Bamboo traditionally shows a bird (sparrow or peacock). This catches many beginners off guard!"
         }
-      ]
+      ],
+      keyTakeaways: [
+        "Bamboo tiles show stick shapes numbered 2 through 9 — count the sticks.",
+        "1 Bamboo is the trick tile: it shows a bird, not a single stick.",
+        "There are 4 copies of each Bamboo tile, 36 in total.",
+      ],
+      nextLessonId: "1-4",
     },
 
     // LESSON 4: The Character Suit (Wan/Cracks)
@@ -147,7 +172,13 @@ export const Level1: Level = {
           correctAnswer: "Ten thousand",
           explanation: "萬 means 10,000. So '3-wan' literally means '30,000' but in mahjong it's just the 3 of Characters."
         }
-      ]
+      ],
+      keyTakeaways: [
+        "Character tiles show a Chinese numeral above the symbol 萬 (wan, meaning 10,000).",
+        "Start with 一, 二, 三 — they are just one, two, or three horizontal lines.",
+        "Once you know all nine numerals, every Character tile is instantly readable.",
+      ],
+      nextLessonId: "1-5",
     },
 
     // LESSON 5: Wind Tiles
@@ -175,7 +206,13 @@ export const Level1: Level = {
           correctAnswer: "East",
           explanation: "東 (East) — This character is important because East is always the dealer/first player."
         }
-      ]
+      ],
+      keyTakeaways: [
+        "There are four Wind tiles — East, South, West, North — with 4 copies of each.",
+        "East (東) is the most important: it always marks the dealer and first player.",
+        "Winds matter for scoring, especially if you collect a set of your seat wind.",
+      ],
+      nextLessonId: "1-6",
     },
 
     // LESSON 6: Dragon Tiles
@@ -202,7 +239,13 @@ export const Level1: Level = {
           correctAnswer: "White Dragon",
           explanation: "The White Dragon (白板) is often blank or shows just a frame. Don't confuse it with a missing tile!"
         }
-      ]
+      ],
+      keyTakeaways: [
+        "There are three Dragons: Red (中), Green (發), and White (blank or framed).",
+        "A White Dragon is not a missing tile — the blank face is the design.",
+        "Three of any dragon scores fan, so dragons are worth chasing in your hand.",
+      ],
+      nextLessonId: "1-7",
     },
 
     // LESSON 7: Bonus Tiles (Flowers & Seasons)
@@ -219,7 +262,13 @@ export const Level1: Level = {
         "They give bonus points at the end — free points!",
         "Only 1 copy of each exists (8 total)."
       ],
-      tiles: ["flower-1", "flower-2", "flower-3", "flower-4", "season-1", "season-2", "season-3", "season-4"]
+      tiles: ["flower-1", "flower-2", "flower-3", "flower-4", "season-1", "season-2", "season-3", "season-4"],
+      keyTakeaways: [
+        "Bonus tiles are 4 Flowers and 4 Seasons — only one copy of each, 8 total.",
+        "When you draw one, set it aside and draw a replacement tile from the wall.",
+        "Bonus tiles add free scoring points and never count toward your 13-tile hand.",
+      ],
+      nextLessonId: "1-8",
     },
 
     // LESSON 8: Summary & Practice
@@ -265,7 +314,12 @@ export const Level1: Level = {
           correctAnswer: "White Dragon",
           explanation: "The White Dragon (白板) is often blank. It's not a missing tile — it's valuable!"
         }
-      ]
+      ],
+      keyTakeaways: [
+        "The 144-tile total breaks down cleanly: 108 suits + 16 winds + 12 dragons + 8 bonus.",
+        "Watch for the two classic traps: 1 Bamboo shows a bird, and White Dragon can be blank.",
+        "You can now name every tile — next up is combining them into pungs, chows, and kongs.",
+      ],
     }
   ]
 };

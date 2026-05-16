@@ -7,6 +7,7 @@ export const Level6: Level = {
   id: 6,
   title: "Strategy & Gameplay",
   description: "Master tactical thinking, tile efficiency, and defensive play",
+  recommendedAction: "Strategy, defense, and reading the table — your final lap.",
   unlockRequirement: "Complete Level 5",
   lessons: [
     // LESSON 1: Opening Strategy

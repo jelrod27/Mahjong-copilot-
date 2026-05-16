@@ -16,8 +16,8 @@ import {
 } from '@/components/ui/sheet';
 
 function navLinkClass(active: boolean) {
-  return `flex flex-col items-center justify-center px-1.5 py-1 min-w-[44px] min-h-[44px] transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-retro-cyan/60 ${
-    active ? 'text-retro-cyan retro-glow' : 'text-retro-textDim hover:text-retro-text'
+  return `flex flex-col items-center justify-center px-1.5 py-1 min-w-[44px] min-h-[44px] transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/60 ${
+    active ? 'text-info ds-text-glow' : 'text-muted-foreground hover:text-foreground'
   }`;
 }
 
@@ -34,7 +34,7 @@ export default function BottomNav() {
   return (
     <>
       <nav
-        className="fixed bottom-0 left-0 right-0 bg-retro-bgLight border-t border-retro-border/30 z-50 lg:hidden"
+        className="fixed bottom-0 left-0 right-0 bg-elevated border-t border-border/30 z-50 lg:hidden"
         aria-label="Main navigation"
       >
         <div className="flex justify-around items-center h-[4.25rem] max-w-lg mx-auto px-1 safe-area-pb">
@@ -49,7 +49,7 @@ export default function BottomNav() {
               >
                 <Icon size={22} strokeWidth={isActive ? 2.5 : 1.5} aria-hidden />
                 <span
-                  className={`font-retro bottom-nav-label mt-0.5 leading-tight text-center max-w-[4.5rem] truncate ${
+                  className={`font-sans bottom-nav-label mt-0.5 leading-tight text-center max-w-[4.5rem] truncate ${
                     isActive ? 'font-bold' : ''
                   }`}
                 >
@@ -72,7 +72,7 @@ export default function BottomNav() {
               aria-hidden
             />
             <span
-              className={`font-retro bottom-nav-label mt-0.5 leading-tight ${
+              className={`font-sans bottom-nav-label mt-0.5 leading-tight ${
                 moreActive ? 'font-bold' : ''
               }`}
             >
@@ -86,11 +86,11 @@ export default function BottomNav() {
         <SheetContent
           side="bottom"
           id="bottom-nav-more-sheet"
-          className="bg-retro-bgLight border-retro-border/30 text-retro-text max-h-[85dvh]"
+          className="bg-elevated border-border/30 text-foreground max-h-[85dvh]"
           aria-describedby={undefined}
         >
           <SheetHeader>
-            <SheetTitle className="font-pixel text-retro-cyan text-sm text-left">
+            <SheetTitle className="font-display text-info text-sm text-left">
               More
             </SheetTitle>
           </SheetHeader>
@@ -102,10 +102,10 @@ export default function BottomNav() {
                   <Link
                     href={href}
                     onClick={() => setMoreOpen(false)}
-                    className={`flex items-center gap-3 rounded-md px-3 py-3 font-retro text-base transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-retro-cyan/60 ${
+                    className={`flex items-center gap-3 rounded-md px-3 py-3 font-sans text-base transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/60 ${
                       isActive
-                        ? 'bg-retro-cyan/15 text-retro-cyan'
-                        : 'text-retro-text hover:bg-retro-bg/80'
+                        ? 'bg-info/15 text-info'
+                        : 'text-foreground hover:bg-background/80'
                     }`}
                     aria-current={isActive ? 'page' : undefined}
                   >

@@ -46,7 +46,7 @@ export default function PlayerHand({
               tutorLabel={tutorLabel ?? undefined}
             />
             {tutorLabel && (
-              <div className="mt-0.5 text-center font-pixel text-[6px] text-retro-textDim" aria-hidden="true">
+              <div className="mt-0.5 text-center font-display text-[6px] text-muted-foreground" aria-hidden="true">
                 {tutorLabel}
               </div>
             )}

@@ -35,17 +35,17 @@ export default function VoiceSubtitle() {
       aria-label={`${subtitle.speaker ? subtitle.speaker + ': ' : ''}${subtitle.english}`}
       key={subtitle.at}
     >
-      <div className="retro-panel px-3 py-1.5 bg-retro-bgLight/95 backdrop-blur-sm border-retro-cyan/40 shadow-lg">
+      <div className="ds-panel px-3 py-1.5 bg-elevated/95 backdrop-blur-sm border-info/40 shadow-lg">
         <div className="flex flex-col items-center gap-0.5 text-center">
           {subtitle.speaker && (
-            <span className="font-pixel text-[8px] text-retro-textDim tracking-widest uppercase">
+            <span className="font-display text-[8px] text-muted-foreground tracking-widest uppercase">
               {subtitle.speaker}
             </span>
           )}
-          <span className="text-2xl md:text-3xl text-retro-gold retro-glow leading-none">
+          <span className="text-2xl md:text-3xl text-highlight ds-text-glow leading-none">
             {subtitle.chinese}
           </span>
-          <span className="font-retro text-[11px] md:text-xs text-retro-cyan">
+          <span className="font-sans text-[11px] md:text-xs text-info">
             {subtitle.english}
           </span>
         </div>

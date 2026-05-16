@@ -3,9 +3,7 @@ import { test, expect, type Page } from '@playwright/test';
 /** Wait for game board to be mounted and turn indicator visible. */
 async function expectGameBoardReady(page: Page) {
   await expect(page.getByTestId('game-board-root')).toBeVisible({ timeout: 60_000 });
-  await expect(
-    page.getByText(/YOUR TURN|OPPONENT|CLAIM|Waiting for opponent/).first(),
-  ).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByTestId('game-phase-banner')).toBeVisible({ timeout: 60_000 });
 }
 
 test.describe('Progress tracking', () => {

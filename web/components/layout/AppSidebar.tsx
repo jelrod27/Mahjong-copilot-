@@ -20,9 +20,9 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="p-4 border-b border-retro-border/20">
+      <SidebarHeader className="p-4 border-b border-border/20">
         <Link href="/" className="block">
-          <h1 className="font-pixel text-sm text-retro-gold retro-glow-strong leading-relaxed">
+          <h1 className="font-display text-sm text-highlight ds-text-glow-strong leading-relaxed">
             16 BIT
             <br />
             MAHJONG
@@ -40,13 +40,13 @@ export function AppSidebar() {
                   <SidebarMenuItem key={href}>
                     <SidebarMenuButton
                       isActive={isActive}
-                      className="h-10 text-retro-text hover:text-retro-accent transition-colors"
+                      className="h-10 text-foreground hover:text-accent transition-colors"
                       render={<Link href={href} aria-current={isActive ? "page" : undefined} />}
                     >
-                      <span aria-hidden className={isActive ? "text-retro-accent" : "text-retro-textDim"}>
+                      <span aria-hidden className={isActive ? "text-accent" : "text-muted-foreground"}>
                         {isActive ? "►" : " "}
                       </span>
-                      <Icon size={18} className={isActive ? "text-retro-accent" : ""} />
+                      <Icon size={18} className={isActive ? "text-accent" : ""} />
                       <span className="font-medium">{label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -56,12 +56,12 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4 border-t border-retro-border/10 bg-retro-bgLight/50 backdrop-blur-sm">
-        <div className="rounded-sm border border-retro-cyan/20 bg-retro-cyan/5 p-3 text-center">
-          <p className="font-pixel text-[9px] text-retro-cyan tracking-tighter">
+      <SidebarFooter className="p-4 border-t border-border/10 bg-elevated/50 backdrop-blur-sm group-data-[collapsible=icon]:hidden">
+        <div className="rounded-sm border border-info/20 bg-info/5 p-3 text-center">
+          <p className="font-display text-[9px] text-info tracking-tighter">
             LOCAL MODE
           </p>
-          <p className="mt-2 font-sans text-xs text-retro-textDim leading-relaxed">
+          <p className="mt-2 font-sans text-xs text-muted-foreground leading-relaxed">
             Progress stays on this device. Accounts return with multiplayer.
           </p>
         </div>

@@ -54,15 +54,15 @@ export default function DiscardReadingPanel({ game, humanPlayerId, compact = fal
     <button
       type="button"
       onClick={() => setExpanded(v => !v)}
-      className="w-full flex items-center justify-between gap-2 px-2 py-1 hover:bg-retro-bg/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-retro-cyan/50 rounded-sm"
+      className="w-full flex items-center justify-between gap-2 px-2 py-1 hover:bg-background/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/50 rounded-sm"
       aria-expanded={expanded}
       aria-label={expanded ? 'Collapse discard reading' : 'Expand discard reading'}
     >
-      <span className="flex items-center gap-1 font-pixel text-[8px] md:text-[10px] text-retro-cyan tracking-widest uppercase">
-        <Eye size={12} className="text-retro-cyan" aria-hidden />
+      <span className="flex items-center gap-1 font-display text-[8px] md:text-[10px] text-info tracking-widest uppercase">
+        <Eye size={12} className="text-info" aria-hidden />
         Reading
       </span>
-      <span className="flex items-center gap-2 font-retro text-[11px] text-retro-textDim">
+      <span className="flex items-center gap-2 font-sans text-[11px] text-muted-foreground">
         <span className="truncate max-w-[140px]">{insight.summary}</span>
         {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
       </span>
@@ -70,18 +70,18 @@ export default function DiscardReadingPanel({ game, humanPlayerId, compact = fal
   );
 
   if (compact && !expanded) {
-    return <div className="retro-panel" data-testid="discard-reading-panel">{header}</div>;
+    return <div className="game-hud-surface" data-testid="discard-reading-panel">{header}</div>;
   }
 
   return (
-    <div className="retro-panel" data-testid="discard-reading-panel">
+    <div className="game-hud-surface" data-testid="discard-reading-panel">
       {header}
 
       {expanded && (
-        <div className="px-2 pb-2 border-t border-retro-border/20 pt-2 space-y-2">
+        <div className="px-2 pb-2 border-t border-border/20 pt-2 space-y-2">
           {/* Global insights */}
           {insight.notes.length > 0 && (
-            <ul className="space-y-0.5 text-[10px] text-retro-gold font-retro italic">
+            <ul className="space-y-0.5 text-[10px] text-highlight font-sans italic">
               {insight.notes.map((note, i) => (
                 <li key={`note-${i}`} className="leading-snug">• {note}</li>
               ))}
@@ -91,15 +91,15 @@ export default function DiscardReadingPanel({ game, humanPlayerId, compact = fal
           {/* Per-opponent breakdown */}
           <div className="space-y-2">
             {readings.length === 0 && (
-              <p className="text-[10px] text-retro-textDim font-retro italic">
+              <p className="text-[10px] text-muted-foreground font-sans italic">
                 No discards yet — the table hasn&apos;t revealed itself.
               </p>
             )}
             {readings.map(r => (
               <section key={r.playerId}>
                 <header className="flex items-center justify-between text-[10px] mb-0.5">
-                  <span className="font-retro text-retro-text">{r.name}</span>
-                  <span className="text-retro-textDim">{r.total} discards</span>
+                  <span className="font-sans text-foreground">{r.name}</span>
+                  <span className="text-muted-foreground">{r.total} discards</span>
                 </header>
                 <div className="space-y-1">
                   {GROUP_KEYS.map(key => {
@@ -107,7 +107,7 @@ export default function DiscardReadingPanel({ game, humanPlayerId, compact = fal
                     if (tiles.length === 0) return null;
                     return (
                       <div key={key} className="flex items-start gap-1">
-                        <span className="font-pixel text-[7px] text-retro-textDim uppercase tracking-widest w-10 shrink-0 pt-0.5">
+                        <span className="font-display text-[7px] text-muted-foreground uppercase tracking-widest w-10 shrink-0 pt-0.5">
                           {SUIT_LABEL[key]}
                         </span>
                         <div className="flex flex-wrap gap-px">
@@ -119,7 +119,7 @@ export default function DiscardReadingPanel({ game, humanPlayerId, compact = fal
                     );
                   })}
                   {r.quietSuits.length > 0 && (
-                    <p className="text-[10px] text-retro-accent font-retro italic">
+                    <p className="text-[10px] text-accent font-sans italic">
                       Has not discarded {r.quietSuits.map(s => SUIT_LABEL[s].toLowerCase()).join(' or ')} —
                       watch for a flush.
                     </p>

@@ -7,6 +7,7 @@ export const Level3: Level = {
   id: 3,
   title: "Hand Combinations & Scoring",
   description: "Learn common winning patterns and how hands are scored",
+  recommendedAction: "Discover the patterns that score points.",
   unlockRequirement: "Complete Level 2",
   lessons: [
     // LESSON 1: Winning Hand Structure

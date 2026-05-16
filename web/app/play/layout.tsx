@@ -11,14 +11,12 @@ export default function PlayLayout({ children }: { children: React.ReactNode }) 
     <>
       <main className={
         isInGame
-          ? 'min-h-screen bg-retro-bg font-retro text-retro-text'
-          : 'min-h-screen bg-retro-bg font-retro text-retro-text'
+          ? 'min-h-screen bg-background font-sans text-foreground'
+          : 'min-h-screen bg-background font-sans text-foreground'
       }>
         <div className={isInGame ? '' : 'max-w-lg mx-auto pb-16'}>
           {children}
         </div>
-        {/* Scanline overlay */}
-        <div className="fixed inset-0 retro-scanline pointer-events-none z-50" />
       </main>
       {!isInGame && <BottomNav />}
     </>

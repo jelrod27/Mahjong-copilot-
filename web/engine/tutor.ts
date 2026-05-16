@@ -5,7 +5,7 @@
 import { Tile, TileType, TileSuit, WindTile, DragonTile, tileKey } from '@/models/Tile';
 import { GameState, MeldInfo } from '@/models/GameState';
 import { AvailableClaim, TutorAdvice, TileClassification, TileColor } from './types';
-import { calculateShanten, isWinningHand, canPlayerWin } from './winDetection';
+import { calculateShanten, canPlayerWin } from './winDetection';
 import { tileDiscardPriority, tileDangerScore, isSafeTile } from './ai/aiUtils';
 import { getBestClaimSubmission } from './claiming';
 
@@ -142,20 +142,7 @@ function buildDiscardAdvice(
     let score = shanten * 100 + danger * 5 - priority * 2;
     if (safe) score -= 20;
 
-    let reason = "This tile doesn't connect well with your other sets.";
-    if (tile.type === TileType.HONOR) {
-      const key = tileKey(tile);
-      const count = hand.filter(t => tileKey(t) === key).length;
-      if (count === 1) {
-        reason = "This isolated honor tile is a safe discard.";
-      } else {
-        reason = "You have a pair of this honor — consider keeping it for a pung.";
-      }
-    } else if (safe) {
-      reason = "Safe discard — many copies are already visible on the table.";
-    } else if (shanten === currentShanten) {
-      reason = "Discarding this keeps your hand at the same distance from winning.";
-    }
+    const reason = explainTileForDiscard(tile, hand, gameState, playerIndex, safe);
 
     return { tile, score, reason };
   });
@@ -181,12 +168,88 @@ function buildDiscardAdvice(
     };
   }
 
+  const closingNote =
+    currentShanten <= 1
+      ? ' Your hand stays close to winning.'
+      : ' Your hand stays the same distance from winning.';
+
   return {
     type: 'discard',
-    message: best.reason,
+    message: `Discard ${best.tile.nameEnglish}: ${best.reason}${closingNote}`,
     suggestedTileId: best.tile.id,
     tileClassifications,
   };
+}
+
+/**
+ * Build a concrete, beginner-readable reason for why a specific tile is a
+ * candidate for discard. Reasons reference the hand's actual shape — pairs,
+ * adjacent sequence partners, honor value relative to seat/prevailing wind —
+ * instead of vague "distance from winning" copy. PRD GAME-04 acceptance.
+ *
+ * Returned phrase starts with lowercase and contains no trailing period so
+ * the caller can compose it into "Discard {name}: {reason}{closingNote}".
+ */
+function explainTileForDiscard(
+  tile: Tile,
+  hand: Tile[],
+  gameState: GameState,
+  playerIndex: number,
+  safe: boolean,
+): string {
+  const key = tileKey(tile);
+  const sameKeyCount = hand.filter(t => tileKey(t) === key).length;
+  const player = gameState.players[playerIndex];
+
+  if (sameKeyCount >= 3) {
+    return 'this completes a pung in your hand — keep it';
+  }
+  if (sameKeyCount === 2) {
+    return 'this forms a pair — could grow into a pung if you draw or claim a third';
+  }
+
+  if (tile.type === TileType.HONOR) {
+    if (tile.suit === TileSuit.DRAGON) {
+      return 'this is an isolated dragon — discarding loses dragon-pung potential, which would score fan';
+    }
+    if (tile.suit === TileSuit.WIND) {
+      const isSeat = tile.wind === player.seatWind;
+      const isPrev = tile.wind === gameState.prevailingWind;
+      if (isSeat && isPrev) {
+        return 'this is both your seat wind and the prevailing wind — a pung would score double fan';
+      }
+      if (isSeat) {
+        return 'this is your seat wind — a pung would score fan';
+      }
+      if (isPrev) {
+        return 'this is the prevailing wind — a pung would score fan';
+      }
+      return safe
+        ? 'this wind matches neither your seat nor the prevailing wind, and many copies are already visible — a safe discard'
+        : "this wind matches neither your seat nor the prevailing wind, so a pung of it can't score fan";
+    }
+  }
+
+  if (tile.type === TileType.SUIT && tile.number !== undefined) {
+    const num = tile.number;
+    const otherSameSuit = hand.filter(
+      t => t.id !== tile.id && t.suit === tile.suit && t.number !== undefined,
+    );
+    const hasAdjacent = otherSameSuit.some(t => Math.abs((t.number ?? 0) - num) === 1);
+    const hasGap = otherSameSuit.some(t => Math.abs((t.number ?? 0) - num) === 2);
+
+    if (hasAdjacent) {
+      return 'this sits next to another tile in your hand — it could complete a sequence (chow)';
+    }
+    if (hasGap) {
+      return 'this is two away from another suit tile — it could fill a gap in a sequence';
+    }
+    return safe
+      ? "this doesn't pair with anything and doesn't fit into a sequence, and many copies are already visible — a safe discard"
+      : "this doesn't pair with anything in your hand and doesn't fit into a sequence";
+  }
+
+  return 'this is loosely connected to your hand';
 }
 
 function classifyTiles(scores: ScoredTile[]): TileClassification[] {

@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Star } from 'lucide-react';
 import { GameState } from '@/models/GameState';
 import { ScoringResult } from '@/engine/types';
 import RetroTile from './RetroTile';
 import ExposedMelds from './ExposedMelds';
+import { GameResultsOverlay, GameResultsSheet, GameResultsSectionLabel } from './GameResultsChrome';
 
 interface GameOverScreenProps {
   gameState: GameState;
@@ -30,7 +32,6 @@ export default function GameOverScreen({
     return () => clearTimeout(timer);
   }, []);
 
-  // Score counter animation
   useEffect(() => {
     if (!showContent || targetPoints === 0) return;
     const duration = 1000;
@@ -50,38 +51,35 @@ export default function GameOverScreen({
   }, [showContent, targetPoints]);
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-40 flex items-center justify-center p-4">
-      <div className={`retro-panel p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto ${showContent ? 'animate-slide-up' : 'opacity-0'}`}>
-        {/* Header */}
-        <div className="text-center mb-4">
-          <div className="font-retro text-retro-accent text-sm">
-            ╔════════════════════════╗
-          </div>
+    <GameResultsOverlay>
+      <GameResultsSheet
+        className={showContent ? 'animate-slide-up' : 'pointer-events-none opacity-0'}
+      >
+        <div className="mb-6 text-center">
           {isDraw ? (
-            <h2 className="font-pixel text-lg text-retro-gold retro-glow my-2">
-              DRAW GAME
-            </h2>
+            <h2 className="font-display text-base text-highlight md:text-lg">Exhaustive draw</h2>
           ) : (
-            <h2 className="font-pixel text-lg text-retro-green retro-glow my-2">
-              {winner?.id === 'human-player' ? 'YOU WIN!' : `${winner?.name} WINS`}
+            <h2 className="font-display text-base text-success md:text-lg">
+              {winner?.id === 'human-player' ? 'You win' : `${winner?.name} wins`}
             </h2>
           )}
-          <div className="font-retro text-retro-accent text-sm">
-            ╚════════════════════════╝
-          </div>
+          <p className="mt-2 font-sans text-xs text-muted-foreground md:text-sm">
+            {isDraw
+              ? 'Practice hand ended with no winner.'
+              : 'Here is the scoring breakdown for this practice round.'}
+          </p>
         </div>
 
         {isDraw && (
-          <div className="text-center font-retro text-retro-textDim text-lg mb-4">
+          <div className="mb-4 rounded-lg border border-border/30 bg-surface/40 p-3 text-center font-sans text-sm text-muted-foreground">
             Wall exhausted — no winner this round.
           </div>
         )}
 
-        {/* Winning hand */}
         {winner && (
           <div className="mb-4">
-            <div className="font-pixel text-xs text-retro-cyan mb-2">WINNING HAND</div>
-            <div className="flex flex-wrap gap-0.5 justify-center mb-2">
+            <GameResultsSectionLabel>Winning hand</GameResultsSectionLabel>
+            <div className="flex flex-wrap justify-center gap-0.5">
               {winner.hand.map(tile => (
                 <div key={tile.id} className="animate-tile-win">
                   <RetroTile tile={tile} size="sm" />
@@ -89,67 +87,61 @@ export default function GameOverScreen({
               ))}
             </div>
             {winner.melds.length > 0 && (
-              <div className="flex justify-center mt-1">
+              <div className="mt-2 flex justify-center">
                 <ExposedMelds melds={winner.melds} size="sm" />
               </div>
             )}
             {gameState.winningTile && (
-              <div className="text-center font-retro text-sm text-retro-textDim mt-1">
+              <p className="mt-2 text-center font-sans text-xs text-muted-foreground md:text-sm">
                 Winning tile: {gameState.winningTile.nameEnglish}
-                {gameState.isSelfDrawn ? ' (self-drawn)' : ' (claimed)'}
-              </div>
+                {gameState.isSelfDrawn ? ' (self-drawn)' : ' (from discard)'}
+              </p>
             )}
           </div>
         )}
 
-        {/* Scoring breakdown */}
         {scoringResult && (
           <div className="mb-4">
-            <div className="font-pixel text-xs text-retro-gold mb-2">SCORING</div>
+            <GameResultsSectionLabel>Scoring</GameResultsSectionLabel>
             <div className="space-y-1">
               {scoringResult.fans.map((fan, i) => (
-                <div key={i} className="flex justify-between font-retro text-sm">
-                  <span className="text-retro-text">{fan.name}</span>
-                  <span className="text-retro-cyan">+{fan.fan} fan</span>
+                <div key={i} className="flex justify-between font-sans text-sm">
+                  <span className="text-foreground">{fan.name}</span>
+                  <span className="text-info">+{fan.fan} fan</span>
                 </div>
               ))}
-              <div className="border-t border-retro-border my-1" />
-              <div className="flex justify-between font-retro text-sm">
-                <span className="text-retro-gold">Total Fan</span>
-                <span className="text-retro-gold retro-glow">{scoringResult.totalFan}</span>
+              <div className="my-1 border-t border-border" />
+              <div className="flex justify-between font-sans text-sm">
+                <span className="text-highlight">Total fan</span>
+                <span className="text-highlight ds-text-glow">{scoringResult.totalFan}</span>
               </div>
-              <div className="flex justify-between font-retro text-lg">
-                <span className="text-retro-green">Points</span>
-                <span className="text-retro-green retro-glow-strong">{displayedPoints}</span>
+              <div className="flex justify-between font-sans text-lg">
+                <span className="text-success">Points</span>
+                <span className="text-success ds-text-glow-strong">{displayedPoints}</span>
               </div>
               {scoringResult.handName && (
-                <div className="text-center font-pixel text-xs text-retro-accent mt-1">
-                  {scoringResult.handName}
-                </div>
+                <div className="mt-1 text-center font-display text-xs text-accent">{scoringResult.handName}</div>
               )}
             </div>
           </div>
         )}
 
-        {/* Payment breakdown */}
         {scoringResult?.payment && scoringResult.payment.payments.length > 0 && (
           <div className="mb-4">
-            <div className="font-pixel text-xs text-retro-accent mb-2">PAYMENTS</div>
+            <GameResultsSectionLabel>Payments</GameResultsSectionLabel>
             <div className="space-y-0.5">
               {scoringResult.payment.payments.map((p, i) => (
-                <div key={i} className="flex justify-between font-retro text-sm">
-                  <span className="text-retro-textDim">
+                <div key={i} className="flex justify-between font-sans text-sm">
+                  <span className="text-muted-foreground">
                     {gameState.players[p.fromPlayerIndex]?.name ?? `Player ${p.fromPlayerIndex + 1}`}
                   </span>
                   <span className="text-red-400">-{p.amount} pts</span>
                 </div>
               ))}
-              <div className="border-t border-retro-border my-1" />
-              <div className="flex justify-between font-retro text-sm">
-                <span className="text-retro-green">
-                  {winner?.name ?? 'Winner'} receives
-                </span>
-                <span className="text-retro-green retro-glow">
+              <div className="my-1 border-t border-border" />
+              <div className="flex justify-between font-sans text-sm">
+                <span className="text-success">{winner?.name ?? 'Winner'} receives</span>
+                <span className="text-success ds-text-glow">
                   +{scoringResult.payment.payments.reduce((sum, p) => sum + p.amount, 0)} pts
                 </span>
               </div>
@@ -157,35 +149,35 @@ export default function GameOverScreen({
           </div>
         )}
 
-        {/* Player scores */}
-        <div className="mb-4">
-          <div className="font-pixel text-xs text-retro-cyan mb-2">PLAYERS</div>
+        <div className="mb-6">
+          <GameResultsSectionLabel>Players</GameResultsSectionLabel>
           {gameState.players.map(player => (
             <div
               key={player.id}
-              className={`flex justify-between font-retro text-sm py-0.5 ${
-                player.id === gameState.winnerId ? 'text-retro-green' : 'text-retro-textDim'
+              className={`flex justify-between border-b border-border/15 py-1.5 font-sans text-sm last:border-0 ${
+                player.id === gameState.winnerId ? 'text-success' : 'text-muted-foreground'
               }`}
             >
-              <span>
-                {player.id === gameState.winnerId && '★ '}
+              <span className="flex items-center gap-1">
+                {player.id === gameState.winnerId && (
+                  <Star className="h-3.5 w-3.5 shrink-0 text-success" strokeWidth={2.5} aria-hidden />
+                )}
                 {player.name} ({player.seatWind.toUpperCase()})
               </span>
-              <span>{player.score}</span>
+              <span className="tabular-nums">{player.score}</span>
             </div>
           ))}
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-3 justify-center">
-          <button className="retro-btn-green font-pixel text-xs" onClick={onPlayAgain}>
-            [ PLAY AGAIN ]
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-center sm:gap-3">
+          <button type="button" className="ds-btn-success min-h-[44px] font-display text-xs md:text-sm" onClick={onPlayAgain}>
+            Play again
           </button>
-          <button className="retro-btn bg-retro-bgLight font-pixel text-xs" onClick={onBackToMenu}>
-            [ MENU ]
+          <button type="button" className="ds-btn min-h-[44px] bg-surface/80 font-display text-xs md:text-sm" onClick={onBackToMenu}>
+            Back to menu
           </button>
         </div>
-      </div>
-    </div>
+      </GameResultsSheet>
+    </GameResultsOverlay>
   );
 }

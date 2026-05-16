@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, Rewind, FastForward } from 'lucide-react';
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Rewind, FastForward } from 'lucide-react';
+import { GameResultsSectionLabel } from './GameResultsChrome';
 import { GameState, GameTurn, PlayerAction } from '@/models/GameState';
 import RetroTile from './RetroTile';
 
@@ -51,33 +52,33 @@ export default function HandReplayScrubber({ gameState }: HandReplayScrubberProp
 
   return (
     <div className="mb-4" data-testid="hand-replay-scrubber">
+      <GameResultsSectionLabel>Hand replay</GameResultsSectionLabel>
       <button
         type="button"
         onClick={() => setExpanded(v => !v)}
-        className="w-full flex items-center justify-between gap-2 px-1 py-0.5 mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-retro-cyan/50 rounded-sm"
+        className="mb-2 flex w-full items-center justify-between gap-2 rounded-lg border border-border/25 bg-surface/30 px-2 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/50"
         aria-expanded={expanded}
         aria-controls="hand-replay-body"
       >
-        <span className="font-pixel text-xs text-retro-cyan tracking-widest">REPLAY</span>
-        <span className="flex items-center gap-2 text-[11px] font-retro text-retro-textDim">
+        <span className="font-sans text-xs font-medium text-foreground">Timeline</span>
+        <span className="flex items-center gap-2 font-sans text-[11px] text-muted-foreground">
           <span>{turns.length} turns</span>
-          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          {expanded ? <ChevronUp size={14} aria-hidden /> : <ChevronDown size={14} aria-hidden />}
         </span>
       </button>
 
       {expanded && (
         <div id="hand-replay-body" className="space-y-2">
-          {/* Active turn callout */}
-          <div className="retro-panel p-2 flex items-center gap-3">
+          <div className="game-hud-surface flex items-center gap-3 rounded-lg p-2">
             <div className="w-10 shrink-0 text-center">
-              <div className="font-pixel text-[8px] text-retro-gold tracking-widest uppercase">Turn</div>
-              <div className="font-retro text-sm text-retro-text">{activeTurn.turnNumber}</div>
+              <div className="font-display text-[8px] uppercase tracking-widest text-highlight">Turn</div>
+              <div className="font-sans text-sm text-foreground">{activeTurn.turnNumber}</div>
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-retro text-xs text-retro-cyan truncate">
+              <div className="font-sans text-xs text-info truncate">
                 {playerName(activeTurn.playerId)}
               </div>
-              <div className="font-retro text-[11px] text-retro-textDim leading-snug">
+              <div className="font-sans text-[11px] text-muted-foreground leading-snug">
                 {describeAction(activeTurn)}
               </div>
             </div>
@@ -97,7 +98,7 @@ export default function HandReplayScrubber({ gameState }: HandReplayScrubberProp
               onClick={() => setCursor(0)}
               disabled={scrubberInert || cursorSafe === 0}
               aria-label="Jump to first turn"
-              className="retro-btn font-pixel text-[8px] px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="ds-btn font-display text-[8px] px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Rewind size={12} aria-hidden />
             </button>
@@ -106,9 +107,9 @@ export default function HandReplayScrubber({ gameState }: HandReplayScrubberProp
               onClick={() => step(-1)}
               disabled={scrubberInert || cursorSafe === 0}
               aria-label="Previous turn"
-              className="retro-btn font-pixel text-[8px] px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="ds-btn px-2 py-1 font-display text-[8px] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              ◀
+              <ChevronLeft size={14} aria-hidden />
             </button>
             <input
               type="range"
@@ -118,42 +119,42 @@ export default function HandReplayScrubber({ gameState }: HandReplayScrubberProp
               onChange={e => setCursor(Number(e.target.value))}
               disabled={scrubberInert}
               aria-label="Replay turn scrubber"
-              className="flex-1 accent-retro-cyan disabled:opacity-40"
+              className="flex-1 accent-info disabled:opacity-40"
             />
             <button
               type="button"
               onClick={() => step(1)}
               disabled={scrubberInert || cursorSafe >= turns.length - 1}
               aria-label="Next turn"
-              className="retro-btn font-pixel text-[8px] px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="ds-btn px-2 py-1 font-display text-[8px] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              ▶
+              <ChevronRight size={14} aria-hidden />
             </button>
             <button
               type="button"
               onClick={() => setCursor(turns.length - 1)}
               disabled={scrubberInert || cursorSafe >= turns.length - 1}
               aria-label="Jump to final turn"
-              className="retro-btn font-pixel text-[8px] px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="ds-btn font-display text-[8px] px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <FastForward size={12} aria-hidden />
             </button>
           </div>
 
           {/* Compact full timeline — click any row to jump */}
-          <ol className="max-h-36 overflow-y-auto border border-retro-border/20 rounded-sm divide-y divide-retro-border/20">
+          <ol className="max-h-36 divide-y divide-border/20 overflow-y-auto rounded-lg border border-border/25 bg-surface/25">
             {turns.map((turn, i) => (
               <li key={`${turn.turnNumber}-${i}`}>
                 <button
                   type="button"
                   onClick={() => setCursor(i)}
                   aria-current={i === cursorSafe ? 'true' : undefined}
-                  className={`w-full flex items-center gap-2 px-2 py-1 text-left text-[11px] font-retro hover:bg-retro-bg/60 ${
-                    i === cursorSafe ? 'bg-retro-cyan/10 text-retro-cyan' : 'text-retro-text'
+                  className={`w-full flex items-center gap-2 px-2 py-1 text-left text-[11px] font-sans hover:bg-background/60 ${
+                    i === cursorSafe ? 'bg-info/10 text-info' : 'text-foreground'
                   }`}
                 >
-                  <span className="w-6 text-right text-retro-textDim tabular-nums">{turn.turnNumber}</span>
-                  <span className="w-16 truncate text-retro-textDim">{playerName(turn.playerId)}</span>
+                  <span className="w-6 text-right text-muted-foreground tabular-nums">{turn.turnNumber}</span>
+                  <span className="w-16 truncate text-muted-foreground">{playerName(turn.playerId)}</span>
                   <span className="flex-1 truncate">{describeAction(turn)}</span>
                 </button>
               </li>

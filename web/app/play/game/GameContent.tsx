@@ -7,6 +7,7 @@ import GameErrorBoundary from '@/components/game/GameErrorBoundary';
 import HandResultScreen from '@/components/game/HandResultScreen';
 import MatchOverScreen from '@/components/game/MatchOverScreen';
 import VoiceSubtitle from '@/components/game/VoiceSubtitle';
+import { TilePaletteProvider } from '@/components/game/TilePaletteContext';
 import { GameMode } from '@/models/MatchState';
 import { useAppSelector } from '@/store/hooks';
 
@@ -36,9 +37,14 @@ export default function GameContent() {
 
   if (!controller.game) {
     return (
-      <div className="h-screen flex items-center justify-center">
-        <div className="font-pixel text-retro-cyan retro-glow text-sm">
-          DEALING TILES<span className="animate-blink">...</span>
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-background px-6">
+        <div
+          className="size-12 rounded-full border-2 border-info/30 border-t-info animate-spin"
+          aria-hidden
+        />
+        <div className="text-center">
+          <p className="font-display text-sm font-semibold tracking-wide text-foreground">Setting the table</p>
+          <p className="mt-1 font-sans text-xs text-muted-foreground">Shuffling tiles and seating opponents…</p>
         </div>
       </div>
     );
@@ -46,6 +52,7 @@ export default function GameContent() {
 
   return (
     <GameErrorBoundary>
+      <TilePaletteProvider>
       <VoiceSubtitle />
       <GameBoard
         gameState={controller.game}
@@ -89,6 +96,7 @@ export default function GameContent() {
           onBackToMenu={() => router.push('/play')}
         />
       )}
+      </TilePaletteProvider>
     </GameErrorBoundary>
   );
 }

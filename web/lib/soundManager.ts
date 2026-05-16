@@ -3,7 +3,16 @@
  * No external sound files needed — generates 8-bit style sounds programmatically.
  */
 
-type SoundName = 'tilePlace' | 'tileDraw' | 'claim' | 'win' | 'pass' | 'turnAlert' | 'kong';
+type SoundName =
+  | 'tilePlace'
+  | 'tileDraw'
+  | 'claim'
+  | 'win'
+  | 'winSelfDraw'
+  | 'winLimitHand'
+  | 'pass'
+  | 'turnAlert'
+  | 'kong';
 
 class SoundManager {
   private ctx: AudioContext | null = null;
@@ -65,10 +74,29 @@ class SoundManager {
         this.playTone(ctx, 900, 0.14, 'square', 0.26);
         break;
       case 'win':
+        // Discard win — C major arpeggio up to high C.
         this.playTone(ctx, 523, 0.12, 'square');
         this.playTone(ctx, 659, 0.12, 'square', 0.12);
         this.playTone(ctx, 784, 0.12, 'square', 0.24);
         this.playTone(ctx, 1047, 0.2, 'square', 0.36);
+        break;
+      case 'winSelfDraw':
+        // Self-drawn — C major arpeggio with a triumphant fifth on top.
+        this.playTone(ctx, 523, 0.12, 'square');
+        this.playTone(ctx, 659, 0.12, 'square', 0.12);
+        this.playTone(ctx, 784, 0.12, 'square', 0.24);
+        this.playTone(ctx, 1047, 0.16, 'square', 0.36);
+        this.playTone(ctx, 1568, 0.24, 'square', 0.5);
+        break;
+      case 'winLimitHand':
+        // Limit hand — bigger fanfare with a low boom underneath.
+        this.playTone(ctx, 196, 0.16, 'sawtooth');
+        this.playTone(ctx, 523, 0.12, 'square', 0.06);
+        this.playTone(ctx, 659, 0.12, 'square', 0.18);
+        this.playTone(ctx, 784, 0.12, 'square', 0.3);
+        this.playTone(ctx, 1047, 0.14, 'square', 0.42);
+        this.playTone(ctx, 1568, 0.18, 'square', 0.56);
+        this.playTone(ctx, 2093, 0.3, 'square', 0.74);
         break;
       case 'pass':
         this.playTone(ctx, 300, 0.05, 'sine');

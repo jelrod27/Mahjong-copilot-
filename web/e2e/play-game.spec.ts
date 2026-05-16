@@ -5,9 +5,7 @@ test.describe.configure({ mode: 'serial' });
 /** GameBoard mounted; turn indicator may still be in dealing transition briefly. */
 async function expectGameBoardReady(page: Page) {
   await expect(page.getByTestId('game-board-root')).toBeVisible({ timeout: 60_000 });
-  await expect(
-    page.getByText(/YOUR TURN|OPPONENT|CLAIM|Waiting for opponent/).first(),
-  ).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByTestId('game-phase-banner')).toBeVisible({ timeout: 60_000 });
 }
 
 test.describe('Solo play', () => {
@@ -17,7 +15,7 @@ test.describe('Solo play', () => {
 
     await page.getByRole('button', { name: /MEDIUM — Smart AI/i }).click();
     await page.getByRole('button', { name: /EASY — Random AI/i }).click();
-    await page.getByRole('button', { name: '[ START GAME ]' }).click();
+    await page.getByTestId('start-game-button').click();
 
     await expect(page).toHaveURL(/\/play\/game\?difficulty=easy/);
     await expectGameBoardReady(page);
@@ -48,7 +46,7 @@ test.describe('Minimal interaction smoke', () => {
     await page.goto('/play/game?difficulty=easy');
     await expectGameBoardReady(page);
 
-    const discardBtn = page.getByRole('button', { name: /\[ DISCARD/ });
+    const discardBtn = page.getByTestId('discard-tile-button');
     await discardBtn.waitFor({ state: 'visible', timeout: 60_000 });
 
     const tiles = page.locator('[data-testid="human-hand-tile"]');

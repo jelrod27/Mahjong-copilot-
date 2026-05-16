@@ -23,10 +23,14 @@ describe('TileQuiz', () => {
     localStorage.clear();
   });
 
-  it('renders a question', () => {
+  it('renders a question with a prompt header from one of the supported types', () => {
     renderWithProvider(<TileQuiz onBack={onBack} />);
-    // Should show "IDENTIFY THIS TILE" prompt and "Question 1 of 10"
-    expect(screen.getByText('IDENTIFY THIS TILE')).toBeDefined();
+    // After PRACTICE-03, every round mixes prompt types — the header is one
+    // of three. We assert a header is present and matches the union.
+    const header = screen.getByTestId('prompt-header');
+    expect(['IDENTIFY THIS TILE', 'WHAT IS THIS TILE?', 'PICK THE MATCHING TILE']).toContain(
+      header.textContent,
+    );
     expect(screen.getByText(/Question 1 of 10/)).toBeDefined();
   });
 

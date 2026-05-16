@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { TutorAdvice } from '@/engine/types';
-import { Sparkles, Lightbulb, Info } from 'lucide-react';
+import { Sparkles, Lightbulb, Info, GraduationCap } from 'lucide-react';
 
 interface TutorPanelProps {
   advice: TutorAdvice | null;
@@ -13,40 +13,44 @@ export default function TutorPanel({ advice }: TutorPanelProps) {
 
   const getIcon = () => {
     switch (advice.type) {
-      case 'discard': return <Lightbulb size={18} className="text-retro-gold" />;
-      case 'claim': return <Sparkles size={18} className="text-retro-cyan" />;
-      default: return <Info size={18} className="text-retro-accent" />;
+      case 'discard':
+        return <Lightbulb size={18} className="text-highlight" aria-hidden />;
+      case 'claim':
+        return <Sparkles size={18} className="text-info" aria-hidden />;
+      default:
+        return <Info size={18} className="text-accent" aria-hidden />;
     }
   };
 
   const getTitle = () => {
     switch (advice.type) {
-      case 'discard': return 'DISCARD TIP';
-      case 'claim': return 'CLAIM OPPORTUNITY';
-      default: return 'MASTER ADVICE';
+      case 'discard':
+        return 'Discard tip';
+      case 'claim':
+        return 'Claim window';
+      default:
+        return 'Table read';
     }
   };
 
   return (
     <div className="animate-slide-up">
-      <div className="relative group">
-        {/* Glow background */}
-        <div className="absolute -inset-0.5 bg-gradient-to-r from-retro-gold/20 via-retro-cyan/20 to-retro-accent/20 rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
-        
-        <div className="relative neo-retro-card bg-retro-bgLight/80 backdrop-blur-md border-retro-border/20 p-2 md:p-4 flex gap-2 md:gap-4 items-start shadow-xl">
-          <div className="w-8 h-8 md:w-12 md:h-12 rounded-sm bg-retro-panel border border-retro-border/30 flex items-center justify-center shrink-0 shadow-inner">
-            <span className="text-lg md:text-2xl">👴</span>
+      <div className="relative overflow-hidden rounded-xl border border-border/30 game-hud-surface">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-highlight/[0.06] via-transparent to-info/[0.06]" aria-hidden />
+        <div className="relative flex items-start gap-3 p-3 md:gap-4 md:p-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border/40 bg-surface/80 md:h-12 md:w-12">
+            <GraduationCap className="h-5 w-5 text-highlight md:h-6 md:w-6" strokeWidth={1.75} aria-hidden />
           </div>
 
-          <div className="flex-1 space-y-0.5 md:space-y-1">
-            <div className="flex items-center gap-1 md:gap-2">
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
               {getIcon()}
-              <span className="font-pixel text-[8px] md:text-[10px] text-retro-gold tracking-widest uppercase">
+              <span className="font-display text-[9px] font-semibold uppercase tracking-[0.16em] text-foreground md:text-[10px]">
                 {getTitle()}
               </span>
             </div>
-            <p className="text-xs md:text-sm text-retro-text leading-relaxed font-sans italic">
-              &quot;{advice.message}&quot;
+            <p className="font-sans text-xs leading-relaxed text-foreground/95 md:text-sm">
+              {advice.message}
             </p>
           </div>
         </div>

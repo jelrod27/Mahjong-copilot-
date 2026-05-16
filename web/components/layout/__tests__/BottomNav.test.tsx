@@ -46,8 +46,8 @@ describe('BottomNav', () => {
   it('highlights active tab based on pathname', () => {
     render(<BottomNav />);
     const learnLink = screen.getByText('Learn').closest('a');
-    expect(learnLink?.className).toContain('text-retro-cyan');
+    expect(learnLink?.className).toContain('text-info');
     const homeLink = screen.getByText('Home').closest('a');
-    expect(homeLink?.className).toContain('text-retro-textDim');
+    expect(homeLink?.className).toContain('text-muted-foreground');
   });
 });

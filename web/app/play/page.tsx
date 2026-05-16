@@ -38,133 +38,121 @@ export default function PlayPage() {
     <div className="min-h-screen flex flex-col items-center justify-center p-3 md:p-4">
       {/* Title */}
       <div className="text-center mb-4 md:mb-8">
-        <h1 className="font-pixel text-base md:text-xl text-retro-accent retro-glow-strong mb-1 md:mb-2">
+        <h1 className="font-display text-base md:text-xl text-accent ds-text-glow-strong mb-1 md:mb-2">
           HONG KONG
         </h1>
-        <h1 className="font-pixel text-xl md:text-2xl text-retro-gold retro-glow-strong mb-2 md:mb-4">
+        <h1 className="font-display text-xl md:text-2xl text-highlight ds-text-glow-strong mb-2 md:mb-4">
           MAHJONG
         </h1>
-        <div className="font-retro text-retro-textDim text-sm md:text-lg">
+        <div className="font-sans text-muted-foreground text-sm md:text-lg">
           ╔════════════════════╗
         </div>
-        <div className="font-retro text-retro-textDim text-sm md:text-lg">
+        <div className="font-sans text-muted-foreground text-sm md:text-lg">
           ║&nbsp; 4-Player &bull; HK Rules &nbsp;║
         </div>
-        <div className="font-retro text-retro-textDim text-sm md:text-lg">
+        <div className="font-sans text-muted-foreground text-sm md:text-lg">
           ╚════════════════════╝
         </div>
       </div>
 
       {/* Game mode selector */}
-      <div className="retro-panel p-3 md:p-4 mb-3 md:mb-4 w-full max-w-xs">
-        <div className="font-pixel text-xs text-retro-cyan mb-3 text-center">
+      <div className="ds-panel p-3 md:p-4 mb-3 md:mb-4 w-full max-w-xs">
+        <div className="font-display text-xs text-info mb-3 text-center">
           GAME MODE
         </div>
         <div className="flex flex-col gap-2">
-          <button
+          <SelectableButton
+            selected={mode === 'quick'}
             onClick={() => setMode('quick')}
-            className={`retro-btn text-center w-full text-left ${
-              mode === 'quick'
-                ? 'bg-retro-accent text-white border-retro-gold'
-                : 'bg-retro-bgLight'
-            }`}
-          >
-            <div>► QUICK GAME</div>
-            <div className="font-retro text-xs text-retro-textDim mt-0.5">East round only (~4 hands)</div>
-          </button>
-          <button
+            primary="QUICK GAME"
+            secondary="East round only (~4 hands)"
+          />
+          <SelectableButton
+            selected={mode === 'full'}
             onClick={() => setMode('full')}
-            className={`retro-btn text-center w-full text-left ${
-              mode === 'full'
-                ? 'bg-retro-accent text-white border-retro-gold'
-                : 'bg-retro-bgLight'
-            }`}
-          >
-            <div>► FULL GAME</div>
-            <div className="font-retro text-xs text-retro-textDim mt-0.5">All 4 rounds (~16 hands)</div>
-          </button>
+            primary="FULL GAME"
+            secondary="All 4 rounds (~16 hands)"
+          />
         </div>
       </div>
 
       {/* Difficulty selector */}
-      <div className="retro-panel p-3 md:p-4 mb-3 md:mb-4 w-full max-w-xs">
-        <div className="font-pixel text-xs text-retro-cyan mb-3 text-center">
+      <div className="ds-panel p-3 md:p-4 mb-3 md:mb-4 w-full max-w-xs">
+        <div className="font-display text-xs text-info mb-3 text-center">
           SELECT DIFFICULTY
         </div>
         <div className="flex flex-col gap-2">
-          {(['easy', 'medium', 'hard'] as Difficulty[]).map((d) => (
-            <button
-              key={d}
-              onClick={() => setDifficulty(d)}
-              className={`retro-btn text-center w-full ${
-                difficulty === d
-                  ? 'bg-retro-accent text-white border-retro-gold'
-                  : 'bg-retro-bgLight'
-              }`}
-            >
-              {d === 'easy' && '► EASY — Random AI'}
-              {d === 'medium' && '► MEDIUM — Smart AI'}
-              {d === 'hard' && '► HARD — Strategic AI'}
-            </button>
-          ))}
+          {(['easy', 'medium', 'hard'] as Difficulty[]).map((d) => {
+            const primary: Record<Difficulty, string> = {
+              easy: 'EASY — Random AI',
+              medium: 'MEDIUM — Smart AI',
+              hard: 'HARD — Strategic AI',
+            };
+            return (
+              <SelectableButton
+                key={d}
+                selected={difficulty === d}
+                onClick={() => setDifficulty(d)}
+                primary={primary[d]}
+              />
+            );
+          })}
         </div>
       </div>
 
       {/* Faan minimum (table rule) selector */}
-      <div className="retro-panel p-3 md:p-4 mb-4 md:mb-6 w-full max-w-xs">
-        <div className="font-pixel text-xs text-retro-cyan mb-3 text-center">
+      <div className="ds-panel p-3 md:p-4 mb-4 md:mb-6 w-full max-w-xs">
+        <div className="font-display text-xs text-info mb-3 text-center">
           TABLE RULE
         </div>
         <div className="flex flex-col gap-2">
           {MIN_FAAN_OPTIONS.map((opt) => (
-            <button
+            <SelectableButton
               key={opt.value}
-              type="button"
+              selected={minFaan === opt.value}
               onClick={() => setMinFaan(opt.value)}
-              aria-pressed={minFaan === opt.value}
-              aria-label={`${opt.label}: ${opt.description}`}
-              className={`retro-btn text-center w-full text-left ${
-                minFaan === opt.value
-                  ? 'bg-retro-accent text-white border-retro-gold'
-                  : 'bg-retro-bgLight'
-              }`}
-            >
-              <div>► {opt.label}</div>
-              <div className="font-retro text-xs text-retro-textDim mt-0.5">{opt.description}</div>
-            </button>
+              primary={opt.label}
+              secondary={opt.description}
+            />
           ))}
         </div>
       </div>
 
       {/* Start button */}
       <button
+        type="button"
+        data-testid="start-game-button"
         onClick={handleStart}
-        className="retro-btn-green font-pixel text-xs md:text-sm px-6 md:px-8 py-3 min-h-[44px]"
+        className="ds-btn-success min-h-[48px] px-8 py-3 font-display text-sm font-bold tracking-wide md:text-base"
       >
-        [ START GAME ]
+        Start game
       </button>
 
       {canResume && (
         <button
+          type="button"
+          data-testid="resume-game-button"
           onClick={handleResume}
-          className="retro-btn font-pixel text-xs md:text-sm px-6 md:px-8 py-3 mt-2 min-h-[44px] border-retro-amber text-retro-gold"
+          className="ds-btn mt-2 min-h-[48px] border-highlight/50 px-8 py-3 font-display text-sm font-semibold text-highlight md:text-base"
         >
-          [ RESUME GAME ]
+          Resume saved game
         </button>
       )}
 
       {/* Multiplayer */}
       <button
+        type="button"
+        data-testid="multiplayer-lobby-button"
         onClick={() => router.push('/play/lobby')}
-        className="retro-btn font-pixel text-xs md:text-sm px-6 md:px-8 py-3 mt-3 min-h-[44px] border-retro-cyan text-retro-cyan"
+        className="ds-btn mt-3 min-h-[48px] border-info/50 px-8 py-3 font-display text-sm font-semibold text-info md:text-base"
       >
-        [ MULTIPLAYER ]
+        Multiplayer lobby
       </button>
 
       {/* Quick reference */}
-      <div className="mt-4 md:mt-8 retro-panel p-3 w-full max-w-xs">
-        <div className="font-pixel text-xs text-retro-gold mb-2">QUICK RULES</div>
-        <div className="font-retro text-sm text-retro-textDim space-y-1">
+      <div className="mt-4 md:mt-8 ds-panel p-3 w-full max-w-xs">
+        <div className="font-display text-xs text-highlight mb-2">QUICK RULES</div>
+        <div className="font-sans text-sm text-muted-foreground space-y-1">
           <p>• Draw a tile, then discard one</p>
           <p>• Claim opponent discards: Chow/Pung/Kong</p>
           <p>• First to complete 4 melds + 1 pair wins</p>
@@ -172,5 +160,60 @@ export default function PlayPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Reusable selector button — distinguishes selected state with both color
+ * AND a leading checkmark / arrow glyph + ARIA, satisfying PRD A11Y-02
+ * (no color-only state). Used by all three Play-screen selectors.
+ */
+function SelectableButton({
+  selected,
+  onClick,
+  primary,
+  secondary,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  primary: string;
+  secondary?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`ds-btn text-left w-full ${
+        selected
+          ? 'bg-accent text-white border-highlight'
+          : 'bg-elevated'
+      }`}
+    >
+      <div className="flex items-start gap-2">
+        <span
+          className={`font-display text-xs mt-0.5 shrink-0 ${
+            selected ? 'text-success' : 'text-muted-foreground'
+          }`}
+          aria-hidden
+        >
+          {selected ? '✓' : '►'}
+        </span>
+        <div className="flex-1 min-w-0">
+          <div>{primary}</div>
+          {secondary && (
+            <div className="font-sans text-xs text-muted-foreground mt-0.5">{secondary}</div>
+          )}
+        </div>
+        {selected && (
+          <span
+            className="font-display text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-success/25 text-success shrink-0"
+            data-testid="selected-badge"
+          >
+            Selected
+          </span>
+        )}
+      </div>
+    </button>
   );
 }

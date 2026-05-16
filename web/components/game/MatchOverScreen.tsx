@@ -1,9 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { Trophy } from 'lucide-react';
 import { MatchState } from '@/models/MatchState';
 import { computeFinalRankings } from '@/engine/matchManager';
 import { recordMatchResult } from '@/lib/gameStats';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { GameResultsOverlay, GameResultsSheet, GameResultsSectionLabel } from './GameResultsChrome';
 
 interface MatchOverScreenProps {
   match: MatchState;
@@ -24,7 +27,6 @@ export default function MatchOverScreen({
     return () => clearTimeout(timer);
   }, []);
 
-  // Record stats once on mount
   useEffect(() => {
     if (statsSavedRef.current) return;
     statsSavedRef.current = true;
@@ -48,92 +50,96 @@ export default function MatchOverScreen({
     });
   }, [match, humanRank]);
 
-  const rankColors = ['text-retro-gold', 'text-retro-cyan', 'text-retro-text', 'text-retro-textDim'];
+  const rankColors = ['text-highlight', 'text-info', 'text-foreground', 'text-muted-foreground'];
   const rankLabels = ['1st', '2nd', '3rd', '4th'];
 
-  return (
-    <div className="fixed inset-0 bg-black/80 z-40 flex items-center justify-center p-2 md:p-4">
-      <div className={`retro-panel p-3 md:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto ${showContent ? 'animate-slide-up' : 'opacity-0'}`}>
-        {/* Header */}
-        <div className="text-center mb-3 md:mb-4">
-          <div className="font-retro text-retro-accent text-xs md:text-sm">
-            ╔════════════════════════╗
-          </div>
-          <h2 className="font-pixel text-sm md:text-lg text-retro-gold retro-glow-strong my-1 md:my-2">
-            GAME OVER
-          </h2>
-          <div className="font-retro text-retro-accent text-xs md:text-sm">
-            ╚════════════════════════╝
-          </div>
-        </div>
+  const modalRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(modalRef, showContent);
 
-        {/* Human placement */}
-        <div className="text-center mb-4">
+  return (
+    <GameResultsOverlay>
+      <GameResultsSheet
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="match-over-heading"
+        className={showContent ? 'animate-slide-up' : 'pointer-events-none opacity-0'}
+      >
+        <div className="mb-6 flex flex-col items-center gap-3 text-center">
+          <span className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-highlight/30 bg-highlight/10">
+            <Trophy className="h-6 w-6 text-highlight" strokeWidth={1.75} aria-hidden />
+          </span>
+          <h2 id="match-over-heading" className="font-display text-base text-foreground md:text-lg">
+            Match complete
+          </h2>
           {humanRank === 1 ? (
-            <div className="font-pixel text-sm text-retro-green retro-glow">
-              YOU FINISHED 1st!
-            </div>
+            <p className="font-sans text-sm text-success md:text-base">
+              You finished first — table cleared.
+            </p>
           ) : (
-            <div className="font-pixel text-sm text-retro-textDim">
-              You finished {rankLabels[humanRank - 1]}
-            </div>
+            <p className="font-sans text-sm text-muted-foreground md:text-base">
+              You placed {rankLabels[humanRank - 1]}. Every match sharpens the next one.
+            </p>
           )}
         </div>
 
-        {/* Rankings */}
         <div className="mb-4">
-          <div className="font-pixel text-xs text-retro-cyan mb-2">FINAL STANDINGS</div>
-          {rankings.map((entry) => (
+          <GameResultsSectionLabel>Final standings</GameResultsSectionLabel>
+          {rankings.map(entry => (
             <div
               key={entry.playerIndex}
-              className={`flex justify-between font-retro text-sm py-1 ${rankColors[entry.rank - 1]}`}
+              className={`flex justify-between border-b border-border/15 py-2 font-sans text-sm last:border-0 ${rankColors[entry.rank - 1]}`}
             >
               <span>
-                {rankLabels[entry.rank - 1]}
-                {' '}
+                <span className="tabular-nums text-muted-foreground">{rankLabels[entry.rank - 1]}</span>
+                {' · '}
                 {entry.name}
-                {entry.playerIndex === 0 && ' (You)'}
+                {entry.playerIndex === 0 && (
+                  <span className="ml-1 rounded bg-info/15 px-1.5 py-0.5 text-[10px] font-medium text-info">
+                    You
+                  </span>
+                )}
               </span>
-              <span className="retro-glow">{entry.score} pts</span>
+              <span className="font-medium tabular-nums ds-text-glow">{entry.score} pts</span>
             </div>
           ))}
         </div>
 
-        {/* Match stats */}
         <div className="mb-4">
-          <div className="font-pixel text-xs text-retro-gold mb-2">MATCH STATS</div>
-          <div className="font-retro text-sm text-retro-textDim space-y-0.5">
-            <div className="flex justify-between">
+          <GameResultsSectionLabel>Match stats</GameResultsSectionLabel>
+          <div className="game-hud-surface space-y-2 rounded-lg p-3 font-sans text-sm text-muted-foreground">
+            <div className="flex justify-between gap-4">
               <span>Mode</span>
-              <span className="text-retro-text">{match.mode === 'full' ? 'Full Game (4 rounds)' : 'Quick Game (East round)'}</span>
+              <span className="text-right text-foreground">
+                {match.mode === 'full' ? 'Full game (four rounds)' : 'Quick game (East only)'}
+              </span>
             </div>
             <div className="flex justify-between">
-              <span>Hands Played</span>
-              <span className="text-retro-text">{match.totalHandsPlayed}</span>
+              <span>Hands played</span>
+              <span className="text-foreground">{match.totalHandsPlayed}</span>
             </div>
             <div className="flex justify-between">
-              <span>Starting Score</span>
-              <span className="text-retro-text">{match.startingScore}</span>
+              <span>Starting score</span>
+              <span className="text-foreground">{match.startingScore}</span>
             </div>
           </div>
         </div>
 
-        {/* Hand history summary */}
         {match.handResults.length > 0 && (
-          <div className="mb-4">
-            <div className="font-pixel text-xs text-retro-accent mb-2">HAND HISTORY</div>
-            <div className="space-y-0.5 max-h-32 overflow-y-auto">
+          <div className="mb-6">
+            <GameResultsSectionLabel>Hand history</GameResultsSectionLabel>
+            <div className="max-h-36 space-y-1 overflow-y-auto rounded-lg border border-border/20 bg-surface/30 p-2">
               {match.handResults.map((hr, i) => (
-                <div key={i} className="flex justify-between font-retro text-xs text-retro-textDim">
+                <div key={i} className="flex justify-between font-sans text-[11px] text-muted-foreground md:text-xs">
                   <span>
-                    {hr.round.toUpperCase()} R{hr.handNumber}
+                    {hr.round.toUpperCase()} · Hand {hr.handNumber}
                   </span>
-                  <span>
+                  <span className="max-w-[55%] truncate text-right text-foreground/90">
                     {hr.winnerId
-                      ? match.playerNames[
+                      ? `${match.playerNames[
                           hr.winnerId === 'human-player' ? 0 :
-                          parseInt(hr.winnerId.replace('ai_', '')) || 0
-                        ] + (hr.isSelfDrawn ? ' (self-drawn)' : ' (claim)')
+                          parseInt(hr.winnerId.replace('ai_', ''), 10) || 0
+                        ]}${hr.isSelfDrawn ? ' (self-draw)' : ' (claim)'}`
                       : 'Draw'}
                   </span>
                 </div>
@@ -142,16 +148,23 @@ export default function MatchOverScreen({
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex gap-2 md:gap-3 justify-center">
-          <button className="retro-btn-green font-pixel text-[10px] md:text-xs min-h-[44px] px-4 md:px-6" onClick={onPlayAgain}>
-            [ PLAY AGAIN ]
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-center sm:gap-3">
+          <button
+            type="button"
+            className="ds-btn-success min-h-[44px] font-display text-xs md:text-sm"
+            onClick={onPlayAgain}
+          >
+            Play again
           </button>
-          <button className="retro-btn bg-retro-bgLight font-pixel text-[10px] md:text-xs min-h-[44px] px-4 md:px-6" onClick={onBackToMenu}>
-            [ MENU ]
+          <button
+            type="button"
+            className="ds-btn min-h-[44px] bg-surface/80 font-display text-xs md:text-sm"
+            onClick={onBackToMenu}
+          >
+            Back to menu
           </button>
         </div>
-      </div>
-    </div>
+      </GameResultsSheet>
+    </GameResultsOverlay>
   );
 }

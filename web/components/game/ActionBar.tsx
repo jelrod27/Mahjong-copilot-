@@ -41,37 +41,94 @@ function claimSummaryLabel(claimType: string): string {
   }
 }
 
+function claimConsequence(claimType: string, tileName: string | undefined): string {
+  const tile = tileName ?? 'this tile';
+  switch (claimType) {
+    case 'win':
+      return `${tile} completes a winning hand — declare Mahjong!`;
+    case 'kong':
+      return `Forms an exposed Kong (four of a kind). Strong on dragons and your seat wind; you draw a replacement tile.`;
+    case 'pung':
+      return `Forms an exposed Pung (three of a kind). Reveals part of your hand, but locks in a useful set.`;
+    case 'chow':
+      return `Forms an exposed Chow (sequence). Reveals part of your hand — only worth it if it speeds up your shape.`;
+    default:
+      return 'Take this tile.';
+  }
+}
+
+const PASS_HINT =
+  'Keeping your hand concealed is often better — pass if the claim does not improve your shape.';
+
 export default function ActionBar({
-  canDiscard, canDeclareKong, canDeclareWin, hasClaimOptions,
-  claimOptions, discardedTile, selectedTileName,
-  onDiscard, onKong, onWin, onClaimBest, onSubmitChow, onPass,
-  turnPhase, isHumanTurn, claimTimer = 0, claimTimeout = 10000,
+  canDiscard,
+  canDeclareKong,
+  canDeclareWin,
+  hasClaimOptions,
+  claimOptions,
+  discardedTile,
+  selectedTileName,
+  onDiscard,
+  onKong,
+  onWin,
+  onClaimBest,
+  onSubmitChow,
+  onPass,
+  turnPhase,
+  isHumanTurn,
+  claimTimer = 0,
+  claimTimeout = 10000,
 }: ActionBarProps) {
   if (turnPhase === 'discard' && isHumanTurn) {
-    const discardLabel = selectedTileName ? `[ DISCARD ${selectedTileName.toUpperCase()} ]` : '[ DISCARD SELECTED TILE ]';
+    const discardAria = selectedTileName
+      ? `Discard ${selectedTileName}`
+      : 'Discard selected tile';
     return (
-      <div className="space-y-1 py-1 md:py-2">
-        <p className="text-center font-retro text-xs text-retro-textDim">
-          {selectedTileName
-            ? `Selected: ${selectedTileName}. Discard it or choose another tile.`
-            : 'Choose one tile to discard.'}
+      <div className="space-y-3 py-1 md:py-2">
+        <p className="text-center font-sans text-xs text-muted-foreground md:text-sm">
+          {selectedTileName ? (
+            <>
+              <span className="font-medium text-foreground">{selectedTileName}</span> is selected. Tap
+              discard to send it out, or pick another tile.
+            </>
+          ) : (
+            <>Select one tile from your hand, then confirm discard.</>
+          )}
         </p>
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           <button
-            className="retro-btn-accent min-h-[44px] px-4 md:px-6"
+            type="button"
+            data-testid="discard-tile-button"
+            aria-label={discardAria}
+            className="ds-btn-accent min-h-[48px] min-w-[140px] flex-col gap-0.5 px-6 py-2.5 md:min-w-[180px]"
             onClick={onDiscard}
             disabled={!canDiscard}
           >
-            {discardLabel}
+            <span className="font-display text-sm font-bold tracking-wide">Discard</span>
+            {selectedTileName ? (
+              <span className="max-w-[220px] truncate font-sans text-[11px] font-normal text-white/85">
+                {selectedTileName}
+              </span>
+            ) : (
+              <span className="font-sans text-[11px] font-normal text-white/70">Choose a tile first</span>
+            )}
           </button>
           {canDeclareKong && (
-            <button type="button" className="retro-btn-gold min-h-[44px] px-4 md:px-6" onClick={onKong}>
-              [ KONG ]
+            <button
+              type="button"
+              className="ds-btn-highlight min-h-[48px] px-5 py-2.5 font-display text-sm font-semibold"
+              onClick={onKong}
+            >
+              Kong
             </button>
           )}
           {canDeclareWin && (
-            <button type="button" className="retro-btn-green min-h-[44px] px-4 md:px-6" onClick={onWin}>
-              [ WIN! ]
+            <button
+              type="button"
+              className="ds-btn-success min-h-[48px] px-5 py-2.5 font-display text-sm font-semibold"
+              onClick={onWin}
+            >
+              Mahjong
             </button>
           )}
         </div>
@@ -82,18 +139,16 @@ export default function ActionBar({
   if (turnPhase === 'claim' && hasClaimOptions && claimOptions.length > 0) {
     const best = getBestClaimSubmission(claimOptions);
     const timerPct = claimTimer > 0 ? (claimTimer / claimTimeout) * 100 : 0;
-    const timerColor = timerPct > 50 ? 'bg-retro-cyan' : timerPct > 20 ? 'bg-retro-gold' : 'bg-retro-accent';
+    const timerColor = timerPct > 50 ? 'bg-info' : timerPct > 20 ? 'bg-highlight' : 'bg-accent';
 
-    // Check if the only/best claim is a chow with multiple combinations
-    const chowClaim = claimOptions.find(c => c.claimType === 'chow');
+    const chowClaim = claimOptions.find((c) => c.claimType === 'chow');
     const hasMultipleChows = chowClaim && chowClaim.tilesFromHand.length > 1;
     const bestIsChow = best?.claimType === 'chow';
 
-    // Show chow selector when chow is the best (or only) claim and there are multiple combos
     if (bestIsChow && hasMultipleChows && discardedTile) {
       return (
-        <div className="space-y-1 md:space-y-2 py-1 md:py-2 px-1 md:px-2">
-          <div className="h-1 bg-retro-bgLight rounded-full mx-1">
+        <div className="space-y-2 py-1 md:space-y-3 md:py-2 md:px-1">
+          <div className="mx-1 h-1 overflow-hidden rounded-full bg-elevated">
             <div
               className={`h-full rounded-full transition-all duration-100 ${timerColor}`}
               style={{ width: `${timerPct}%` }}
@@ -109,41 +164,48 @@ export default function ActionBar({
       );
     }
 
-    const primaryVerb = best?.claimType === 'win' ? 'WIN!' : 'CLAIM';
+    const primaryLabel = best?.claimType === 'win' ? 'Declare Mahjong' : 'Take discard';
 
     return (
-      <div className="space-y-1 md:space-y-2 py-1 md:py-2 px-1 md:px-2">
-        <div className="h-1 bg-retro-bgLight rounded-full mx-1">
+      <div className="space-y-3 py-1 md:space-y-4 md:py-2 md:px-1">
+        <div className="mx-1 h-1.5 overflow-hidden rounded-full bg-elevated">
           <div
             className={`h-full rounded-full transition-all duration-100 ${timerColor}`}
             style={{ width: `${timerPct}%` }}
           />
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2">
+        <div className="flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
           <button
             type="button"
             data-testid="claim-best-button"
-            className={`min-h-[48px] px-6 py-3 font-pixel text-sm sm:text-base rounded-md border-2 transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-retro-cyan/70 ${
+            className={`min-h-[52px] flex-1 rounded-xl border-2 px-6 py-3 font-display text-sm font-bold tracking-wide transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/70 sm:flex-none sm:px-10 ${
               best?.claimType === 'win'
-                ? 'retro-btn-green shadow-[0_0_20px_rgba(0,255,100,0.35)] border-retro-green/50'
-                : 'bg-retro-cyan/25 text-retro-cyan border-retro-cyan/60 shadow-[0_0_16px_rgba(69,183,209,0.35)] hover:bg-retro-cyan/35'
+                ? 'ds-btn-success border-success/40 shadow-[0_0_24px_rgb(34_197_94_/_0.35)]'
+                : 'border-info/55 bg-info/20 text-info shadow-[0_0_20px_rgb(56_189_248_/_0.25)] hover:bg-info/30'
             }`}
             onClick={onClaimBest}
           >
-            [ {primaryVerb} ]
+            {primaryLabel}
           </button>
           <button
             type="button"
-            className="min-h-[48px] px-5 py-3 retro-btn bg-retro-bgLight border-retro-border/40 font-retro text-base"
+            data-testid="claim-pass-button"
+            className="min-h-[52px] rounded-xl border border-border/50 bg-background/40 px-6 py-3 font-sans text-sm font-semibold text-muted-foreground backdrop-blur-sm transition-colors hover:border-border hover:text-foreground sm:px-8"
             onClick={onPass}
           >
-            [ PASS ]
+            Pass
           </button>
         </div>
         {best && (
-          <p className="text-center font-retro text-xs text-retro-textDim px-2">
-            {claimSummaryLabel(best.claimType)} — adds the highlighted discard to your hand.
-          </p>
+          <div className="space-y-1 px-1 text-center">
+            <p className="font-sans text-xs leading-relaxed text-foreground md:text-sm" data-testid="claim-consequence">
+              <span className="font-semibold text-info">{claimSummaryLabel(best.claimType)}.</span>{' '}
+              {claimConsequence(best.claimType, discardedTile?.nameEnglish)}
+            </p>
+            <p className="font-sans text-[10px] leading-relaxed text-muted-foreground md:text-xs" data-testid="claim-pass-hint">
+              <span className="font-semibold text-muted-foreground">Pass:</span> {PASS_HINT}
+            </p>
+          </div>
         )}
       </div>
     );
@@ -151,10 +213,11 @@ export default function ActionBar({
 
   if (!isHumanTurn) {
     return (
-      <div className="flex items-center justify-center py-1 md:py-2">
-        <span className="text-retro-textDim font-retro text-sm md:text-lg">
-          Waiting for opponent<span className="animate-blink">...</span>
-        </span>
+      <div className="flex items-center justify-center py-3 md:py-4">
+        <p className="text-center font-sans text-sm text-muted-foreground md:text-base">
+          Opponents are playing
+          <span className="animate-blink">…</span>
+        </p>
       </div>
     );
   }

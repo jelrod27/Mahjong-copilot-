@@ -10,7 +10,11 @@ import {
   SETTINGS_SET_SHOW_TUTOR,
   SETTINGS_SET_LIVE_FAAN_METER,
   SETTINGS_SET_TILE_VOICE,
+  SETTINGS_SET_TILE_PALETTE,
+  SETTINGS_SET_TABLE_FELT,
+  SETTINGS_SET_NPC_ROSTER,
 } from '../actions/settingsActions';
+import { DEFAULT_TILE_PALETTE, DEFAULT_TABLE_FELT, DEFAULT_ROSTER } from '@/lib/cosmetics';
 
 const initialState: SettingsState = {
   selectedVariant: 'Hong Kong Mahjong',
@@ -22,6 +26,9 @@ const initialState: SettingsState = {
   showTutor: true,
   liveFaanMeter: true,
   tileVoice: 'off',
+  tilePalette: DEFAULT_TILE_PALETTE,
+  tableFelt: DEFAULT_TABLE_FELT,
+  npcRoster: DEFAULT_ROSTER,
 };
 
 export const settingsReducer = (
@@ -49,6 +56,12 @@ export const settingsReducer = (
       return { ...state, liveFaanMeter: action.payload };
     case SETTINGS_SET_TILE_VOICE:
       return { ...state, tileVoice: action.payload };
+    case SETTINGS_SET_TILE_PALETTE:
+      return { ...state, tilePalette: action.payload };
+    case SETTINGS_SET_TABLE_FELT:
+      return { ...state, tableFelt: action.payload };
+    case SETTINGS_SET_NPC_ROSTER:
+      return { ...state, npcRoster: action.payload };
     default:
       return state;
   }

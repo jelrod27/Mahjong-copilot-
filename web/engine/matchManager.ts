@@ -115,9 +115,10 @@ export function advanceMatch(
       newInitialDealerHasRotated = true;
     }
 
-    // Round advances when initial dealer has rotated and we've come full circle
-    // i.e., when the initial dealer loses dealership
-    if (newInitialDealerHasRotated && prevDealer === match.initialDealerIndex) {
+    // Round advances when the dealership has cycled back to the initial dealer.
+    // That means the *new* dealer index equals the initial dealer, and the flag
+    // already recorded that the initial dealer had rotated away previously.
+    if (newInitialDealerHasRotated && newDealerIndex === match.initialDealerIndex) {
       const nextRound = getNextRound(match.currentRound);
       const isLastRound = match.mode === 'quick'
         ? match.currentRound === WindTile.EAST

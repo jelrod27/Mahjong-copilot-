@@ -93,6 +93,16 @@ export function getMediumDiscard(gameState: GameState, playerIndex: number): AID
 
   // Evaluate each tile: calculate shanten + fan retention
   const nonBonus = hand.filter(t => t.type !== TileType.BONUS);
+
+  // Guard: bonus-only hand (shouldn't happen in normal play, but prevents crashes)
+  if (nonBonus.length === 0) {
+    const tile = hand[0];
+    return {
+      action: { type: 'DISCARD', tile },
+      reasoning: `Medium AI: discard ${tile?.nameEnglish || 'tile'} (bonus-only)`,
+    };
+  }
+
   let bestTile = nonBonus[0];
   let bestScore = Infinity;
 

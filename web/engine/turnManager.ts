@@ -429,14 +429,19 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
       hand: [...newPlayers[playerIndex].hand, replacement],
     };
 
-    return {
+    const wallKey = state.deadWall.length > 0 ? 'deadWall' : 'wall';
+    const kongState: GameState = {
       ...state,
       players: newPlayers,
-      [state.deadWall.length > 0 ? 'deadWall' : 'wall']: sourceWall.slice(1),
+      [wallKey]: sourceWall.slice(1),
       lastDrawnTile: replacement,
       turnPhase: 'discard', // player must discard after kong
       isKongReplacement: true,
     };
+    if (replacement.type === TileType.BONUS) {
+      return handleFlowerDraw(kongState, playerIndex, replacement);
+    }
+    return kongState;
   }
 
   // Add to existing pung: 1 matching tile in hand + existing pung meld
@@ -517,14 +522,19 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
         hand: [...newPlayers[playerIndex].hand, replacement],
       };
 
-      return {
+      const wallKey2 = state.deadWall.length > 0 ? 'deadWall' : 'wall';
+      const deferredKongState: GameState = {
         ...state,
         players: newPlayers,
-        [state.deadWall.length > 0 ? 'deadWall' : 'wall']: sourceWall.slice(1),
+        [wallKey2]: sourceWall.slice(1),
         lastDrawnTile: replacement,
         turnPhase: 'discard',
         isKongReplacement: true,
       };
+      if (replacement.type === TileType.BONUS) {
+        return handleFlowerDraw(deferredKongState, playerIndex, replacement);
+      }
+      return deferredKongState;
     }
   }
 
@@ -700,6 +710,9 @@ function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameSta
         turnPhase: 'discard',
         isKongReplacement: true,
       };
+      if (replacement.type === TileType.BONUS) {
+        newState = handleFlowerDraw(newState, winnerIndex, replacement);
+      }
     } else {
       // Both walls empty — kong is valid but no replacement. Transition to draw game.
       return handleWallExhaustion({
@@ -821,8 +834,9 @@ export function isPlayerTenpai(player: Player): boolean {
   // should ignore so the handSize+meldTiles math adds to 13.
   const kongExtras = player.melds.filter(m => m.type === 'kong').length;
   const combined = [...concealed, ...meldTiles];
-  // Expected canonical size is 13 tiles (pre-draw). Kongs add 1 extra each.
-  const expected = 13 + kongExtras;
+  // Expected canonical size is 13 tiles (pre-draw). Kong normalization below
+  // drops each kong to 3 tiles, so expected is always 13 regardless of kong count.
+  const expected = 13;
   if (combined.length !== expected) return false;
   // Drop one tile per exposed kong to normalize back to the 13-tile model
   // calculateShanten expects. Kong tiles are guaranteed identical, so removing

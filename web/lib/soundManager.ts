@@ -19,9 +19,10 @@ class SoundManager {
   private enabled = true;
   private volume = 0.3;
   private masterGain: GainNode | null = null;
-  /** Active oscillators for polyphony capping. */
-  private activeOscs: OscillatorNode[] = [];
-  /** Max concurrent voices before dropping the oldest. */
+
+  /** Track scheduled voices with their temporal windows for overlap-aware capping. */
+  private activeVoices: { osc: OscillatorNode; startTime: number; endTime: number }[] = [];
+  /** Max concurrent *playing* voices; creation order doesn't count. */
   private maxPolyphony = 4;
   /** Minimum gap (ms) between identical sound types to prevent spam. */
   private lastPlayTime: Record<string, number> = {};
@@ -59,7 +60,6 @@ class SoundManager {
   private getMasterGain(): GainNode | null {
     const ctx = this.getContext();
     if (!ctx || !this.masterGain) return null;
-    // Resume context if suspended
     if (ctx.state === 'suspended') {
       ctx.resume();
     }
@@ -138,16 +138,22 @@ class SoundManager {
     const ctx = this.ctx;
     if (!ctx) return;
 
-    // Polyphony cap: drop oldest if we're at the limit.
-    while (this.activeOscs.length >= this.maxPolyphony) {
-      const oldest = this.activeOscs.shift();
+    const startTime = ctx.currentTime + delay;
+    const endTime = startTime + duration + 0.01;
+
+    /*
+      Overlap-aware polyphony: only count (and evict) voices whose playback
+      window overlaps the one being scheduled. We first drop any voices whose
+      stopTime already passed, then if the remaining count is still at the
+      limit we stop the oldest scheduled voice. This preserves all scheduled
+      notes of a sequential fanfare while capping genuine simultaneous overlap
+      from separate play() calls.
+    */
+    this.activeVoices = this.activeVoices.filter(v => v.endTime > ctx!.currentTime);
+    while (this.activeVoices.length >= this.maxPolyphony) {
+      const oldest = this.activeVoices.shift();
       if (oldest) {
-        try {
-          oldest.stop();
-          oldest.disconnect();
-        } catch {
-          // Already stopped
-        }
+        try { oldest.osc.stop(); } catch { /* already stopped */ }
       }
     }
 
@@ -156,10 +162,9 @@ class SoundManager {
 
     osc.type = type;
     osc.frequency.value = freq;
-    gain.gain.value = 1; // Per-voice gain unity; master handles overall volume.
+    gain.gain.value = 1; // Per-voice unity; master handles overall volume.
 
     // Envelope: quick attack, quick decay
-    const startTime = ctx.currentTime + delay;
     gain.gain.setValueAtTime(0, startTime);
     gain.gain.linearRampToValueAtTime(1, startTime + 0.005);
     gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
@@ -170,11 +175,11 @@ class SoundManager {
     osc.start(startTime);
     osc.stop(startTime + duration + 0.01);
 
-    this.activeOscs.push(osc);
+    this.activeVoices.push({ osc, startTime, endTime });
 
     osc.onended = () => {
-      const idx = this.activeOscs.indexOf(osc);
-      if (idx >= 0) this.activeOscs.splice(idx, 1);
+      const idx = this.activeVoices.findIndex(v => v.osc === osc);
+      if (idx >= 0) this.activeVoices.splice(idx, 1);
       try {
         gain.disconnect();
         osc.disconnect();

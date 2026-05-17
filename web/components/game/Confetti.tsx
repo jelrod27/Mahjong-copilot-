@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 
 const PARTICLE_COLORS = ['#f5b731', '#4CAF50', '#45b7d1', '#e8384f', '#FFFFFF'];
 const DEFAULT_COUNT = 40;
@@ -37,20 +37,13 @@ function makeParticles(count: number): Particle[] {
 /**
  * Pixel-square particles that fall across the viewport once. Pure CSS animation
  * (no canvas, no deps). Particles regenerate with fresh random values every time
- * `active` toggles from false to true so celebrations feel organic, not replayed.
+ * `active` becomes true so celebrations feel organic, not replayed.
  */
 export default function Confetti({ active = true, count = DEFAULT_COUNT }: ConfettiProps) {
-  const [trigger, setTrigger] = useState(0);
-  const prevActiveRef = useRef(active);
-
-  useEffect(() => {
-    if (active && !prevActiveRef.current) {
-      setTrigger(t => t + 1);
-    }
-    prevActiveRef.current = active;
-  }, [active]);
-
-  const particles = useMemo(() => makeParticles(count), [trigger, count]);
+  const particles = useMemo(
+    () => (active ? makeParticles(count) : []),
+    [active, count],
+  );
 
   if (!active) return null;
 

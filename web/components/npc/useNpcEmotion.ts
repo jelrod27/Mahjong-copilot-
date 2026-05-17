@@ -12,6 +12,12 @@ interface UseNpcEmotionResult {
    * trigger (kong/claim, dealing in, win, hand loss) then clears.
    */
   voiceLine: string | null;
+  /**
+   * Increments every time a notable event fires (claim, win/loss). Use
+   * this to drive animations that need to replay even when the emotion
+   * string doesn't change.
+   */
+  eventNonce: number;
 }
 
 /** How long transient reactions linger before snapping back to base. */
@@ -78,6 +84,10 @@ export function useNpcEmotion(
     until: number;
   } | null>(null);
 
+  // Monotonically-incrementing nonce so consumers can distinguish repeated
+  // identical emotions (e.g. smug on back-to-back claims) and replay animations.
+  const [eventNonce, setEventNonce] = useState(0);
+
   // Track meld count to detect new claims.
   const prevMeldCount = useRef(player.melds.length);
   // Track winner / loser to fire a reaction once on game end.
@@ -86,6 +96,7 @@ export function useNpcEmotion(
   useEffect(() => {
     const meldCount = player.melds.length;
     if (meldCount > prevMeldCount.current) {
+      setEventNonce(n => n + 1);
       setTransient({
         emotion: 'smug',
         line: pickVoiceLine(npcId, 'smug'),
@@ -109,6 +120,7 @@ export function useNpcEmotion(
       else if (gameState.winnerId) emotion = 'frustrated';
 
       if (emotion !== 'idle') {
+        setEventNonce(n => n + 1);
         setTransient({
           emotion,
           line: pickVoiceLine(npcId, emotion),
@@ -134,5 +146,5 @@ export function useNpcEmotion(
     transient && transient.until > Date.now() ? transient.emotion : baseEmotion;
   const voiceLine = transient && transient.until > Date.now() ? transient.line : null;
 
-  return { emotion: effectiveEmotion, voiceLine };
+  return { emotion: effectiveEmotion, voiceLine, eventNonce };
 }

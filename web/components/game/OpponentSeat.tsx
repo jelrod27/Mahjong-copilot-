@@ -53,22 +53,27 @@ export default function OpponentSeat({
   compact = false,
 }: OpponentSeatProps) {
   const npc = NPCS[npcId];
-  const { emotion, voiceLine } = useNpcEmotion(gameState, playerIndex, npcId);
+  const { emotion, voiceLine, eventNonce } = useNpcEmotion(gameState, playerIndex, npcId);
   const isVertical = position === 'left' || position === 'right';
   const tileCount = player.hand.length;
 
-  // Track emotion transitions so the portrait wrapper can replay a one-shot
-  // wiggle animation each time the NPC enters a reactive emotion. Using an
-  // incrementing key forces React to remount the wrapper, which restarts the
-  // CSS animation cleanly — adding/removing the class alone wouldn't replay.
+  // Replay a one-shot wiggle animation on every reactive event — using an
+  // incrementing key forces React to remount the wrapper so the CSS animation
+  // restarts cleanly. We key on both emotion changes and the event nonce so
+  // back-to-back same-emotion events (e.g. two claims in a row) still wiggle.
   const [reactKey, setReactKey] = useState(0);
   const prevEmotionRef = useRef<NpcEmotion>(emotion);
+  const prevNonceRef = useRef(eventNonce);
   useEffect(() => {
-    if (emotion !== prevEmotionRef.current && REACTIVE_EMOTIONS.has(emotion)) {
+    if (
+      REACTIVE_EMOTIONS.has(emotion) &&
+      (emotion !== prevEmotionRef.current || eventNonce !== prevNonceRef.current)
+    ) {
       setReactKey(k => k + 1);
     }
     prevEmotionRef.current = emotion;
-  }, [emotion]);
+    prevNonceRef.current = eventNonce;
+  }, [emotion, eventNonce]);
 
   const haloClass = isCurrentTurn ? 'animate-ai-thinking-halo' : '';
 

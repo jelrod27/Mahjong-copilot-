@@ -556,6 +556,29 @@
   --tile-base-w: clamp(26px, min(5.5cqw, 4.8cqh), 60px);
 }
 
+/* Phone / narrow: favor slightly smaller tiles and more vertical room for the dock. */
+@media (max-width: 767px) {
+  .game-board-scene {
+    --tile-base-w: clamp(22px, min(8.5cqw, 7cqh), 46px);
+  }
+
+  .game-board-scene .tile-size-lg {
+    --tile-scale: 1;
+  }
+
+  .game-dock {
+    padding-top: 0.5rem;
+    padding-left: max(0.5rem, env(safe-area-inset-left));
+    padding-right: max(0.5rem, env(safe-area-inset-right));
+  }
+}
+
+.game-hand-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+
 .tile-scale-root {
   --tile-w: calc(var(--tile-base-w) * var(--tile-scale, 1));
   --tile-h: calc(var(--tile-w) * 1.5);

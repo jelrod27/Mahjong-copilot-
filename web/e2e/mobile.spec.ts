@@ -38,6 +38,14 @@ test.describe('Mobile viewport tests', () => {
     expect(box!.width).toBeLessThanOrEqual(MOBILE_VIEWPORT.width + 1);
   });
 
+  test('game page has no horizontal overflow at mobile size', async ({ page }) => {
+    await page.goto('/play/game?difficulty=easy');
+    await expectGameBoardReady(page);
+
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+    expect(overflow).toBe(false);
+  });
+
   test('tiles are visible and tappable at mobile size', async ({ page }) => {
     await page.goto('/play/game?difficulty=easy');
     await expectGameBoardReady(page);

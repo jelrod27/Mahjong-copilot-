@@ -48,7 +48,7 @@ export default function GameContent() {
 
   if (!controller.game) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-background px-6">
+      <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-background px-6">
         <div
           className="size-12 rounded-full border-2 border-info/30 border-t-info animate-spin"
           aria-hidden

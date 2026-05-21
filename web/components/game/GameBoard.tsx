@@ -144,7 +144,7 @@ export default function GameBoard({
 
   return (
     <div
-      className={`game-board-root relative flex h-screen w-full flex-col overflow-hidden game-table-felt ${felt.className}`}
+      className={`game-board-root relative flex h-dvh max-h-dvh w-full flex-col overflow-hidden game-table-felt ${felt.className}`}
       data-testid="game-board-root"
     >
       <div
@@ -223,8 +223,15 @@ export default function GameBoard({
         </div>
       </div>
 
-      {/* Mobile: minimal HUD bar */}
-      <div className="relative z-10 flex md:hidden items-center justify-between px-2 py-0.5" style={{ flex: '0 0 auto' }}>
+      {/* Mobile: HUD + assist tools in one compact row (saves vertical space for table + hand) */}
+      <div
+        className={`relative z-10 grid md:hidden gap-1 px-2 py-0.5 ${
+          faanProjection
+            ? 'grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1fr)]'
+            : 'grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]'
+        }`}
+        style={{ flex: '0 0 auto' }}
+      >
         <GameHUD
           wallCount={gameState.wall.length}
           prevailingWind={gameState.prevailingWind}
@@ -235,10 +242,6 @@ export default function GameBoard({
           playerScores={match?.playerScores}
           compact
         />
-      </div>
-
-      {/* Mobile: compact learning panels stacked */}
-      <div className="relative z-10 flex md:hidden flex-col gap-0.5 px-2 py-0.5" style={{ flex: '0 0 auto' }}>
         {faanProjection && <FaanMeter projection={faanProjection} compact />}
         <DiscardReadingPanel game={gameState} humanPlayerId={humanPlayerId} compact />
       </div>
@@ -272,7 +275,7 @@ export default function GameBoard({
               <span className="font-display text-[10px] font-semibold text-highlight md:text-sm">
                 {phaseHeadline}
               </span>
-              <span className="mt-1 max-w-[18rem] font-sans text-[10px] leading-snug text-muted-foreground md:text-xs">
+              <span className="mt-1 hidden max-w-[18rem] font-sans text-[10px] leading-snug text-muted-foreground sm:block md:text-xs">
                 {phaseSubline}
               </span>
             </div>
@@ -291,7 +294,7 @@ export default function GameBoard({
 
           {/* Tutor Advice */}
           {tutorAdvice && (
-            <div className="w-full max-w-[280px] md:max-w-md">
+            <div className="w-full max-w-[min(100%,20rem)] max-h-[5.5rem] overflow-y-auto md:max-h-none md:max-w-md">
               <TutorPanel advice={tutorAdvice} />
             </div>
           )}
@@ -311,8 +314,11 @@ export default function GameBoard({
       </div>
 
       {/* Bottom dock: actions, identity, hand */}
-      <div className="relative z-10 mt-auto px-1 pb-[env(safe-area-inset-bottom,0px)] md:px-3" style={{ flex: '0 0 auto' }}>
-        <div className="game-dock space-y-2 md:space-y-3">
+      <div
+        className="relative z-10 mt-auto px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 md:px-3"
+        style={{ flex: '0 0 auto' }}
+      >
+        <div className="game-dock touch-manipulation space-y-1.5 md:space-y-3">
         {/* Action bar */}
         <ActionBar
           canDiscard={canDiscard}
@@ -394,8 +400,8 @@ export default function GameBoard({
           </div>
         )}
 
-        {/* Player hand */}
-        <div className="flex justify-center">
+        {/* Player hand — horizontal scroll on narrow screens when holding 13–14 tiles */}
+        <div className="game-hand-scroll w-full max-w-full">
           <PlayerHand
             tiles={humanPlayer.hand}
             selectedTileId={selectedTileId}

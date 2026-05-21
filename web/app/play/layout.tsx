@@ -11,8 +11,8 @@ export default function PlayLayout({ children }: { children: React.ReactNode }) 
     <>
       <main className={
         isInGame
-          ? 'min-h-screen bg-background font-sans text-foreground'
-          : 'min-h-screen bg-background font-sans text-foreground'
+          ? 'min-h-dvh bg-background font-sans text-foreground'
+          : 'min-h-dvh bg-background font-sans text-foreground pb-[env(safe-area-inset-bottom)]'
       }>
         <div className={isInGame ? '' : 'max-w-lg mx-auto pb-16'}>
           {children}

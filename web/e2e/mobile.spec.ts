@@ -17,8 +17,8 @@ test.describe('Mobile viewport tests', () => {
   test('play page: title and buttons visible at mobile size', async ({ page }) => {
     await page.goto('/play');
 
-    await expect(page.getByText('HONG KONG')).toBeVisible();
-    await expect(page.getByText('MAHJONG')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'HONG KONG' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'MAHJONG' })).toBeVisible();
     await expect(page.getByTestId('start-game-button')).toBeVisible();
 
     // Difficulty buttons should be visible

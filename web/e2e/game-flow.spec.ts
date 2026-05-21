@@ -11,7 +11,7 @@ test.describe('Quick Game flow', () => {
 
   test('start a Quick Game on Easy and verify board loads', async ({ page }) => {
     await page.goto('/play');
-    await expect(page.getByText('HONG KONG')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'HONG KONG' })).toBeVisible();
 
     // Select Easy difficulty (should be default, but click to be sure)
     await page.getByRole('button', { name: /EASY — Random AI/i }).click();

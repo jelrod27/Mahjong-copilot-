@@ -16,6 +16,7 @@ import {
   Sparkles,
   GraduationCap,
   Layers,
+  Gamepad2,
 } from 'lucide-react';
 
 export default function HomePage() {
@@ -79,6 +80,13 @@ export default function HomePage() {
         <p className="text-foreground/80 leading-relaxed font-sans max-w-2xl">
           {getMotivationalText()}
         </p>
+        <Link
+          href="/play"
+          className="mt-4 inline-flex items-center gap-2 rounded-sm border border-success/40 bg-success/10 px-4 py-2.5 font-display text-xs text-success transition-colors hover:bg-success/20"
+        >
+          <Gamepad2 size={14} aria-hidden />
+          Play solo — HK table mahjong vs AI
+        </Link>
       </div>
 
       {/* Stats Row */}

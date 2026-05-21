@@ -34,6 +34,11 @@ export default function PlayPage() {
     router.push('/play/game');
   };
 
+  const handleTrainingTable = () => {
+    localStorage.removeItem('mahjong_match_in_progress');
+    router.push('/play/game?table=training&mode=quick&difficulty=easy&minFaan=0');
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-3 md:p-4">
       {/* Title */}
@@ -53,6 +58,9 @@ export default function PlayPage() {
         <div className="font-sans text-muted-foreground text-sm md:text-lg">
           ╚════════════════════╝
         </div>
+        <p className="mt-3 max-w-sm font-sans text-xs leading-relaxed text-muted-foreground md:text-sm">
+          Learn and play real HK table mahjong — not tile-matching solitaire. Solo vs AI with coach hints and hand review after each hand.
+        </p>
       </div>
 
       {/* Game mode selector */}
@@ -138,6 +146,18 @@ export default function PlayPage() {
           Resume saved game
         </button>
       )}
+
+      <button
+        type="button"
+        data-testid="training-table-button"
+        onClick={handleTrainingTable}
+        className="ds-btn mt-2 min-h-[48px] border-accent/40 px-8 py-3 font-display text-sm font-semibold text-accent md:text-base"
+      >
+        Training table
+      </button>
+      <p className="mt-1 max-w-xs text-center font-sans text-[11px] text-muted-foreground">
+        Easy AI, 0-faan wins, 20s claim window — best for your first few hands.
+      </p>
 
       {/* Multiplayer */}
       <button

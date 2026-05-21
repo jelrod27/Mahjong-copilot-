@@ -144,7 +144,7 @@ describe('HandResultScreen review section', () => {
     // The REVIEW section must render regardless of difficulty now.
     const section = screen.getByTestId('hand-review');
     expect(section).toBeInTheDocument();
-    expect(section.textContent).toMatch(/coach notes/i);
+    expect(section.textContent).toMatch(/hand review/i);
     expect(section.textContent).toContain('You won this hand with a self-drawn win!');
     expect(section.textContent).toContain('Your discard was claimed for the win.');
     expect(section.textContent).toContain('You discarded honors early.');

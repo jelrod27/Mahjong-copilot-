@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { ChevronDown, ChevronUp, GraduationCap } from 'lucide-react';
 import { GameState } from '@/models/GameState';
 import { FaanProjection } from '@/engine/faanProjection';
@@ -20,6 +20,7 @@ export default function MobileCoachDrawer({
   faanProjection,
 }: MobileCoachDrawerProps) {
   const [open, setOpen] = useState(false);
+  const panelId = useId();
 
   return (
     <div className="md:hidden" data-testid="mobile-coach-drawer">
@@ -27,6 +28,7 @@ export default function MobileCoachDrawer({
         type="button"
         onClick={() => setOpen(v => !v)}
         aria-expanded={open}
+        aria-controls={panelId}
         className="game-hud-surface flex w-full items-center justify-between gap-2 px-3 py-2 font-sans text-xs text-foreground"
       >
         <span className="flex items-center gap-2 font-medium">
@@ -38,12 +40,10 @@ export default function MobileCoachDrawer({
         </span>
         {open ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}
       </button>
-      {open && (
-        <div className="mt-1 space-y-1">
-          {faanProjection && <FaanMeter projection={faanProjection} compact />}
-          <DiscardReadingPanel game={game} humanPlayerId={humanPlayerId} compact />
-        </div>
-      )}
+      <div id={panelId} className={open ? 'mt-1 space-y-1' : 'hidden'}>
+        {faanProjection && <FaanMeter projection={faanProjection} compact />}
+        <DiscardReadingPanel game={game} humanPlayerId={humanPlayerId} compact />
+      </div>
     </div>
   );
 }

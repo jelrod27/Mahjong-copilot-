@@ -126,7 +126,7 @@ export default function GameContent() {
       {controller.isMatchOver && controller.match && (
         <MatchOverScreen
           match={controller.match}
-          onPlayAgain={() => controller.startNewGame(difficulty, mode)}
+          onPlayAgain={() => controller.startNewGame(effectiveDifficulty, mode)}
           onBackToMenu={() => router.push('/play')}
         />
       )}

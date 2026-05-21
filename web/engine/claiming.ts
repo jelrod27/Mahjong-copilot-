@@ -191,7 +191,7 @@ export function resolveClaims(
 ): AvailableClaim | null {
   if (claims.length === 0) return null;
 
-  return claims.sort((a, b) => {
+  return [...claims].sort((a, b) => {
     // Higher priority wins
     if (b.priority !== a.priority) return b.priority - a.priority;
     // On tie, closer to discarder in turn order wins

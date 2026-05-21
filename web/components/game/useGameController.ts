@@ -20,6 +20,7 @@ import { projectFaan, FaanProjection } from '@/engine/faanProjection';
 import soundManager from '@/lib/soundManager';
 import { speakTile, TileVoiceLanguage } from '@/lib/tileVoice';
 import { saveGame, loadGame, clearSavedGame, hasSavedGame, canResume } from '@/lib/matchStorage';
+import * as Sentry from '@sentry/nextjs';
 
 const HUMAN_ID = 'human-player';
 
@@ -577,6 +578,7 @@ export default function useGameController(
     // AI needs to draw
     if (game.turnPhase === 'draw') {
       processingRef.current = true;
+      let followUpTimer: ReturnType<typeof setTimeout> | undefined;
       const timer = setTimeout(() => {
         const afterDraw = doAction(currentPlayer.id, { type: 'DRAW' });
         processingRef.current = false;
@@ -586,14 +588,18 @@ export default function useGameController(
         if (afterDraw.phase === GamePhase.PLAYING && afterDraw.turnPhase === 'discard') {
           const decision = getAIDecision(afterDraw, afterDraw.currentPlayerIndex);
           if (decision.action.type === 'DECLARE_WIN' || decision.action.type === 'DECLARE_KONG') {
-            setTimeout(() => {
+            followUpTimer = setTimeout(() => {
               doAction(currentPlayer.id, decision.action);
             }, 500); // 500ms between draw and special action
             return;
           }
         }
       }, currentDelays.draw);
-      return () => { clearTimeout(timer); processingRef.current = false; };
+      return () => {
+        clearTimeout(timer);
+        if (followUpTimer !== undefined) clearTimeout(followUpTimer);
+        processingRef.current = false;
+      };
     }
 
     // AI needs to discard
@@ -761,8 +767,8 @@ export default function useGameController(
             !isSelfDrawn ? discarderIndex : undefined,
             isSelfDrawn,
           );
-        } catch {
-          // Scoring may fail on edge cases
+        } catch (e) {
+          Sentry.captureException(e);
         }
 
         // Pick the win sound after scoring so we know if it was a limit hand.

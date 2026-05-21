@@ -31,8 +31,15 @@ const DELAYS = {
   hard: { draw: 600, discard: 800, claim: 400 },
 };
 
-const CLAIM_TIMEOUT = 10000;
+const CLAIM_TIMEOUT_STANDARD = 10000;
+const CLAIM_TIMEOUT_TRAINING = 20000;
 const DEBOUNCE_MS = 200;
+
+export type TablePreset = 'standard' | 'training';
+
+function claimTimeoutForPreset(preset: TablePreset): number {
+  return preset === 'training' ? CLAIM_TIMEOUT_TRAINING : CLAIM_TIMEOUT_STANDARD;
+}
 
 export interface TutorAdvice {
   message: string;
@@ -59,6 +66,8 @@ export interface GameController {
   isMatchOver: boolean;
   scoringResult: ScoringResult | null;
   faanProjection: FaanProjection | null;
+  claimTimeoutMs: number;
+  tablePreset: TablePreset;
   selectTile: (tile: Tile) => void;
   discardSelected: () => void;
   declareKong: () => void;
@@ -86,7 +95,9 @@ export default function useGameController(
   liveFaanMeter: boolean = true,
   initialMinFaan?: number,
   tileVoice: 'off' | TileVoiceLanguage = 'off',
+  tablePreset: TablePreset = 'standard',
 ): GameController {
+  const claimTimeoutMs = claimTimeoutForPreset(tablePreset);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>(initialDifficulty);
   const [mode, setMode] = useState<GameMode>(initialMode);
   const [game, setGame] = useState<GameState | null>(null);
@@ -674,7 +685,7 @@ export default function useGameController(
     if (claims.length > 0) {
       setClaimOptions(claims);
       // Only start timer if not already running
-      setClaimTimer(prev => prev > 0 ? prev : CLAIM_TIMEOUT);
+      setClaimTimer(prev => prev > 0 ? prev : claimTimeoutMs);
       soundManager.play('turnAlert');
     } else if (game.currentPlayerIndex === humanIndex) {
       // Human has no claims and it's their turn — auto-pass
@@ -689,6 +700,7 @@ export default function useGameController(
     game?.pendingClaims?.length,
     humanIndex,
     doAction,
+    claimTimeoutMs,
   ]);
 
   // === Claim countdown ===
@@ -793,7 +805,7 @@ export default function useGameController(
   return {
     game, match, selectedTileId, suggestedTileId, tutorAdvice, tenpaiStatus,
     tileClassifications, claimOptions, claimTimer, isGameOver, isMatchOver,
-    scoringResult, faanProjection,
+    scoringResult, faanProjection, claimTimeoutMs, tablePreset,
     selectTile, discardSelected, declareKong, declareWin,
     submitClaim, submitChow, claimBest, pass, startNewGame, continueToNextHand,
     resumeGame, clearSavedGame: clearSavedGameAndReset,

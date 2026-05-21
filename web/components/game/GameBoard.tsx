@@ -18,6 +18,7 @@ import TutorPanel from './TutorPanel';
 import GlossaryTerm from './GlossaryTerm';
 import FaanMeter from './FaanMeter';
 import DiscardReadingPanel from './DiscardReadingPanel';
+import MobileCoachDrawer from './MobileCoachDrawer';
 import GameToast from './GameToast';
 import { TutorAdvice } from '@/engine/types';
 import { TenpaiStatus } from './useGameController';
@@ -45,6 +46,7 @@ interface GameBoardProps {
   hasClaimOptions?: boolean;
   claimOptions?: AvailableClaim[];
   claimTimer?: number;
+  claimTimeoutMs?: number;
 }
 
 export default function GameBoard({
@@ -53,6 +55,7 @@ export default function GameBoard({
   onTileSelect, onDiscard, onKong, onWin, onClaimBest, onSubmitChow, onPass,
   canDeclareKong: canKongProp, canDeclareWin: canWinProp,
   hasClaimOptions: hasClaimsProp, claimOptions = [], claimTimer,
+  claimTimeoutMs = 10000,
 }: GameBoardProps) {
   const humanIndex = gameState.players.findIndex(p => p.id === humanPlayerId);
   const humanPlayer = gameState.players[humanIndex];
@@ -223,15 +226,8 @@ export default function GameBoard({
         </div>
       </div>
 
-      {/* Mobile: HUD + assist tools in one compact row (saves vertical space for table + hand) */}
-      <div
-        className={`relative z-10 grid md:hidden gap-1 px-2 py-0.5 ${
-          faanProjection
-            ? 'grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1fr)]'
-            : 'grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]'
-        }`}
-        style={{ flex: '0 0 auto' }}
-      >
+      {/* Mobile: compact HUD + collapsible coach drawer */}
+      <div className="relative z-10 space-y-1 px-2 py-0.5 md:hidden" style={{ flex: '0 0 auto' }}>
         <GameHUD
           wallCount={gameState.wall.length}
           prevailingWind={gameState.prevailingWind}
@@ -242,8 +238,11 @@ export default function GameBoard({
           playerScores={match?.playerScores}
           compact
         />
-        {faanProjection && <FaanMeter projection={faanProjection} compact />}
-        <DiscardReadingPanel game={gameState} humanPlayerId={humanPlayerId} compact />
+        <MobileCoachDrawer
+          game={gameState}
+          humanPlayerId={humanPlayerId}
+          faanProjection={faanProjection ?? null}
+        />
       </div>
 
       {/* Middle row: Left opponent + Discard Pool + Right opponent */}
@@ -337,6 +336,7 @@ export default function GameBoard({
           turnPhase={gameState.turnPhase}
           isHumanTurn={isHumanTurn}
           claimTimer={claimTimer}
+          claimTimeout={claimTimeoutMs}
         />
 
         {/* Player info bar */}

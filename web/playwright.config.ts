@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { join } from 'path';
 
 /** Dedicated port so local runs do not attach to an unrelated app on :3000. */
 const PORT = Number(process.env.PLAYWRIGHT_PORT) || 3100;
@@ -19,6 +20,7 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   use: {
     baseURL,
+    storageState: join(__dirname, '.auth', 'storage-state.json'),
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: process.env.CI ? 'retain-on-failure' : 'off',

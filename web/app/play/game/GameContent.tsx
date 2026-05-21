@@ -1,15 +1,18 @@
 'use client';
 
+import { useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import useGameController from '@/components/game/useGameController';
+import useGameController, { type TablePreset } from '@/components/game/useGameController';
 import GameBoard from '@/components/game/GameBoard';
 import GameErrorBoundary from '@/components/game/GameErrorBoundary';
 import HandResultScreen from '@/components/game/HandResultScreen';
 import MatchOverScreen from '@/components/game/MatchOverScreen';
 import VoiceSubtitle from '@/components/game/VoiceSubtitle';
+import PlayOnboardingDialog from '@/components/play/PlayOnboardingDialog';
 import { TilePaletteProvider } from '@/components/game/TilePaletteContext';
 import { GameMode } from '@/models/MatchState';
 import { useAppSelector } from '@/store/hooks';
+import { hasSeenPlayOnboarding } from '@/lib/playOnboarding';
 
 const URL_DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
 const URL_MODES = ['quick', 'full'] as const;
@@ -33,17 +36,23 @@ export default function GameContent() {
   const minFaan = rawMinFaan === '0' || rawMinFaan === '1' || rawMinFaan === '3'
     ? Number(rawMinFaan)
     : undefined;
+  const tablePreset: TablePreset = searchParams.get('table') === 'training' ? 'training' : 'standard';
+  const isTrainingTable = tablePreset === 'training';
+  const effectiveDifficulty = isTrainingTable ? 'easy' : difficulty;
+  const effectiveMinFaan = isTrainingTable ? 0 : minFaan;
   const showTutor = useAppSelector((s) => s.settings.showTutor);
   const liveFaanMeter = useAppSelector((s) => s.settings.liveFaanMeter);
   const tileVoice = useAppSelector((s) => s.settings.tileVoice);
+  const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenPlayOnboarding());
 
   const controller = useGameController(
-    difficulty,
+    effectiveDifficulty,
     mode,
     showTutor,
     liveFaanMeter,
-    minFaan,
+    effectiveMinFaan,
     tileVoice,
+    tablePreset,
   );
 
   if (!controller.game) {
@@ -65,6 +74,19 @@ export default function GameContent() {
     <GameErrorBoundary>
       <TilePaletteProvider>
       <VoiceSubtitle />
+      {showOnboarding && (
+        <PlayOnboardingDialog onDone={() => setShowOnboarding(false)} />
+      )}
+      {isTrainingTable && (
+        <div
+          className="pointer-events-none fixed left-0 right-0 top-0 z-[55] flex justify-center px-3 pt-[max(0.5rem,env(safe-area-inset-top))]"
+          aria-hidden
+        >
+          <span className="rounded-full border border-accent/40 bg-surface/90 px-3 py-1 font-sans text-[10px] text-accent backdrop-blur-sm">
+            Training table — relaxed rules, longer claim window
+          </span>
+        </div>
+      )}
       <GameBoard
         gameState={controller.game}
         match={controller.match}
@@ -87,6 +109,7 @@ export default function GameContent() {
         hasClaimOptions={controller.claimOptions.length > 0}
         claimOptions={controller.claimOptions}
         claimTimer={controller.claimTimer}
+        claimTimeoutMs={controller.claimTimeoutMs}
       />
 
       {/* Between hands — show hand result */}

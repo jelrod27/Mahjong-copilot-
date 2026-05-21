@@ -323,6 +323,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .animate-tile-arrive,
+  .animate-tile-depart,
   .animate-confetti-fall,
   .animate-fan-row-in,
   .animate-bubble-pop,
@@ -513,9 +515,17 @@
 }
 
 @keyframes tile-arrive {
-  0% { opacity: 0; transform: scale(0.6) translateY(-8px); }
-  60% { opacity: 1; transform: scale(1.08); }
-  100% { transform: scale(1) translateY(0); }
+  0% {
+    opacity: 0;
+    transform: scale(0.55) translate(-8px, -14px) rotate(-10deg);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.06) translate(3px, 2px) rotate(3deg);
+  }
+  100% {
+    transform: scale(1) translate(0, 0) rotate(0);
+  }
 }
 
 .animate-tile-arrive {

@@ -11,7 +11,7 @@ async function expectGameBoardReady(page: Page) {
 test.describe('Solo play', () => {
   test('play lobby: pick difficulty and open live game', async ({ page }) => {
     await page.goto('/play');
-    await expect(page.getByText('HONG KONG')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'HONG KONG' })).toBeVisible();
 
     await page.getByRole('button', { name: /MEDIUM — Smart AI/i }).click();
     await page.getByRole('button', { name: /EASY — Random AI/i }).click();

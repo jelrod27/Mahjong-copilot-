@@ -138,9 +138,9 @@ export default function HandResultScreen({
         )}
 
         {scoringResult && (
-          <div className="mb-4">
+          <div className="mb-4" data-testid="fan-theater">
             <GameResultsSectionLabel>Scoring</GameResultsSectionLabel>
-            <div className="space-y-1">
+            <div className="space-y-1 rounded-lg border border-info/20 bg-info/5 p-3">
               {scoringResult.fans.map((fan, i) => (
                 <div
                   key={i}
@@ -243,8 +243,6 @@ export default function HandResultScreen({
           })}
         </div>
 
-        <HandReplayScrubber gameState={gameState} />
-
         {(() => {
           const humanIndex = gameState.players.findIndex(p => p.id === match.humanPlayerId);
           if (humanIndex === -1) return null;
@@ -252,8 +250,11 @@ export default function HandResultScreen({
           if (insights.length === 0) return null;
           return (
             <div className="mb-4" data-testid="hand-review">
-              <GameResultsSectionLabel>Coach notes</GameResultsSectionLabel>
-              <ul className="game-hud-surface space-y-2 rounded-lg p-3">
+              <GameResultsSectionLabel>Hand review</GameResultsSectionLabel>
+              <p className="mb-2 font-sans text-xs text-muted-foreground md:text-sm">
+                What went well and what to try differently next hand.
+              </p>
+              <ul className="game-hud-surface space-y-2 rounded-lg border border-accent/25 p-3">
                 {insights.map((insight, i) => {
                   const { symbol, cls, sr } = getInsightGlyph(insight.type);
                   return (
@@ -274,6 +275,8 @@ export default function HandResultScreen({
             </div>
           );
         })()}
+
+        <HandReplayScrubber gameState={gameState} />
 
         <div className="mb-5 rounded-lg border border-border/25 bg-surface/35 p-3 text-center font-sans text-xs text-muted-foreground md:text-sm">
           Next up: {match.currentRound.toUpperCase()} round, hand {match.handNumber}

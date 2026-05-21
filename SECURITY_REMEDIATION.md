@@ -13,7 +13,7 @@ A separate **reliability and correctness** audit (below) reviewed the game engin
 - **Trigger:** N/A for initial fix; any future change to URL query contract for play should keep the allowlists in sync with those sources.
 - **Description:** `difficulty` and `mode` were read from `searchParams` and cast to union types without a runtime allowlist. Invalid query strings were only narrowed at the type level; behavior could fall through to surprising `mode` strings in match initialization.
 - **Fix:** Applied: module-level `URL_DIFFICULTIES` / `URL_MODES`, raw param read, `.includes` check, then typed value or default (`'easy'` / `'quick'`).
-- **Status:** Fixed — [web/app/play/game/GameContent.tsx](web/app/play/game/GameContent.tsx) in this commit.
+- **Status:** Fixed — PR [#76](https://github.com/jelrod27/Mahjong-copilot-/pull/76) ([web/app/play/game/GameContent.tsx](web/app/play/game/GameContent.tsx)).
 
 ### [On-next-touch] Schema validation on snapshot revival
 
@@ -71,8 +71,8 @@ This section tracks bug findings from the reliability audit (separate pass from 
 - **Files:** web/components/game/useGameController.ts:578-595
 - **Trigger:** Action now or next time this file is touched
 - **Description:** Inner `setTimeout(..., 500)` for `DECLARE_WIN` / `DECLARE_KONG` follow-up has no `clearTimeout` in the effect cleanup. On unmount mid-AI-turn, `doAction` can fire after teardown.
-- **Fix:** Store inner timer id in a ref; clear in outer effect cleanup. Or fold into a single cancellable handle.
-- **Status:** Open
+- **Fix:** Applied: store follow-up timer id; clear in outer effect cleanup alongside the draw timer.
+- **Status:** Fixed — PR [#76](https://github.com/jelrod27/Mahjong-copilot-/pull/76).
 
 ### [Action] Swallowed scoring errors
 
@@ -80,8 +80,8 @@ This section tracks bug findings from the reliability audit (separate pass from 
 - **Files:** web/components/game/useGameController.ts:731-766
 - **Trigger:** Action now (one-line fix, prevents future debugging black hole)
 - **Description:** Bare `catch` on `calculateScore` swallows errors with no signal. When scoring breaks on edge cases, no surfaced error in production.
-- **Fix:** Add `Sentry.captureException(e)` in the catch block. Sentry already wired in `next.config.js`.
-- **Status:** Open
+- **Fix:** Applied: `Sentry.captureException(e)` in the catch block.
+- **Status:** Fixed — PR [#76](https://github.com/jelrod27/Mahjong-copilot-/pull/76).
 
 ### [Rules-decision] Four-kong abortive draw and responsibility/pao
 
@@ -98,8 +98,8 @@ This section tracks bug findings from the reliability audit (separate pass from 
 - **Files:** web/engine/claiming.ts:194-201, web/engine/turnManager.ts:565-570
 - **Trigger:** Next time these files are touched
 - **Description:** `claims.sort()` and `meldTiles.sort()` mutate caller arrays. Current callers pass fresh arrays so no live bug, but latent.
-- **Fix:** `[...claims].sort(...)` and `[...meldTiles].sort(...)`.
-- **Status:** Open
+- **Fix:** Applied: `[...claims].sort(...)` and `[...meldTiles].sort(...)`.
+- **Status:** Fixed — PR [#76](https://github.com/jelrod27/Mahjong-copilot-/pull/76).
 
 ### [Watch] Hydration randomness in sidebar skeleton and confetti
 
@@ -117,3 +117,4 @@ This section tracks bug findings from the reliability audit (separate pass from 
 - Pass 3 (config, CSP, dependencies): complete
 - No Critical or High findings open
 - Reliability audit (engine + bridge depth, components/app pattern check): complete
+- Reliability fixes from audit (URL allowlist, AI timer cleanup, Sentry on scoring, copy-before-sort): merged in PR #76

@@ -2,7 +2,6 @@
 
 import { Tile } from '@/models/Tile';
 import RetroTile from './RetroTile';
-import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface PlayerHandProps {
   tiles: Tile[];
@@ -18,12 +17,8 @@ export default function PlayerHand({
   tiles, selectedTileId, suggestedTileId, onTileSelect, lastDrawnTileId,
   disabled = false, tileClassifications,
 }: PlayerHandProps) {
-  const isMobile = useMediaQuery('(max-width: 639px)');
-  const isTablet = useMediaQuery('(min-width: 640px) and (max-width: 767px)');
-  const tileSize = isMobile ? 'sm' : isTablet ? 'md' : 'lg';
-
   return (
-    <div className="flex items-end justify-center gap-px sm:gap-0.5 flex-wrap">
+    <div className="flex flex-wrap items-end justify-center gap-px sm:gap-0.5">
       {tiles.map((tile) => {
         const isLastDrawn = tile.id === lastDrawnTileId;
         const tutorColor = tileClassifications?.get(tile.id);
@@ -36,7 +31,7 @@ export default function PlayerHand({
           >
             <RetroTile
               tile={tile}
-              size={tileSize}
+              size="lg"
               isSelected={tile.id === selectedTileId}
               isSuggested={tile.id === suggestedTileId}
               isNewlyDrawn={isLastDrawn}
@@ -46,7 +41,7 @@ export default function PlayerHand({
               tutorLabel={tutorLabel ?? undefined}
             />
             {tutorLabel && (
-              <div className="mt-0.5 text-center font-display text-[6px] text-muted-foreground" aria-hidden="true">
+              <div className="mt-0.5 text-center font-sans text-[length:calc(var(--tile-w)*0.22)] text-muted-foreground" aria-hidden="true">
                 {tutorLabel}
               </div>
             )}

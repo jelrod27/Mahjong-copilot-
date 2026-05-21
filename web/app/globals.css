@@ -59,7 +59,7 @@
   /* Compact pill / secondary action (replaces chunky pixel offset buttons) */
   .ds-btn-chip {
     @apply relative overflow-hidden rounded-md border border-border/60 bg-surface/80 px-4 py-2
-           font-display text-caption font-semibold uppercase tracking-wider text-foreground
+           font-sans text-caption font-semibold text-foreground
            transition-all duration-fast ease-ds-out
            hover:border-accent/40 hover:bg-accent/10 hover:shadow-ds-sm
            active:scale-[0.99] active:translate-y-px;
@@ -77,7 +77,7 @@
   .ds-input {
     @apply w-full rounded-lg border border-border/60 bg-elevated p-3 font-sans text-body text-foreground
            outline-none transition-colors duration-fast placeholder:text-muted-foreground
-           focus:border-info focus:shadow-ds-ring-info;
+           focus:border-accent focus:shadow-ds-ring-gold;
   }
 
   /* Solo play — bottom dock + HUD surfaces (felt stays underneath).
@@ -85,16 +85,16 @@
   .game-dock {
     position: relative;
     border-radius: 1rem 1rem 0 0;
-    border-top: 1px solid rgb(255 255 255 / 0.1);
-    border-left: 1px solid rgb(255 255 255 / 0.1);
-    border-right: 1px solid rgb(255 255 255 / 0.1);
+    border-top: 1px solid rgb(201 168 76 / 0.22);
+    border-left: 1px solid rgb(92 61 46 / 0.35);
+    border-right: 1px solid rgb(92 61 46 / 0.35);
     padding: 0.75rem 0.5rem 0.5rem;
-    box-shadow: 0 -16px 48px rgb(0 0 0 / 0.5);
+    box-shadow: 0 -12px 40px rgb(0 0 0 / 0.45);
     backdrop-filter: blur(20px);
     background: linear-gradient(
       to bottom,
-      rgb(28 34 48 / 0.94) 0%,
-      rgb(10 12 18 / 0.92) 100%
+      rgb(44 58 48 / 0.96) 0%,
+      rgb(13 15 20 / 0.94) 100%
     );
   }
 
@@ -106,8 +106,8 @@
 
   .game-hud-surface {
     border-radius: 0.75rem;
-    border: 1px solid rgb(48 56 74 / 0.45);
-    background: rgb(0 0 0 / 0.3);
+    border: 1px solid rgb(92 61 46 / 0.4);
+    background: rgb(0 0 0 / 0.28);
     box-shadow: 0 8px 24px rgb(0 0 0 / 0.28), 0 2px 6px rgb(0 0 0 / 0.18);
     backdrop-filter: blur(12px);
   }
@@ -256,13 +256,13 @@
 
 @keyframes tile-claim {
   0% { box-shadow: 0 0 0 transparent; }
-  30% { box-shadow: 0 0 16px #22c55e, 0 0 32px rgb(34 197 94 / 0.25); }
+  30% { box-shadow: 0 0 14px #4eada0, 0 0 24px rgb(78 173 160 / 0.28); }
   100% { box-shadow: 0 0 0 transparent; }
 }
 
 @keyframes tile-win {
-  0%, 100% { box-shadow: 0 0 4px #f59e0b; transform: scale(1); }
-  50% { box-shadow: 0 0 20px #f59e0b, 0 0 40px rgb(245 158 11 / 0.38); transform: scale(1.05); }
+  0%, 100% { box-shadow: 0 0 4px #c9a84c; transform: scale(1); }
+  50% { box-shadow: 0 0 16px #e8c55a, 0 0 28px rgb(201 168 76 / 0.32); transform: scale(1.04); }
 }
 
 @keyframes slide-up {
@@ -544,45 +544,92 @@
   @apply rounded-xl border border-white/10 bg-white/5 backdrop-blur-lg;
 }
 
+/* Fallback tile scale outside the game board (practice, cosmetics, results). */
+:root {
+  --tile-base-w: clamp(26px, 4vmin, 52px);
+}
+
+/* Centered play area + fluid tiles from container size (width + height). */
+.game-board-scene {
+  container-type: size;
+  container-name: game-board;
+  --tile-base-w: clamp(26px, min(5.5cqw, 4.8cqh), 60px);
+}
+
+.tile-scale-root {
+  --tile-w: calc(var(--tile-base-w) * var(--tile-scale, 1));
+  --tile-h: calc(var(--tile-w) * 1.5);
+  width: var(--tile-w);
+  height: var(--tile-h);
+  flex-shrink: 0;
+}
+
+.tile-size-xs { --tile-scale: 0.72; }
+.tile-size-sm { --tile-scale: 0.88; }
+.tile-size-md { --tile-scale: 1; }
+.tile-size-lg { --tile-scale: 1.14; }
+
+.mahjong-tile-face {
+  background: linear-gradient(145deg, #fff8e1 0%, #f5ecce 100%);
+  border: 1px solid #d4c9a8;
+  border-radius: 4px;
+  box-shadow: var(--tile-shadow-rest, 1px 2px 0 0 #c4b896, 2px 3px 6px rgb(0 0 0 / 0.22));
+}
+
+.mahjong-tile-face.is-selected {
+  border-color: rgb(201 168 76 / 0.85);
+  box-shadow: var(--tile-shadow-selected, inset 0 1px 3px rgb(0 0 0 / 0.12), 0 0 0 2px rgb(201 168 76 / 0.55));
+}
+
+.mahjong-tile-face.is-suggested {
+  border-color: rgb(232 197 90 / 0.75);
+  box-shadow: 0 0 10px rgb(201 168 76 / 0.35);
+}
+
+.mahjong-tile-symbol {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 700;
+  line-height: 1;
+}
+
 @layer base {
   .theme {
     --font-heading: var(--font-display);
-    --font-sans: var(--font-inter);
   }
   :root {
-    --background: #0a0c12;
-    --foreground: #f2f4f8;
-    --card: #1a2230;
-    --card-foreground: #f2f4f8;
-    --popover: #141a26;
-    --popover-foreground: #f2f4f8;
-    --primary: #6366f1;
-    --primary-foreground: #ffffff;
-    --secondary: #1c2433;
-    --secondary-foreground: #f2f4f8;
-    --muted: #161c28;
-    --muted-foreground: #8b93a7;
-    --accent: #6366f1;
-    --accent-foreground: #ffffff;
-    --destructive: #ef4444;
-    --destructive-foreground: #ffffff;
-    --border: #303848;
-    --input: #303848;
-    --ring: #818cf8;
-    --chart-1: #818cf8;
-    --chart-2: #22c55e;
-    --chart-3: #f59e0b;
-    --chart-4: #f43f5e;
-    --chart-5: #8b93a7;
+    --background: #0d0f14;
+    --foreground: #e8dfd0;
+    --card: #1e2c22;
+    --card-foreground: #e8dfd0;
+    --popover: #1c2620;
+    --popover-foreground: #e8dfd0;
+    --primary: #c9a84c;
+    --primary-foreground: #1a1208;
+    --secondary: #243528;
+    --secondary-foreground: #e8dfd0;
+    --muted: #1e2a22;
+    --muted-foreground: #a89b8c;
+    --accent: #c9a84c;
+    --accent-foreground: #1a1208;
+    --destructive: #c75b4a;
+    --destructive-foreground: #fff8f0;
+    --border: #2a3530;
+    --input: #3c4a42;
+    --ring: #c9a84c;
+    --chart-1: #c9a84c;
+    --chart-2: #5daf6a;
+    --chart-3: #4eada0;
+    --chart-4: #c75b4a;
+    --chart-5: #a89b8c;
     --radius: 0.625rem;
-    --sidebar: #121820;
-    --sidebar-foreground: #f2f4f8;
-    --sidebar-primary: #6366f1;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #1a2230;
-    --sidebar-accent-foreground: #f2f4f8;
-    --sidebar-border: #2c3548;
-    --sidebar-ring: #818cf8;
+    --sidebar: #141c18;
+    --sidebar-foreground: #e8dfd0;
+    --sidebar-primary: #c9a84c;
+    --sidebar-primary-foreground: #1a1208;
+    --sidebar-accent: #243528;
+    --sidebar-accent-foreground: #e8dfd0;
+    --sidebar-border: #3c4a42;
+    --sidebar-ring: #c9a84c;
   }
   * {
     border-color: var(--border);
@@ -592,6 +639,6 @@
     color: var(--foreground);
   }
   html {
-    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   }
 }

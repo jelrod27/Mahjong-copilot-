@@ -144,14 +144,15 @@ export default function GameBoard({
 
   return (
     <div
-      className={`relative h-screen w-full flex flex-col overflow-hidden game-table-felt ${felt.className}`}
+      className={`game-board-root relative flex h-screen w-full flex-col overflow-hidden game-table-felt ${felt.className}`}
       data-testid="game-board-root"
     >
       <div
-        className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_85%_55%_at_50%_42%,transparent_0%,rgb(0_0_0_/_0.22)_78%,rgb(0_0_0_/_0.45)_100%)]"
+        className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_85%_55%_at_50%_42%,transparent_0%,rgb(0_0_0_/_0.18)_78%,rgb(0_0_0_/_0.42)_100%)]"
         aria-hidden
       />
 
+      <div className="game-board-scene relative z-10 mx-auto flex h-full w-full max-w-[min(100%,72rem)] min-h-0 flex-col">
       <GameToast message={toastMessage} />
 
       {/* Top row: HUD + opponents (mobile: compact bar, desktop: full layout) */}
@@ -268,7 +269,7 @@ export default function GameBoard({
                 isHumanTurn ? 'ring-2 ring-info/35 ring-offset-2 ring-offset-transparent' : ''
               }`}
             >
-              <span className="font-display text-[10px] font-bold uppercase tracking-[0.18em] text-highlight md:text-xs">
+              <span className="font-display text-[10px] font-semibold text-highlight md:text-sm">
                 {phaseHeadline}
               </span>
               <span className="mt-1 max-w-[18rem] font-sans text-[10px] leading-snug text-muted-foreground md:text-xs">
@@ -278,7 +279,7 @@ export default function GameBoard({
           </div>
 
           {/* Discard pool */}
-          <div className="w-full max-w-[280px] md:max-w-xs">
+          <div className="w-full max-w-[min(100%,22rem)] md:max-w-md">
             <DiscardPool
               discards={gameState.discardPile}
               lastDiscardedTile={gameState.lastDiscardedTile}
@@ -341,7 +342,7 @@ export default function GameBoard({
             <div className="min-w-0">
               <p className="truncate font-sans text-sm font-semibold text-foreground md:text-base">{humanPlayer.name}</p>
               {humanPlayer.isDealer && (
-                <p className="font-display text-[9px] font-semibold uppercase tracking-wider text-accent">Dealer</p>
+                <p className="font-display text-[9px] font-semibold text-accent">Dealer</p>
               )}
             </div>
           </div>
@@ -380,7 +381,7 @@ export default function GameBoard({
         {tenpaiStatus?.isTenpai && (
           <div className="text-center">
             <GlossaryTerm term="Tenpai">
-              <span className="inline-flex items-center gap-1 rounded-full border border-success/35 bg-success/10 px-3 py-1 font-display text-[9px] font-bold uppercase tracking-wide text-success md:text-[10px]">
+              <span className="inline-flex items-center gap-1 rounded-full border border-success/35 bg-success/10 px-3 py-1 font-display text-[9px] font-semibold text-success md:text-[10px]">
                 Tenpai · one tile away
               </span>
             </GlossaryTerm>
@@ -413,6 +414,7 @@ export default function GameBoard({
           </div>
         )}
         </div>
+      </div>
       </div>
     </div>
   );

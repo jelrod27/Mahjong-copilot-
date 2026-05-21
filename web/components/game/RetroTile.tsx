@@ -20,13 +20,6 @@ interface RetroTileProps {
   paletteOverride?: TilePalette;
 }
 
-const SIZES = {
-  xs: { w: 24, h: 36 },
-  sm: { w: 32, h: 48 },
-  md: { w: 44, h: 66 },
-  lg: { w: 56, h: 84 },
-};
-
 function getSymbol(tile: Tile): string {
   if (tile.type === TileType.SUIT) return tile.number?.toString() || '';
   if (tile.type === TileType.HONOR) {
@@ -59,9 +52,9 @@ function getSuitLabel(tile: Tile): string {
 }
 
 const TUTOR_COLORS: Record<string, string> = {
-  green: '#4CAF50',
-  orange: '#FF9800',
-  red: '#ef4444',
+  green: '#5DAF6A',
+  orange: '#C9A84C',
+  red: '#C75B4A',
 };
 
 export default function RetroTile({
@@ -71,9 +64,10 @@ export default function RetroTile({
 }: RetroTileProps) {
   const ctxPalette = useTilePalette();
   const palette = paletteOverride ?? ctxPalette;
-  const { w, h } = SIZES[size];
-  const suitColor = palette.suitColors[tile.suit] || '#a1a1aa';
-  const faceBg = palette.faceBg;
+  const suitColor = palette.suitColors[tile.suit] || '#5c4632';
+  const faceStyle = palette.faceBg.startsWith('#')
+    ? { background: `linear-gradient(145deg, ${palette.faceBg} 0%, ${palette.faceBg}dd 100%)` }
+    : { backgroundColor: palette.faceBg };
   const stripeHeight = palette.stripeHeight;
   const accessibilityState = [
     isSelected ? 'selected' : null,
@@ -82,16 +76,17 @@ export default function RetroTile({
   ].filter(Boolean).join(', ');
   const tileAriaLabel = `Mahjong tile: ${tile.nameEnglish}${accessibilityState ? `. ${accessibilityState}.` : ''}`;
 
+  const scaleRootClass = `tile-scale-root tile-size-${size}`;
+
   if (showBack) {
     const backContent = (
       <div
-        className="flex items-center justify-center border-2 border-muted-foreground rounded-sm"
+        className={`${scaleRootClass} flex items-center justify-center rounded-sm border border-mahjong-wood/40`}
         style={{
-          width: w, height: h,
-          background: 'repeating-linear-gradient(45deg, #2a2240, #2a2240 3px, #1c1829 3px, #1c1829 6px)',
+          background: 'repeating-linear-gradient(45deg, #2a4538, #2a4538 3px, #1a2b1e 3px, #1a2b1e 6px)',
         }}
       >
-        <span className="text-muted-foreground" style={{ fontSize: w * 0.3 }} aria-hidden>?</span>
+        <span className="text-muted-foreground text-[length:30%] min-w-[1em]" aria-hidden>?</span>
       </div>
     );
     return onClick ? (
@@ -109,15 +104,16 @@ export default function RetroTile({
   const tileContent = (
     <div
       className={`
-        flex flex-col rounded-sm border-2 overflow-hidden transition-all duration-100
-        ${isSelected ? 'border-info -translate-y-2 -rotate-1 animate-select-pulse' : isSuggested ? 'border-highlight shadow-[0_0_10px_#f5b73160]' : 'border-muted-foreground'}
+        mahjong-tile-face tile-scale-root tile-size-${size}
+        flex flex-col overflow-hidden transition-all duration-100
+        ${isSelected ? 'is-selected -translate-y-1 -rotate-1 animate-select-pulse' : ''}
+        ${isSuggested ? 'is-suggested' : 'border-tile-border'}
         ${isLastDiscarded ? 'animate-pulse-gold' : ''}
         ${isNewlyDrawn ? 'animate-tile-draw' : ''}
         ${isSuggested && !isSelected ? 'animate-pulse-gold' : ''}
       `}
-      style={{ width: w, height: h, backgroundColor: faceBg }}
+      style={faceStyle}
     >
-      {/* Suit color bar + tutor indicator */}
       <div style={{ height: stripeHeight, width: '100%', backgroundColor: suitColor }} />
       {tutorColor && (
         <div
@@ -126,18 +122,17 @@ export default function RetroTile({
         />
       )}
 
-      {/* Symbol */}
-      <div className="flex flex-col flex-1 items-center justify-center">
+      <div className="flex flex-1 flex-col items-center justify-center px-0.5">
         <span
-          className="font-bold leading-none"
-          style={{ fontSize: w * 0.4, color: suitColor }}
+          className="mahjong-tile-symbol"
+          style={{ fontSize: 'calc(var(--tile-w) * 0.42)', color: suitColor }}
         >
           {getSymbol(tile)}
         </span>
         {size !== 'sm' && size !== 'xs' && (
           <span
-            className="leading-none text-gray-500"
-            style={{ fontSize: w * 0.22 }}
+            className="mahjong-tile-symbol leading-none opacity-70"
+            style={{ fontSize: 'calc(var(--tile-w) * 0.2)', color: suitColor }}
           >
             {getSuitLabel(tile)}
           </span>
@@ -153,7 +148,7 @@ export default function RetroTile({
         disabled={disabled}
         type="button"
         aria-label={tileAriaLabel}
-        className="transition-transform duration-100 disabled:opacity-50 disabled:cursor-not-allowed hover:enabled:scale-105 hover:enabled:-translate-y-0.5"
+        className="transition-transform duration-100 hover:enabled:-translate-y-0.5 hover:enabled:scale-[1.03] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {tileContent}
       </button>

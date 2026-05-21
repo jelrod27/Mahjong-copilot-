@@ -64,7 +64,7 @@ describe('RetroTile — tile selection refinement (PRD visual round 3)', () => {
     const tileEl = container.querySelector('.animate-select-pulse');
     expect(tileEl).not.toBeNull();
     const cls = tileEl!.className;
-    expect(cls).toContain('-translate-y-2');
+    expect(cls).toContain('-translate-y-1');
     expect(cls).toContain('-rotate-1');
   });
 });

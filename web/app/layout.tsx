@@ -1,20 +1,23 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import StoreProvider from "@/store/provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-const inter = Inter({
+const notoSans = Noto_Sans_SC({
   subsets: ["latin"],
-  variable: "--font-inter",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans",
+  display: "swap",
 });
 
-const plusJakarta = Plus_Jakarta_Sans({
+const notoSerif = Noto_Serif_SC({
   subsets: ["latin"],
+  weight: ["500", "600", "700"],
   variable: "--font-display",
-  weight: ["500", "600", "700", "800"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -33,13 +36,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={cn(inter.variable, plusJakarta.variable)}>
+    <html lang="en" className={cn(notoSans.variable, notoSerif.variable)}>
       <body className="min-h-screen bg-background text-foreground font-sans antialiased">
         <StoreProvider>
           <TooltipProvider>
             {children}
+            <Analytics />
           </TooltipProvider>
-          <Analytics />
         </StoreProvider>
       </body>
     </html>

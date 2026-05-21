@@ -25,13 +25,13 @@ export interface TilePalette {
 export const TILE_PALETTES: Record<TilePaletteId, TilePalette> = {
   retro: {
     id: 'retro',
-    label: 'Retro',
-    description: 'Bright primary suits on cream — the classic 16-bit look.',
+    label: 'Classic',
+    description: 'Warm cream face with traditional suit colors.',
     faceBg: '#FFF8E1',
     suitColors: {
-      [TileSuit.BAMBOO]: '#4CAF50',
-      [TileSuit.CHARACTER]: '#ef4444',
-      [TileSuit.DOT]: '#3b82f6',
+      [TileSuit.BAMBOO]: '#2E7D32',
+      [TileSuit.CHARACTER]: '#B71C1C',
+      [TileSuit.DOT]: '#1565C0',
       [TileSuit.WIND]: '#a1a1aa',
       [TileSuit.DRAGON]: '#a1a1aa',
       [TileSuit.FLOWER]: '#f5b731',
@@ -89,7 +89,7 @@ export const TILE_PALETTES: Record<TilePaletteId, TilePalette> = {
   },
 };
 
-export const DEFAULT_TILE_PALETTE: TilePaletteId = 'retro';
+export const DEFAULT_TILE_PALETTE: TilePaletteId = 'bone-wood';
 
 export function getTilePalette(id: TilePaletteId | undefined | null): TilePalette {
   if (!id || !(id in TILE_PALETTES)) return TILE_PALETTES[DEFAULT_TILE_PALETTE];

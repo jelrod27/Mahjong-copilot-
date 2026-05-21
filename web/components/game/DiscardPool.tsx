@@ -72,7 +72,7 @@ function TileWrapper({
 
   let className = 'flex items-center justify-center';
   if (spotlight) {
-    className = 'relative flex items-center justify-center rounded-md p-0.5 ring-4 ring-highlight ring-offset-1 ring-offset-background shadow-[0_0_24px_rgba(245,183,49,0.55)] animate-pulse-gold scale-105 z-10';
+    className = 'relative z-10 flex scale-105 items-center justify-center rounded-md p-0.5 ring-2 ring-highlight/70 ring-offset-1 ring-offset-background shadow-ds-md animate-pulse-gold';
   } else if (isNew) {
     className = 'flex items-center justify-center animate-tile-arrive';
   } else if (isGhost) {

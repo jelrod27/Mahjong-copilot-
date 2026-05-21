@@ -15,8 +15,8 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html>
-      <body style={{ backgroundColor: "#0f0e17", color: "#e0dfe8" }}>
+    <html lang="en">
+      <body style={{ backgroundColor: "#0d0f14", color: "#e8dfd0", fontFamily: "system-ui, sans-serif" }}>
         <div
           style={{
             minHeight: "100vh",
@@ -28,50 +28,50 @@ export default function GlobalError({
         >
           <div
             style={{
-              border: "2px solid #ff2975",
-              borderRadius: "4px",
+              border: "1px solid rgba(201, 168, 76, 0.35)",
+              borderRadius: "12px",
               padding: "2rem",
               maxWidth: "400px",
               width: "100%",
               textAlign: "center",
-              background: "#1a1830",
+              background: "linear-gradient(180deg, #1e2c22 0%, #0d0f14 100%)",
             }}
           >
             <h1
               style={{
-                fontFamily: "'Press Start 2P', monospace",
-                fontSize: "14px",
-                color: "#ff2975",
+                fontSize: "1.25rem",
+                fontWeight: 600,
+                color: "#e8c55a",
                 marginBottom: "1rem",
               }}
             >
-              UNEXPECTED ERROR
+              Something went wrong
             </h1>
             <p
               style={{
-                fontFamily: "monospace",
-                fontSize: "14px",
-                color: "#a0a0b8",
+                fontSize: "0.9375rem",
+                color: "#a89b8c",
                 lineHeight: 1.6,
                 marginBottom: "1.5rem",
               }}
             >
-              Something went wrong. Please try again.
+              Please try again. If the problem continues, reload the page.
             </p>
             <button
               onClick={reset}
+              type="button"
               style={{
-                fontFamily: "'Press Start 2P', monospace",
-                fontSize: "12px",
-                color: "#0f0e17",
-                backgroundColor: "#00f5d4",
-                border: "2px solid #00f5d4",
-                borderRadius: "4px",
-                padding: "0.5rem 1.5rem",
+                fontSize: "0.875rem",
+                fontWeight: 600,
+                color: "#1a1208",
+                backgroundColor: "#c9a84c",
+                border: "none",
+                borderRadius: "8px",
+                padding: "0.625rem 1.5rem",
                 cursor: "pointer",
               }}
             >
-              [ TRY AGAIN ]
+              Try again
             </button>
           </div>
         </div>

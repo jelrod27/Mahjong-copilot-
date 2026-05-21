@@ -57,8 +57,8 @@ The visual overhaul must not alienate the first cohort to court the third. Taste
 |---|---|---|---|
 | Round 1 | NPC system (Mei / Hana / Yuki) + emotion state machine + felt table foundation | #63 | Merged |
 | Round 3 | Animations: portrait wiggle, AI thinking halo, tile select pulse, winner spotlight, score punch, tile-claim flash | #64 | Merged |
-| Round 4 | Cosmetics: 4 tile palettes, 4 table felts, alt roster (Riko / Aki / Sora), `/cosmetics` page | #65 | Open |
-| Round 2 mechanism | `portraitImageSet` field on `NpcCharacter` so PNG art can drop in per emotion with no refactor | #65 | Open |
+| Round 4 | Cosmetics: 4 tile palettes, 4 table felts, alt roster (Riko / Aki / Sora), `/cosmetics` page | #65 | Merged |
+| Round 2 mechanism | `portraitImageSet` field on `NpcCharacter` so PNG art can drop in per emotion with no refactor | #65 | Merged |
 
 ### 3.2 What's NOT Shipped
 

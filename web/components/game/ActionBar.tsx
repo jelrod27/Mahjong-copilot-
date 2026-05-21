@@ -178,10 +178,10 @@ export default function ActionBar({
           <button
             type="button"
             data-testid="claim-best-button"
-            className={`min-h-[52px] flex-1 rounded-xl border-2 px-6 py-3 font-display text-sm font-bold tracking-wide transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/70 sm:flex-none sm:px-10 ${
+            className={`min-h-[52px] flex-1 rounded-xl border-2 px-6 py-3 font-display text-sm font-semibold transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 sm:flex-none sm:px-10 ${
               best?.claimType === 'win'
-                ? 'ds-btn-success border-success/40 shadow-[0_0_24px_rgb(34_197_94_/_0.35)]'
-                : 'border-info/55 bg-info/20 text-info shadow-[0_0_20px_rgb(56_189_248_/_0.25)] hover:bg-info/30'
+                ? 'ds-btn-success border-success/40 shadow-ds-md'
+                : 'border-accent/45 bg-accent/15 text-highlight shadow-ds-sm hover:bg-accent/25'
             }`}
             onClick={onClaimBest}
           >

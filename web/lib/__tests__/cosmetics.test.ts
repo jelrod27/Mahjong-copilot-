@@ -13,14 +13,14 @@ import {
 import { TileSuit } from '@/models/Tile';
 
 describe('TILE_PALETTES', () => {
-  it('exposes 4 palettes including the retro default', () => {
+  it('exposes 4 palettes with bone-wood as default', () => {
     expect(Object.keys(TILE_PALETTES).sort()).toEqual([
       'bone-wood',
       'ivory',
       'neon',
       'retro',
     ]);
-    expect(DEFAULT_TILE_PALETTE).toBe('retro');
+    expect(DEFAULT_TILE_PALETTE).toBe('bone-wood');
   });
 
   it('every palette covers all suit colors RetroTile needs', () => {
@@ -81,10 +81,10 @@ describe('ROSTERS', () => {
 });
 
 describe('lookup helpers fall back to defaults on bad input', () => {
-  it('getTilePalette returns retro for unknown id', () => {
-    expect(getTilePalette('not-a-real-palette' as never).id).toBe('retro');
-    expect(getTilePalette(undefined).id).toBe('retro');
-    expect(getTilePalette(null).id).toBe('retro');
+  it('getTilePalette returns default for unknown id', () => {
+    expect(getTilePalette('not-a-real-palette' as never).id).toBe('bone-wood');
+    expect(getTilePalette(undefined).id).toBe('bone-wood');
+    expect(getTilePalette(null).id).toBe('bone-wood');
   });
 
   it('getTableFelt returns classic-green for unknown id', () => {

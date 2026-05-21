@@ -11,11 +11,22 @@ import { TilePaletteProvider } from '@/components/game/TilePaletteContext';
 import { GameMode } from '@/models/MatchState';
 import { useAppSelector } from '@/store/hooks';
 
+const URL_DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
+const URL_MODES = ['quick', 'full'] as const;
+
 export default function GameContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const difficulty = (searchParams.get('difficulty') || 'easy') as 'easy' | 'medium' | 'hard';
-  const mode = (searchParams.get('mode') || 'quick') as GameMode;
+  const rawDifficulty = searchParams.get('difficulty');
+  const difficulty: (typeof URL_DIFFICULTIES)[number] = (URL_DIFFICULTIES as readonly string[]).includes(
+    rawDifficulty ?? '',
+  )
+    ? (rawDifficulty as (typeof URL_DIFFICULTIES)[number])
+    : 'easy';
+  const rawMode = searchParams.get('mode');
+  const mode: GameMode = (URL_MODES as readonly string[]).includes(rawMode ?? '')
+    ? (rawMode as GameMode)
+    : 'quick';
   // `minFaan` URL param: only exact '0', '1', or '3' are valid. Strict string
   // match avoids `parseInt` quirks like '3abc' → 3 silently validating.
   const rawMinFaan = searchParams.get('minFaan');

@@ -573,7 +573,7 @@ function handleClaim(
     const meldTiles = [...tilesFromHand, discardedTile];
     // Validate meld formation
     if (claimType === 'chow') {
-      const sorted = meldTiles.sort((a, b) => (a.number || 0) - (b.number || 0));
+      const sorted = [...meldTiles].sort((a, b) => (a.number || 0) - (b.number || 0));
       if (sorted.length !== 3) return null;
       if (sorted.some(t => t.type !== TileType.SUIT)) return null;
       if (sorted.some(t => t.suit !== sorted[0].suit)) return null;

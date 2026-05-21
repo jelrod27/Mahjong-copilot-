@@ -1,11 +1,46 @@
 # 16 Bit Mahjong DX, UI, and Player Experience PRD
 
 **Date:** 2026-04-30  
-**Status:** Draft PRD — implementation started  
+**Status:** ✅ **CLOSED** — all P0/P1/P2 items shipped (closed 2026-05-08)  
 **Owner:** Justin Elrod  
 **Product:** 16 Bit Mahjong / Mahjong Copilot  
 **Primary codebase:** `web/` — Next.js 14, React 18, TypeScript, Redux Toolkit, Tailwind CSS  
 **Variant focus:** Hong Kong Mahjong first  
+
+---
+
+## Closeout (2026-05-08)
+
+Every numbered requirement in this PRD is shipped on `main`. Closure map:
+
+| ID | Item | Shipped in |
+|---|---|---|
+| DX-01 | Offline Supabase guard | pre-#57 |
+| DX-02 | Clean warnings / quality gates | pre-#57 |
+| DX-03 | Beginner smoke tests | #58 |
+| GAME-01 | Beginner Assist mode | #60 |
+| GAME-02 | Dynamic discard CTA | pre-#57 (verified `ActionBar.tsx`) |
+| GAME-03 | Tile evaluation legend / non-color | #66 |
+| GAME-04 | Concrete move explanations | #60 |
+| GAME-05 | Glossary tooltips | #61 |
+| GAME-06 | Claim decision guidance | #66 |
+| LEARN-01 | Learning path visualization | #62 |
+| LEARN-02 | Lesson completion feedback | #62 |
+| PRACTICE-01 | Practice card metadata | #62 |
+| PRACTICE-02 | Quiz explanations | pre-#62 |
+| PRACTICE-03 | Bidirectional tile recognition | #62 |
+| REF-01 | Searchable reference | pre-#61 |
+| REF-02 | In-game reference modal | #61 |
+| A11Y-01 | Active nav state | pre-PRD (verified `BottomNav.tsx`) |
+| A11Y-02 | Reduce color-only state | #66 |
+| A11Y-03 | Keyboard/focus audit (incl. `useFocusTrap` hook) | #66 |
+
+**Bonus beyond scope:** PR #59 (win celebration polish), #63 (NPC characters + emotion-aware portraits), #64 (round 3 animations), #65 (cosmetics — tile palettes, table felts, alt roster, portrait art-swap mechanism).
+
+**Pending follow-on work** (out of scope for this PRD):
+- Visual round 2.5: actual commissioned/curated character art into the `portraitImageSet` slots wired up in #65.
+- Voice acting (audio per voice line) — visual round 5.
+- Auth + multiplayer reintroduction — needs a separate scoped PRD per §2.4.
 
 ---
 

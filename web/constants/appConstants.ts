@@ -46,6 +46,10 @@ export class AppConstants {
   static readonly TILE_PALETTE_KEY = 'tile_palette';
   static readonly TABLE_FELT_KEY = 'table_felt';
   static readonly NPC_ROSTER_KEY = 'npc_roster';
+  /** `auto` alternates rosters each match; `fixed` uses NPC_ROSTER_KEY. */
+  static readonly NPC_ROSTER_MODE_KEY = 'npc_roster_mode';
+  /** Monotonic counter driving auto roster rotation. */
+  static readonly MATCH_ROSTER_COUNTER_KEY = 'match_roster_counter';
   static readonly OFFLINE_PROGRESS_KEY = 'offline_progress';
 }
 

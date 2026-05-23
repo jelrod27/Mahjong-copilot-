@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import useGameController, { type TablePreset } from '@/components/game/useGameController';
 import GameBoard from '@/components/game/GameBoard';
@@ -11,7 +11,8 @@ import VoiceSubtitle from '@/components/game/VoiceSubtitle';
 import PlayOnboardingDialog from '@/components/play/PlayOnboardingDialog';
 import { TilePaletteProvider } from '@/components/game/TilePaletteContext';
 import { GameMode } from '@/models/MatchState';
-import { useAppSelector } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { setActiveMatchRoster } from '@/store/actions/settingsActions';
 import { hasSeenPlayOnboarding } from '@/lib/playOnboarding';
 
 const URL_DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
@@ -43,7 +44,17 @@ export default function GameContent() {
   const showTutor = useAppSelector((s) => s.settings.showTutor);
   const liveFaanMeter = useAppSelector((s) => s.settings.liveFaanMeter);
   const tileVoice = useAppSelector((s) => s.settings.tileVoice);
+  const npcRosterMode = useAppSelector((s) => s.settings.npcRosterMode);
+  const npcRoster = useAppSelector((s) => s.settings.npcRoster);
+  const dispatch = useAppDispatch();
   const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenPlayOnboarding());
+
+  const onMatchRosterResolved = useCallback(
+    (rosterId: typeof npcRoster) => {
+      void dispatch(setActiveMatchRoster(rosterId));
+    },
+    [dispatch],
+  );
 
   const controller = useGameController(
     effectiveDifficulty,
@@ -53,6 +64,9 @@ export default function GameContent() {
     effectiveMinFaan,
     tileVoice,
     tablePreset,
+    npcRosterMode,
+    npcRoster,
+    onMatchRosterResolved,
   );
 
   if (!controller.game) {

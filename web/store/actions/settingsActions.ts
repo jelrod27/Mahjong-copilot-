@@ -11,6 +11,7 @@ import {
   DEFAULT_TABLE_FELT,
   DEFAULT_ROSTER,
 } from '@/lib/cosmetics';
+import { isNpcRosterMode, NpcRosterMode } from '@/lib/rosterRotation';
 
 export interface SettingsState {
   selectedVariant: string;
@@ -32,6 +33,8 @@ export interface SettingsState {
   tableFelt: TableFeltId;
   /** Which NPC roster fills the opponent seats. */
   npcRoster: RosterId;
+  /** Auto rotates rosters each match; fixed keeps `npcRoster` until changed. */
+  npcRosterMode: NpcRosterMode;
 }
 
 export const SETTINGS_INITIALIZE = 'SETTINGS_INITIALIZE' as const;
@@ -47,6 +50,7 @@ export const SETTINGS_SET_TILE_VOICE = 'SETTINGS_SET_TILE_VOICE' as const;
 export const SETTINGS_SET_TILE_PALETTE = 'SETTINGS_SET_TILE_PALETTE' as const;
 export const SETTINGS_SET_TABLE_FELT = 'SETTINGS_SET_TABLE_FELT' as const;
 export const SETTINGS_SET_NPC_ROSTER = 'SETTINGS_SET_NPC_ROSTER' as const;
+export const SETTINGS_SET_NPC_ROSTER_MODE = 'SETTINGS_SET_NPC_ROSTER_MODE' as const;
 
 export type SettingsAction =
   | { type: typeof SETTINGS_INITIALIZE; payload: SettingsState }
@@ -61,7 +65,8 @@ export type SettingsAction =
   | { type: typeof SETTINGS_SET_TILE_VOICE; payload: SettingsState['tileVoice'] }
   | { type: typeof SETTINGS_SET_TILE_PALETTE; payload: TilePaletteId }
   | { type: typeof SETTINGS_SET_TABLE_FELT; payload: TableFeltId }
-  | { type: typeof SETTINGS_SET_NPC_ROSTER; payload: RosterId };
+  | { type: typeof SETTINGS_SET_NPC_ROSTER; payload: RosterId }
+  | { type: typeof SETTINGS_SET_NPC_ROSTER_MODE; payload: NpcRosterMode };
 
 export const initializeSettings = () => async (dispatch: any) => {
   try {
@@ -95,6 +100,9 @@ export const initializeSettings = () => async (dispatch: any) => {
         ? (rosterRaw as RosterId)
         : DEFAULT_ROSTER;
 
+    const rosterModeRaw = await StorageService.getString(AppConstants.NPC_ROSTER_MODE_KEY);
+    const npcRosterMode: NpcRosterMode = isNpcRosterMode(rosterModeRaw) ? rosterModeRaw : 'auto';
+
     dispatch({
       type: SETTINGS_INITIALIZE,
       payload: {
@@ -110,6 +118,7 @@ export const initializeSettings = () => async (dispatch: any) => {
         tilePalette,
         tableFelt,
         npcRoster,
+        npcRosterMode,
       },
     });
   } catch (error) {
@@ -173,6 +182,19 @@ export const setTableFelt = (id: TableFeltId) => async (dispatch: any) => {
 };
 
 export const setNpcRoster = (id: RosterId) => async (dispatch: any) => {
+  await StorageService.setString(AppConstants.NPC_ROSTER_KEY, id);
+  await StorageService.setString(AppConstants.NPC_ROSTER_MODE_KEY, 'fixed');
+  dispatch({ type: SETTINGS_SET_NPC_ROSTER, payload: id });
+  dispatch({ type: SETTINGS_SET_NPC_ROSTER_MODE, payload: 'fixed' });
+};
+
+export const setNpcRosterMode = (mode: NpcRosterMode) => async (dispatch: any) => {
+  await StorageService.setString(AppConstants.NPC_ROSTER_MODE_KEY, mode);
+  dispatch({ type: SETTINGS_SET_NPC_ROSTER_MODE, payload: mode });
+};
+
+/** Apply the roster active for the current match (auto rotation or fixed). */
+export const setActiveMatchRoster = (id: RosterId) => async (dispatch: any) => {
   await StorageService.setString(AppConstants.NPC_ROSTER_KEY, id);
   dispatch({ type: SETTINGS_SET_NPC_ROSTER, payload: id });
 };

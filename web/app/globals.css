@@ -325,6 +325,8 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-tile-arrive,
   .animate-tile-depart,
+  .animate-tile-claim-sweep,
+  .animate-tile-discard-lift,
   .animate-confetti-fall,
   .animate-fan-row-in,
   .animate-bubble-pop,
@@ -517,11 +519,16 @@
 @keyframes tile-arrive {
   0% {
     opacity: 0;
-    transform: scale(0.55) translate(-8px, -14px) rotate(-10deg);
+    transform: scale(0.42) translate(-28px, -32px) rotate(-14deg);
+    filter: blur(1px);
   }
-  55% {
+  45% {
     opacity: 1;
-    transform: scale(1.06) translate(3px, 2px) rotate(3deg);
+    transform: scale(1.05) translate(2px, 3px) rotate(3deg);
+    filter: blur(0);
+  }
+  72% {
+    transform: scale(0.98) translate(-1px, 0) rotate(-1deg);
   }
   100% {
     transform: scale(1) translate(0, 0) rotate(0);
@@ -529,16 +536,52 @@
 }
 
 .animate-tile-arrive {
-  animation: tile-arrive 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: tile-arrive 0.38s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes tile-depart {
-  0% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(0.5) translateY(-12px); }
+  0% {
+    opacity: 1;
+    transform: scale(1) translate(0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.35) translate(12px, -28px) rotate(8deg);
+  }
 }
 
 .animate-tile-depart {
-  animation: tile-depart 0.22s ease-in forwards;
+  animation: tile-depart 0.32s cubic-bezier(0.55, 0, 0.85, 0.36) forwards;
+}
+
+@keyframes tile-claim-sweep {
+  0% {
+    opacity: 0;
+    transform: translate(-22px, -16px) scale(0.55) rotate(-10deg);
+    filter: brightness(1.15);
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1) rotate(0);
+    filter: brightness(1);
+  }
+}
+
+.animate-tile-claim-sweep {
+  animation: tile-claim-sweep 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes tile-discard-lift {
+  0% { transform: translateY(0) scale(1); }
+  35% { transform: translateY(-6px) scale(1.04); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+.animate-tile-discard-lift {
+  animation: tile-discard-lift 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes fade-in {
@@ -603,20 +646,51 @@
 .tile-size-lg { --tile-scale: 1.14; }
 
 .mahjong-tile-face {
-  background: linear-gradient(145deg, #fff8e1 0%, #f5ecce 100%);
-  border: 1px solid #d4c9a8;
-  border-radius: 4px;
-  box-shadow: var(--tile-shadow-rest, 1px 2px 0 0 #c4b896, 2px 3px 6px rgb(0 0 0 / 0.22));
+  position: relative;
+  background: linear-gradient(155deg, #fffef5 0%, #fff8e1 42%, #f3e8c8 100%);
+  border: 1px solid rgb(212 201 168 / 0.85);
+  border-radius: 5px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.65),
+    inset 0 -2px 4px rgb(0 0 0 / 0.06),
+    1px 2px 0 0 #c4b896,
+    2px 4px 8px rgb(0 0 0 / 0.2);
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.2s ease;
+}
+
+.mahjong-tile-face::after {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.42) 0%,
+    transparent 38%,
+    transparent 62%,
+    rgb(0 0 0 / 0.04) 100%
+  );
 }
 
 .mahjong-tile-face.is-selected {
-  border-color: rgb(201 168 76 / 0.85);
-  box-shadow: var(--tile-shadow-selected, inset 0 1px 3px rgb(0 0 0 / 0.12), 0 0 0 2px rgb(201 168 76 / 0.55));
+  border-color: rgb(201 168 76 / 0.9);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.5),
+    0 0 0 2px rgb(201 168 76 / 0.5),
+    0 6px 14px rgb(201 168 76 / 0.28);
+  transform: translateY(-2px);
 }
 
 .mahjong-tile-face.is-suggested {
-  border-color: rgb(232 197 90 / 0.75);
-  box-shadow: 0 0 10px rgb(201 168 76 / 0.35);
+  border-color: rgb(232 197 90 / 0.8);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.45),
+    0 0 0 1px rgb(232 197 90 / 0.35),
+    0 0 12px rgb(201 168 76 / 0.32);
 }
 
 .mahjong-tile-symbol {

@@ -12,11 +12,11 @@ const pung = (suit: 'dot' | 'bam', n: number): MeldInfo => ({
 });
 
 describe('ExposedMelds — newly-claimed flash (PRD visual round 3)', () => {
-  it('flashes the most-recent meld with animate-tile-claim', () => {
+  it('flashes the most-recent meld with animate-tile-claim-sweep', () => {
     const { container } = render(
       <ExposedMelds melds={[pung('dot', 5), pung('bam', 3)]} />,
     );
-    const flashing = container.querySelectorAll('.animate-tile-claim');
+    const flashing = container.querySelectorAll('.animate-tile-claim-sweep');
     // Only the latest meld carries the flash class — earlier melds stay still.
     expect(flashing).toHaveLength(1);
   });
@@ -27,8 +27,8 @@ describe('ExposedMelds — newly-claimed flash (PRD visual round 3)', () => {
     );
     const meldWrappers = container.querySelectorAll('div.flex.gap-px');
     expect(meldWrappers.length).toBe(2);
-    expect(meldWrappers[0].className).not.toContain('animate-tile-claim');
-    expect(meldWrappers[1].className).toContain('animate-tile-claim');
+    expect(meldWrappers[0].className).not.toContain('animate-tile-claim-sweep');
+    expect(meldWrappers[1].className).toContain('animate-tile-claim-sweep');
   });
 
   it('replays the flash by remounting wrappers when meld count grows', () => {
@@ -64,7 +64,7 @@ describe('RetroTile — tile selection refinement (PRD visual round 3)', () => {
     const tileEl = container.querySelector('.animate-select-pulse');
     expect(tileEl).not.toBeNull();
     const cls = tileEl!.className;
-    expect(cls).toContain('-translate-y-1');
     expect(cls).toContain('-rotate-1');
+    expect(cls).toContain('is-selected');
   });
 });

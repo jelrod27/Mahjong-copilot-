@@ -20,6 +20,8 @@ import { projectFaan, FaanProjection } from '@/engine/faanProjection';
 import soundManager from '@/lib/soundManager';
 import { speakTile, TileVoiceLanguage } from '@/lib/tileVoice';
 import { saveGame, loadGame, clearSavedGame, hasSavedGame, canResume } from '@/lib/matchStorage';
+import { resolveMatchRoster, NpcRosterMode } from '@/lib/rosterRotation';
+import { RosterId } from '@/lib/cosmetics';
 import * as Sentry from '@sentry/nextjs';
 
 const HUMAN_ID = 'human-player';
@@ -96,6 +98,9 @@ export default function useGameController(
   initialMinFaan?: number,
   tileVoice: 'off' | TileVoiceLanguage = 'off',
   tablePreset: TablePreset = 'standard',
+  npcRosterMode: NpcRosterMode = 'auto',
+  fixedNpcRoster: RosterId = 'default',
+  onMatchRosterResolved?: (rosterId: RosterId) => void,
 ): GameController {
   const claimTimeoutMs = claimTimeoutForPreset(tablePreset);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>(initialDifficulty);
@@ -142,6 +147,9 @@ export default function useGameController(
     const gameMode = newMode ?? mode;
     setMode(gameMode);
 
+    const matchRoster = resolveMatchRoster(npcRosterMode, fixedNpcRoster);
+    onMatchRosterResolved?.(matchRoster);
+
     const newMatch = initializeMatch({
       mode: gameMode,
       difficulty: newDifficulty,
@@ -153,7 +161,7 @@ export default function useGameController(
     setMatch(newMatch);
     setGame(newMatch.currentHand);
     resetHandState();
-  }, [mode, resetHandState, initialMinFaan]);
+  }, [mode, resetHandState, initialMinFaan, npcRosterMode, fixedNpcRoster, onMatchRosterResolved]);
 
   // Initialize game on mount — resume saved match if one exists and is active
   useEffect(() => {

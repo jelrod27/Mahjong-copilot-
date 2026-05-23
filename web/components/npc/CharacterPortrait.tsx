@@ -110,11 +110,14 @@ export default function CharacterPortrait({
 
       {/* Expression rig: brows + eyes + mouth */}
       <Brows emotion={emotion} hairColor={traits.hairColor} />
-      <Eyes emotion={emotion} eyeColor={traits.eyeColor} />
-      <Mouth emotion={emotion} skinColor={traits.skinColor} />
+      <Eyes emotion={emotion} eyeColor={traits.eyeColor} character={character} />
+      <Mouth emotion={emotion} skinColor={traits.skinColor} character={character} />
 
       {/* Hair front layer — bangs sit over forehead. */}
       <HairFront style={traits.hairStyle} character={character} />
+
+      {/* Hair shine */}
+      <HairShine style={traits.hairStyle} character={character} />
 
       {/* Accessory overlay */}
       <Accessory kind={traits.accessory} character={character} />
@@ -220,21 +223,30 @@ function HairFront({
    Expression rig
    ───────────────────────────────────────── */
 
-function Eyes({ emotion, eyeColor }: { emotion: NpcEmotion; eyeColor: string }) {
+function Eyes({
+  emotion,
+  eyeColor,
+  character,
+}: {
+  emotion: NpcEmotion;
+  eyeColor: string;
+  character: NpcId;
+}) {
   const sclera = '#ffffff';
-  const lash = '#1a1320';
+  const lash = character === 'aki' ? '#2a1830' : '#1a1320';
+  const showLashes = emotion !== 'triumphant' && emotion !== 'frustrated';
 
-  // Each emotion has a distinct eye shape. Rendered symmetrically around x=100.
+  const renderEyes = () => {
   switch (emotion) {
     case 'idle':
       return (
         <>
-          <ellipse cx="80" cy="120" rx="7" ry="8" fill={sclera} stroke={lash} strokeWidth="1.5" />
-          <ellipse cx="120" cy="120" rx="7" ry="8" fill={sclera} stroke={lash} strokeWidth="1.5" />
-          <circle cx="80" cy="121" r="4" fill={eyeColor} />
-          <circle cx="120" cy="121" r="4" fill={eyeColor} />
-          <circle cx="78" cy="118" r="1.5" fill="#ffffff" />
-          <circle cx="118" cy="118" r="1.5" fill="#ffffff" />
+          <ellipse cx="80" cy="120" rx="8" ry="9" fill={sclera} stroke={lash} strokeWidth="1.5" />
+          <ellipse cx="120" cy="120" rx="8" ry="9" fill={sclera} stroke={lash} strokeWidth="1.5" />
+          <circle cx="80" cy="121" r="4.5" fill={eyeColor} />
+          <circle cx="120" cy="121" r="4.5" fill={eyeColor} />
+          <circle cx="78" cy="118" r="1.8" fill="#ffffff" />
+          <circle cx="118" cy="118" r="1.8" fill="#ffffff" />
         </>
       );
     case 'thinking':
@@ -286,6 +298,66 @@ function Eyes({ emotion, eyeColor }: { emotion: NpcEmotion; eyeColor: string }) 
         </>
       );
   }
+  };
+
+  return (
+    <>
+      {renderEyes()}
+      {showLashes && <Eyelashes emotion={emotion} character={character} />}
+    </>
+  );
+}
+
+function Eyelashes({ emotion, character }: { emotion: NpcEmotion; character: NpcId }) {
+  const stroke = character === 'aki' ? '#2a1830' : '#1a1320';
+  const bold = character === 'sora' || character === 'riko';
+  const w = bold ? 2.2 : 1.8;
+  if (emotion === 'smug') {
+    return (
+      <>
+        <path d="M 72 118 Q 80 114 88 118" stroke={stroke} strokeWidth={w} fill="none" strokeLinecap="round" />
+        <path d="M 112 118 Q 120 114 128 118" stroke={stroke} strokeWidth={w} fill="none" strokeLinecap="round" />
+      </>
+    );
+  }
+  return (
+    <>
+      <path d="M 70 108 Q 80 102 90 108" stroke={stroke} strokeWidth={w} fill="none" strokeLinecap="round" />
+      <path d="M 110 108 Q 120 102 130 108" stroke={stroke} strokeWidth={w} fill="none" strokeLinecap="round" />
+    </>
+  );
+}
+
+function HairShine({
+  style,
+  character,
+}: {
+  style: NpcVisualTraits['hairStyle'];
+  character: NpcId;
+}) {
+  const opacity = character === 'sora' ? 0.45 : 0.28;
+  if (style === 'short-bob') {
+    return (
+      <path
+        d="M 72 78 Q 98 62 128 82"
+        stroke="#ffffff"
+        strokeWidth="3"
+        fill="none"
+        strokeLinecap="round"
+        opacity={opacity}
+      />
+    );
+  }
+  return (
+    <path
+      d="M 68 72 Q 100 48 138 76"
+      stroke="#ffffff"
+      strokeWidth="2.5"
+      fill="none"
+      strokeLinecap="round"
+      opacity={opacity}
+    />
+  );
 }
 
 function Brows({ emotion, hairColor }: { emotion: NpcEmotion; hairColor: string }) {
@@ -338,19 +410,37 @@ function Brows({ emotion, hairColor }: { emotion: NpcEmotion; hairColor: string 
   }
 }
 
-function Mouth({ emotion, skinColor }: { emotion: NpcEmotion; skinColor: string }) {
-  const lip = '#c45a6a';
+function Mouth({
+  emotion,
+  skinColor,
+  character,
+}: {
+  emotion: NpcEmotion;
+  skinColor: string;
+  character: NpcId;
+}) {
+  const lip = character === 'aki' ? '#b84a62' : character === 'sora' ? '#d46a7a' : '#c45a6a';
   const inner = shade(skinColor, -0.4);
+  const gloss = (
+    <ellipse cx="97" cy="157" rx="3" ry="1.2" fill="#ffffff" opacity="0.35" />
+  );
+
   switch (emotion) {
     case 'idle':
-      return <path d="M 92 158 Q 100 162 108 158" stroke={lip} strokeWidth="2" fill="none" strokeLinecap="round" />;
+      return (
+        <>
+          <path d="M 90 158 Q 100 163 110 158" stroke={lip} strokeWidth="2.2" fill="none" strokeLinecap="round" />
+          {gloss}
+        </>
+      );
     case 'thinking':
       return <path d="M 94 158 L 106 158" stroke={lip} strokeWidth="2" strokeLinecap="round" />;
     case 'smug':
       return (
         <>
-          <path d="M 88 158 Q 100 152 112 162" stroke={lip} strokeWidth="2.2" fill="none" strokeLinecap="round" />
+          <path d="M 88 158 Q 100 151 112 162" stroke={lip} strokeWidth="2.4" fill="none" strokeLinecap="round" />
           <circle cx="113" cy="160" r="1.5" fill={lip} />
+          {gloss}
         </>
       );
     case 'surprised':
@@ -365,6 +455,7 @@ function Mouth({ emotion, skinColor }: { emotion: NpcEmotion; skinColor: string 
       return (
         <>
           <path d="M 86 156 Q 100 174 114 156" fill={inner} stroke={lip} strokeWidth="2" strokeLinejoin="round" />
+          {gloss}
         </>
       );
   }
@@ -399,8 +490,14 @@ function Accessory({ kind, character }: { kind: NpcVisualTraits['accessory']; ch
     case 'earrings':
       return (
         <>
-          <circle cx="56" cy="138" r="3" fill="#f5b731" />
-          <circle cx="144" cy="138" r="3" fill="#f5b731" />
+          <circle cx="56" cy="138" r="3.5" fill="#f5b731" />
+          <circle cx="144" cy="138" r="3.5" fill="#f5b731" />
+          {character === 'riko' && (
+            <>
+              <circle cx="56" cy="142" r="1.5" fill="#ff8db1" />
+              <circle cx="144" cy="142" r="1.5" fill="#ff8db1" />
+            </>
+          )}
         </>
       );
     case 'glasses':
@@ -412,16 +509,24 @@ function Accessory({ kind, character }: { kind: NpcVisualTraits['accessory']; ch
           <line x1="94" y1="120" x2="106" y2="120" />
           <path d="M 66 118 L 60 116" />
           <path d="M 134 118 L 140 116" />
+          {character === 'hana' && (
+            <path d="M 72 112 Q 80 108 88 112" stroke="#45b7d1" strokeWidth="1.5" fill="none" />
+          )}
         </g>
       );
     case 'choker':
       return (
-        <path
-          d="M 76 198 Q 100 206 124 198 L 124 204 Q 100 212 76 204 Z"
-          fill="#1a1320"
-          stroke="#f5b731"
-          strokeWidth="0.8"
-        />
+        <>
+          <path
+            d="M 76 198 Q 100 206 124 198 L 124 204 Q 100 212 76 204 Z"
+            fill="#1a1320"
+            stroke={character === 'sora' ? '#e8384f' : '#f5b731'}
+            strokeWidth="0.8"
+          />
+          {character === 'aki' && (
+            <path d="M 88 200 Q 100 204 112 200" stroke="#8b2040" strokeWidth="1.2" fill="none" />
+          )}
+        </>
       );
   }
 }

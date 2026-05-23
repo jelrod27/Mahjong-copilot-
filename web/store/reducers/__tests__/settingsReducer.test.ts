@@ -20,6 +20,7 @@ const initialState = {
   tilePalette: 'bone-wood' as const,
   tableFelt: 'classic-green' as const,
   npcRoster: 'default' as const,
+  npcRosterMode: 'auto' as const,
 };
 
 describe('settingsReducer', () => {

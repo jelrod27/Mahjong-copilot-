@@ -105,8 +105,8 @@ export default function RetroTile({
     <div
       className={`
         mahjong-tile-face tile-scale-root tile-size-${size}
-        flex flex-col overflow-hidden transition-all duration-100
-        ${isSelected ? 'is-selected -translate-y-1 -rotate-1 animate-select-pulse' : ''}
+        flex flex-col overflow-hidden transition-all duration-200 ease-ds-out
+        ${isSelected ? 'is-selected -rotate-1 animate-select-pulse' : ''}
         ${isSuggested ? 'is-suggested' : 'border-tile-border'}
         ${isLastDiscarded ? 'animate-pulse-gold' : ''}
         ${isNewlyDrawn ? 'animate-tile-draw' : ''}
@@ -148,7 +148,7 @@ export default function RetroTile({
         disabled={disabled}
         type="button"
         aria-label={tileAriaLabel}
-        className="transition-transform duration-100 hover:enabled:-translate-y-0.5 hover:enabled:scale-[1.03] disabled:cursor-not-allowed disabled:opacity-50"
+        className="transition-transform duration-200 ease-ds-out hover:enabled:-translate-y-0.5 hover:enabled:scale-[1.03] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {tileContent}
       </button>

@@ -34,7 +34,7 @@ export default function ExposedMelds({ melds, size = 'sm' }: ExposedMeldsProps) 
       {melds.map((meld, i) => (
         <div
           key={`${flashKey}-${i}`}
-          className={`flex gap-px ${i === lastIndex ? 'animate-tile-claim' : ''}`}
+          className={`flex gap-px ${i === lastIndex ? 'animate-tile-claim-sweep' : ''}`}
         >
           {meld.tiles.map((tile, j) => {
             // For concealed kongs, show first and last face-down

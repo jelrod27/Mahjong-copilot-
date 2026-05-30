@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Trophy } from 'lucide-react';
+import { Trophy, Flame } from 'lucide-react';
 import { MatchState } from '@/models/MatchState';
 import { computeFinalRankings } from '@/engine/matchManager';
-import { recordMatchResult } from '@/lib/gameStats';
+import { recordMatchResult, type GameStats } from '@/lib/gameStats';
+import { getGraduationStatus } from '@/lib/graduation';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import Confetti from './Confetti';
 import { GameResultsOverlay, GameResultsSheet, GameResultsSectionLabel } from './GameResultsChrome';
 
 interface MatchOverScreenProps {
@@ -14,10 +16,35 @@ interface MatchOverScreenProps {
   onBackToMenu: () => void;
 }
 
+const DIFFICULTY_LABELS: Record<MatchState['difficulty'], string> = {
+  easy: 'Easy',
+  medium: 'Medium',
+  hard: 'Hard',
+};
+
+function winRate(won: number, played: number): string {
+  if (played === 0) return '—';
+  return `${Math.round((won / played) * 100)}%`;
+}
+
+/** Slim progress bar for tier advancement. Pure presentation. */
+function TierBar({ current, target }: { current: number; target: number }) {
+  const pct = target > 0 ? Math.min(100, (current / target) * 100) : 0;
+  return (
+    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface/60" aria-hidden>
+      <div
+        className="h-full rounded-full bg-highlight transition-all duration-500"
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  );
+}
+
 export default function MatchOverScreen({
   match, onPlayAgain, onBackToMenu,
 }: MatchOverScreenProps) {
   const [showContent, setShowContent] = useState(false);
+  const [stats, setStats] = useState<GameStats | null>(null);
   const rankings = computeFinalRankings(match);
   const humanRank = rankings.find(r => r.playerIndex === 0)?.rank ?? 4;
   const statsSavedRef = useRef(false);
@@ -40,24 +67,45 @@ export default function MatchOverScreen({
       }
     }
 
-    recordMatchResult({
+    // Single write path. Capture the post-match stats so the recap reports
+    // against numbers that already include this match (streak, tiers, rates).
+    setStats(recordMatchResult({
       difficulty: match.difficulty,
       mode: match.mode,
       humanPlacement: humanRank,
       totalHandsPlayed: match.totalHandsPlayed,
       bestFanThisMatch: bestFan,
       bestHandNameThisMatch: bestHandName,
-    });
+    }));
   }, [match, humanRank]);
 
   const rankColors = ['text-highlight', 'text-info', 'text-foreground', 'text-muted-foreground'];
   const rankLabels = ['1st', '2nd', '3rd', '4th'];
+  const isTop2 = humanRank <= 2;
+
+  const graduation = stats ? getGraduationStatus(stats) : null;
+  const diffStats = stats?.byDifficulty[match.difficulty];
+
+  // Streak line: describe what this match did to the goal.
+  let streakLine: string;
+  if (!stats) {
+    streakLine = '';
+  } else if (isTop2 && stats.currentTop2Streak > 1) {
+    streakLine = `Top-2 streak extended to ${stats.currentTop2Streak}`;
+  } else if (isTop2) {
+    streakLine = 'Top-2 streak started';
+  } else if (stats.bestTop2Streak > 0) {
+    streakLine = `Streak reset. Your best run is ${stats.bestTop2Streak}`;
+  } else {
+    streakLine = 'Finish top-2 to start a streak';
+  }
 
   const modalRef = useRef<HTMLDivElement>(null);
   useFocusTrap(modalRef, showContent);
 
   return (
     <GameResultsOverlay>
+      {humanRank === 1 && showContent && <Confetti />}
       <GameResultsSheet
         ref={modalRef}
         role="dialog"
@@ -82,6 +130,56 @@ export default function MatchOverScreen({
             </p>
           )}
         </div>
+
+        {/* Progress arc leads the screen: the "you got better" signal is the point. */}
+        {graduation && (
+          <div className="mb-5" data-testid="match-progress-arc">
+            <GameResultsSectionLabel>Your progress</GameResultsSectionLabel>
+            <div className="game-hud-surface space-y-3 rounded-lg p-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="inline-flex items-center gap-1.5 font-sans text-sm text-foreground">
+                  <Flame
+                    className={isTop2 && stats!.currentTop2Streak > 0 ? 'h-4 w-4 text-accent' : 'h-4 w-4 text-muted-foreground'}
+                    strokeWidth={1.75}
+                    aria-hidden
+                  />
+                  Top-2 streak
+                </span>
+                <span className="font-display text-base text-highlight ds-text-glow tabular-nums" data-testid="streak-value">
+                  {stats!.currentTop2Streak}
+                </span>
+              </div>
+              <p className="font-sans text-xs text-muted-foreground">{streakLine}</p>
+
+              {graduation.nextTier ? (
+                <div data-testid="tier-progress">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="font-sans text-sm text-foreground">
+                      Next: {graduation.nextTier.label}
+                    </span>
+                    <span className="font-sans text-xs tabular-nums text-muted-foreground">
+                      {graduation.nextTier.current} / {graduation.nextTier.target}
+                    </span>
+                  </div>
+                  <p className="font-sans text-xs text-muted-foreground">
+                    {graduation.nextTier.requirement}
+                  </p>
+                  <TierBar current={graduation.nextTier.current} target={graduation.nextTier.target} />
+                </div>
+              ) : (
+                <p className="font-sans text-sm text-success" data-testid="tier-progress">
+                  Every tier cleared. You are a Table Master.
+                </p>
+              )}
+
+              {graduation.currentTier && (
+                <p className="font-sans text-[11px] text-muted-foreground">
+                  Tier {graduation.earnedCount} of {graduation.totalCount}: {graduation.currentTier.label}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="mb-4">
           <GameResultsSectionLabel>Final standings</GameResultsSectionLabel>
@@ -118,10 +216,23 @@ export default function MatchOverScreen({
               <span>Hands played</span>
               <span className="text-foreground">{match.totalHandsPlayed}</span>
             </div>
-            <div className="flex justify-between">
-              <span>Starting score</span>
-              <span className="text-foreground">{match.startingScore}</span>
-            </div>
+            {diffStats && (
+              <div className="flex justify-between">
+                <span>{DIFFICULTY_LABELS[match.difficulty]} win rate</span>
+                <span className="text-foreground tabular-nums">
+                  {winRate(diffStats.won, diffStats.played)}
+                  <span className="ml-1 text-muted-foreground">({diffStats.won}/{diffStats.played})</span>
+                </span>
+              </div>
+            )}
+            {stats && stats.bestFan > 0 && (
+              <div className="flex justify-between gap-4">
+                <span>Biggest hand</span>
+                <span className="text-right text-foreground">
+                  {stats.bestFan} faan{stats.bestHandName ? ` · ${stats.bestHandName}` : ''}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

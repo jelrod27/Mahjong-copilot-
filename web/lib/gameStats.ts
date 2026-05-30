@@ -32,6 +32,10 @@ export interface GameStats {
     full: { played: number; won: number };
   };
   placementCounts: [number, number, number, number]; // [1st, 2nd, 3rd, 4th]
+  /** Consecutive matches finishing 1st or 2nd. Reset to 0 on a 3rd/4th finish. */
+  currentTop2Streak: number;
+  /** High-water mark for {@link currentTop2Streak}. */
+  bestTop2Streak: number;
   lastPlayedAt: string | null;
   /** Practice-quiz completions, keyed by quiz mode. Absent entries mean "not yet played". */
   quizzes: Partial<QuizStats>;
@@ -53,6 +57,8 @@ const DEFAULT_STATS: GameStats = {
     full: { played: 0, won: 0 },
   },
   placementCounts: [0, 0, 0, 0],
+  currentTop2Streak: 0,
+  bestTop2Streak: 0,
   lastPlayedAt: null,
   quizzes: {},
 };
@@ -107,6 +113,17 @@ export function recordMatchResult(result: MatchResult): GameStats {
   const placementIdx = result.humanPlacement - 1;
   if (placementIdx >= 0 && placementIdx < stats.placementCounts.length) {
     stats.placementCounts[placementIdx]++;
+  }
+
+  // Top-2 placement streak — the goal the recap screen reports against.
+  // A top-2 finish extends the streak; anything lower breaks it.
+  if (result.humanPlacement <= 2) {
+    stats.currentTop2Streak++;
+    if (stats.currentTop2Streak > stats.bestTop2Streak) {
+      stats.bestTop2Streak = stats.currentTop2Streak;
+    }
+  } else {
+    stats.currentTop2Streak = 0;
   }
 
   // Difficulty breakdown

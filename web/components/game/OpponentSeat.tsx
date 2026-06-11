@@ -147,7 +147,7 @@ export default function OpponentSeat({
         data-testid={`portrait-wrapper-${npcId}`}
       >
         <div key={reactKey} className="animate-portrait-react">
-          <CharacterPortrait character={npcId} emotion={emotion} size="sm" />
+          <CharacterPortrait character={npcId} emotion={emotion} size="sm" framing="face" />
         </div>
         {voiceLine && (
           <SpeechBubble line={voiceLine} side={position === 'right' ? 'left' : 'right'} />

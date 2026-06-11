@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { memo, useRef, useEffect, useState } from 'react';
 import { Tile } from '@/models/Tile';
 import RetroTile from './RetroTile';
 
@@ -86,7 +86,7 @@ function TileWrapper({
   );
 }
 
-export default function DiscardPool({
+function DiscardPool({
   discards, lastDiscardedTile, claimHighlight,
   playerDiscards, playerNames,
 }: DiscardPoolProps) {
@@ -176,3 +176,5 @@ export default function DiscardPool({
     </div>
   );
 }
+
+export default memo(DiscardPool);

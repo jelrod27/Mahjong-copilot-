@@ -4,6 +4,7 @@
  */
 import { MatchState, matchStateToJson, matchStateFromJson } from '@/models/MatchState';
 import { GameState, gameStateToJson, gameStateFromJson } from '@/models/GameState';
+import { validateSavedGamePayload } from './savedGameValidator';
 
 const MATCH_KEY = 'mahjong_match_in_progress';
 
@@ -53,6 +54,12 @@ export function loadGame(): SavedGame | null {
     const parsed = JSON.parse(raw) as SavedGame;
 
     if (parsed.version !== SAVE_VERSION) {
+      clearSavedGame();
+      return null;
+    }
+
+    const validation = validateSavedGamePayload(parsed);
+    if (!validation.ok) {
       clearSavedGame();
       return null;
     }

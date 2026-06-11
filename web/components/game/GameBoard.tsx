@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { GameState } from '@/models/GameState';
 import { MatchState } from '@/models/MatchState';
 import type { AvailableClaim } from '@/engine/types';
@@ -121,6 +121,11 @@ export default function GameBoard({
   const hasClaimOptions = hasClaimsProp ?? false;
   const showClaimHighlight =
     gameState.turnPhase === 'claim' && hasClaimOptions && isHumanTurn;
+
+  const playerNames = useMemo(
+    () => Object.fromEntries(gameState.players.map(p => [p.id, p.name])),
+    [gameState.players],
+  );
 
   // Cosmetic preferences: which roster fills the seats, which felt paints the
   // table. Both fall back to defaults if settings aren't yet hydrated.
@@ -284,7 +289,7 @@ export default function GameBoard({
                   lastDiscardedTile={gameState.lastDiscardedTile}
                   claimHighlight={showClaimHighlight}
                   playerDiscards={gameState.playerDiscards}
-                  playerNames={Object.fromEntries(gameState.players.map(p => [p.id, p.name]))}
+                  playerNames={playerNames}
                 />
               </div>
 

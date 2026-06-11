@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useLayoutEffect } from 'react';
+import { memo, useRef, useLayoutEffect } from 'react';
 import { Tile } from '@/models/Tile';
 import RetroTile from './RetroTile';
 
@@ -14,7 +14,7 @@ interface PlayerHandProps {
   tileClassifications?: Map<string, 'green' | 'orange' | 'red'>;
 }
 
-export default function PlayerHand({
+function PlayerHand({
   tiles, selectedTileId, suggestedTileId, onTileSelect, lastDrawnTileId,
   disabled = false, tileClassifications,
 }: PlayerHandProps) {
@@ -96,3 +96,5 @@ export default function PlayerHand({
     </div>
   );
 }
+
+export default memo(PlayerHand);

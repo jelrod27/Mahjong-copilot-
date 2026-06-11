@@ -120,6 +120,11 @@ export default function useGameController(
   const [tenpaiStatus, setTenpaiStatus] = useState<TenpaiStatus | null>(null);
   const [claimOptions, setClaimOptions] = useState<AvailableClaim[]>([]);
   const [claimTimer, setClaimTimer] = useState(0);
+  const claimTimerRef = useRef(0);
+  const updateClaimTimer = useCallback((value: number) => {
+    claimTimerRef.current = value;
+    setClaimTimer(value);
+  }, []);
   const [scoringResult, setScoringResult] = useState<ScoringResult | null>(null);
   const [tileClassifications, setTileClassifications] = useState<Map<string, 'green' | 'orange' | 'red'>>(new Map());
   const [faanProjection, setFaanProjection] = useState<FaanProjection | null>(null);
@@ -141,13 +146,13 @@ export default function useGameController(
     setTutorAdvice(null);
     setTenpaiStatus(null);
     setClaimOptions([]);
-    setClaimTimer(0);
+    updateClaimTimer(0);
     setScoringResult(null);
     setTileClassifications(new Map());
     setFaanProjection(null);
     processingRef.current = false;
     humanDiscardInFlightRef.current = false;
-  }, []);
+  }, [updateClaimTimer]);
 
   const startNewGame = useCallback((newDifficulty: 'easy' | 'medium' | 'hard', newMode?: GameMode) => {
     // Daily Hand: one seeded single hand, identical for every player. The
@@ -404,12 +409,12 @@ export default function useGameController(
     const next = doAction(HUMAN_ID, { type: 'CLAIM', claimType, tilesFromHand });
     if (next) {
       setClaimOptions([]);
-      setClaimTimer(0);
+      updateClaimTimer(0);
       setTutorAdvice(null);
       setSuggestedTileId(undefined);
       soundManager.play(claimType === 'win' ? 'win' : 'claim');
     }
-  }, [doAction]);
+  }, [doAction, updateClaimTimer]);
 
   const claimBest = useCallback(() => {
     const current = gameRef.current;
@@ -422,34 +427,34 @@ export default function useGameController(
     const next = doAction(HUMAN_ID, { type: 'CLAIM', claimType: best.claimType, tilesFromHand: best.tilesFromHand });
     if (next) {
       setClaimOptions([]);
-      setClaimTimer(0);
+      updateClaimTimer(0);
       setTutorAdvice(null);
       setSuggestedTileId(undefined);
       soundManager.play(best.claimType === 'win' ? 'win' : 'claim');
     }
-  }, [doAction, humanIndex]);
+  }, [doAction, humanIndex, updateClaimTimer]);
 
   const submitChow = useCallback((tilesFromHand: Tile[]) => {
     const next = doAction(HUMAN_ID, { type: 'CLAIM', claimType: 'chow' as ClaimType, tilesFromHand });
     if (next) {
       setClaimOptions([]);
-      setClaimTimer(0);
+      updateClaimTimer(0);
       setTutorAdvice(null);
       setSuggestedTileId(undefined);
       soundManager.play('claim');
     }
-  }, [doAction]);
+  }, [doAction, updateClaimTimer]);
 
   const pass = useCallback(() => {
     const next = doAction(HUMAN_ID, { type: 'PASS' });
     if (next) {
       setClaimOptions([]);
-      setClaimTimer(0);
+      updateClaimTimer(0);
       setTutorAdvice(null);
       setSuggestedTileId(undefined);
       soundManager.play('pass');
     }
-  }, [doAction]);
+  }, [doAction, updateClaimTimer]);
 
   // === Computed state ===
 
@@ -748,7 +753,7 @@ export default function useGameController(
     if (!game || game.phase !== GamePhase.PLAYING) return;
     if (game.turnPhase !== 'claim') {
       setClaimOptions([]);
-      setClaimTimer(0);
+      updateClaimTimer(0);
       return;
     }
 
@@ -767,7 +772,7 @@ export default function useGameController(
       game.pendingClaims.some(c => c.playerId === humanId);
     if (alreadyActed) {
       setClaimOptions([]);
-      setClaimTimer(0);
+      updateClaimTimer(0);
       return;
     }
 
@@ -778,7 +783,7 @@ export default function useGameController(
     if (claims.length > 0) {
       setClaimOptions(claims);
       // Only start timer if not already running
-      setClaimTimer(prev => prev > 0 ? prev : claimTimeoutMs);
+      if (claimTimerRef.current <= 0) updateClaimTimer(claimTimeoutMs);
       soundManager.play('turnAlert');
     } else if (game.currentPlayerIndex === humanIndex) {
       // Human has no claims and it's their turn — auto-pass
@@ -804,7 +809,7 @@ export default function useGameController(
     if (claimTimer <= 0 || claimOptions.length === 0) return;
     if (!game || game.phase !== GamePhase.PLAYING || game.turnPhase !== 'claim') {
       // Reset timer synchronously so lingering UI also clears.
-      if (claimTimer !== 0) setClaimTimer(0);
+      if (claimTimer !== 0) updateClaimTimer(0);
       return;
     }
     const interval = setInterval(() => {
@@ -812,17 +817,18 @@ export default function useGameController(
       // and firing.
       const live = gameRef.current;
       if (!live || live.phase !== GamePhase.PLAYING || live.turnPhase !== 'claim') {
-        setClaimTimer(0);
+        updateClaimTimer(0);
         return;
       }
-      setClaimTimer(prev => {
-        if (prev <= 100) {
-          // Time's up — auto-pass
-          pass();
-          return 0;
-        }
-        return prev - 100;
-      });
+      const prev = claimTimerRef.current;
+      const next = Math.max(0, prev - 100);
+      updateClaimTimer(next);
+      if (next === 0 && prev > 0) {
+        // Time's up — auto-pass (side effect in callback, not a state updater).
+        // Guard prev > 0 so we only fire once: on the tick that transitions to 0,
+        // not on subsequent ticks before the interval is cleared.
+        pass();
+      }
     }, 100);
     return () => clearInterval(interval);
   }, [claimTimer > 0, claimOptions.length, game?.phase, game?.turnPhase, pass]);

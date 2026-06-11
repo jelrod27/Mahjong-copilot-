@@ -9,6 +9,7 @@ import { AIDecision, AvailableClaim } from '../types';
 import { calculateShanten } from '../winDetection';
 import { canDeclareSelfDrawnWin } from '../turnManager';
 import { tileDiscardPriority } from './aiUtils';
+import { normalizePersonality } from './personality';
 
 /** Bonus for keeping tiles that contribute to known fan patterns. */
 function fanRetentionBonus(tile: Tile, hand: Tile[], gameState: GameState, playerIndex: number): number {
@@ -57,6 +58,7 @@ function fanRetentionBonus(tile: Tile, hand: Tile[], gameState: GameState, playe
 export function getMediumDiscard(gameState: GameState, playerIndex: number): AIDecision {
   const player = gameState.players[playerIndex];
   const hand = player.hand;
+  const personality = normalizePersonality(player.aiPersonality);
 
   // Check for self-drawn win
   if (canDeclareSelfDrawnWin(gameState, playerIndex)) {
@@ -119,7 +121,9 @@ export function getMediumDiscard(gameState: GameState, playerIndex: number): AID
     // Combined score: lower = better to discard
     // Primary: keep shanten low. Secondary: keep fan-valuable tiles. Tertiary: isolated tiles first.
     let score = shanten * 100;
-    score += fanBonus * 3;   // penalize discarding fan-valuable tiles
+    // fanGreed scales value-chasing; speedBias erodes it (racers drop value
+    // tiles to keep tempo)
+    score += fanBonus * 3 * (personality.fanGreed / Math.max(1, personality.speedBias));
     score -= priority * 1;    // prefer discarding isolated/terminal tiles
 
     if (score < bestScore) {
@@ -140,6 +144,10 @@ export function getMediumClaimDecision(
   availableClaims: AvailableClaim[],
 ): AIDecision {
   const player = gameState.players[playerIndex];
+  const personality = normalizePersonality(player.aiPersonality);
+  // High appetite or raw speed lowers the bar for taking tiles off the table
+  const aggressive = Math.max(personality.claimAppetite, personality.speedBias) >= 1.4;
+  const reluctant = personality.claimAppetite <= 0.7;
 
   // Always claim win
   const winClaim = availableClaims.find(c => c.claimType === 'win');
@@ -176,16 +184,16 @@ export function getMediumClaimDecision(
         }
 
         // Also claim dragons and wind pungs even at equal shanten (guaranteed 1 faan)
-        if (newShanten === currentShanten && tiles[0]) {
+        if (newShanten === currentShanten && tiles[0] && !reluctant) {
           const claimedTile = tiles[0];
           const isDragon = claimedTile.suit === TileSuit.DRAGON;
           const isSeatWind = claimedTile.suit === TileSuit.WIND && claimedTile.wind === player.seatWind;
           const isPrevailingWind = claimedTile.suit === TileSuit.WIND && claimedTile.wind === gameState.prevailingWind;
 
-          if (isDragon || isSeatWind || isPrevailingWind) {
+          if (isDragon || isSeatWind || isPrevailingWind || aggressive) {
             return {
               action: { type: 'CLAIM', claimType: claim.claimType, tilesFromHand: tiles },
-              reasoning: `Medium AI: claiming valuable ${claim.claimType} at equal shanten`,
+              reasoning: `Medium AI: claiming ${claim.claimType} at equal shanten`,
             };
           }
         }
@@ -193,9 +201,10 @@ export function getMediumClaimDecision(
     }
   }
 
-  // For chow: claim if it reduces shanten
+  // For chow: claim if it reduces shanten. Reluctant claimers never chow —
+  // it opens the hand for the least value.
   const chowClaim = availableClaims.find(c => c.claimType === 'chow');
-  if (chowClaim && chowClaim.tilesFromHand[0]) {
+  if (chowClaim && chowClaim.tilesFromHand[0] && !reluctant) {
     const tiles = chowClaim.tilesFromHand[0];
     const handAfter = player.hand.filter(t => !tiles.find(ct => ct.id === t.id));
     const testHand = handAfter.filter(t => t.type !== TileType.BONUS).slice(0, 13);

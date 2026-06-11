@@ -38,6 +38,8 @@ export interface MatchState {
    * HK standard default is 3. Beginner / family rules may lower to 1 or 0.
    */
   minFaan?: MinFaan;
+  /** Per-seat AI overrides for Parlour floor matches. */
+  aiSeats?: { index: number; difficulty: 'easy' | 'medium' | 'hard'; personality?: import('./GameState').AIPersonalityParams }[];
 }
 
 /**

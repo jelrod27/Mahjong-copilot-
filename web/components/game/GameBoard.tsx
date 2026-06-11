@@ -50,6 +50,8 @@ interface GameBoardProps {
   claimOptions?: AvailableClaim[];
   claimTimer?: number;
   claimTimeoutMs?: number;
+  /** Parlour floor matches pin specific NPCs to seats (overrides roster). */
+  npcSeatsOverride?: Record<'left' | 'top' | 'right', NpcId>;
 }
 
 export default function GameBoard({
@@ -58,7 +60,7 @@ export default function GameBoard({
   onTileSelect, onSortHand, onDiscard, onKong, onWin, onClaimBest, onSubmitChow, onPass,
   canDeclareKong: canKongProp, canDeclareWin: canWinProp,
   hasClaimOptions: hasClaimsProp, claimOptions = [], claimTimer,
-  claimTimeoutMs = 10000,
+  claimTimeoutMs = 10000, npcSeatsOverride,
 }: GameBoardProps) {
   const humanIndex = gameState.players.findIndex(p => p.id === humanPlayerId);
   const humanPlayer = gameState.players[humanIndex];
@@ -135,7 +137,7 @@ export default function GameBoard({
   const dangerMode = wallLow || opponentThreat;
   const roster = getRoster(rosterId);
   const felt = getTableFelt(feltId);
-  const NPC_BY_POSITION: Record<'left' | 'top' | 'right', NpcId> = {
+  const NPC_BY_POSITION: Record<'left' | 'top' | 'right', NpcId> = npcSeatsOverride ?? {
     left: roster.seats.left,
     top: roster.seats.top,
     right: roster.seats.right,

@@ -7,6 +7,7 @@ import { GameState } from '@/models/GameState';
 import { GameAction, AIDecision, AvailableClaim } from '../types';
 import { canDeclareSelfDrawnWin } from '../turnManager';
 import { deterministicNoise } from '../rng';
+import { normalizePersonality } from './personality';
 
 /** Noise salt unique to this game + moment, so AI variety stays replayable. */
 function noiseSalt(gameState: GameState): string {
@@ -115,7 +116,8 @@ export function getEasyClaimDecision(
     const isDragon = tile.suit === TileSuit.DRAGON;
     const isSeatWind = tile.suit === TileSuit.WIND && tile.wind === player.seatWind;
 
-    if (tile && (isDragon || isSeatWind) && deterministicNoise(noiseSalt(gameState), 'pung', tile.id) < 0.7) {
+    const pungChance = Math.min(0.98, 0.7 * normalizePersonality(player.aiPersonality).claimAppetite);
+    if (tile && (isDragon || isSeatWind) && deterministicNoise(noiseSalt(gameState), 'pung', tile.id) < pungChance) {
       return {
         action: {
           type: 'CLAIM',

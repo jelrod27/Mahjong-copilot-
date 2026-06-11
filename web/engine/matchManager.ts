@@ -22,6 +22,12 @@ export interface MatchOptions {
   humanPlayerId: string;
   turnTimeLimit?: number;
   /**
+   * Per-seat AI overrides (Parlour floor matches): difficulty and
+   * personality per seat index. Seats without an entry fall back to the
+   * match difficulty with default personality.
+   */
+  aiSeats?: { index: number; difficulty: 'easy' | 'medium' | 'hard'; personality?: import('@/models/GameState').AIPersonalityParams }[];
+  /**
    * Minimum faan required for a legal win. Defaults to DEFAULT_MIN_FAAN (3).
    * Lower values are used for beginner/family rules.
    */
@@ -51,6 +57,7 @@ export function initializeMatch(options: MatchOptions): MatchState {
     // Normalise at the boundary — MatchState.minFaan is typed narrowly so
     // corrupted persisted values never flow into future hand creation.
     minFaan: normaliseMinFaan(options.minFaan),
+    aiSeats: options.aiSeats,
   };
 }
 
@@ -169,6 +176,7 @@ export function startNextHand(match: MatchState): MatchState {
       playerNames: match.playerNames,
       humanPlayerId: match.humanPlayerId,
       minFaan: match.minFaan,
+      aiSeats: match.aiSeats,
     },
     match.currentDealerIndex,
     match.currentRound,
@@ -201,7 +209,9 @@ export function getSeatWinds(dealerIndex: number, playerCount: number = 4): Wind
 export function computeFinalRankings(match: MatchState): { playerIndex: number; name: string; score: number; rank: number }[] {
   return match.playerNames
     .map((name, i) => ({ playerIndex: i, name, score: match.playerScores[i] }))
-    .sort((a, b) => b.score - a.score)
+    // Ties break toward the earlier seat (the human sits at index 0, so a
+    // tied human ranks first — deliberate generosity for floor clears).
+    .sort((a, b) => b.score - a.score || a.playerIndex - b.playerIndex)
     .map((entry, i) => ({ ...entry, rank: i + 1 }));
 }
 
@@ -219,7 +229,7 @@ function getPlayerId(playerIndex: number, humanPlayerId: string): string {
 }
 
 function createHand(
-  options: Pick<MatchOptions, 'difficulty' | 'playerNames' | 'humanPlayerId' | 'minFaan'> & { mode?: GameMode },
+  options: Pick<MatchOptions, 'difficulty' | 'playerNames' | 'humanPlayerId' | 'minFaan' | 'aiSeats'> & { mode?: GameMode },
   dealerIndex: number,
   prevailingWind: WindTile,
 ): GameState {
@@ -227,8 +237,16 @@ function createHand(
   const gameOptions: GameOptions = {
     playerNames: options.playerNames,
     aiPlayers: options.playerNames
-      .map((_, i) => (i === 0 ? null : { index: i, difficulty: options.difficulty }))
-      .filter((x): x is { index: number; difficulty: 'easy' | 'medium' | 'hard' } => x !== null),
+      .map((_, i) => {
+        if (i === 0) return null;
+        const seat = options.aiSeats?.find(s => s.index === i);
+        return {
+          index: i,
+          difficulty: seat?.difficulty ?? options.difficulty,
+          personality: seat?.personality,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null),
     humanPlayerId: options.humanPlayerId,
     dealerIndex,
     seatWinds,

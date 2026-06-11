@@ -12,14 +12,26 @@ import {
   tileDangerScore, isSafeTile, tileDiscardPriority,
   isOpponentDangerous, detectOpponentSuitFocus,
 } from './aiUtils';
+import { normalizePersonality, AIPersonality } from './personality';
 
-/** Check if any opponent appears dangerous. */
-function shouldPlayDefensive(gameState: GameState, playerIndex: number): boolean {
+/** Check if any opponent appears dangerous, scaled by defenseBias. */
+function shouldPlayDefensive(
+  gameState: GameState,
+  playerIndex: number,
+  personality: AIPersonality,
+): boolean {
+  let dangerousCount = 0;
   for (let i = 0; i < gameState.players.length; i++) {
     if (i === playerIndex) continue;
-    if (isOpponentDangerous(gameState, i)) return true;
+    if (isOpponentDangerous(gameState, i)) dangerousCount++;
+    // Paranoid players treat any opponent with 2+ exposed melds as a threat
+    if (personality.defenseBias >= 1.5 && gameState.players[i].melds.length >= 2) {
+      dangerousCount++;
+    }
   }
-  return false;
+  // Reckless players need to see danger from more than one seat to fold
+  const threshold = personality.defenseBias <= 0.6 ? 2 : 1;
+  return dangerousCount >= threshold;
 }
 
 /** Extra danger from opponent suit concentration. */
@@ -83,8 +95,9 @@ export function getHardDiscard(gameState: GameState, playerIndex: number): AIDec
     };
   }
 
+  const personality = normalizePersonality(player.aiPersonality);
   const currentShanten = calculateShanten(nonBonus.slice(0, 13));
-  const defensive = shouldPlayDefensive(gameState, playerIndex);
+  const defensive = shouldPlayDefensive(gameState, playerIndex, personality);
 
   interface DiscardCandidate {
     tile: Tile;
@@ -110,7 +123,7 @@ export function getHardDiscard(gameState: GameState, playerIndex: number): AIDec
 
     if (defensive && currentShanten > 1) {
       // Defensive mode: prioritize safety over hand progress
-      score = danger * 10;            // primary: avoid dangerous tiles
+      score = danger * 10 * personality.defenseBias; // primary: avoid dangerous tiles
       score += shanten * 30;          // secondary: still try to reduce shanten
       score -= priority * 2;
 
@@ -138,7 +151,7 @@ export function getHardDiscard(gameState: GameState, playerIndex: number): AIDec
     // Bonus: keep dragon pairs/triplets (fan value)
     if (tile.suit === TileSuit.DRAGON) {
       const dragonCount = hand.filter(t => t.suit === TileSuit.DRAGON && t.dragon === tile.dragon).length;
-      if (dragonCount >= 2) score += 15;
+      if (dragonCount >= 2) score += 15 * personality.fanGreed;
     }
 
     // Bonus: keep seat/prevailing wind pairs+

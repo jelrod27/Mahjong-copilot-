@@ -21,7 +21,9 @@ import soundManager from '@/lib/soundManager';
 import { speakTile, TileVoiceLanguage } from '@/lib/tileVoice';
 import { saveGame, loadGame, clearSavedGame, hasSavedGame, canResume } from '@/lib/matchStorage';
 import { resolveMatchRoster, NpcRosterMode } from '@/lib/rosterRotation';
-import { RosterId } from '@/lib/cosmetics';
+import { RosterId, getRoster } from '@/lib/cosmetics';
+import { getFloor, floorSupportCast } from '@/lib/parlour';
+import { NPCS } from '@/content/npcs';
 import * as Sentry from '@sentry/nextjs';
 
 const HUMAN_ID = 'human-player';
@@ -103,6 +105,7 @@ export default function useGameController(
   npcRosterMode: NpcRosterMode = 'auto',
   fixedNpcRoster: RosterId = 'default',
   onMatchRosterResolved?: (rosterId: RosterId) => void,
+  parlourFloor?: number,
 ): GameController {
   const claimTimeoutMs = claimTimeoutForPreset(tablePreset);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>(initialDifficulty);
@@ -145,6 +148,34 @@ export default function useGameController(
   }, []);
 
   const startNewGame = useCallback((newDifficulty: 'easy' | 'medium' | 'hard', newMode?: GameMode) => {
+    // Parlour floor matches configure the table from the floor definition:
+    // the rival sits across from you (seat 2), already-beaten NPCs fill the
+    // side seats one tier down.
+    const floorDef = parlourFloor ? getFloor(parlourFloor) : undefined;
+    if (floorDef) {
+      const rival = NPCS[floorDef.rival];
+      const [castA, castB] = floorSupportCast(floorDef.floor);
+      const supportDifficulty = floorDef.difficulty === 'hard' ? 'medium' : 'easy';
+      setDifficulty(floorDef.difficulty);
+      setMode('quick');
+      const floorMatch = initializeMatch({
+        mode: 'quick',
+        difficulty: floorDef.difficulty,
+        playerNames: ['You', NPCS[castA].name, rival.name, NPCS[castB].name],
+        humanPlayerId: HUMAN_ID,
+        minFaan: floorDef.minFaan,
+        aiSeats: [
+          { index: 1, difficulty: supportDifficulty, personality: NPCS[castA].personality },
+          { index: 2, difficulty: floorDef.difficulty, personality: rival.personality },
+          { index: 3, difficulty: supportDifficulty, personality: NPCS[castB].personality },
+        ],
+      });
+      setMatch(floorMatch);
+      setGame(floorMatch.currentHand);
+      resetHandState();
+      return;
+    }
+
     setDifficulty(newDifficulty);
     const gameMode = newMode ?? mode;
     setMode(gameMode);
@@ -152,22 +183,32 @@ export default function useGameController(
     const matchRoster = resolveMatchRoster(npcRosterMode, fixedNpcRoster);
     onMatchRosterResolved?.(matchRoster);
 
+    // Seat indices: 1 = right, 2 = top, 3 = left (see GameBoard.getOpponent).
+    // The board portraits come from the same roster, so the names finally
+    // match the faces instead of reading "West AI".
+    const seats = getRoster(matchRoster).seats;
     const newMatch = initializeMatch({
       mode: gameMode,
       difficulty: newDifficulty,
-      playerNames: ['You', 'West AI', 'North AI', 'East AI'],
+      playerNames: ['You', NPCS[seats.right].name, NPCS[seats.top].name, NPCS[seats.left].name],
       humanPlayerId: HUMAN_ID,
       minFaan: initialMinFaan,
+      aiSeats: [
+        { index: 1, difficulty: newDifficulty, personality: NPCS[seats.right].personality },
+        { index: 2, difficulty: newDifficulty, personality: NPCS[seats.top].personality },
+        { index: 3, difficulty: newDifficulty, personality: NPCS[seats.left].personality },
+      ],
     });
 
     setMatch(newMatch);
     setGame(newMatch.currentHand);
     resetHandState();
-  }, [mode, resetHandState, initialMinFaan, npcRosterMode, fixedNpcRoster, onMatchRosterResolved]);
+  }, [mode, resetHandState, initialMinFaan, npcRosterMode, fixedNpcRoster, onMatchRosterResolved, parlourFloor]);
 
-  // Initialize game on mount — resume saved match if one exists and is active
+  // Initialize game on mount — resume saved match if one exists and is active.
+  // Parlour floor matches always start fresh.
   useEffect(() => {
-    const saved = loadGame();
+    const saved = parlourFloor ? null : loadGame();
     if (saved?.match && saved.match.phase !== 'finished') {
       setMatch(saved.match);
       setGame(saved.game ?? saved.match.currentHand ?? null);
@@ -176,7 +217,7 @@ export default function useGameController(
     } else {
       startNewGame(initialDifficulty, initialMode);
     }
-  }, [initialDifficulty, initialMode, startNewGame]);
+  }, [initialDifficulty, initialMode, startNewGame, parlourFloor]);
 
   /** Try to resume a saved match from localStorage. Returns true on success. */
   const resumeGame = useCallback((): boolean => {

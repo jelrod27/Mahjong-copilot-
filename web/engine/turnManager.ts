@@ -7,7 +7,7 @@
 import { Tile, TileSuit, TileType, WindTile, tilesMatch, tileKey } from '@/models/Tile';
 import {
   GameState, GamePhase, Player, PlayerAction, GameTurn,
-  MeldInfo, ClaimRequest, TurnPhase, ClaimType, DrawResult,
+  MeldInfo, ClaimRequest, TurnPhase, ClaimType, DrawResult, AIPersonalityParams,
 } from '@/models/GameState';
 import { TileFactory } from '@/models/Tile';
 import { GameAction, ScoringContext, WinMethod, DEFAULT_MIN_FAAN } from './types';
@@ -109,7 +109,7 @@ function applyDeferredKong(state: GameState, declarerIndex: number, kongTile: Ti
 export interface GameOptions {
   variant?: string;
   playerNames: string[];
-  aiPlayers: { index: number; difficulty: 'easy' | 'medium' | 'hard' }[];
+  aiPlayers: { index: number; difficulty: 'easy' | 'medium' | 'hard'; personality?: AIPersonalityParams }[];
   humanPlayerId: string;
   turnTimeLimit?: number;
   dealerIndex?: number;
@@ -146,6 +146,7 @@ export function initializeGame(options: GameOptions): GameState {
       name,
       isAI: !!aiConfig,
       aiDifficulty: aiConfig?.difficulty,
+      aiPersonality: aiConfig?.personality,
       hand: [],
       melds: [],
       score: 0,

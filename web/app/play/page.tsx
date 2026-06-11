@@ -149,6 +149,18 @@ export default function PlayPage() {
 
       <button
         type="button"
+        data-testid="parlour-button"
+        onClick={() => router.push('/parlour')}
+        className="ds-btn mt-2 min-h-[48px] border-highlight/50 px-8 py-3 font-display text-sm font-semibold text-highlight md:text-base"
+      >
+        The Jade Parlour
+      </button>
+      <p className="mt-1 max-w-xs text-center font-sans text-[11px] text-muted-foreground">
+        Story mode — climb nine floors of rivals and wake the house.
+      </p>
+
+      <button
+        type="button"
         data-testid="training-table-button"
         onClick={handleTrainingTable}
         className="ds-btn mt-2 min-h-[48px] border-accent/40 px-8 py-3 font-display text-sm font-semibold text-accent md:text-base"

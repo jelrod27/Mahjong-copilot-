@@ -9,7 +9,9 @@
  * - Yuki (hard) — cocky genius, laser-focused with attitude
  */
 
-export type NpcId = 'mei' | 'hana' | 'yuki' | 'riko' | 'aki' | 'sora';
+export type NpcId =
+  | 'mei' | 'hana' | 'yuki' | 'riko' | 'aki' | 'sora'
+  | 'gam' | 'bo' | 'pearl' | 'jin';
 
 export type NpcEmotion =
   | 'idle'
@@ -31,6 +33,25 @@ export interface NpcVisualTraits {
   auraStops: [string, string];
 }
 
+/** Pre/post-match dialogue for Parlour floor encounters. Rotating lines. */
+export interface NpcDialogue {
+  preMatch: string[];
+  /** Spoken when the HUMAN wins the match. */
+  winMatch: string[];
+  /** Spoken when the NPC keeps the floor. */
+  loseMatch: string[];
+}
+
+/** Mid-match barks tied to real game events. One line, punchy. */
+export interface NpcBarks {
+  /** You claim their discard. */
+  claimedAgainst: string[];
+  /** They reach tenpai (one tile from winning). */
+  tenpai: string[];
+  /** They win off your discard. */
+  youDealIn: string[];
+}
+
 export interface NpcCharacter {
   id: NpcId;
   name: string;
@@ -39,6 +60,10 @@ export interface NpcCharacter {
   blurb: string;
   visualTraits: NpcVisualTraits;
   voiceLines: Record<NpcEmotion, string[]>;
+  dialogue?: NpcDialogue;
+  barks?: NpcBarks;
+  /** AI personality multipliers (see docs/design/ai.md). Mentor has none. */
+  personality?: import('@/models/GameState').AIPersonalityParams;
   /**
    * Optional image overrides per emotion. When provided, CharacterPortrait
    * renders an `<img>` for that emotion instead of the SVG rig. Lets real
@@ -51,6 +76,30 @@ export interface NpcCharacter {
 export const NPCS: Record<NpcId, NpcCharacter> = {
   mei: {
     id: 'mei',
+    // Parlour data
+    personality: { claimAppetite: 0.8, fanGreed: 0.8, defenseBias: 0.6, speedBias: 1.0 },
+    dialogue: {
+      preMatch: [
+        "Uncle Gam said you're new! Me too. Well. Newer than him.",
+        'First floor rules: have fun, lose gracefully, snack often.',
+        'I learned from the stairs. You get a whole chair!',
+      ],
+      winMatch: [
+        'You WON! Okay teach me that discard later.',
+        'The lights came on! Did you see? Go on up!',
+        'Whoa. Floor two is going to eat you alive. Good luck!',
+      ],
+      loseMatch: [
+        'Heehee, the table likes me today. Rematch?',
+        'Even I win sometimes! Mostly here. Only here.',
+        "Don't pout — Uncle Gam has tips at the desk.",
+      ],
+    },
+    barks: {
+      claimedAgainst: ['Hey! I was using that!', 'Rude! Effective, but rude!'],
+      tenpai: ["Don't look at my face. I have NO tells. None.", 'Hmm hm hmm, nothing going on here.'],
+      youDealIn: ['Oh! Oh no. Thank you?', 'I will remember this kindness.'],
+    },
     name: 'Mei',
     archetype: 'Cheerful beginner',
     blurb: 'Plays for fun. Quick to celebrate, quick to cheer you on.',
@@ -112,6 +161,30 @@ export const NPCS: Record<NpcId, NpcCharacter> = {
 
   hana: {
     id: 'hana',
+    // Parlour data
+    personality: { claimAppetite: 1.0, fanGreed: 1.0, defenseBias: 1.0, speedBias: 1.0 },
+    dialogue: {
+      preMatch: [
+        'I have already counted the wall. Shall we?',
+        'The Counting House runs on precision. Welcome.',
+        'I will be tracking every discard. Politely.',
+      ],
+      winMatch: [
+        'Recounting... no, you earned it. Noted.',
+        'Your efficiency has improved. The ledger agrees.',
+        'Fifth floor. Mind Auntie Pearl. She sees everything.',
+      ],
+      loseMatch: [
+        'The numbers were kind to me. They usually are.',
+        'Your hand was two tiles less efficient. I counted.',
+        'A respectful margin. Try again.',
+      ],
+    },
+    barks: {
+      claimedAgainst: ['Noted. With a small frown.', 'Adjusting projections.'],
+      tenpai: ['My ledger balances in one tile.', 'The account is nearly settled.'],
+      youDealIn: ['That tile was a rounding error. Mine now.', 'Receipt issued. Thank you.'],
+    },
     name: 'Hana',
     archetype: 'Studious analyst',
     blurb: 'Counts every tile. Polite, methodical, never rushed.',
@@ -173,6 +246,30 @@ export const NPCS: Record<NpcId, NpcCharacter> = {
 
   yuki: {
     id: 'yuki',
+    // Parlour data
+    personality: { claimAppetite: 1.1, fanGreed: 1.3, defenseBias: 1.3, speedBias: 1.2 },
+    dialogue: {
+      preMatch: [
+        'The Master would not even stand up for you. Make me.',
+        "Almost. That is what he called me. Let's see your word.",
+        'Last door. Last warning.',
+      ],
+      winMatch: [
+        "...Take the stairs. Tell him 'almost' sends her regards.",
+        'Good. GOOD. Now ruin his evening like you ruined mine.',
+        'I have waited years for someone to walk past me. Go.',
+      ],
+      loseMatch: [
+        'Come back when you can hurt me.',
+        'The door stays shut. Sharpen up.',
+        'Not even close to almost.',
+      ],
+    },
+    barks: {
+      claimedAgainst: ['Cute. Do it twice.', 'Bold. Wrong, but bold.'],
+      tenpai: ["Door's closing.", 'Hear that? Hinges.'],
+      youDealIn: ['Pay the toll.', 'Toll booth. No refunds.'],
+    },
     name: 'Yuki',
     archetype: 'Cocky genius',
     blurb: 'Played a thousand hands. She has already read yours.',
@@ -238,6 +335,30 @@ export const NPCS: Record<NpcId, NpcCharacter> = {
 
   riko: {
     id: 'riko',
+    // Parlour data
+    personality: { claimAppetite: 1.6, fanGreed: 0.5, defenseBias: 0.4, speedBias: 1.8 },
+    dialogue: {
+      preMatch: [
+        'Rules are simple: I win before you finish sorting.',
+        'Sprint Room. No slow hands past this point.',
+        'Stretch first. I mean it.',
+      ],
+      winMatch: [
+        'You... out-paced me? Run it BACK.',
+        'Fine. FINE. The stairs are that way, speedster.',
+        'Lost on time. Never thought I would say that.',
+      ],
+      loseMatch: [
+        'Speed wins. Stretch next time.',
+        'Photo finish! Except I won by a mile.',
+        'Hydrate and try again.',
+      ],
+    },
+    barks: {
+      claimedAgainst: ['Stealing MY tempo? Bold.', 'Hey, I was sprinting with that!'],
+      tenpai: ['Last lap. Try and catch me.', 'Final stretch, baby!'],
+      youDealIn: ['And THAT is the finish line!', 'Tape. Broken. Done.'],
+    },
     name: 'Riko',
     archetype: 'Athletic challenger',
     blurb: 'Treats every hand like a sprint. Loud, fast, fun.',
@@ -299,6 +420,30 @@ export const NPCS: Record<NpcId, NpcCharacter> = {
 
   aki: {
     id: 'aki',
+    // Parlour data
+    personality: { claimAppetite: 0.9, fanGreed: 2.0, defenseBias: 0.9, speedBias: 0.5 },
+    dialogue: {
+      preMatch: [
+        'Show me something worth hanging. Cheap wins bore me.',
+        'The Collection accepts one currency: beautiful hands.',
+        'Mixed suits are forgeries. Remember that here.',
+      ],
+      winMatch: [
+        '...I am adding your hand to the collection.',
+        'Acceptable. More than acceptable. Go up.',
+        'You have taste after all. The seventh floor awaits.',
+      ],
+      loseMatch: [
+        'One suit. One vision. Do you see it now?',
+        'Your hand lacked a theme. Mine was an exhibition.',
+        'Come back with something worth framing.',
+      ],
+    },
+    barks: {
+      claimedAgainst: ['You would deface the set?', 'Vandal.'],
+      tenpai: ['The exhibit is nearly complete.', 'One piece remains.'],
+      youDealIn: ['A donation. How generous.', 'I will catalogue this victory.'],
+    },
     name: 'Aki',
     archetype: 'Gothic strategist',
     blurb: 'All elegance, no patience for sloppy play.',
@@ -360,6 +505,30 @@ export const NPCS: Record<NpcId, NpcCharacter> = {
 
   sora: {
     id: 'sora',
+    // Parlour data
+    personality: { claimAppetite: 0.8, fanGreed: 1.1, defenseBias: 1.4, speedBias: 0.9 },
+    dialogue: {
+      preMatch: [
+        'Your discards talk. I will be listening.',
+        'The Reading Room. Quiet, please.',
+        'Sit. Show me your patterns.',
+      ],
+      winMatch: [
+        '...I misread one line. Only one.',
+        'You learned to be quiet. Good. Yuki is loud.',
+        'The eighth floor door is open. It was always open.',
+      ],
+      loseMatch: [
+        'Fourth discard. That is where I knew.',
+        'You telegraph. We can fix that. Again.',
+        'Read more. Throw less.',
+      ],
+    },
+    barks: {
+      claimedAgainst: ['Predicted. Still rude.', 'As written.'],
+      tenpai: ['The poem needs one word.', 'Almost legible.'],
+      youDealIn: ['You told me you would throw that.', 'I heard it three turns ago.'],
+    },
     name: 'Sora',
     archetype: 'Cool prodigy',
     blurb: 'Reads the table like a poem. Says less, sees more.',
@@ -416,6 +585,186 @@ export const NPCS: Record<NpcId, NpcCharacter> = {
         'Sing it back.',
         'Quiet victory.',
       ],
+    },
+  },
+
+  /* ─────────────────────────────────────────
+     The Jade Parlour cast (story mode) — see docs/design/npcs.md
+     ───────────────────────────────────────── */
+
+  gam: {
+    id: 'gam',
+    name: 'Uncle Gam',
+    archetype: 'The mentor',
+    blurb: 'Front desk, forty years. Knows every habit in the building.',
+    visualTraits: {
+      faceShape: 'round',
+      hairStyle: 'short-bob',
+      hairColor: '#cfc6b8', // grey
+      skinColor: '#e8c39a',
+      eyeColor: '#4a3a28',
+      blushColor: '#d99a7a',
+      accessory: 'glasses',
+      auraStops: ['#f0e0b8', '#b08c4a'],
+    },
+    voiceLines: {
+      idle: ['Take your time, kid.', 'The table waits.', 'Watch the discards.'],
+      thinking: ['Mm.', 'In my day...', 'Patience.'],
+      smug: ['Heh.', 'Seen that trick before.', 'The old ways work.'],
+      surprised: ['Ho! Now THAT is new.', 'Well now.', 'Did not teach you that one.'],
+      frustrated: ['Mm. Sloppy.', 'We will talk after.', 'Tsk.'],
+      triumphant: ['Still got it.', 'The desk wins again.', 'Heh heh.'],
+    },
+    dialogue: {
+      preMatch: [
+        'Watch her discards, not her face.',
+        'Win or lose, come tell me about it.',
+        'The Parlour only sleeps. Wake it up.',
+      ],
+      winMatch: ['Heh. The lights look good, do they not?'],
+      loseMatch: ['Sit. What did the last discard tell you? Nothing? That was the lesson.'],
+    },
+  },
+
+  bo: {
+    id: 'bo',
+    name: 'Bo',
+    archetype: 'The builder',
+    blurb: 'Builds hands like roof beams: triplets, no gaps, nothing fancy.',
+    visualTraits: {
+      faceShape: 'angular',
+      hairStyle: 'short-bob',
+      hairColor: '#8a8378', // workshop grey
+      skinColor: '#e0b088',
+      eyeColor: '#3a2e1e',
+      blushColor: '#c98a6a',
+      accessory: 'earrings',
+      auraStops: ['#e0c8a0', '#8a6238'],
+    },
+    voiceLines: {
+      idle: ['Measure twice.', 'Good lumber today.', 'Steady now.', 'Frame first. Roof later.'],
+      thinking: ['Checking the joints.', 'Hm. Load-bearing?', 'Level it.', 'One more nail.'],
+      smug: ['That holds.', 'Built to last.', 'Good beam.', 'Solid.'],
+      surprised: ['That should not stand.', 'Huh. Clever joinery.', 'Inspect that later.'],
+      frustrated: ['Warped.', 'Crooked work.', 'Tear-down job.', 'Hm.'],
+      triumphant: ['Roof is ON.', 'Built it straight.', 'Inspection passed.', 'Sturdy as anything.'],
+    },
+    personality: { claimAppetite: 1.5, fanGreed: 1.2, defenseBias: 0.7, speedBias: 0.7 },
+    dialogue: {
+      preMatch: [
+        "Chows bend. Pungs hold. Sit down, I'll show you.",
+        'Third floor. Bring tiles, not toothpicks.',
+        'A good hand is a good house. Foundations first.',
+      ],
+      winMatch: [
+        'Hm. Good joints. Solid hand.',
+        'Passed inspection. Fourth floor is upstairs.',
+        'You build straight, kid. Go on up.',
+      ],
+      loseMatch: [
+        'Built mine straight. Yours had gaps.',
+        'Your frame wobbled on the third beam.',
+        'Back to the workbench. Again.',
+      ],
+    },
+    barks: {
+      claimedAgainst: ['Oi — that was a load-bearing tile.', 'My lumber!'],
+      tenpai: ["Frame's up. Just needs the roof.", 'One nail left.'],
+      youDealIn: ['Right onto the nail. Thanks.', 'Delivered to the worksite.'],
+    },
+  },
+
+  pearl: {
+    id: 'pearl',
+    name: 'Auntie Pearl',
+    archetype: 'The wall',
+    blurb: 'Never deals in. Has folded winning hands on principle.',
+    visualTraits: {
+      faceShape: 'round',
+      hairStyle: 'short-bob',
+      hairColor: '#dcd6cc', // silver
+      skinColor: '#ecc9a4',
+      eyeColor: '#4a342a',
+      blushColor: '#e09a8a',
+      accessory: 'earrings',
+      auraStops: ['#bfe8e0', '#4a9a8c'],
+    },
+    voiceLines: {
+      idle: ['Soup is on the side table.', 'Mind what you throw.', 'Mm-hm.', 'I see you, dear.'],
+      thinking: ['Stirring.', 'Let it simmer.', 'Not that one. Not yet.', 'Careful, careful.'],
+      smug: ['Safe as houses.', 'I never feed the table.', 'That one was free, dear.'],
+      surprised: ['Oh my.', 'Bold child.', 'Goodness.', 'Well I never.'],
+      frustrated: ['Hmph. Lukewarm.', 'The kettle disagrees.', 'Tsk tsk tsk.'],
+      triumphant: ['Dinner is served.', 'Sweet as red bean soup.', 'Auntie keeps the floor.'],
+    },
+    personality: { claimAppetite: 0.7, fanGreed: 0.8, defenseBias: 2.0, speedBias: 0.8 },
+    dialogue: {
+      preMatch: [
+        "Sit. Soup's on the side table. Mind what you throw.",
+        'Fifth floor rule, dear: the quiet hand keeps its points.',
+        'I have not dealt in since before you were born.',
+      ],
+      winMatch: [
+        'You watched the discards. Good. Have a bun.',
+        'Careful AND lucky. Up you go, dear.',
+        'The sixth floor is colder. Wear the win warmly.',
+      ],
+      loseMatch: [
+        'You fed the table all night, dear.',
+        'Every dangerous tile, straight into the pot. Tsk.',
+        'Watch what I throw next time. Or rather — what I do not.',
+      ],
+    },
+    barks: {
+      claimedAgainst: ['Tch. Greedy hands.', 'That was for the soup.'],
+      tenpai: ["Kettle's about to whistle, loves.", 'Almost suppertime.'],
+      youDealIn: ['You threw THAT? Oh, sweetheart.', 'Straight into the pot, dear.'],
+    },
+  },
+
+  jin: {
+    id: 'jin',
+    name: 'Master Jin',
+    archetype: 'The Parlour Master',
+    blurb: 'Thirty years undefeated. Plays four seats alone at night.',
+    visualTraits: {
+      faceShape: 'angular',
+      hairStyle: 'long-straight',
+      hairColor: '#e8e4dc', // white
+      skinColor: '#e4bd96',
+      eyeColor: '#23402e',
+      blushColor: '#b08a72',
+      accessory: 'choker',
+      auraStops: ['#3a7a5c', '#10241a'],
+    },
+    voiceLines: {
+      idle: ['The room is listening.', 'Play.', 'The seat remembers.', 'Mm.'],
+      thinking: ['...', 'The wall speaks softly.', 'Thirty years of this.', 'Yes. There.'],
+      smug: ['The house heard that coming.', 'Naturally.', 'An old line, well worn.'],
+      surprised: ['...Good.', 'The room just woke a little.', 'Again. Do that again.'],
+      frustrated: ['Good.', 'It should hurt.', 'The seat shifts.'],
+      triumphant: ['The seat stays warm.', 'Not yet. But closer.', 'The house wins. It always did.'],
+    },
+    personality: { claimAppetite: 1.2, fanGreed: 1.6, defenseBias: 1.6, speedBias: 1.0 },
+    dialogue: {
+      preMatch: [
+        'Thirty years this seat stayed warm for nobody. Sit.',
+        'Show me what the lower floors taught you.',
+        'Show me the house is alive.',
+      ],
+      winMatch: [
+        '...There it is. THERE it is. The Parlour is yours tonight, champion.',
+        'A win. The Jade Room remembers big hands — come show me one.',
+      ],
+      loseMatch: [
+        'Good. It should be hard. Again, whenever you are ready.',
+        'I am not going anywhere. Not anymore. Again.',
+      ],
+    },
+    barks: {
+      claimedAgainst: ['Good. Take. TAKE.', 'Yes. Fight me for it.'],
+      tenpai: ['Listen. The room holds its breath.', 'The wall goes quiet.'],
+      youDealIn: ['The house always heard everything.', 'An old door, an old key.'],
     },
   },
 };

@@ -37,11 +37,25 @@ export interface MeldInfo {
   isConcealed: boolean;
 }
 
+/**
+ * AI personality multipliers layered on a skill tier (canonical docs in
+ * engine/ai/personality.ts; defined here so the model layer stays
+ * import-cycle-free).
+ */
+export interface AIPersonalityParams {
+  claimAppetite: number;
+  fanGreed: number;
+  defenseBias: number;
+  speedBias: number;
+}
+
 export interface Player {
   id: string;
   name: string;
   isAI: boolean;
   aiDifficulty?: 'easy' | 'medium' | 'hard';
+  /** Personality multipliers for this AI's decisions (NPC flavor). */
+  aiPersonality?: AIPersonalityParams;
   hand: Tile[];
   melds: MeldInfo[];
   score: number;

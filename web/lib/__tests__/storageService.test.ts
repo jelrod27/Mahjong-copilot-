@@ -104,12 +104,26 @@ describe('storageService', () => {
   });
 
   it('saveGame + loadGame survive Date and tile roundtrip', () => {
-    // Minimal hand snapshot to cover tile+date deserialization
+    // Minimal hand snapshot to cover tile+date deserialization.
+    // Requires exactly 4 players so the saved-game validator accepts it.
+    function minPlayer(id: string): import('@/models/GameState').Player {
+      return {
+        id,
+        name: id,
+        isAI: false,
+        hand: [],
+        melds: [],
+        score: 0,
+        seatWind: WindTile.EAST,
+        isDealer: false,
+        flowers: [],
+      };
+    }
     const game: Partial<GameState> = {
       id: 'test-hand',
       phase: 'playing' as any,
       turnPhase: 'draw',
-      players: [],
+      players: [minPlayer('p1'), minPlayer('p2'), minPlayer('p3'), minPlayer('p4')],
       currentPlayerIndex: 0,
       wall: [],
       deadWall: [],

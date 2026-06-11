@@ -23,7 +23,7 @@ A separate **reliability and correctness** audit (below) reviewed the game engin
 - **Description:** `JSON.parse` in `loadGame` feeds `gameStateFromJson` / `matchStateFromJson` with only a version gate and narrow `minFaan` normalisation. A crafted localStorage payload can supply impossible walls, hands, or oversized arrays, causing incorrect play state, self-DoS, or silent inconsistency with engine invariants.
 - **Fix:** Add Zod (or equivalent) schemas at the storage boundary, or extend `*FromJson` with validators: enforce 144-tile multiset legality, caps on array lengths (wall, deadWall, hands, discards, flowers, turnHistory), required fields, and reject the whole snapshot with `clearSavedGame()` plus user-visible reset rather than partial revival.
 
-- **Status:** Open
+- **Status:** Fixed — hand-rolled validator at web/lib/savedGameValidator.ts, wired into loadGame; rejected snapshots are cleared whole.
 
 ### [Before-multiplayer] Seedable CSPRNG and seed+log replay format
 

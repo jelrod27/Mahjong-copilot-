@@ -82,7 +82,7 @@ tests so future changes (including the planned refactor of this hook) have a saf
 
 ## Commands you will need
 
-All from `/Users/justinelrod/Projects/Mahjong-copilot-/web`:
+All from the `web/` directory at the repository root:
 
 | Purpose | Command | Expected on success |
 |---------|---------|---------------------|

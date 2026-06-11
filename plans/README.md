@@ -25,6 +25,8 @@ conventions: branch `feature/<description>`, conventional-style commit messages
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED
 (with one-line rationale — finding fixed independently or approach abandoned).
+Dependency modifiers: "(soft)" = recommended ordering, not a hard blocker — the plan
+can proceed alone if the dependency is delayed.
 
 ## Execution record (2026-06-11)
 

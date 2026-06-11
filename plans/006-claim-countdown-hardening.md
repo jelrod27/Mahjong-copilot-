@@ -86,7 +86,7 @@ not in the updater.
 
 ## Commands you will need
 
-All from `/Users/justinelrod/Projects/Mahjong-copilot-/web`:
+All from the `web/` directory at the repository root:
 
 | Purpose | Command | Expected on success |
 |---------|---------|---------------------|

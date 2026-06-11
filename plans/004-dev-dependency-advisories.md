@@ -40,7 +40,7 @@ history of keeping the audit clean (commit `930e3e2` "clear npm audit advisories
 
 ## Commands you will need
 
-All from `/Users/justinelrod/Projects/Mahjong-copilot-/web`:
+All from the `web/` directory at the repository root:
 
 | Purpose | Command | Expected on success |
 |---------|---------|---------------------|

@@ -92,7 +92,7 @@ modified") is now met. The fix: validate the parsed snapshot and reject the WHOL
 
 ## Commands you will need
 
-All from `/Users/justinelrod/Projects/Mahjong-copilot-/web`:
+All from the `web/` directory at the repository root:
 
 | Purpose | Command | Expected on success |
 |---------|---------|---------------------|

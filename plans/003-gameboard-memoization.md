@@ -78,7 +78,7 @@ low-risk change with visible effect during AI turns (3 of every 4 turns).
 
 ## Commands you will need
 
-All from `/Users/justinelrod/Projects/Mahjong-copilot-/web`:
+All from the `web/` directory at the repository root:
 
 | Purpose | Command | Expected on success |
 |---------|---------|---------------------|

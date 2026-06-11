@@ -53,7 +53,7 @@ deletion for the dead module and archival (not deletion) for the docs.
 
 ## Commands you will need
 
-All from `/Users/justinelrod/Projects/Mahjong-copilot-/web` unless noted:
+All from `<repo-root>/web` unless noted:
 
 | Purpose | Command | Expected on success |
 |---------|---------|---------------------|

@@ -7,12 +7,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, GamePhase, ClaimType } from '@/models/GameState';
 import { MatchState, GameMode } from '@/models/MatchState';
 import { Tile, TileType, TileFactory, tilesMatch } from '@/models/Tile';
-import { initializeGame, applyAction } from '@/engine/turnManager';
+import { initializeGame, applyAction, buildWinScoringContext, getLegalClaims } from '@/engine/turnManager';
 import { initializeMatch, advanceMatch, startNextHand } from '@/engine/matchManager';
-import { getAvailableClaims, getBestClaimSubmission } from '@/engine/claiming';
+import { getBestClaimSubmission } from '@/engine/claiming';
 import { isWinningHand, canPlayerWin } from '@/engine/winDetection';
 import { calculateScore } from '@/engine/scoring';
-import { AvailableClaim, ScoringContext, ScoringResult, WinMethod, TileClassification } from '@/engine/types';
+import { AvailableClaim, ScoringResult, TileClassification } from '@/engine/types';
 import { calculatePayment } from '@/engine/scoring';
 import { getAIDecision, getAIClaimDecision } from '@/engine/ai';
 import { getTutorAdvice } from '@/engine/tutor';
@@ -326,16 +326,7 @@ export default function useGameController(
     if (!current || current.phase !== GamePhase.PLAYING || current.turnPhase !== 'claim') return;
     if (current.currentPlayerIndex !== humanIndex) return;
     if (current.lastDiscardedBy === HUMAN_ID) return;
-    const humanPlayer = current.players[humanIndex];
-    const discarderIndex = current.players.findIndex(p => p.id === current.lastDiscardedBy);
-    if (discarderIndex === -1 || !current.lastDiscardedTile) return;
-    const claims = getAvailableClaims(
-      current.lastDiscardedTile,
-      humanPlayer,
-      humanIndex,
-      discarderIndex,
-      current.players.length,
-    );
+    const claims = getLegalClaims(current, humanIndex);
     const best = getBestClaimSubmission(claims);
     if (!best) return;
     const next = doAction(HUMAN_ID, { type: 'CLAIM', claimType: best.claimType, tilesFromHand: best.tilesFromHand });
@@ -626,7 +617,15 @@ export default function useGameController(
       processingRef.current = true;
       const timer = setTimeout(() => {
         const decision = getAIDecision(game, game.currentPlayerIndex);
-        doAction(currentPlayer.id, decision.action);
+        const applied = doAction(currentPlayer.id, decision.action);
+        if (!applied && decision.action.type !== 'DISCARD') {
+          // Engine rejected a special action (win/kong) — fall back to a
+          // plain discard so the game can never stall on an AI turn.
+          const live = gameRef.current;
+          const aiPlayer = live?.players[live.currentPlayerIndex];
+          const fallback = aiPlayer?.hand.find(t => t.type !== TileType.BONUS);
+          if (fallback) doAction(currentPlayer.id, { type: 'DISCARD', tile: fallback });
+        }
         processingRef.current = false;
       }, currentDelays.discard);
       return () => { clearTimeout(timer); processingRef.current = false; };
@@ -637,14 +636,12 @@ export default function useGameController(
       processingRef.current = true;
       // Brief delay so the claim phase is visible, then submit
       const timer = setTimeout(() => {
-        const discarderIndex = game.players.findIndex(p => p.id === game.lastDiscardedBy);
-        if (game.lastDiscardedTile && discarderIndex !== -1) {
-          const claims = getAvailableClaims(
-            game.lastDiscardedTile, currentPlayer, game.currentPlayerIndex,
-            discarderIndex, game.players.length
-          );
+        const claims = getLegalClaims(game, game.currentPlayerIndex);
+        if (claims.length > 0) {
           const decision = getAIClaimDecision(game, game.currentPlayerIndex, claims);
-          doAction(currentPlayer.id, decision.action);
+          const applied = doAction(currentPlayer.id, decision.action);
+          // A rejected claim must degrade to a pass, never a stall
+          if (!applied) doAction(currentPlayer.id, { type: 'PASS' });
         } else {
           doAction(currentPlayer.id, { type: 'PASS' });
         }
@@ -682,13 +679,9 @@ export default function useGameController(
       return;
     }
 
-    const humanPlayer = game.players[humanIndex];
-    const discarderIndex = game.players.findIndex(p => p.id === game.lastDiscardedBy);
-    if (discarderIndex === -1 || !game.lastDiscardedTile) return;
+    if (!game.lastDiscardedTile || !game.lastDiscardedBy) return;
 
-    const claims = getAvailableClaims(
-      game.lastDiscardedTile, humanPlayer, humanIndex, discarderIndex, game.players.length
-    );
+    const claims = getLegalClaims(game, humanIndex);
 
     if (claims.length > 0) {
       setClaimOptions(claims);
@@ -756,37 +749,17 @@ export default function useGameController(
       if (winner && game.winningTile) {
         try {
           const isSelfDrawn = game.isSelfDrawn ?? false;
-          let winMethod: WinMethod = isSelfDrawn ? 'selfDraw' : 'discard';
-          if (game.isRobKongOpportunity && !isSelfDrawn) {
-            winMethod = 'robKong';
-          } else if (game.isKongReplacement && isSelfDrawn) {
-            winMethod = 'kongReplacement';
-          } else if (game.wall.length === 0) {
-            winMethod = isSelfDrawn ? 'lastTileDraw' : 'lastTileClaim';
-          }
-
           const winnerIndex = game.players.findIndex(p => p.id === game.winnerId);
-          const discarderIndex = game.lastDiscardedBy
-            ? game.players.findIndex(p => p.id === game.lastDiscardedBy)
-            : undefined;
 
-          const context: ScoringContext = {
-            winningTile: game.winningTile,
-            isSelfDrawn,
-            seatWind: winner.seatWind,
-            prevailingWind: game.prevailingWind,
-            isConcealed: winner.melds.filter(m => !m.isConcealed).length === 0,
-            flowers: winner.flowers,
-            winMethod,
-            isDealer: winner.isDealer,
-            discarderIndex: !isSelfDrawn ? discarderIndex : undefined,
-          };
-          result = calculateScore(winner.hand, winner.melds, context);
-          result.payment = calculatePayment(
-            result, winnerIndex,
-            !isSelfDrawn ? discarderIndex : undefined,
-            isSelfDrawn,
-          );
+          const context = buildWinScoringContext(game);
+          if (context) {
+            result = calculateScore(winner.hand, winner.melds, context);
+            result.payment = calculatePayment(
+              result, winnerIndex,
+              context.discarderIndex,
+              isSelfDrawn,
+            );
+          }
         } catch (e) {
           Sentry.captureException(e);
         }

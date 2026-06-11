@@ -6,7 +6,8 @@
 import { Tile, TileType, TileSuit, tileKey, tilesMatch } from '@/models/Tile';
 import { GameState } from '@/models/GameState';
 import { AIDecision, AvailableClaim } from '../types';
-import { isWinningHand, canPlayerWin, calculateShanten } from '../winDetection';
+import { calculateShanten } from '../winDetection';
+import { canDeclareSelfDrawnWin } from '../turnManager';
 import {
   tileDangerScore, isSafeTile, tileDiscardPriority,
   isOpponentDangerous, detectOpponentSuitFocus,
@@ -38,7 +39,7 @@ export function getHardDiscard(gameState: GameState, playerIndex: number): AIDec
   const hand = player.hand;
 
   // Check for self-drawn win
-  if (canPlayerWin(hand, player.melds)) {
+  if (canDeclareSelfDrawnWin(gameState, playerIndex)) {
     return { action: { type: 'DECLARE_WIN' }, reasoning: 'Hard AI: winning hand' };
   }
 

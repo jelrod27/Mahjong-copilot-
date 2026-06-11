@@ -10,9 +10,10 @@ import {
   MeldInfo, ClaimRequest, TurnPhase, ClaimType, DrawResult,
 } from '@/models/GameState';
 import { TileFactory } from '@/models/Tile';
-import { GameAction, ScoringContext, DEFAULT_MIN_FAAN } from './types';
-import { isWinningHand, canPlayerWin, calculateShanten } from './winDetection';
-import { getAvailableClaims, resolveClaims } from './claiming';
+import { GameAction, ScoringContext, WinMethod, DEFAULT_MIN_FAAN } from './types';
+import { createRng, shuffleInPlace, randomSeed } from './rng';
+import { isWinningHand, canPlayerWin, isTenpai } from './winDetection';
+import { getAvailableClaims, resolveClaimRequests } from './claiming';
 import { meetsMinFaan } from './scoring';
 
 /**
@@ -88,13 +89,17 @@ function applyDeferredKong(state: GameState, declarerIndex: number, kongTile: Ti
 
   const wallKey = state.deadWall.length > 0 ? 'deadWall' : 'wall';
 
-  return {
+  const result: GameState = {
     ...updatedState,
     players: newPlayers,
     [wallKey]: newSourceWall,
     lastDrawnTile: replacement,
     isKongReplacement: true,
   };
+  if (replacement.type === TileType.BONUS) {
+    return handleFlowerDraw(result, declarerIndex, replacement);
+  }
+  return result;
 }
 
 // ============================================
@@ -115,19 +120,21 @@ export interface GameOptions {
    * Solo / learning modes may pass 1 or 0 to let beginners complete hands.
    */
   minFaan?: number;
+  /**
+   * Deterministic seed. The same seed always produces the same shuffle and
+   * the same AI noise, so a (seed, action-sequence) pair replays exactly.
+   * Omit for a random game.
+   */
+  seed?: string;
 }
 
 /**
  * Create a new game with shuffled tiles, dealt hands, and initial state.
  */
 export function initializeGame(options: GameOptions): GameState {
+  const seed = options.seed ?? randomSeed();
   const tiles = TileFactory.getAllTiles();
-
-  // Shuffle
-  for (let i = tiles.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
-  }
+  shuffleInPlace(tiles, createRng(seed));
 
   const dealerIndex = options.dealerIndex ?? 0;
   const winds: WindTile[] = options.seatWinds ?? [WindTile.EAST, WindTile.SOUTH, WindTile.WEST, WindTile.NORTH];
@@ -160,10 +167,11 @@ export function initializeGame(options: GameOptions): GameState {
   tileIndex += 14;
   const wall = tiles.slice(tileIndex);
 
-  const gameId = `game_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  const gameId = `game_${seed}`;
 
   let state: GameState = {
     id: gameId,
+    seed,
     variant: options.variant || 'Hong Kong Mahjong',
     phase: GamePhase.PLAYING,
     turnPhase: 'draw',
@@ -184,9 +192,10 @@ export function initializeGame(options: GameOptions): GameState {
     minFaan: options.minFaan ?? DEFAULT_MIN_FAAN,
   };
 
-  // Handle initial flowers for all players
+  // Handle initial flowers for all players, starting from the dealer
+  // (HK convention: replacement draws proceed in turn order from East)
   for (let i = 0; i < players.length; i++) {
-    state = handleFlowers(state, i);
+    state = handleFlowers(state, (dealerIndex + i) % players.length);
   }
 
   // Sort hands
@@ -311,6 +320,8 @@ function handleDiscard(state: GameState, playerIndex: number, tile: Tile): GameS
   const player = state.players[playerIndex];
   const tileInHand = player.hand.find(t => t.id === tile.id);
   if (!tileInHand) return null;
+  // Bonus tiles are never legal discards — they belong in the flower display
+  if (tileInHand.type === TileType.BONUS) return null;
 
   const newPlayers = [...state.players];
   newPlayers[playerIndex] = {
@@ -356,6 +367,8 @@ function handleDiscard(state: GameState, playerIndex: number, tile: Tile): GameS
     claimablePlayers: allNonDiscarderIds,
     passedPlayers: [],
     currentPlayerIndex: (playerIndex + 1) % state.players.length,
+    // The kong-replacement window closes once the player discards
+    isKongReplacement: undefined,
     turnStartedAt: new Date(),
   };
 
@@ -369,11 +382,13 @@ function handleSelfDrawnWin(state: GameState, playerIndex: number): GameState | 
   const player = state.players[playerIndex];
   if (!canPlayerWin(player.hand, player.melds)) return null;
   if (!state.lastDrawnTile) return null;
+  // The drawn tile must actually be in this player's hand — guards against
+  // stale lastDrawnTile from another player's turn.
+  if (!player.hand.find(t => t.id === state.lastDrawnTile!.id)) return null;
 
   // Enforce HK minimum faan threshold: a hand must score >= minFaan to legally win.
   const ctx = buildScoringContext(state, player, state.lastDrawnTile, {
     isSelfDrawn: true,
-    winMethod: state.isKongReplacement ? 'kongReplacement' : 'selfDraw',
   });
   if (!meetsMinFaan(player.hand, player.melds, ctx)) return null;
 
@@ -383,6 +398,7 @@ function handleSelfDrawnWin(state: GameState, playerIndex: number): GameState | 
     winnerId: player.id,
     winningTile: state.lastDrawnTile,
     isSelfDrawn: true,
+    winMethod: ctx.winMethod,
     finishedAt: new Date(),
   };
 }
@@ -554,6 +570,10 @@ function handleClaim(
   const player = state.players[playerIndex];
   const discardedTile = state.lastDiscardedTile;
 
+  // During a rob-the-kong window the tile is not a real discard — it is
+  // still in the kong declarer's hand. Only a win may take it.
+  if (state.isRobKongOpportunity && claimType !== 'win') return null;
+
   // Validate the claim
   if (claimType === 'win') {
     const handWithTile = [...player.hand, discardedTile];
@@ -561,18 +581,22 @@ function handleClaim(
     // Enforce HK minimum faan threshold on discard-wins as well.
     const ctx = buildScoringContext(state, player, discardedTile, {
       isSelfDrawn: false,
-      winMethod: state.isRobKongOpportunity ? 'robKong' : 'discard',
       discarderIndex: state.players.findIndex(p => p.id === state.lastDiscardedBy),
     });
     if (!meetsMinFaan(player.hand, player.melds, ctx)) return null;
   } else {
-    // Validate tiles from hand exist
+    // Validate tiles from hand exist and are distinct physical tiles
+    if (new Set(tilesFromHand.map(t => t.id)).size !== tilesFromHand.length) return null;
     for (const t of tilesFromHand) {
       if (!player.hand.find(h => h.id === t.id)) return null;
     }
     const meldTiles = [...tilesFromHand, discardedTile];
     // Validate meld formation
     if (claimType === 'chow') {
+      // Chow is only legal for the player to the discarder's left (next in turn order)
+      const discarderIdx = state.players.findIndex(p => p.id === state.lastDiscardedBy);
+      if (discarderIdx === -1) return null;
+      if (playerIndex !== (discarderIdx + 1) % state.players.length) return null;
       const sorted = [...meldTiles].sort((a, b) => (a.number || 0) - (b.number || 0));
       if (sorted.length !== 3) return null;
       if (sorted.some(t => t.type !== TileType.SUIT)) return null;
@@ -628,36 +652,37 @@ function handleClaim(
 
 function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameState {
   const discardedTile = state.lastDiscardedTile!;
-
-  // Build priority map and resolve
-  const priorityMap: Record<ClaimType, number> = { win: 4, kong: 3, pung: 2, chow: 1 };
   const discarderIndex = state.players.findIndex(p => p.id === state.lastDiscardedBy);
 
-  // Sort by priority desc, then by distance from discarder asc
-  const sorted = [...claims].sort((a, b) => {
-    const priDiff = priorityMap[b.claimType] - priorityMap[a.claimType];
-    if (priDiff !== 0) return priDiff;
-    const idxA = state.players.findIndex(p => p.id === a.playerId);
-    const idxB = state.players.findIndex(p => p.id === b.playerId);
-    const distA = ((idxA - discarderIndex) + state.players.length) % state.players.length;
-    const distB = ((idxB - discarderIndex) + state.players.length) % state.players.length;
-    return distA - distB;
-  });
-
-  const winner = sorted[0];
+  const playerIndexMap = Object.fromEntries(state.players.map((p, i) => [p.id, i]));
+  const winner = resolveClaimRequests(claims, discarderIndex, state.players.length, playerIndexMap)!;
   const winnerIndex = state.players.findIndex(p => p.id === winner.playerId);
   const player = state.players[winnerIndex];
 
   // Apply the winning claim
   if (winner.claimType === 'win') {
     const newDiscardPile = state.discardPile.filter(t => t.id !== discardedTile.id);
+    // The claimed tile joins the winner's hand: keeps the finished state
+    // consistent with self-draw wins (14 effective tiles in hand) and
+    // conserves the 144-tile invariant. On a robbed kong the tile is still
+    // in the declarer's hand rather than the pile — remove it from there.
+    const winPlayers = state.players.map(p => ({
+      ...p,
+      hand: p.hand.filter(t => t.id !== discardedTile.id),
+    }));
+    winPlayers[winnerIndex] = {
+      ...winPlayers[winnerIndex],
+      hand: [...winPlayers[winnerIndex].hand, discardedTile],
+    };
     return {
       ...state,
+      players: winPlayers,
       discardPile: newDiscardPile,
       phase: GamePhase.FINISHED,
       winnerId: player.id,
       winningTile: discardedTile,
       isSelfDrawn: false,
+      winMethod: deriveWinMethod(state, false),
       finishedAt: new Date(),
       pendingClaims: [],
       claimablePlayers: [],
@@ -690,6 +715,10 @@ function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameSta
     claimablePlayers: [],
     passedPlayers: [],
     turnPhase: winner.claimType === 'kong' ? 'draw' : 'discard',
+    // The claimant did not draw: clear draw-derived state so a follow-up
+    // DECLARE_WIN cannot masquerade as a self-draw on a stale tile.
+    lastDrawnTile: undefined,
+    isKongReplacement: undefined,
     turnStartedAt: new Date(),
   };
 
@@ -821,38 +850,54 @@ function handleWallExhaustion(state: GameState): GameState {
 
 /**
  * Determine whether a player is tenpai (one tile away from winning).
- * Accounts for exposed melds by padding the concealed hand with one representative
- * tile per meld tile so calculateShanten sees a 13-tile equivalent.
- *
- * Standard hands + seven pairs + thirteen orphans are covered via calculateShanten.
+ * Uses the exact brute-force check (all 34 tile kinds through canPlayerWin)
+ * rather than the heuristic shanten estimate, because tenpai here has
+ * scoring consequences: it decides the wall-exhaustion noten settlement.
  */
 export function isPlayerTenpai(player: Player): boolean {
-  const concealed = player.hand.filter(t => t.type !== TileType.BONUS);
-  const meldTiles = player.melds.flatMap(m => m.tiles);
-  // Treat the kong's 4th tile as a "bonus" for counting: shanten logic assumes
-  // 13 tiles pre-draw, and each exposed kong contributes one extra tile we
-  // should ignore so the handSize+meldTiles math adds to 13.
-  const kongExtras = player.melds.filter(m => m.type === 'kong').length;
-  const combined = [...concealed, ...meldTiles];
-  // Expected canonical size is 13 tiles (pre-draw). Kong normalization below
-  // drops each kong to 3 tiles, so expected is always 13 regardless of kong count.
-  const expected = 13;
-  if (combined.length !== expected) return false;
-  // Drop one tile per exposed kong to normalize back to the 13-tile model
-  // calculateShanten expects. Kong tiles are guaranteed identical, so removing
-  // one doesn't break decomposition — the remaining three still form a pung.
-  const normalized = [...concealed];
-  for (const meld of player.melds) {
-    const count = meld.type === 'kong' ? 3 : meld.tiles.length;
-    normalized.push(...meld.tiles.slice(0, count));
+  return isTenpai(player.hand, player.melds);
+}
+
+/**
+ * Derive how a prospective win was obtained from live game state.
+ * Single source of truth for win methods: the legality gate, the finished
+ * state, and the UI's scoring context all flow through this.
+ */
+export function deriveWinMethod(state: GameState, isSelfDrawn: boolean): WinMethod {
+  if (isSelfDrawn) {
+    if (state.isKongReplacement) return 'kongReplacement';
+    if (state.wall.length === 0) return 'lastTileDraw';
+    return 'selfDraw';
   }
-  if (normalized.length !== 13) return false;
-  return calculateShanten(normalized) === 0;
+  if (state.isRobKongOpportunity) return 'robKong';
+  if (state.wall.length === 0) return 'lastTileClaim';
+  return 'discard';
+}
+
+function totalDiscards(state: GameState): number {
+  return Object.values(state.playerDiscards).reduce((sum, d) => sum + d.length, 0);
+}
+
+/** Heavenly hand: dealer self-draws a win on the first draw, before any discard or claim. */
+function isHeavenlyWin(state: GameState, player: Player, isSelfDrawn: boolean): boolean {
+  return isSelfDrawn && player.isDealer &&
+    totalDiscards(state) === 0 &&
+    state.players.every(p => p.melds.length === 0);
+}
+
+/** Earthly hand: a non-dealer wins by claiming the dealer's very first discard. */
+function isEarthlyWin(state: GameState, player: Player, isSelfDrawn: boolean): boolean {
+  if (isSelfDrawn || player.isDealer) return false;
+  const dealer = state.players.find(p => p.isDealer);
+  if (!dealer || state.lastDiscardedBy !== dealer.id) return false;
+  return totalDiscards(state) === 1 &&
+    state.players.every(p => p.melds.length === 0);
 }
 
 /**
  * Build a ScoringContext from the current game state for a given player + winning tile.
- * Used by the min-faan legality gate on win declarations.
+ * Used by the min-faan legality gate on win declarations and, via
+ * buildWinScoringContext, by final scoring.
  */
 function buildScoringContext(
   state: GameState,
@@ -868,11 +913,80 @@ function buildScoringContext(
     prevailingWind: state.prevailingWind,
     isConcealed,
     flowers: player.flowers,
-    winMethod: opts.winMethod,
+    winMethod: opts.winMethod ?? deriveWinMethod(state, opts.isSelfDrawn),
     isDealer: player.isDealer,
     discarderIndex: opts.discarderIndex,
+    isHeavenly: isHeavenlyWin(state, player, opts.isSelfDrawn),
+    isEarthly: isEarthlyWin(state, player, opts.isSelfDrawn),
     minFaan: state.minFaan ?? DEFAULT_MIN_FAAN,
   };
+}
+
+/**
+ * Can this player legally declare a self-drawn win right now?
+ * Mirrors handleSelfDrawnWin's gates (winning shape + drawn tile in hand +
+ * minimum faan) without mutating state. AI tiers MUST use this rather than
+ * bare canPlayerWin, or they will declare wins the engine rejects.
+ */
+export function canDeclareSelfDrawnWin(state: GameState, playerIndex: number): boolean {
+  if (state.turnPhase !== 'discard' || state.currentPlayerIndex !== playerIndex) return false;
+  const player = state.players[playerIndex];
+  if (!state.lastDrawnTile) return false;
+  if (!player.hand.find(t => t.id === state.lastDrawnTile!.id)) return false;
+  if (!canPlayerWin(player.hand, player.melds)) return false;
+  const ctx = buildScoringContext(state, player, state.lastDrawnTile, { isSelfDrawn: true });
+  return meetsMinFaan(player.hand, player.melds, ctx);
+}
+
+/**
+ * The claims a player may legally make on the current discard, with win
+ * claims filtered through the minimum-faan gate (a winning shape below the
+ * table minimum is not a legal claim). Use this — not raw getAvailableClaims —
+ * when offering claims to AI or UI.
+ */
+export function getLegalClaims(state: GameState, playerIndex: number) {
+  if (!state.lastDiscardedTile || !state.lastDiscardedBy) return [];
+  const player = state.players[playerIndex];
+  const discarderIndex = state.players.findIndex(p => p.id === state.lastDiscardedBy);
+  if (discarderIndex === -1 || discarderIndex === playerIndex) return [];
+
+  let claims = getAvailableClaims(
+    state.lastDiscardedTile, player, playerIndex, discarderIndex, state.players.length,
+  );
+
+  // Rob-the-kong window: only wins may take the tile
+  if (state.isRobKongOpportunity) {
+    claims = claims.filter(c => c.claimType === 'win');
+  }
+
+  return claims.filter(c => {
+    if (c.claimType !== 'win') return true;
+    const ctx = buildScoringContext(state, player, state.lastDiscardedTile!, {
+      isSelfDrawn: false,
+      discarderIndex,
+    });
+    return meetsMinFaan(player.hand, player.melds, ctx);
+  });
+}
+
+/**
+ * Build the ScoringContext for a FINISHED game's winner. Returns null when the
+ * game has no winner (draw) or state is inconsistent. UI layers should use
+ * this instead of reconstructing win context themselves.
+ */
+export function buildWinScoringContext(state: GameState): ScoringContext | null {
+  if (!state.winnerId || !state.winningTile) return null;
+  const winner = state.players.find(p => p.id === state.winnerId);
+  if (!winner) return null;
+  const isSelfDrawn = state.isSelfDrawn ?? false;
+  const discarderIndex = !isSelfDrawn && state.lastDiscardedBy
+    ? state.players.findIndex(p => p.id === state.lastDiscardedBy)
+    : undefined;
+  return buildScoringContext(state, winner, state.winningTile, {
+    isSelfDrawn,
+    winMethod: state.winMethod,
+    discarderIndex: discarderIndex === -1 ? undefined : discarderIndex,
+  });
 }
 
 // ============================================
@@ -898,7 +1012,17 @@ function getAllClaims(
 
   for (let i = 0; i < players.length; i++) {
     if (i === discarderIndex) continue;
-    const claims = getAvailableClaims(discardedTile, players[i], i, discarderIndex, players.length);
+    const claims = getAvailableClaims(discardedTile, players[i], i, discarderIndex, players.length)
+      .filter(c => {
+        // Win claims below the table's minimum faan are not legal claims —
+        // don't open a claim window for them.
+        if (c.claimType !== 'win') return true;
+        const ctx = buildScoringContext(state, players[i], discardedTile, {
+          isSelfDrawn: false,
+          discarderIndex,
+        });
+        return meetsMinFaan(players[i].hand, players[i].melds, ctx);
+      });
     if (claims.length > 0) {
       results.push({ playerId: players[i].id, claims });
     }

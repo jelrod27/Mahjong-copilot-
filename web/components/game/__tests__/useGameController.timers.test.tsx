@@ -31,6 +31,9 @@ const applyActionMock = vi.fn();
 vi.mock('@/engine/turnManager', () => ({
   initializeGame: vi.fn(),
   applyAction: (...args: unknown[]) => applyActionMock(...args),
+  buildWinScoringContext: vi.fn(() => null),
+  // Delegate to the claiming mock so tests arm claims in one place
+  getLegalClaims: (...args: unknown[]) => getAvailableClaimsMock(...args),
 }));
 
 const advanceMatchMock = vi.fn((m: MatchState) => m);
@@ -52,6 +55,7 @@ vi.mock('@/engine/claiming', () => ({
 vi.mock('@/engine/winDetection', () => ({
   isWinningHand: vi.fn(() => false),
   canPlayerWin: vi.fn(() => false),
+  calculateShanten: vi.fn(() => 8),
 }));
 
 vi.mock('@/engine/scoring', () => ({

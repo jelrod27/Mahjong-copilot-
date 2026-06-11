@@ -20,6 +20,9 @@ export enum PlayerAction {
 
 export type TurnPhase = 'draw' | 'discard' | 'claim' | 'endOfTurn';
 
+/** How the winning tile was obtained */
+export type WinMethod = 'selfDraw' | 'discard' | 'robKong' | 'kongReplacement' | 'lastTileDraw' | 'lastTileClaim';
+
 export type ClaimType = 'chow' | 'pung' | 'kong' | 'win';
 
 export interface ClaimRequest {
@@ -57,6 +60,8 @@ export interface GameTurn {
 
 export interface GameState {
   id: string;
+  /** Deterministic seed for this hand: drives the shuffle and AI noise. */
+  seed?: string;
   variant: string;
   phase: GamePhase;
   turnPhase: TurnPhase;
@@ -77,6 +82,8 @@ export interface GameState {
   winnerId?: string;
   winningTile?: Tile;
   isSelfDrawn?: boolean;
+  /** How the winner obtained the winning tile. Set when the game finishes with a winner. */
+  winMethod?: WinMethod;
   isRobKongOpportunity?: boolean;
   isKongReplacement?: boolean;
   finalScores: Record<string, number>;

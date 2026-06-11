@@ -5,7 +5,7 @@
  */
 
 import { Tile, TileSuit, TileType, tilesMatch, tileKey } from '@/models/Tile';
-import { Player, ClaimType, MeldInfo } from '@/models/GameState';
+import { Player, ClaimType, ClaimRequest, MeldInfo } from '@/models/GameState';
 import { AvailableClaim } from './types';
 import { isWinningHand, canPlayerWin } from './winDetection';
 
@@ -195,6 +195,29 @@ export function resolveClaims(
     // Higher priority wins
     if (b.priority !== a.priority) return b.priority - a.priority;
     // On tie, closer to discarder in turn order wins
+    const distA = ((playerIndexMap[a.playerId] - discarderIndex) + numPlayers) % numPlayers;
+    const distB = ((playerIndexMap[b.playerId] - discarderIndex) + numPlayers) % numPlayers;
+    return distA - distB;
+  })[0];
+}
+
+/**
+ * Resolve competing pending claim requests using the same priority rule as
+ * resolveClaims (win > kong > pung > chow; tie goes to the claimant closest
+ * to the discarder in turn order). Single source of truth for the turn
+ * manager's claim resolution.
+ */
+export function resolveClaimRequests(
+  claims: ClaimRequest[],
+  discarderIndex: number,
+  numPlayers: number,
+  playerIndexMap: Record<string, number>,
+): ClaimRequest | null {
+  if (claims.length === 0) return null;
+
+  return [...claims].sort((a, b) => {
+    const priDiff = CLAIM_PRIORITY[b.claimType] - CLAIM_PRIORITY[a.claimType];
+    if (priDiff !== 0) return priDiff;
     const distA = ((playerIndexMap[a.playerId] - discarderIndex) + numPlayers) % numPlayers;
     const distB = ((playerIndexMap[b.playerId] - discarderIndex) + numPlayers) % numPlayers;
     return distA - distB;

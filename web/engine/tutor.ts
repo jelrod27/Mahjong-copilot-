@@ -2,42 +2,15 @@
  * Tutor Engine — provides strategic advice, tile classifications, and tenpai detection.
  */
 
-import { Tile, TileType, TileSuit, WindTile, DragonTile, tileKey } from '@/models/Tile';
+import { Tile, TileType, TileSuit, DragonTile, tileKey } from '@/models/Tile';
 import { GameState, MeldInfo } from '@/models/GameState';
 import { AvailableClaim, TutorAdvice, TileClassification, TileColor } from './types';
-import { calculateShanten, canPlayerWin } from './winDetection';
+import { calculateShanten, canPlayerWin, ALL_TILE_PROTOTYPES } from './winDetection';
 import { tileDiscardPriority, tileDangerScore, isSafeTile } from './ai/aiUtils';
 import { getBestClaimSubmission } from './claiming';
 
 /** All 34 unique tile types for tenpai wait calculation */
-const ALL_TILE_TYPES: Tile[] = (() => {
-  const tiles: Tile[] = [];
-  let id = 0;
-  // 9 dots, 9 bamboo, 9 characters
-  for (const suit of [TileSuit.BAMBOO, TileSuit.CHARACTER, TileSuit.DOT]) {
-    for (let n = 1; n <= 9; n++) {
-      tiles.push({
-        id: `wait_${id++}`, suit, type: TileType.SUIT, number: n,
-        nameEnglish: `${n} ${suit}`, nameChinese: '', nameJapanese: '', assetPath: '',
-      });
-    }
-  }
-  // 4 winds
-  for (const wind of [WindTile.EAST, WindTile.SOUTH, WindTile.WEST, WindTile.NORTH]) {
-    tiles.push({
-      id: `wait_${id++}`, suit: TileSuit.WIND, type: TileType.HONOR, wind,
-      nameEnglish: `${wind} Wind`, nameChinese: '', nameJapanese: '', assetPath: '',
-    });
-  }
-  // 3 dragons
-  for (const dragon of [DragonTile.RED, DragonTile.GREEN, DragonTile.WHITE]) {
-    tiles.push({
-      id: `wait_${id++}`, suit: TileSuit.DRAGON, type: TileType.HONOR, dragon,
-      nameEnglish: `${dragon} Dragon`, nameChinese: '', nameJapanese: '', assetPath: '',
-    });
-  }
-  return tiles;
-})();
+const ALL_TILE_TYPES: Tile[] = ALL_TILE_PROTOTYPES;
 
 /**
  * Get the best move advice for the current player.

@@ -1,5 +1,5 @@
 import { Tile, WindTile } from '@/models/Tile';
-import { MeldInfo, TurnPhase } from '@/models/GameState';
+import { MeldInfo, TurnPhase, WinMethod } from '@/models/GameState';
 
 /** Action that can be submitted to the turn manager */
 export type GameAction =
@@ -42,8 +42,8 @@ export interface AIDecision {
   reasoning?: string; // for debugging
 }
 
-/** How the winning tile was obtained */
-export type WinMethod = 'selfDraw' | 'discard' | 'robKong' | 'kongReplacement' | 'lastTileDraw' | 'lastTileClaim';
+/** How the winning tile was obtained (canonical definition lives in models/GameState) */
+export type { WinMethod } from '@/models/GameState';
 
 /** Scoring context passed to the scorer */
 export interface ScoringContext {
@@ -56,6 +56,10 @@ export interface ScoringContext {
   winMethod?: WinMethod;
   isDealer?: boolean;
   discarderIndex?: number;
+  /** Dealer self-draw win on the very first draw, before any discard (limit hand). */
+  isHeavenly?: boolean;
+  /** Non-dealer win claimed on the dealer's first discard (limit hand). */
+  isEarthly?: boolean;
   /**
    * Minimum faan required for a hand to be a legal win.
    * HK standard default is 3. Beginner/learning modes may override to 1 or 0.

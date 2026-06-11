@@ -19,6 +19,8 @@ import FloorDialog from '@/components/parlour/FloorDialog';
 import musicEngine from '@/lib/musicEngine';
 import { GamePhase } from '@/models/GameState';
 import { getFloor, floorSupportCast, recordFloorAttempt, recordFloorWin } from '@/lib/parlour';
+import DailyResultDialog from '@/components/daily/DailyResultDialog';
+import { getDailyState, recordDailyResult, DailyState } from '@/lib/dailyHand';
 import { computeFinalRankings } from '@/engine/matchManager';
 import { useEffect, useRef } from 'react';
 
@@ -47,6 +49,8 @@ export default function GameContent() {
   // Parlour floor match: ?floor=N overrides difficulty/minFaan/seats
   const rawFloor = searchParams.get('floor');
   const floorDef = rawFloor && /^[1-9]$/.test(rawFloor) ? getFloor(Number(rawFloor)) : undefined;
+  // Daily Hand: ?daily=1 — one seeded single hand, same for everyone today
+  const dailyMode = !floorDef && searchParams.get('daily') === '1';
   const tablePreset: TablePreset = searchParams.get('table') === 'training' ? 'training' : 'standard';
   const isTrainingTable = tablePreset === 'training';
   const effectiveDifficulty = isTrainingTable ? 'easy' : difficulty;
@@ -89,7 +93,28 @@ export default function GameContent() {
     npcRoster,
     onMatchRosterResolved,
     floorDef?.floor,
+    dailyMode,
   );
+
+  // Daily Hand outcome: derive from the single hand and record once.
+  const [dailyState, setDailyState] = useState<DailyState | null>(null);
+  const dailyRecordedRef = useRef(false);
+  const dailyMatchOver = dailyMode && controller.isMatchOver && !!controller.match;
+  useEffect(() => {
+    if (!dailyMatchOver || dailyRecordedRef.current) return;
+    dailyRecordedRef.current = true;
+    const hand = controller.match!.handResults[0];
+    const humanWon = hand?.winnerId === 'human-player';
+    const scoreChange = hand?.scoreChanges?.[0] ?? 0;
+    const next = recordDailyResult({
+      outcome: humanWon ? 'win' : hand?.winnerId ? 'loss' : 'draw',
+      fan: humanWon ? (hand?.scoringResult?.totalFan ?? 0) : 0,
+      points: humanWon ? (hand?.scoringResult?.totalPoints ?? 0) : 0,
+      scoreChange,
+    });
+    setDailyState(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dailyMatchOver]);
 
   // Floor match outcome: rank 1 in the quick match clears the floor.
   const floorMatchOver = !!floorDef && controller.isMatchOver && !!controller.match;
@@ -207,6 +232,9 @@ export default function GameContent() {
         npcSeatsOverride={floorSeats}
       />
 
+      {/* Daily Hand result — replaces the match-over flow */}
+      {dailyMatchOver && dailyState && <DailyResultDialog state={dailyState} />}
+
       {/* Parlour: rival greets you before the first tile */}
       {floorDef && showPreMatch && !controller.isMatchOver && (
         <FloorDialog
@@ -263,7 +291,7 @@ export default function GameContent() {
       )}
 
       {/* Match over — show final standings */}
-      {controller.isMatchOver && controller.match && (!floorDef || postMatchDialogDismissed) && (
+      {controller.isMatchOver && controller.match && !dailyMode && (!floorDef || postMatchDialogDismissed) && (
         <MatchOverScreen
           match={controller.match}
           onPlayAgain={() => {

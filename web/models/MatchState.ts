@@ -2,7 +2,7 @@ import { WindTile, tileToJson, tileFromJson } from './Tile';
 import { GameState, gameStateToJson, gameStateFromJson, meldToJson, meldFromJson } from './GameState';
 import { ScoringResult, PaymentBreakdown } from '../engine/types';
 
-export type GameMode = 'quick' | 'full';
+export type GameMode = 'quick' | 'full' | 'single';
 export type MatchPhase = 'playing' | 'betweenHands' | 'finished';
 /** Legal faan-minimum values exposed in the lobby. */
 export type MinFaan = 0 | 1 | 3;

@@ -30,6 +30,7 @@ export interface GameStats {
   byMode: {
     quick: { played: number; won: number };
     full: { played: number; won: number };
+    single: { played: number; won: number };
   };
   placementCounts: [number, number, number, number]; // [1st, 2nd, 3rd, 4th]
   /** Consecutive matches finishing 1st or 2nd. Reset to 0 on a 3rd/4th finish. */
@@ -55,6 +56,7 @@ const DEFAULT_STATS: GameStats = {
   byMode: {
     quick: { played: 0, won: 0 },
     full: { played: 0, won: 0 },
+    single: { played: 0, won: 0 },
   },
   placementCounts: [0, 0, 0, 0],
   currentTop2Streak: 0,
@@ -91,7 +93,7 @@ export function saveStats(stats: GameStats): void {
 
 export interface MatchResult {
   difficulty: 'easy' | 'medium' | 'hard';
-  mode: 'quick' | 'full';
+  mode: 'quick' | 'full' | 'single';
   humanPlacement: number; // 1-4
   totalHandsPlayed: number;
   bestFanThisMatch: number;
@@ -133,6 +135,9 @@ export function recordMatchResult(result: MatchResult): GameStats {
   }
 
   // Mode breakdown
+  if (!stats.byMode[result.mode]) {
+    stats.byMode[result.mode] = { played: 0, won: 0 };
+  }
   stats.byMode[result.mode].played++;
   if (result.humanPlacement === 1) {
     stats.byMode[result.mode].won++;

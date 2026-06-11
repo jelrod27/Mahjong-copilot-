@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp } from 'lucide-react';
 import { loadStats, GameStats, QuizMode } from '@/lib/gameStats';
+import { getAchievements, Achievement } from '@/lib/achievements';
 
 const QUIZ_LABELS: Record<QuizMode, string> = {
   'tile-quiz': 'Tile Quiz',
@@ -53,9 +54,11 @@ function PlacementBar({ counts }: { counts: [number, number, number, number] }) 
 
 export default function ProgressPage() {
   const [stats, setStats] = useState<GameStats | null>(null);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
 
   useEffect(() => {
     setStats(loadStats());
+    setAchievements(getAchievements());
   }, []);
 
   if (!stats) {
@@ -201,6 +204,41 @@ export default function ProgressPage() {
           </div>
         </div>
       )}
+      {/* Achievements */}
+      {achievements.length > 0 && (
+        <div className="mt-6">
+          <h2 className="font-display text-[10px] text-info uppercase tracking-[0.3em] mb-3">
+            BADGES
+          </h2>
+          <div className="grid grid-cols-2 gap-2">
+            {achievements.map(a => (
+              <div
+                key={a.id}
+                className={`ds-card flex items-center gap-3 p-3 ${a.earned ? 'border-highlight/40' : 'opacity-40'}`}
+                data-testid={`badge-${a.id}`}
+              >
+                <span
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border-2 font-display text-base ${
+                    a.earned
+                      ? 'border-highlight/60 bg-highlight/10 text-highlight ds-text-glow'
+                      : 'border-border/40 bg-surface/40 text-muted-foreground'
+                  }`}
+                  aria-hidden
+                >
+                  {a.glyph}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate font-display text-[11px] text-foreground">{a.name}</p>
+                  <p className="font-sans text-[10px] leading-snug text-muted-foreground">
+                    {a.earned ? a.flavor : 'Locked'}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

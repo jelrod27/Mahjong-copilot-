@@ -23,6 +23,7 @@ import { saveGame, loadGame, clearSavedGame, hasSavedGame, canResume } from '@/l
 import { resolveMatchRoster, NpcRosterMode } from '@/lib/rosterRotation';
 import { RosterId, getRoster } from '@/lib/cosmetics';
 import { getFloor, floorSupportCast } from '@/lib/parlour';
+import { dailySeed } from '@/lib/dailyHand';
 import { NPCS } from '@/content/npcs';
 import * as Sentry from '@sentry/nextjs';
 
@@ -106,6 +107,7 @@ export default function useGameController(
   fixedNpcRoster: RosterId = 'default',
   onMatchRosterResolved?: (rosterId: RosterId) => void,
   parlourFloor?: number,
+  dailyMode: boolean = false,
 ): GameController {
   const claimTimeoutMs = claimTimeoutForPreset(tablePreset);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>(initialDifficulty);
@@ -148,6 +150,31 @@ export default function useGameController(
   }, []);
 
   const startNewGame = useCallback((newDifficulty: 'easy' | 'medium' | 'hard', newMode?: GameMode) => {
+    // Daily Hand: one seeded single hand, identical for every player. The
+    // fixed roster and personalities keep the AI deterministic worldwide.
+    if (dailyMode) {
+      const seats = getRoster('default').seats;
+      setDifficulty('medium');
+      setMode('single');
+      const dailyMatch = initializeMatch({
+        mode: 'single',
+        difficulty: 'medium',
+        playerNames: ['You', NPCS[seats.right].name, NPCS[seats.top].name, NPCS[seats.left].name],
+        humanPlayerId: HUMAN_ID,
+        minFaan: 1,
+        seed: dailySeed(),
+        aiSeats: [
+          { index: 1, difficulty: 'medium', personality: NPCS[seats.right].personality },
+          { index: 2, difficulty: 'medium', personality: NPCS[seats.top].personality },
+          { index: 3, difficulty: 'medium', personality: NPCS[seats.left].personality },
+        ],
+      });
+      setMatch(dailyMatch);
+      setGame(dailyMatch.currentHand);
+      resetHandState();
+      return;
+    }
+
     // Parlour floor matches configure the table from the floor definition:
     // the rival sits across from you (seat 2), already-beaten NPCs fill the
     // side seats one tier down.
@@ -203,12 +230,12 @@ export default function useGameController(
     setMatch(newMatch);
     setGame(newMatch.currentHand);
     resetHandState();
-  }, [mode, resetHandState, initialMinFaan, npcRosterMode, fixedNpcRoster, onMatchRosterResolved, parlourFloor]);
+  }, [mode, resetHandState, initialMinFaan, npcRosterMode, fixedNpcRoster, onMatchRosterResolved, parlourFloor, dailyMode]);
 
   // Initialize game on mount — resume saved match if one exists and is active.
   // Parlour floor matches always start fresh.
   useEffect(() => {
-    const saved = parlourFloor ? null : loadGame();
+    const saved = (parlourFloor || dailyMode) ? null : loadGame();
     if (saved?.match && saved.match.phase !== 'finished') {
       setMatch(saved.match);
       setGame(saved.game ?? saved.match.currentHand ?? null);
@@ -217,7 +244,7 @@ export default function useGameController(
     } else {
       startNewGame(initialDifficulty, initialMode);
     }
-  }, [initialDifficulty, initialMode, startNewGame, parlourFloor]);
+  }, [initialDifficulty, initialMode, startNewGame, parlourFloor, dailyMode]);
 
   /** Try to resume a saved match from localStorage. Returns true on success. */
   const resumeGame = useCallback((): boolean => {

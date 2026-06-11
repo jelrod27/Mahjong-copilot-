@@ -10,6 +10,7 @@ import CharacterPortrait from '@/components/npc/CharacterPortrait';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getParlourProgress, PARLOUR_FLOORS, getFloor } from '@/lib/parlour';
+import { getDailyState, gamStreakLine, DailyState } from '@/lib/dailyHand';
 import { getCurrentRank, consumeRankUp, PlayerRank } from '@/lib/ranks';
 import soundManager from '@/lib/soundManager';
 import {
@@ -26,12 +27,14 @@ export default function HomePage() {
   const [rank, setRank] = useState<PlayerRank | null>(null);
   const [rankUp, setRankUp] = useState<PlayerRank | null>(null);
   const [floorsLit, setFloorsLit] = useState(0);
+  const [daily, setDaily] = useState<DailyState | null>(null);
 
   useEffect(() => {
     const tiles = getAllTiles();
     setRandomTile(tiles[Math.floor(Math.random() * tiles.length)]);
     setRank(getCurrentRank());
     setFloorsLit(getParlourProgress().highestCleared);
+    setDaily(getDailyState());
     const up = consumeRankUp();
     if (up) {
       setRankUp(up);
@@ -145,6 +148,43 @@ export default function HomePage() {
           </div>
         </Card>
       </Link>
+
+      {/* Daily Hand: the appointment */}
+      {daily && (
+        <Link href={daily.playedToday ? '/progress' : '/play/game?daily=1'} className="block group">
+          <Card className={`border-l-4 p-5 transition-all hover:scale-[1.01] ${
+            daily.playedToday ? 'border-l-success' : 'border-l-info'
+          }`}>
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="font-display text-[10px] tracking-widest text-info">DAILY HAND</p>
+                  {daily.streak > 0 && (
+                    <Badge variant="secondary" className="bg-highlight/10 border-highlight/30 text-highlight text-[9px] font-display h-5">
+                      {daily.streak} DAY STREAK
+                    </Badge>
+                  )}
+                </div>
+                <p className="mt-1 truncate font-sans text-sm text-foreground">
+                  {daily.playedToday && daily.todayResult
+                    ? daily.todayResult.outcome === 'win'
+                      ? `Today: won with ${daily.todayResult.fan} faan`
+                      : daily.todayResult.outcome === 'draw'
+                        ? 'Today: a draw — the wall ran dry'
+                        : 'Today: the table took this one'
+                    : 'One seeded hand. Same deal as every player in the world.'}
+                </p>
+                <p className="mt-0.5 truncate font-sans text-xs text-muted-foreground">
+                  {gamStreakLine(daily)}
+                </p>
+              </div>
+              <span className={`shrink-0 font-display text-[10px] ${daily.playedToday ? 'text-success' : 'text-info'}`}>
+                {daily.playedToday ? 'DONE' : 'PLAY'}
+              </span>
+            </div>
+          </Card>
+        </Link>
+      )}
 
       {/* Dashboard Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

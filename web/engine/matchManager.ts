@@ -27,6 +27,8 @@ export interface MatchOptions {
    * match difficulty with default personality.
    */
   aiSeats?: { index: number; difficulty: 'easy' | 'medium' | 'hard'; personality?: import('@/models/GameState').AIPersonalityParams }[];
+  /** Deterministic seed for the FIRST hand (Daily Hand / seeded puzzles). */
+  seed?: string;
   /**
    * Minimum faan required for a legal win. Defaults to DEFAULT_MIN_FAAN (3).
    * Lower values are used for beginner/family rules.
@@ -36,7 +38,7 @@ export interface MatchOptions {
 
 /** Create a new match and initialize the first hand. */
 export function initializeMatch(options: MatchOptions): MatchState {
-  const firstHand = createHand(options, 0, WindTile.EAST);
+  const firstHand = createHand(options, 0, WindTile.EAST, options.seed);
 
   return {
     mode: options.mode,
@@ -100,6 +102,18 @@ export function advanceMatch(
     scoreChanges,
   };
   const newResults = [...match.handResults, handResult];
+
+  // Single-hand mode (Daily Hand, puzzles): the match ends after one hand.
+  if (match.mode === 'single') {
+    return {
+      ...match,
+      playerScores: newScores,
+      handResults: newResults,
+      totalHandsPlayed: match.totalHandsPlayed + 1,
+      currentHand: null,
+      phase: 'finished',
+    };
+  }
 
   // Determine dealer rotation
   const dealerWon = winnerId === getPlayerId(match.currentDealerIndex, match.humanPlayerId);
@@ -232,6 +246,7 @@ function createHand(
   options: Pick<MatchOptions, 'difficulty' | 'playerNames' | 'humanPlayerId' | 'minFaan' | 'aiSeats'> & { mode?: GameMode },
   dealerIndex: number,
   prevailingWind: WindTile,
+  seed?: string,
 ): GameState {
   const seatWinds = getSeatWinds(dealerIndex, options.playerNames.length);
   const gameOptions: GameOptions = {
@@ -252,6 +267,7 @@ function createHand(
     seatWinds,
     prevailingWind,
     minFaan: options.minFaan,
+    seed,
   };
   return initializeGame(gameOptions);
 }

@@ -12,19 +12,38 @@ conventions: branch `feature/<description>`, conventional-style commit messages
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 001 | [useGameController game-flow integration tests](001-usegamecontroller-integration-tests.md) | P1 | M | — | TODO |
-| 002 | [Restrict player_rooms RLS to participants](002-player-rooms-rls-policy.md) | P1 | S | — | TODO |
-| 003 | [Memoize game-board hot-path components](003-gameboard-memoization.md) | P2 | S | — | TODO |
-| 004 | [Clear dev-dependency audit advisories](004-dev-dependency-advisories.md) | P1 | S | — | DONE (executed 2026-06-11, commit `24a9255` on `feature/clear-dev-audit-advisories`, reviewed & approved — awaiting merge by operator) |
-| 005 | [Remove dead soundService, archive stale RN docs](005-dead-code-stale-docs-cleanup.md) | P3 | S | — | TODO |
-| 006 | [Claim-countdown hardening (pass() out of updater)](006-claim-countdown-hardening.md) | P2 | S | 001 | TODO |
-| 007 | [Validate saved-game snapshots on revival](007-snapshot-revival-validation.md) | P2 | M | 001 (soft) | TODO |
-| 008 | [Drop unsafe-eval from production CSP](008-csp-production-tightening.md) | P2 | M | — | TODO |
-| 009 | [ESLint 9 flat-config migration](009-eslint-9-migration.md) | P3 | M | — | TODO |
-| 010 | [Design spike: seed + action-log replay format](010-replay-format-design-spike.md) | P2 | M | — | TODO |
+| 001 | [useGameController game-flow integration tests](001-usegamecontroller-integration-tests.md) | P1 | M | — | DONE (commit `cdd2644`, 11 flow tests) |
+| 002 | [Restrict player_rooms RLS to participants](002-player-rooms-rls-policy.md) | P1 | S | — | DONE (commit `5804d30` — migration authored, NOT yet applied to live Supabase) |
+| 003 | [Memoize game-board hot-path components](003-gameboard-memoization.md) | P2 | S | — | DONE (commit `928da52`) |
+| 004 | [Clear dev-dependency audit advisories](004-dev-dependency-advisories.md) | P1 | S | — | DONE (commit `24a9255`, merged via PR #86 branch) |
+| 005 | [Remove dead soundService, archive stale RN docs](005-dead-code-stale-docs-cleanup.md) | P3 | S | — | DONE (commit `77f0977` — GEMINI.md kept at root, see note below) |
+| 006 | [Claim-countdown hardening (pass() out of updater)](006-claim-countdown-hardening.md) | P2 | S | 001 | DONE (commit `5e5abb6`, +1 pinning test) |
+| 007 | [Validate saved-game snapshots on revival](007-snapshot-revival-validation.md) | P2 | M | 001 (soft) | DONE (commit `203140d`, validator + 9 tests) |
+| 008 | [Drop unsafe-eval from production CSP](008-csp-production-tightening.md) | P2 | M | — | DONE (commit `06330c6`) |
+| 009 | [ESLint 9 flat-config migration](009-eslint-9-migration.md) | P3 | M | — | DONE (commit `29b6e75`) |
+| 010 | [Design spike: seed + action-log replay format](010-replay-format-design-spike.md) | P2 | M | — | DONE (commit `042e194`, design doc at plans/spikes/replay-format-design.md) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED
 (with one-line rationale — finding fixed independently or approach abandoned).
+
+## Execution record (2026-06-11)
+
+All ten plans were executed on branch `feature/improve-plans-batch` (one commit per
+plan), each reviewed and approved against its done criteria before the next dispatch.
+Deviations from plan text, judged acceptable on review:
+
+- **005**: `GEMINI.md` was NOT archived — review found it documents the current web
+  app (it is the Gemini-agent counterpart of CLAUDE.md), so it stays at the root.
+  Only the five genuinely-stale RN/Firebase docs moved to `docs/archive/`.
+- **006**: executor added a `prev > 0` transition guard to the interval tick (the
+  plan's pseudocode would have re-fired `pass()` on post-zero ticks). Correct fix.
+- **007**: `web/lib/__tests__/storageService.test.ts` (out of scope) needed a fixture
+  update — its minimal game used `players: []`, which the new validator rightly rejects.
+- **009**: ESLint 9 surfaces 2 warn-only "unused eslint-disable directive" findings in
+  `useGameController.ts` (inline disables shadowed by the file-level disable).
+  Follow-up candidate, deliberately not fixed in the migration commit.
+- **002**: the migration file is authored but must still be APPLIED to the live
+  Supabase project by the operator (dashboard, `supabase db push`, or Supabase MCP).
 
 ## Dependency notes
 

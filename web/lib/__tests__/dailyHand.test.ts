@@ -56,13 +56,23 @@ describe('streaks reward showing up', () => {
 });
 
 describe('share card', () => {
-  it('carries the result, faan bar, and streak', () => {
+  function winShareText(): string {
     recordDailyResult({ outcome: 'win', fan: 6, points: 512, scoreChange: 1024 }, T0);
-    const text = buildShareText(getDailyState(T0));
+    return buildShareText(getDailyState(T0));
+  }
+
+  it('carries the date and result line', () => {
+    const text = winShareText();
     expect(text).toContain('Daily Hand 2026-06-10');
     expect(text).toContain('WIN  +6 faan (512 pts)');
-    expect(text).toContain('FAAN [######....] 6/10');
-    expect(text).toContain('Streak: 1 day');
+  });
+
+  it('renders the faan bar', () => {
+    expect(winShareText()).toContain('FAAN [######....] 6/10');
+  });
+
+  it('carries the streak', () => {
+    expect(winShareText()).toContain('Streak: 1 day');
   });
 
   it('contains only printable ASCII (no emoji)', () => {

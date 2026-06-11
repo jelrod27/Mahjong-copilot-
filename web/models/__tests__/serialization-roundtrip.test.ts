@@ -9,12 +9,12 @@ import { describe, it, expect } from 'vitest';
 import { initializeGame } from '@/engine/turnManager';
 import { initializeMatch } from '@/engine/matchManager';
 import { gameStateToJson, gameStateFromJson } from '../GameState';
-import { matchStateToJson, matchStateFromJson } from '../MatchState';
+import { matchStateToJson, matchStateFromJson, normaliseAiSeats } from '../MatchState';
 
 const PERSONALITY = { claimAppetite: 1.6, fanGreed: 0.5, defenseBias: 0.4, speedBias: 1.8 };
 
 describe('GameState JSON round-trip', () => {
-  it('preserves seed, winMethod, and player aiPersonality', () => {
+  function roundTrip() {
     const state = initializeGame({
       playerNames: ['You', 'A', 'B', 'C'],
       aiPlayers: [
@@ -26,13 +26,23 @@ describe('GameState JSON round-trip', () => {
       seed: 'roundtrip-test',
     });
     const finished = { ...state, winMethod: 'robKong' as const };
+    return gameStateFromJson(JSON.parse(JSON.stringify(gameStateToJson(finished))));
+  }
 
-    const revived = gameStateFromJson(JSON.parse(JSON.stringify(gameStateToJson(finished))));
+  it('preserves the seed', () => {
+    expect(roundTrip().seed).toBe('roundtrip-test');
+  });
 
-    expect(revived.seed).toBe('roundtrip-test');
-    expect(revived.winMethod).toBe('robKong');
-    expect(revived.players[1].aiPersonality).toEqual(PERSONALITY);
-    expect(revived.players[2].aiPersonality).toBeUndefined();
+  it('preserves the win method', () => {
+    expect(roundTrip().winMethod).toBe('robKong');
+  });
+
+  it('preserves player aiPersonality where set', () => {
+    expect(roundTrip().players[1].aiPersonality).toEqual(PERSONALITY);
+  });
+
+  it('leaves aiPersonality undefined for players without one', () => {
+    expect(roundTrip().players[2].aiPersonality).toBeUndefined();
   });
 });
 
@@ -51,5 +61,16 @@ describe('MatchState JSON round-trip', () => {
 
     expect(revived.aiSeats).toEqual([{ index: 2, difficulty: 'hard', personality: PERSONALITY }]);
     expect(revived.mode).toBe('single');
+  });
+
+  it('drops corrupted aiSeats entries on deserialisation', () => {
+    expect(normaliseAiSeats('not an array')).toBeUndefined();
+    expect(normaliseAiSeats([{ index: 99, difficulty: 'hard' }])).toBeUndefined();
+    expect(normaliseAiSeats([{ index: 2, difficulty: 'impossible' }])).toBeUndefined();
+    expect(normaliseAiSeats([
+      { index: 2, difficulty: 'hard' },
+      { index: 0.5, difficulty: 'easy' },
+      null,
+    ])).toEqual([{ index: 2, difficulty: 'hard' }]);
   });
 });

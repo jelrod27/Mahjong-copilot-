@@ -51,6 +51,24 @@ export function normaliseMinFaan(value: unknown): MinFaan | undefined {
   return value === 0 || value === 1 || value === 3 ? value : undefined;
 }
 
+/**
+ * Narrow persisted JSON into valid aiSeats entries. Drops anything with an
+ * out-of-range seat index or unknown difficulty so corrupted localStorage
+ * never configures a resumed match (same boundary policy as
+ * normaliseMinFaan). Personality values are passed through — the engine
+ * clamps them at consumption via normalizePersonality.
+ */
+export function normaliseAiSeats(value: unknown): MatchState['aiSeats'] {
+  if (!Array.isArray(value)) return undefined;
+  const valid = value.filter((s): s is NonNullable<MatchState['aiSeats']>[number] =>
+    !!s && typeof s === 'object' &&
+    Number.isInteger((s as { index?: unknown }).index) &&
+    (s as { index: number }).index >= 1 && (s as { index: number }).index <= 3 &&
+    ['easy', 'medium', 'hard'].includes((s as { difficulty?: string }).difficulty ?? ''),
+  );
+  return valid.length > 0 ? valid : undefined;
+}
+
 export function matchStateToJson(match: MatchState): Record<string, any> {
   return {
     mode: match.mode,
@@ -91,7 +109,7 @@ export function matchStateFromJson(json: Record<string, any>): MatchState {
     playerNames: json.playerNames as string[],
     humanPlayerId: json.humanPlayerId as string,
     minFaan: normaliseMinFaan(json.minFaan),
-    aiSeats: json.aiSeats as MatchState['aiSeats'],
+    aiSeats: normaliseAiSeats(json.aiSeats),
   };
 }
 

@@ -137,9 +137,21 @@ class MusicEngine {
     const nextTranspose = (track.transpose ?? 0) + intensity * 2;
     const nextTempo = 1 + intensity * 0.08;
     if (this.current?.id === trackId && this.timer) {
-      // Same track: retune in place when only the intensity changed
+      // Same track: retune in place when only the intensity changed.
+      // A tempo change alters the step duration, so re-anchor loopStartTime
+      // to keep the next scheduled note at its current wall-clock time —
+      // otherwise the loop anchor maps steps onto the new grid and notes
+      // bunch or skip.
+      if (this.tempoScale !== nextTempo) {
+        const oldStep = this.secondsPerStep();
+        this.tempoScale = nextTempo;
+        const newStep = this.secondsPerStep();
+        const nextNote = this.current.notes[this.nextNoteIndex];
+        if (nextNote) {
+          this.loopStartTime += nextNote[0] * (oldStep - newStep);
+        }
+      }
       this.transpose = nextTranspose;
-      this.tempoScale = nextTempo;
       return;
     }
 

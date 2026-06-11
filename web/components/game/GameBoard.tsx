@@ -171,79 +171,11 @@ export default function GameBoard({
         aria-hidden
       />
 
-      <div className="game-board-scene relative z-10 mx-auto flex h-full w-full max-w-[min(100%,72rem)] min-h-0 flex-col">
+      <div className="game-board-scene relative z-10 mx-auto flex h-full w-full max-w-[min(100%,80rem)] min-h-0 flex-col">
       <GameToast message={toastMessage} />
 
-      {/* Top row: HUD + opponents (mobile: compact bar, desktop: full layout) */}
-      <div className="relative z-10 flex items-start p-1 md:p-2 gap-1 md:gap-2" style={{ flex: '0 0 auto' }}>
-        {/* Left HUD — hidden on mobile, shown on md+ */}
-        <div className="hidden md:block w-48 shrink-0">
-          <GameHUD
-            wallCount={gameState.wall.length}
-            prevailingWind={gameState.prevailingWind}
-            currentPlayerIndex={gameState.currentPlayerIndex}
-            players={gameState.players}
-            turnPhase={gameState.turnPhase}
-            handNumber={match?.handNumber}
-            playerScores={match?.playerScores}
-          />
-        </div>
-
-        {/* Mobile: compact top bar with all 3 opponents + minimal HUD */}
-        <div className="flex md:hidden flex-1 items-center justify-between gap-1 px-1">
-          <OpponentSeat
-            player={leftPlayer}
-            position="left"
-            isCurrentTurn={gameState.currentPlayerIndex === gameState.players.indexOf(leftPlayer)}
-            npcId={NPC_BY_POSITION.left}
-            gameState={gameState}
-            playerIndex={gameState.players.indexOf(leftPlayer)}
-            compact
-          />
-          <OpponentSeat
-            player={topPlayer}
-            position="top"
-            isCurrentTurn={gameState.currentPlayerIndex === gameState.players.indexOf(topPlayer)}
-            npcId={NPC_BY_POSITION.top}
-            gameState={gameState}
-            playerIndex={gameState.players.indexOf(topPlayer)}
-            compact
-          />
-          <OpponentSeat
-            player={rightPlayer}
-            position="right"
-            isCurrentTurn={gameState.currentPlayerIndex === gameState.players.indexOf(rightPlayer)}
-            npcId={NPC_BY_POSITION.right}
-            gameState={gameState}
-            playerIndex={gameState.players.indexOf(rightPlayer)}
-            compact
-          />
-        </div>
-
-        {/* Desktop: Top opponent centered */}
-        <div className="hidden md:flex flex-1 justify-center">
-          <OpponentSeat
-            player={topPlayer}
-            position="top"
-            isCurrentTurn={gameState.currentPlayerIndex === gameState.players.indexOf(topPlayer)}
-            npcId={NPC_BY_POSITION.top}
-            gameState={gameState}
-            playerIndex={gameState.players.indexOf(topPlayer)}
-          />
-        </div>
-
-        {/* Right panel — faan meter + discard reading (desktop).
-            min-h-0 + overflow-y-auto so an expanded reading scrolls inside
-            the rail instead of inflating the top row and pushing the
-            discard pool down. */}
-        <div className="hidden md:flex md:flex-col md:gap-1 w-48 shrink-0 min-h-0 max-h-[calc(100vh-160px)] overflow-y-auto">
-          {faanProjection && <FaanMeter projection={faanProjection} />}
-          <DiscardReadingPanel game={gameState} humanPlayerId={humanPlayerId} />
-        </div>
-      </div>
-
-      {/* Mobile: compact HUD + collapsible coach drawer */}
-      <div className="relative z-10 space-y-1 px-2 py-0.5 md:hidden" style={{ flex: '0 0 auto' }}>
+      {/* HUD strip — one slim bar on every breakpoint */}
+      <div className="relative z-10 px-2 pt-1 md:px-3 md:pt-2" style={{ flex: '0 0 auto' }}>
         <GameHUD
           wallCount={gameState.wall.length}
           prevailingWind={gameState.prevailingWind}
@@ -254,17 +186,11 @@ export default function GameBoard({
           playerScores={match?.playerScores}
           compact
         />
-        <MobileCoachDrawer
-          game={gameState}
-          humanPlayerId={humanPlayerId}
-          faanProjection={faanProjection ?? null}
-        />
       </div>
 
-      {/* Middle row: Left opponent + Discard Pool + Right opponent */}
-      <div className="relative z-10 flex min-h-0 flex-1 items-center gap-1 px-1 md:gap-2 md:px-2">
-        {/* Left opponent — desktop only (mobile shows in top bar) */}
-        <div className="hidden md:flex w-32 shrink-0 justify-center">
+      {/* Mobile: compact seat bar + collapsible coach drawer */}
+      <div className="relative z-10 space-y-1 px-2 py-0.5 md:hidden" style={{ flex: '0 0 auto' }}>
+        <div className="flex items-center justify-between gap-1 px-1">
           <OpponentSeat
             player={leftPlayer}
             position="left"
@@ -272,51 +198,17 @@ export default function GameBoard({
             npcId={NPC_BY_POSITION.left}
             gameState={gameState}
             playerIndex={gameState.players.indexOf(leftPlayer)}
+            compact
           />
-        </div>
-
-        {/* Center: Discard pool + wind indicator */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-1 md:gap-2 min-h-0">
-          {/* Turn indicator — stable test id for e2e */}
-          <div className="text-center">
-            <div
-              data-testid="game-phase-banner"
-              role="status"
-              aria-live="polite"
-              className={`game-phase-pill max-w-[min(100%,20rem)] transition-all duration-normal ease-ds-out ${
-                isHumanTurn ? 'ring-2 ring-info/35 ring-offset-2 ring-offset-transparent' : ''
-              }`}
-            >
-              <span className="font-display text-[10px] font-semibold text-highlight md:text-sm">
-                {phaseHeadline}
-              </span>
-              <span className="mt-1 hidden max-w-[18rem] font-sans text-[10px] leading-snug text-muted-foreground sm:block md:text-xs">
-                {phaseSubline}
-              </span>
-            </div>
-          </div>
-
-          {/* Discard pool */}
-          <div className="w-full max-w-[min(100%,22rem)] md:max-w-md">
-            <DiscardPool
-              discards={gameState.discardPile}
-              lastDiscardedTile={gameState.lastDiscardedTile}
-              claimHighlight={showClaimHighlight}
-              playerDiscards={gameState.playerDiscards}
-              playerNames={Object.fromEntries(gameState.players.map(p => [p.id, p.name]))}
-            />
-          </div>
-
-          {/* Tutor Advice */}
-          {tutorAdvice && (
-            <div className="w-full max-w-[min(100%,20rem)] max-h-[5.5rem] overflow-y-auto md:max-h-none md:max-w-md">
-              <TutorPanel advice={tutorAdvice} />
-            </div>
-          )}
-        </div>
-
-        {/* Right opponent — desktop only (mobile shows in top bar) */}
-        <div className="hidden md:flex w-32 shrink-0 justify-center">
+          <OpponentSeat
+            player={topPlayer}
+            position="top"
+            isCurrentTurn={gameState.currentPlayerIndex === gameState.players.indexOf(topPlayer)}
+            npcId={NPC_BY_POSITION.top}
+            gameState={gameState}
+            playerIndex={gameState.players.indexOf(topPlayer)}
+            compact
+          />
           <OpponentSeat
             player={rightPlayer}
             position="right"
@@ -324,7 +216,102 @@ export default function GameBoard({
             npcId={NPC_BY_POSITION.right}
             gameState={gameState}
             playerIndex={gameState.players.indexOf(rightPlayer)}
+            compact
           />
+        </div>
+        <MobileCoachDrawer
+          game={gameState}
+          humanPlayerId={humanPlayerId}
+          faanProjection={faanProjection ?? null}
+        />
+      </div>
+
+      {/* The table: ONE surface holding seats, discard sea, and guidance.
+          Desktop replaces the old three-column scatter (HUD card, vertical
+          tile strips, floating pool) with rim plaques around a shared felt. */}
+      <div className="relative z-10 flex min-h-0 flex-1 px-1 pb-1 md:px-3 md:pb-2">
+        <div className="game-table-surface relative flex min-h-0 w-full flex-col">
+          {/* Top rim: opposite seat (desktop only) */}
+          <div className="hidden md:flex justify-center pt-2" style={{ flex: '0 0 auto' }}>
+            <OpponentSeat
+              player={topPlayer}
+              position="top"
+              isCurrentTurn={gameState.currentPlayerIndex === gameState.players.indexOf(topPlayer)}
+              npcId={NPC_BY_POSITION.top}
+              gameState={gameState}
+              playerIndex={gameState.players.indexOf(topPlayer)}
+              score={match?.playerScores?.[gameState.players.indexOf(topPlayer)]}
+            />
+          </div>
+
+          <div className="flex min-h-0 flex-1 items-stretch gap-2 px-1 md:px-2">
+            {/* Left rim seat */}
+            <div className="hidden md:flex w-44 shrink-0 flex-col items-start justify-center">
+              <OpponentSeat
+                player={leftPlayer}
+                position="left"
+                isCurrentTurn={gameState.currentPlayerIndex === gameState.players.indexOf(leftPlayer)}
+                npcId={NPC_BY_POSITION.left}
+                gameState={gameState}
+                playerIndex={gameState.players.indexOf(leftPlayer)}
+                score={match?.playerScores?.[gameState.players.indexOf(leftPlayer)]}
+              />
+            </div>
+
+            {/* Center: phase pill + discard sea + tutor line */}
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1 md:gap-2">
+              <div className="text-center" style={{ flex: '0 0 auto' }}>
+                <div
+                  data-testid="game-phase-banner"
+                  role="status"
+                  aria-live="polite"
+                  className={`game-phase-pill max-w-[min(100%,22rem)] transition-all duration-normal ease-ds-out ${
+                    isHumanTurn ? 'ring-2 ring-info/35 ring-offset-2 ring-offset-transparent' : ''
+                  }`}
+                >
+                  <span className="font-display text-[10px] font-semibold text-highlight md:text-xs">
+                    {phaseHeadline}
+                  </span>
+                  <span className="mt-0.5 hidden max-w-[18rem] font-sans text-[10px] leading-snug text-muted-foreground sm:block">
+                    {phaseSubline}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex min-h-0 w-full max-w-[min(100%,22rem)] flex-col justify-center overflow-y-auto md:max-w-2xl">
+                <DiscardPool
+                  discards={gameState.discardPile}
+                  lastDiscardedTile={gameState.lastDiscardedTile}
+                  claimHighlight={showClaimHighlight}
+                  playerDiscards={gameState.playerDiscards}
+                  playerNames={Object.fromEntries(gameState.players.map(p => [p.id, p.name]))}
+                />
+              </div>
+
+              {tutorAdvice && (
+                <div className="w-full max-w-[min(100%,20rem)] max-h-[5.5rem] overflow-y-auto md:max-w-xl" style={{ flex: '0 0 auto' }}>
+                  <TutorPanel advice={tutorAdvice} />
+                </div>
+              )}
+            </div>
+
+            {/* Right rim seat + coach rail */}
+            <div className="hidden md:flex w-44 shrink-0 min-h-0 flex-col items-end justify-center gap-2">
+              <OpponentSeat
+                player={rightPlayer}
+                position="right"
+                isCurrentTurn={gameState.currentPlayerIndex === gameState.players.indexOf(rightPlayer)}
+                npcId={NPC_BY_POSITION.right}
+                gameState={gameState}
+                playerIndex={gameState.players.indexOf(rightPlayer)}
+                score={match?.playerScores?.[gameState.players.indexOf(rightPlayer)]}
+              />
+              <div className="flex w-full min-h-0 flex-col gap-1 overflow-y-auto">
+                {faanProjection && <FaanMeter projection={faanProjection} />}
+                <DiscardReadingPanel game={gameState} humanPlayerId={humanPlayerId} />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { useId } from 'react';
 import { NpcId, NpcEmotion, NPCS } from '@/content/npcs';
 
 interface CharacterPortraitProps {
@@ -8,6 +9,11 @@ interface CharacterPortraitProps {
   size?: 'sm' | 'md' | 'lg';
   /** Show the aura halo behind the portrait. Defaults to true. */
   showAura?: boolean;
+  /**
+   * 'bust' renders the full 200x240 rig; 'face' crops to the head so the
+   * character stays legible at plaque scale (56px and below).
+   */
+  framing?: 'bust' | 'face';
 }
 
 const SIZE_PX: Record<NonNullable<CharacterPortraitProps['size']>, number> = {
@@ -30,10 +36,16 @@ export default function CharacterPortrait({
   emotion,
   size = 'md',
   showAura = true,
+  framing = 'bust',
 }: CharacterPortraitProps) {
   const npc = NPCS[character];
   const traits = npc.visualTraits;
   const px = SIZE_PX[size];
+  // SVG gradient ids must be unique PER INSTANCE: the same character renders
+  // in multiple responsive branches, and url(#...) resolves to the first id
+  // in the document — if that lives in a display:none subtree, Chrome paints
+  // the fill black. (This was the "portraits look different on desktop" bug.)
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
 
   // Round 2 art-swap path: when an image override exists for this emotion,
   // render it directly. Falls back to the SVG rig for emotions without art
@@ -60,42 +72,43 @@ export default function CharacterPortrait({
     );
   }
 
+  const isFace = framing === 'face';
   return (
     <svg
-      viewBox="0 0 200 240"
+      viewBox={isFace ? '32 36 136 136' : '0 0 200 240'}
       width={px}
-      height={px * 1.2}
+      height={isFace ? px : px * 1.2}
       role="img"
       aria-label={`${npc.name}, ${emotion}`}
       data-testid={`portrait-${character}-${emotion}`}
       className="select-none"
     >
       <defs>
-        <radialGradient id={`aura-${character}`} cx="50%" cy="40%" r="60%">
+        <radialGradient id={`aura-${character}-${uid}`} cx="50%" cy="40%" r="60%">
           <stop offset="0%" stopColor={traits.auraStops[0]} stopOpacity="0.55" />
           <stop offset="100%" stopColor={traits.auraStops[1]} stopOpacity="0" />
         </radialGradient>
-        <linearGradient id={`hair-shade-${character}`} x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`hair-shade-${character}-${uid}`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={traits.hairColor} />
           <stop offset="100%" stopColor={shade(traits.hairColor, -0.18)} />
         </linearGradient>
-        <linearGradient id={`skin-shade-${character}`} x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`skin-shade-${character}-${uid}`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={traits.skinColor} />
           <stop offset="100%" stopColor={shade(traits.skinColor, -0.1)} />
         </linearGradient>
       </defs>
 
       {showAura && (
-        <circle cx="100" cy="100" r="105" fill={`url(#aura-${character})`} />
+        <circle cx="100" cy="100" r="105" fill={`url(#aura-${character}-${uid})`} />
       )}
 
       {/* Hair back layer — sits behind face/neck. */}
-      <HairBack style={traits.hairStyle} character={character} />
+      <HairBack style={traits.hairStyle} character={character} uid={uid} />
 
       {/* Neck */}
       <path
         d="M 84 178 Q 84 200 100 208 Q 116 200 116 178 Z"
-        fill={`url(#skin-shade-${character})`}
+        fill={`url(#skin-shade-${character}-${uid})`}
       />
       <path
         d="M 70 220 Q 100 200 130 220 L 130 240 L 70 240 Z"
@@ -103,7 +116,7 @@ export default function CharacterPortrait({
       />
 
       {/* Face */}
-      <Face shape={traits.faceShape} character={character} />
+      <Face shape={traits.faceShape} character={character} uid={uid} />
 
       {/* Blush */}
       <BlushMarks shape={traits.faceShape} color={traits.blushColor} emotion={emotion} />
@@ -114,7 +127,7 @@ export default function CharacterPortrait({
       <Mouth emotion={emotion} skinColor={traits.skinColor} character={character} />
 
       {/* Hair front layer — bangs sit over forehead. */}
-      <HairFront style={traits.hairStyle} character={character} />
+      <HairFront style={traits.hairStyle} character={character} uid={uid} />
 
       {/* Hair shine */}
       <HairShine style={traits.hairStyle} character={character} />
@@ -129,8 +142,8 @@ export default function CharacterPortrait({
    Face / hair primitives
    ───────────────────────────────────────── */
 
-function Face({ shape, character }: { shape: NpcVisualTraits['faceShape']; character: NpcId }) {
-  const fill = `url(#skin-shade-${character})`;
+function Face({ shape, character, uid }: { shape: NpcVisualTraits['faceShape']; character: NpcId; uid: string }) {
+  const fill = `url(#skin-shade-${character}-${uid})`;
   switch (shape) {
     case 'round':
       return <ellipse cx="100" cy="116" rx="48" ry="52" fill={fill} />;
@@ -149,11 +162,13 @@ function Face({ shape, character }: { shape: NpcVisualTraits['faceShape']; chara
 function HairBack({
   style,
   character,
+  uid,
 }: {
   style: NpcVisualTraits['hairStyle'];
   character: NpcId;
+  uid: string;
 }) {
-  const fill = `url(#hair-shade-${character})`;
+  const fill = `url(#hair-shade-${character}-${uid})`;
   switch (style) {
     case 'short-bob':
       return (
@@ -186,11 +201,13 @@ function HairBack({
 function HairFront({
   style,
   character,
+  uid,
 }: {
   style: NpcVisualTraits['hairStyle'];
   character: NpcId;
+  uid: string;
 }) {
-  const fill = `url(#hair-shade-${character})`;
+  const fill = `url(#hair-shade-${character}-${uid})`;
   switch (style) {
     case 'short-bob':
       // Short messy bangs sweeping right.

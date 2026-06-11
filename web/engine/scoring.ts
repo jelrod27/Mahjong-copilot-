@@ -7,11 +7,13 @@
 import { Tile, TileSuit, TileType, DragonTile, WindTile, tileKey, tilesMatch } from '@/models/Tile';
 import { MeldInfo } from '@/models/GameState';
 import { ScoringContext, ScoringResult, FanItem, HandDecomposition, PaymentBreakdown, DEFAULT_MIN_FAAN } from './types';
-import { findDecompositions, isThirteenOrphans, isSevenPairs } from './winDetection';
+import { findDecompositionsWithMelds, isThirteenOrphans, isSevenPairs } from './winDetection';
 
 const BASE_POINTS = 8; // base payment in HK Mahjong
 const LIMIT_FAN = 10; // limit hand threshold
-const MAX_PAYMENT = 256; // limit hand payment (base × 2^5 or flat cap)
+// Payment is monotonic in fan and capped at the limit: 8 × 2^10. A limit hand
+// must always be the most valuable hand possible.
+const MAX_PAYMENT = BASE_POINTS * Math.pow(2, LIMIT_FAN); // 8192
 
 /**
  * Calculate the score for a winning hand.
@@ -25,26 +27,31 @@ export function calculateScore(
   const handTiles = hand.filter(t => t.type !== TileType.BONUS);
 
   // Check limit hands first
-  if (isThirteenOrphans([...handTiles, context.winningTile])) {
+  if (context.isHeavenly) {
+    return buildLimitResult('Heavenly Hand', 13, [], handTiles.slice(0, 2), context);
+  }
+  if (context.isEarthly) {
+    return buildLimitResult('Earthly Hand', 13, [], handTiles.slice(0, 2), context);
+  }
+
+  if (exposedMelds.length === 0 && isThirteenOrphans(withWinningTile(handTiles, context.winningTile))) {
     return buildLimitResult('Thirteen Orphans', 13, [], handTiles.slice(0, 2), context);
   }
 
-  if (isNineGates(handTiles, context.winningTile)) {
+  if (exposedMelds.length === 0 && isNineGates(handTiles, context.winningTile)) {
     return buildLimitResult('Nine Gates', 13, [], handTiles.slice(0, 2), context);
   }
 
-  // Find all decompositions
-  const allTiles = [...handTiles];
-  if (!allTiles.find(t => t.id === context.winningTile.id)) {
-    allTiles.push(context.winningTile);
-  }
-  const decompositions = findDecompositions(allTiles);
+  // Find all decompositions (concealed tiles + winning tile, seeded with
+  // exposed melds so claimed pungs/chows/kongs score their real fans)
+  const allTiles = withWinningTile(handTiles, context.winningTile);
+  const decompositions = findDecompositionsWithMelds(allTiles, exposedMelds);
 
-  // Combine concealed decompositions with exposed melds
   let bestResult: ScoringResult | null = null;
 
   for (const decomp of decompositions) {
-    const allMelds = [...decomp.melds, ...exposedMelds];
+    // findDecompositionsWithMelds already includes exposed melds when seeded
+    const allMelds = decomp.melds;
     const fans = evaluateFans(allMelds, decomp.pair, context, handTiles);
     const totalFan = fans.reduce((sum, f) => sum + f.fan, 0);
     const isLimit = totalFan >= LIMIT_FAN;
@@ -125,10 +132,13 @@ function evaluateFans(
     return [{ name: 'Small Four Winds', fan: LIMIT_FAN, description: 'Three wind pungs + wind pair (limit hand)' }];
   }
 
-  // Four Concealed Pungs — all 4 melds are concealed pungs, self-draw win
-  if (context.isConcealed && context.isSelfDrawn &&
+  // Four Concealed Pungs — all 4 pungs concealed; win must be self-drawn OR
+  // the discard must complete the pair (otherwise the 4th pung was completed
+  // by discard and does not count as concealed).
+  const winCompletesPair = pair.some(t => t.id === context.winningTile.id);
+  if (context.isConcealed && (context.isSelfDrawn || winCompletesPair) &&
       realMelds.length >= 4 && realMelds.every(m => m.type === 'pung' || m.type === 'kong')) {
-    return [{ name: 'Four Concealed Pungs', fan: LIMIT_FAN, description: 'Four concealed pungs with self-draw (limit hand)' }];
+    return [{ name: 'Four Concealed Pungs', fan: LIMIT_FAN, description: 'Four concealed pungs (limit hand)' }];
   }
 
   // All Kongs — 4 kongs
@@ -196,27 +206,39 @@ function evaluateFans(
     fans.push({ name: 'Mixed One Suit', fan: 3, description: 'One suit plus honors' });
   }
 
-  // No Flowers
+  // Flowers, HK standard: a flower scores only when it matches your seat
+  // (1 fan each); a complete set of all 4 flowers or all 4 seasons is 2 fan;
+  // holding no bonus tiles at all is itself worth 1 fan.
   if (context.flowers.length === 0) {
     fans.push({ name: 'No Flowers', fan: 1, description: 'No bonus tiles collected' });
-  }
-
-  // Flower bonus (total count)
-  if (context.flowers.length > 0) {
-    fans.push({ name: 'Flower Tiles', fan: context.flowers.length, description: `${context.flowers.length} flower/season tiles` });
-  }
-
-  // Seat Flower/Season matching (1 faan per match)
-  const seatNumberMap: Record<string, number> = { east: 1, south: 2, west: 3, north: 4 };
-  const seatNumber = seatNumberMap[context.seatWind] ?? 0;
-  if (seatNumber > 0) {
+  } else {
     const flowerNames = ['Plum', 'Orchid', 'Chrysanthemum', 'Bamboo'];
     const seasonNames = ['Spring', 'Summer', 'Autumn', 'Winter'];
-    for (const f of context.flowers) {
-      const flowerIdx = flowerNames.indexOf(f.flower ?? '');
-      const seasonIdx = seasonNames.indexOf(f.season ?? '');
-      if (flowerIdx + 1 === seatNumber || seasonIdx + 1 === seatNumber) {
-        fans.push({ name: 'Seat Flower', fan: 1, description: 'Flower/season matches seat wind' });
+    const seatNumberMap: Record<string, number> = { east: 1, south: 2, west: 3, north: 4 };
+    const seatNumber = seatNumberMap[context.seatWind] ?? 0;
+
+    const flowerSet = new Set(context.flowers.map(f => f.flower).filter(Boolean));
+    const seasonSet = new Set(context.flowers.map(f => f.season).filter(Boolean));
+    const hasAllFlowers = flowerNames.every(n => flowerSet.has(n));
+    const hasAllSeasons = seasonNames.every(n => seasonSet.has(n));
+
+    if (hasAllFlowers) {
+      fans.push({ name: 'All Four Flowers', fan: 2, description: 'Complete set of flower tiles' });
+    }
+    if (hasAllSeasons) {
+      fans.push({ name: 'All Four Seasons', fan: 2, description: 'Complete set of season tiles' });
+    }
+
+    if (seatNumber > 0) {
+      for (const f of context.flowers) {
+        const flowerIdx = flowerNames.indexOf(f.flower ?? '');
+        const seasonIdx = seasonNames.indexOf(f.season ?? '');
+        const matchesSeat = flowerIdx + 1 === seatNumber || seasonIdx + 1 === seatNumber;
+        // A complete set already scores as a set; don't double-pay its seat tile
+        const inCompleteSet = (flowerIdx >= 0 && hasAllFlowers) || (seasonIdx >= 0 && hasAllSeasons);
+        if (matchesSeat && !inCompleteSet) {
+          fans.push({ name: 'Seat Flower', fan: 1, description: 'Flower/season matches seat wind' });
+        }
       }
     }
   }
@@ -235,8 +257,10 @@ function evaluateFans(
     fans.push({ name: 'Last Tile Claim', fan: 1, description: 'Won by claiming the last discard' });
   }
 
-  // Seven Pairs
-  if (isSevenPairs(allTiles)) {
+  // Seven Pairs — only when scoring the seven-pairs decomposition itself,
+  // not whenever the same 14 tiles could alternatively pair up. A hand is
+  // scored under one decomposition at a time.
+  if (melds.length === 7 && melds.every(m => m.type === 'pair')) {
     fans.push({ name: 'Seven Pairs', fan: 4, description: 'Seven distinct pairs' });
   }
 
@@ -279,8 +303,14 @@ export function calculatePayment(
   return { payments };
 }
 
+/** Concealed tiles plus the winning tile, without duplicating a self-drawn tile already in hand. */
+function withWinningTile(handTiles: Tile[], winningTile: Tile): Tile[] {
+  if (handTiles.find(t => t.id === winningTile.id)) return [...handTiles];
+  return [...handTiles, winningTile];
+}
+
 function isNineGates(handTiles: Tile[], winningTile: Tile): boolean {
-  const allTiles = [...handTiles, winningTile];
+  const allTiles = withWinningTile(handTiles, winningTile);
   if (allTiles.length !== 14) return false;
 
   // All must be same suit

@@ -7,12 +7,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, GamePhase, ClaimType } from '@/models/GameState';
 import { MatchState, GameMode } from '@/models/MatchState';
 import { Tile, TileType, TileFactory, tilesMatch } from '@/models/Tile';
-import { initializeGame, applyAction } from '@/engine/turnManager';
+import { initializeGame, applyAction, buildWinScoringContext, getLegalClaims } from '@/engine/turnManager';
 import { initializeMatch, advanceMatch, startNextHand } from '@/engine/matchManager';
-import { getAvailableClaims, getBestClaimSubmission } from '@/engine/claiming';
+import { getBestClaimSubmission } from '@/engine/claiming';
 import { isWinningHand, canPlayerWin } from '@/engine/winDetection';
 import { calculateScore } from '@/engine/scoring';
-import { AvailableClaim, ScoringContext, ScoringResult, WinMethod, TileClassification } from '@/engine/types';
+import { AvailableClaim, ScoringResult, TileClassification } from '@/engine/types';
 import { calculatePayment } from '@/engine/scoring';
 import { getAIDecision, getAIClaimDecision } from '@/engine/ai';
 import { getTutorAdvice } from '@/engine/tutor';
@@ -21,7 +21,10 @@ import soundManager from '@/lib/soundManager';
 import { speakTile, TileVoiceLanguage } from '@/lib/tileVoice';
 import { saveGame, loadGame, clearSavedGame, hasSavedGame, canResume } from '@/lib/matchStorage';
 import { resolveMatchRoster, NpcRosterMode } from '@/lib/rosterRotation';
-import { RosterId } from '@/lib/cosmetics';
+import { RosterId, getRoster } from '@/lib/cosmetics';
+import { getFloor, floorSupportCast } from '@/lib/parlour';
+import { dailySeed } from '@/lib/dailyHand';
+import { NPCS } from '@/content/npcs';
 import * as Sentry from '@sentry/nextjs';
 
 const HUMAN_ID = 'human-player';
@@ -72,6 +75,8 @@ export interface GameController {
   tablePreset: TablePreset;
   selectTile: (tile: Tile) => void;
   discardSelected: () => void;
+  /** Sort the human hand by suit and number (animated via FLIP in PlayerHand). */
+  sortHand: () => void;
   declareKong: () => void;
   declareWin: () => void;
   submitClaim: (claimType: ClaimType, tilesFromHand: Tile[]) => void;
@@ -101,6 +106,8 @@ export default function useGameController(
   npcRosterMode: NpcRosterMode = 'auto',
   fixedNpcRoster: RosterId = 'default',
   onMatchRosterResolved?: (rosterId: RosterId) => void,
+  parlourFloor?: number,
+  dailyMode: boolean = false,
 ): GameController {
   const claimTimeoutMs = claimTimeoutForPreset(tablePreset);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>(initialDifficulty);
@@ -143,6 +150,59 @@ export default function useGameController(
   }, []);
 
   const startNewGame = useCallback((newDifficulty: 'easy' | 'medium' | 'hard', newMode?: GameMode) => {
+    // Daily Hand: one seeded single hand, identical for every player. The
+    // fixed roster and personalities keep the AI deterministic worldwide.
+    if (dailyMode) {
+      const seats = getRoster('default').seats;
+      setDifficulty('medium');
+      setMode('single');
+      const dailyMatch = initializeMatch({
+        mode: 'single',
+        difficulty: 'medium',
+        playerNames: ['You', NPCS[seats.right].name, NPCS[seats.top].name, NPCS[seats.left].name],
+        humanPlayerId: HUMAN_ID,
+        minFaan: 1,
+        seed: dailySeed(),
+        aiSeats: [
+          { index: 1, difficulty: 'medium', personality: NPCS[seats.right].personality },
+          { index: 2, difficulty: 'medium', personality: NPCS[seats.top].personality },
+          { index: 3, difficulty: 'medium', personality: NPCS[seats.left].personality },
+        ],
+      });
+      setMatch(dailyMatch);
+      setGame(dailyMatch.currentHand);
+      resetHandState();
+      return;
+    }
+
+    // Parlour floor matches configure the table from the floor definition:
+    // the rival sits across from you (seat 2), already-beaten NPCs fill the
+    // side seats one tier down.
+    const floorDef = parlourFloor ? getFloor(parlourFloor) : undefined;
+    if (floorDef) {
+      const rival = NPCS[floorDef.rival];
+      const [castA, castB] = floorSupportCast(floorDef.floor);
+      const supportDifficulty = floorDef.difficulty === 'hard' ? 'medium' : 'easy';
+      setDifficulty(floorDef.difficulty);
+      setMode('quick');
+      const floorMatch = initializeMatch({
+        mode: 'quick',
+        difficulty: floorDef.difficulty,
+        playerNames: ['You', NPCS[castA].name, rival.name, NPCS[castB].name],
+        humanPlayerId: HUMAN_ID,
+        minFaan: floorDef.minFaan,
+        aiSeats: [
+          { index: 1, difficulty: supportDifficulty, personality: NPCS[castA].personality },
+          { index: 2, difficulty: floorDef.difficulty, personality: rival.personality },
+          { index: 3, difficulty: supportDifficulty, personality: NPCS[castB].personality },
+        ],
+      });
+      setMatch(floorMatch);
+      setGame(floorMatch.currentHand);
+      resetHandState();
+      return;
+    }
+
     setDifficulty(newDifficulty);
     const gameMode = newMode ?? mode;
     setMode(gameMode);
@@ -150,22 +210,32 @@ export default function useGameController(
     const matchRoster = resolveMatchRoster(npcRosterMode, fixedNpcRoster);
     onMatchRosterResolved?.(matchRoster);
 
+    // Seat indices: 1 = right, 2 = top, 3 = left (see GameBoard.getOpponent).
+    // The board portraits come from the same roster, so the names finally
+    // match the faces instead of reading "West AI".
+    const seats = getRoster(matchRoster).seats;
     const newMatch = initializeMatch({
       mode: gameMode,
       difficulty: newDifficulty,
-      playerNames: ['You', 'West AI', 'North AI', 'East AI'],
+      playerNames: ['You', NPCS[seats.right].name, NPCS[seats.top].name, NPCS[seats.left].name],
       humanPlayerId: HUMAN_ID,
       minFaan: initialMinFaan,
+      aiSeats: [
+        { index: 1, difficulty: newDifficulty, personality: NPCS[seats.right].personality },
+        { index: 2, difficulty: newDifficulty, personality: NPCS[seats.top].personality },
+        { index: 3, difficulty: newDifficulty, personality: NPCS[seats.left].personality },
+      ],
     });
 
     setMatch(newMatch);
     setGame(newMatch.currentHand);
     resetHandState();
-  }, [mode, resetHandState, initialMinFaan, npcRosterMode, fixedNpcRoster, onMatchRosterResolved]);
+  }, [mode, resetHandState, initialMinFaan, npcRosterMode, fixedNpcRoster, onMatchRosterResolved, parlourFloor, dailyMode]);
 
-  // Initialize game on mount — resume saved match if one exists and is active
+  // Initialize game on mount — resume saved match if one exists and is active.
+  // Parlour floor matches always start fresh.
   useEffect(() => {
-    const saved = loadGame();
+    const saved = (parlourFloor || dailyMode) ? null : loadGame();
     if (saved?.match && saved.match.phase !== 'finished') {
       setMatch(saved.match);
       setGame(saved.game ?? saved.match.currentHand ?? null);
@@ -174,7 +244,7 @@ export default function useGameController(
     } else {
       startNewGame(initialDifficulty, initialMode);
     }
-  }, [initialDifficulty, initialMode, startNewGame]);
+  }, [initialDifficulty, initialMode, startNewGame, parlourFloor, dailyMode]);
 
   /** Try to resume a saved match from localStorage. Returns true on success. */
   const resumeGame = useCallback((): boolean => {
@@ -252,6 +322,26 @@ export default function useGameController(
     setSelectedTileId(prev => prev === tile.id ? undefined : tile.id);
   }, []);
 
+  const sortHand = useCallback(() => {
+    const current = gameRef.current;
+    if (!current) return;
+    const idx = current.players.findIndex(p => p.id === HUMAN_ID);
+    if (idx === -1) return;
+    const suitOrder: Record<string, number> = { dot: 0, bamboo: 1, character: 2, wind: 3, dragon: 4 };
+    const sorted = [...current.players[idx].hand].sort((a, b) => {
+      const suitDiff = (suitOrder[a.suit] ?? 9) - (suitOrder[b.suit] ?? 9);
+      if (suitDiff !== 0) return suitDiff;
+      return (a.number ?? 0) - (b.number ?? 0);
+    });
+    if (sorted.every((t, i) => t.id === current.players[idx].hand[i].id)) return;
+    const players = [...current.players];
+    players[idx] = { ...players[idx], hand: sorted };
+    const next = { ...current, players };
+    setGame(next);
+    gameRef.current = next;
+    soundManager.play('tileDraw');
+  }, []);
+
   const discardSelected = useCallback(() => {
     const current = gameRef.current;
     if (!current || current.turnPhase !== 'discard' || current.currentPlayerIndex !== humanIndex) return;
@@ -326,16 +416,7 @@ export default function useGameController(
     if (!current || current.phase !== GamePhase.PLAYING || current.turnPhase !== 'claim') return;
     if (current.currentPlayerIndex !== humanIndex) return;
     if (current.lastDiscardedBy === HUMAN_ID) return;
-    const humanPlayer = current.players[humanIndex];
-    const discarderIndex = current.players.findIndex(p => p.id === current.lastDiscardedBy);
-    if (discarderIndex === -1 || !current.lastDiscardedTile) return;
-    const claims = getAvailableClaims(
-      current.lastDiscardedTile,
-      humanPlayer,
-      humanIndex,
-      discarderIndex,
-      current.players.length,
-    );
+    const claims = getLegalClaims(current, humanIndex);
     const best = getBestClaimSubmission(claims);
     if (!best) return;
     const next = doAction(HUMAN_ID, { type: 'CLAIM', claimType: best.claimType, tilesFromHand: best.tilesFromHand });
@@ -540,7 +621,9 @@ export default function useGameController(
     }
 
     setTenpaiStatus(waits.length > 0 ? { isTenpai: true, waits } : null);
-  }, [game?.players, game?.phase, difficulty, humanIndex]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hand/meld signatures capture the inputs;
+    // keying on game.players would re-run this 34-prototype scan on every opponent action
+  }, [faanHandSig, faanMeldSig, game?.phase, difficulty, humanIndex]);
 
   // === Auto-draw for human ===
   useEffect(() => {
@@ -626,7 +709,15 @@ export default function useGameController(
       processingRef.current = true;
       const timer = setTimeout(() => {
         const decision = getAIDecision(game, game.currentPlayerIndex);
-        doAction(currentPlayer.id, decision.action);
+        const applied = doAction(currentPlayer.id, decision.action);
+        if (!applied && decision.action.type !== 'DISCARD') {
+          // Engine rejected a special action (win/kong) — fall back to a
+          // plain discard so the game can never stall on an AI turn.
+          const live = gameRef.current;
+          const aiPlayer = live?.players[live.currentPlayerIndex];
+          const fallback = aiPlayer?.hand.find(t => t.type !== TileType.BONUS);
+          if (fallback) doAction(currentPlayer.id, { type: 'DISCARD', tile: fallback });
+        }
         processingRef.current = false;
       }, currentDelays.discard);
       return () => { clearTimeout(timer); processingRef.current = false; };
@@ -637,14 +728,12 @@ export default function useGameController(
       processingRef.current = true;
       // Brief delay so the claim phase is visible, then submit
       const timer = setTimeout(() => {
-        const discarderIndex = game.players.findIndex(p => p.id === game.lastDiscardedBy);
-        if (game.lastDiscardedTile && discarderIndex !== -1) {
-          const claims = getAvailableClaims(
-            game.lastDiscardedTile, currentPlayer, game.currentPlayerIndex,
-            discarderIndex, game.players.length
-          );
+        const claims = getLegalClaims(game, game.currentPlayerIndex);
+        if (claims.length > 0) {
           const decision = getAIClaimDecision(game, game.currentPlayerIndex, claims);
-          doAction(currentPlayer.id, decision.action);
+          const applied = doAction(currentPlayer.id, decision.action);
+          // A rejected claim must degrade to a pass, never a stall
+          if (!applied) doAction(currentPlayer.id, { type: 'PASS' });
         } else {
           doAction(currentPlayer.id, { type: 'PASS' });
         }
@@ -682,13 +771,9 @@ export default function useGameController(
       return;
     }
 
-    const humanPlayer = game.players[humanIndex];
-    const discarderIndex = game.players.findIndex(p => p.id === game.lastDiscardedBy);
-    if (discarderIndex === -1 || !game.lastDiscardedTile) return;
+    if (!game.lastDiscardedTile || !game.lastDiscardedBy) return;
 
-    const claims = getAvailableClaims(
-      game.lastDiscardedTile, humanPlayer, humanIndex, discarderIndex, game.players.length
-    );
+    const claims = getLegalClaims(game, humanIndex);
 
     if (claims.length > 0) {
       setClaimOptions(claims);
@@ -756,37 +841,17 @@ export default function useGameController(
       if (winner && game.winningTile) {
         try {
           const isSelfDrawn = game.isSelfDrawn ?? false;
-          let winMethod: WinMethod = isSelfDrawn ? 'selfDraw' : 'discard';
-          if (game.isRobKongOpportunity && !isSelfDrawn) {
-            winMethod = 'robKong';
-          } else if (game.isKongReplacement && isSelfDrawn) {
-            winMethod = 'kongReplacement';
-          } else if (game.wall.length === 0) {
-            winMethod = isSelfDrawn ? 'lastTileDraw' : 'lastTileClaim';
-          }
-
           const winnerIndex = game.players.findIndex(p => p.id === game.winnerId);
-          const discarderIndex = game.lastDiscardedBy
-            ? game.players.findIndex(p => p.id === game.lastDiscardedBy)
-            : undefined;
 
-          const context: ScoringContext = {
-            winningTile: game.winningTile,
-            isSelfDrawn,
-            seatWind: winner.seatWind,
-            prevailingWind: game.prevailingWind,
-            isConcealed: winner.melds.filter(m => !m.isConcealed).length === 0,
-            flowers: winner.flowers,
-            winMethod,
-            isDealer: winner.isDealer,
-            discarderIndex: !isSelfDrawn ? discarderIndex : undefined,
-          };
-          result = calculateScore(winner.hand, winner.melds, context);
-          result.payment = calculatePayment(
-            result, winnerIndex,
-            !isSelfDrawn ? discarderIndex : undefined,
-            isSelfDrawn,
-          );
+          const context = buildWinScoringContext(game);
+          if (context) {
+            result = calculateScore(winner.hand, winner.melds, context);
+            result.payment = calculatePayment(
+              result, winnerIndex,
+              context.discarderIndex,
+              isSelfDrawn,
+            );
+          }
         } catch (e) {
           Sentry.captureException(e);
         }
@@ -814,7 +879,7 @@ export default function useGameController(
     game, match, selectedTileId, suggestedTileId, tutorAdvice, tenpaiStatus,
     tileClassifications, claimOptions, claimTimer, isGameOver, isMatchOver,
     scoringResult, faanProjection, claimTimeoutMs, tablePreset,
-    selectTile, discardSelected, declareKong, declareWin,
+    selectTile, discardSelected, sortHand, declareKong, declareWin,
     submitClaim, submitChow, claimBest, pass, startNewGame, continueToNextHand,
     resumeGame, clearSavedGame: clearSavedGameAndReset,
     canDeclareKong, canDeclareWin,

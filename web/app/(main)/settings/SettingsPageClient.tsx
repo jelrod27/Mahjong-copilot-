@@ -10,6 +10,8 @@ import {
   setNotificationsEnabled,
   setShowTutor,
   setLiveFaanMeter,
+  setCrtEffect,
+  setMusicEnabled,
   setTileVoice,
   SettingsState,
 } from '@/store/actions/settingsActions';
@@ -95,6 +97,8 @@ export default function SettingsPageClient() {
     void dispatch(setNotificationsEnabled(true));
     void dispatch(setShowTutor(true));
     void dispatch(setLiveFaanMeter(true));
+    void dispatch(setMusicEnabled(true));
+    void dispatch(setCrtEffect(false));
     void dispatch(setTileVoice('off'));
     const defaultPrefs: GamePreferences = { turnTimer: 20, autoPass: false };
     setGamePrefs(defaultPrefs);
@@ -233,6 +237,22 @@ export default function SettingsPageClient() {
           onChange={(v) => void dispatch(setLiveFaanMeter(v))}
           label="Live faan meter"
           description="During play, show what faan your hand is building toward and whether it meets the 3-faan minimum."
+        />
+
+        {/* Music */}
+        <ToggleRow
+          checked={settings.musicEnabled}
+          onChange={(v) => void dispatch(setMusicEnabled(v))}
+          label="Parlour music"
+          description="Chiptune background score during play, with a danger motif when the wall runs low."
+        />
+
+        {/* CRT effect */}
+        <ToggleRow
+          checked={settings.crtEffect}
+          onChange={(v) => void dispatch(setCrtEffect(v))}
+          label="CRT scanlines"
+          description="Retro display effect over the game table. Pure cosmetics — disable if it strains your eyes."
         />
 
         {/* Tile voice callouts */}

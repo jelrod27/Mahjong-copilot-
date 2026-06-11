@@ -10,6 +10,8 @@ import RetroTile from './RetroTile';
 import ExposedMelds from './ExposedMelds';
 import HandReplayScrubber from './HandReplayScrubber';
 import Confetti from './Confetti';
+import soundManager from '@/lib/soundManager';
+import musicEngine from '@/lib/musicEngine';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { GameResultsOverlay, GameResultsSheet, GameResultsSectionLabel } from './GameResultsChrome';
 
@@ -35,15 +37,40 @@ export default function HandResultScreen({
   const [punchKey, setPunchKey] = useState(0);
   const targetPoints = scoringResult?.totalPoints ?? 0;
 
+  // Win magnitude tier: a 3-fan win and a 10-fan win must FEEL different.
+  // 0 = draw/no result, 1 = standard (<6 fan), 2 = big (6-9), 3 = limit (10+).
+  const totalFan = scoringResult?.totalFan ?? 0;
+  const fanTier = !scoringResult || isDraw ? 0 : totalFan >= 10 ? 3 : totalFan >= 6 ? 2 : 1;
+
   useEffect(() => {
     const delay = winner ? 800 : 250;
     const timer = setTimeout(() => setShowContent(true), delay);
+    // Music steps back while the win sequence takes the stage
+    musicEngine.duck(winner ? 5000 : 2500, winner ? 0.12 : 0.4);
     return () => clearTimeout(timer);
   }, [winner]);
 
+  // Fan-row reveal ticks rise in pitch as fans stack; limit hands cap the
+  // sequence with a jackpot cascade.
+  useEffect(() => {
+    if (!showContent || !scoringResult || isDraw) return;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    scoringResult.fans.forEach((_, i) => {
+      timers.push(setTimeout(() => soundManager.playFanTick(i), 150 + i * 120));
+    });
+    if (fanTier === 3) {
+      timers.push(setTimeout(
+        () => soundManager.playJackpot(),
+        150 + scoringResult.fans.length * 120 + 250,
+      ));
+    }
+    return () => timers.forEach(clearTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- scoringResult/fanTier are set before showContent flips true and stay stable for the screen's lifetime
+  }, [showContent]);
+
   useEffect(() => {
     if (!showContent || targetPoints === 0) return;
-    const duration = 1000;
+    const duration = fanTier >= 3 ? 2200 : fanTier === 2 ? 1500 : 1000;
     const steps = 20;
     const increment = targetPoints / steps;
     let current = 0;
@@ -58,7 +85,7 @@ export default function HandResultScreen({
       }
     }, duration / steps);
     return () => clearInterval(interval);
-  }, [showContent, targetPoints]);
+  }, [showContent, targetPoints, fanTier]);
 
   const roundName = match.currentRound.toUpperCase();
   const handNum = lastResult?.handNumber ?? match.handNumber;
@@ -66,9 +93,13 @@ export default function HandResultScreen({
   const modalRef = useRef<HTMLDivElement>(null);
   useFocusTrap(modalRef, showContent);
 
+  const confettiCount = fanTier >= 3 ? 170 : fanTier === 2 ? 90 : 40;
+  const goldHeavy = fanTier >= 2;
+
   return (
     <GameResultsOverlay>
-      {humanWon && showContent && <Confetti />}
+      {humanWon && showContent && <Confetti count={confettiCount} goldHeavy={goldHeavy} />}
+      {fanTier >= 3 && showContent && <div className="animate-screen-flash" aria-hidden />}
       {winner && !showContent && (
         <WinnerSpotlight name={winner.name} isHuman={humanWon} />
       )}
@@ -77,7 +108,9 @@ export default function HandResultScreen({
         role="dialog"
         aria-modal="true"
         aria-labelledby="hand-result-heading"
-        className={showContent ? 'animate-slide-up' : 'pointer-events-none opacity-0'}
+        className={showContent
+          ? (fanTier >= 3 ? 'animate-slide-up animate-screen-shake' : 'animate-slide-up')
+          : 'pointer-events-none opacity-0'}
       >
         <div className="mb-4 flex flex-col items-center gap-2 text-center">
           <span className="inline-flex items-center rounded-full border border-border/40 bg-surface/60 px-3 py-1 font-sans text-[11px] text-muted-foreground">

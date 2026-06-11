@@ -7,6 +7,8 @@ import RetroTile from './RetroTile';
 interface ExposedMeldsProps {
   melds: MeldInfo[];
   size?: 'xs' | 'sm' | 'md';
+  /** Player id for the tile-flight layer's claim-snap destination. */
+  anchorId?: string;
 }
 
 /**
@@ -14,7 +16,7 @@ interface ExposedMeldsProps {
  * `tile-claim` flash animation when meld count grows, so a new pung/chow/kong
  * lands with a visible "claimed!" cue rather than appearing silently.
  */
-export default function ExposedMelds({ melds, size = 'sm' }: ExposedMeldsProps) {
+export default function ExposedMelds({ melds, size = 'sm', anchorId }: ExposedMeldsProps) {
   const prevCount = useRef(melds.length);
   const [flashKey, setFlashKey] = useState(0);
 
@@ -30,7 +32,7 @@ export default function ExposedMelds({ melds, size = 'sm' }: ExposedMeldsProps) 
   const lastIndex = melds.length - 1;
 
   return (
-    <div className="flex gap-2 flex-wrap">
+    <div className="flex gap-2 flex-wrap" data-meld-anchor={anchorId}>
       {melds.map((meld, i) => (
         <div
           key={`${flashKey}-${i}`}

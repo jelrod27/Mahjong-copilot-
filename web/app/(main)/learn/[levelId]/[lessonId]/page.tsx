@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getLevelById, Lesson, QuizQuestion } from '@/content';
@@ -32,7 +34,15 @@ export default function LessonPage() {
   if (!lesson) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground font-sans">Lesson not found</p>
+        <div className="ds-card mx-auto max-w-sm p-6 text-center">
+          <p className="font-display text-sm text-foreground">This page of the rulebook is missing</p>
+          <p className="mt-1 font-sans text-xs text-muted-foreground">
+            The lesson you followed does not exist (or moved floors).
+          </p>
+          <Link href="/learn" className="ds-btn-accent mt-4 inline-block min-h-[40px] px-4 font-display text-xs leading-[40px]">
+            Back to lessons
+          </Link>
+        </div>
       </div>
     );
   }

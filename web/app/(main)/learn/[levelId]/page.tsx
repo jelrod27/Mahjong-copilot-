@@ -19,7 +19,15 @@ export default function LevelPage() {
   if (!level) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground font-sans">Level not found</p>
+        <div className="ds-card mx-auto max-w-sm p-6 text-center">
+          <p className="font-display text-sm text-foreground">No such floor in the library</p>
+          <p className="mt-1 font-sans text-xs text-muted-foreground">
+            That level does not exist.
+          </p>
+          <Link href="/learn" className="ds-btn-accent mt-4 inline-block min-h-[40px] px-4 font-display text-xs leading-[40px]">
+            Back to lessons
+          </Link>
+        </div>
       </div>
     );
   }

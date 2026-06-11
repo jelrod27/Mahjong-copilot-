@@ -5,12 +5,19 @@
 import { Tile, TileType, TileSuit, tileKey } from '@/models/Tile';
 import { GameState } from '@/models/GameState';
 import { GameAction, AIDecision, AvailableClaim } from '../types';
-import { isWinningHand, canPlayerWin } from '../winDetection';
+import { canDeclareSelfDrawnWin } from '../turnManager';
+import { deterministicNoise } from '../rng';
+import { normalizePersonality } from './personality';
+
+/** Noise salt unique to this game + moment, so AI variety stays replayable. */
+function noiseSalt(gameState: GameState): string {
+  return `${gameState.seed ?? gameState.id}|${gameState.turnHistory.length}`;
+}
 
 /**
  * Score a tile for discard desirability (higher = more desirable to discard).
  */
-function discardScore(tile: Tile, hand: Tile[]): number {
+function discardScore(tile: Tile, hand: Tile[], salt: string): number {
   const key = tileKey(tile);
   const count = hand.filter(t => tileKey(t) === key).length;
 
@@ -42,8 +49,8 @@ function discardScore(tile: Tile, hand: Tile[]): number {
     }
   }
 
-  // Small random jitter for variety
-  score += Math.random() * 2;
+  // Small deterministic jitter for variety
+  score += deterministicNoise(salt, tile.id) * 2;
 
   return score;
 }
@@ -52,15 +59,17 @@ export function getEasyDiscard(gameState: GameState, playerIndex: number): AIDec
   const player = gameState.players[playerIndex];
   const hand = player.hand;
 
-  // Check for self-drawn win first
-  if (canPlayerWin(hand, player.melds)) {
+  // Check for self-drawn win first (gated on legality incl. minimum faan,
+  // or the engine rejects the declaration and the turn stalls)
+  if (canDeclareSelfDrawnWin(gameState, playerIndex)) {
     return { action: { type: 'DECLARE_WIN' }, reasoning: 'Easy AI: winning hand detected' };
   }
 
   // Score each non-bonus tile for discard desirability
+  const salt = noiseSalt(gameState);
   const nonBonus = hand.filter(t => t.type !== TileType.BONUS);
   if (nonBonus.length === 0) {
-    const tile = hand[Math.floor(Math.random() * hand.length)];
+    const tile = hand[Math.floor(deterministicNoise(salt, 'fallback') * hand.length)];
     return { action: { type: 'DISCARD', tile }, reasoning: 'Easy AI: no non-bonus tiles, random discard' };
   }
 
@@ -68,7 +77,7 @@ export function getEasyDiscard(gameState: GameState, playerIndex: number): AIDec
   let bestScore = -Infinity;
 
   for (const tile of nonBonus) {
-    const score = discardScore(tile, hand);
+    const score = discardScore(tile, hand, salt);
     if (score > bestScore) {
       bestScore = score;
       bestTile = tile;
@@ -107,7 +116,8 @@ export function getEasyClaimDecision(
     const isDragon = tile.suit === TileSuit.DRAGON;
     const isSeatWind = tile.suit === TileSuit.WIND && tile.wind === player.seatWind;
 
-    if (tile && (isDragon || isSeatWind) && Math.random() < 0.7) {
+    const pungChance = Math.min(0.98, 0.7 * normalizePersonality(player.aiPersonality).claimAppetite);
+    if (tile && (isDragon || isSeatWind) && deterministicNoise(noiseSalt(gameState), 'pung', tile.id) < pungChance) {
       return {
         action: {
           type: 'CLAIM',

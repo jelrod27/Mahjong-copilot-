@@ -113,7 +113,10 @@ export default function GameHUD({
             )}
           </span>
           <GlossaryTerm term="Wall">
-            <span data-testid="wall-count-display" className="whitespace-nowrap text-info">
+            <span
+              data-testid="wall-count-display"
+              className={`inline-block whitespace-nowrap text-info ${wallCount <= 8 ? 'late-wall-heartbeat' : ''}`}
+            >
               Wall {wallCount}
             </span>
           </GlossaryTerm>
@@ -219,7 +222,7 @@ export default function GameHUD({
         <GlossaryTerm term="Wall">
           <div data-testid="wall-count-display" className="text-right">
             <p className="text-[11px] font-medium text-info">Wall</p>
-            <p className="font-display text-lg leading-none text-info">{wallCount}</p>
+            <p className={`font-display text-lg leading-none text-info ${wallCount <= 8 ? 'late-wall-heartbeat' : ''}`}>{wallCount}</p>
           </div>
         </GlossaryTerm>
       </div>

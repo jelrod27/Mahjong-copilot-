@@ -2,7 +2,7 @@ import { WindTile, tileToJson, tileFromJson } from './Tile';
 import { GameState, gameStateToJson, gameStateFromJson, meldToJson, meldFromJson } from './GameState';
 import { ScoringResult, PaymentBreakdown } from '../engine/types';
 
-export type GameMode = 'quick' | 'full';
+export type GameMode = 'quick' | 'full' | 'single';
 export type MatchPhase = 'playing' | 'betweenHands' | 'finished';
 /** Legal faan-minimum values exposed in the lobby. */
 export type MinFaan = 0 | 1 | 3;
@@ -38,6 +38,8 @@ export interface MatchState {
    * HK standard default is 3. Beginner / family rules may lower to 1 or 0.
    */
   minFaan?: MinFaan;
+  /** Per-seat AI overrides for Parlour floor matches. */
+  aiSeats?: { index: number; difficulty: 'easy' | 'medium' | 'hard'; personality?: import('./GameState').AIPersonalityParams }[];
 }
 
 /**
@@ -47,6 +49,24 @@ export interface MatchState {
  */
 export function normaliseMinFaan(value: unknown): MinFaan | undefined {
   return value === 0 || value === 1 || value === 3 ? value : undefined;
+}
+
+/**
+ * Narrow persisted JSON into valid aiSeats entries. Drops anything with an
+ * out-of-range seat index or unknown difficulty so corrupted localStorage
+ * never configures a resumed match (same boundary policy as
+ * normaliseMinFaan). Personality values are passed through — the engine
+ * clamps them at consumption via normalizePersonality.
+ */
+export function normaliseAiSeats(value: unknown): MatchState['aiSeats'] {
+  if (!Array.isArray(value)) return undefined;
+  const valid = value.filter((s): s is NonNullable<MatchState['aiSeats']>[number] =>
+    !!s && typeof s === 'object' &&
+    Number.isInteger((s as { index?: unknown }).index) &&
+    (s as { index: number }).index >= 1 && (s as { index: number }).index <= 3 &&
+    ['easy', 'medium', 'hard'].includes((s as { difficulty?: string }).difficulty ?? ''),
+  );
+  return valid.length > 0 ? valid : undefined;
 }
 
 export function matchStateToJson(match: MatchState): Record<string, any> {
@@ -67,6 +87,7 @@ export function matchStateToJson(match: MatchState): Record<string, any> {
     playerNames: match.playerNames,
     humanPlayerId: match.humanPlayerId,
     minFaan: match.minFaan,
+    aiSeats: match.aiSeats,
   };
 }
 
@@ -88,6 +109,7 @@ export function matchStateFromJson(json: Record<string, any>): MatchState {
     playerNames: json.playerNames as string[],
     humanPlayerId: json.humanPlayerId as string,
     minFaan: normaliseMinFaan(json.minFaan),
+    aiSeats: normaliseAiSeats(json.aiSeats),
   };
 }
 

@@ -77,13 +77,18 @@ class SoundManager {
     const gain = this.getMasterGain();
     if (!gain) return;
 
+    // Physical-feeling sounds get per-play pitch variance so no two tile
+    // clacks are ever identical — the audio equivalent of real tiles.
+    const vary = (freq: number) => freq * (0.93 + Math.random() * 0.14);
+
     switch (sound) {
       case 'tilePlace':
-        this.playTone(gain, 800, 0.06, 'square');
+        this.playTone(gain, vary(800), 0.05 + Math.random() * 0.025, 'square');
+        this.playTone(gain, vary(2400), 0.018, 'triangle', 0.004); // click transient
         break;
       case 'tileDraw':
-        this.playTone(gain, 600, 0.08, 'triangle');
-        this.playTone(gain, 900, 0.06, 'triangle', 0.05);
+        this.playTone(gain, vary(600), 0.08, 'triangle');
+        this.playTone(gain, vary(900), 0.06, 'triangle', 0.05);
         break;
       case 'claim':
         this.playTone(gain, 500, 0.08, 'square');
@@ -128,6 +133,30 @@ class SoundManager {
     }
   }
 
+  /**
+   * Rising-pitch tick for the fan-row reveal on the win screen. Each step
+   * climbs a semitone-ish so a big hand audibly escalates as fans stack.
+   */
+  playFanTick(step: number) {
+    if (!this.enabled) return;
+    const gain = this.getMasterGain();
+    if (!gain) return;
+    const freq = 660 * Math.pow(2, Math.min(step, 14) / 12);
+    this.playTone(gain, freq, 0.05, 'square');
+  }
+
+  /** Jackpot cascade for limit-hand wins: a descending-then-ascending shower. */
+  playJackpot() {
+    if (!this.enabled) return;
+    const gain = this.getMasterGain();
+    if (!gain) return;
+    const notes = [1568, 1318, 1047, 784, 1047, 1318, 1568, 2093, 2637];
+    notes.forEach((freq, i) => {
+      this.playTone(gain, freq, 0.09, 'square', i * 0.07);
+    });
+    this.playTone(gain, 131, 0.6, 'sawtooth', 0.1); // low rumble under the shower
+  }
+
   private playTone(
     masterGain: GainNode,
     freq: number,
@@ -150,10 +179,16 @@ class SoundManager {
       from separate play() calls.
     */
     this.activeVoices = this.activeVoices.filter(v => v.endTime > ctx!.currentTime);
-    while (this.activeVoices.length >= this.maxPolyphony) {
-      const oldest = this.activeVoices.shift();
+    // Cap genuinely simultaneous voices, but never evict a note that hasn't
+    // started yet — sequential fanfares/cascades schedule their whole run up
+    // front and must survive intact.
+    const playingNow = this.activeVoices.filter(v => v.startTime <= ctx!.currentTime);
+    while (playingNow.length >= this.maxPolyphony) {
+      const oldest = playingNow.shift();
       if (oldest) {
         try { oldest.osc.stop(); } catch { /* already stopped */ }
+        const idx = this.activeVoices.indexOf(oldest);
+        if (idx >= 0) this.activeVoices.splice(idx, 1);
       }
     }
 

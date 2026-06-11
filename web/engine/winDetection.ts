@@ -4,9 +4,36 @@
  * Pure TypeScript — no framework deps.
  */
 
-import { Tile, TileSuit, TileType, tileKey, tilesMatch } from '@/models/Tile';
+import { Tile, TileSuit, TileType, WindTile, DragonTile, tileKey, tilesMatch } from '@/models/Tile';
 import { MeldInfo } from '@/models/GameState';
 import { HandDecomposition } from './types';
+
+/** All 34 unique tile kinds — used for tenpai/wait detection. */
+export const ALL_TILE_PROTOTYPES: Tile[] = (() => {
+  const tiles: Tile[] = [];
+  let id = 0;
+  for (const suit of [TileSuit.BAMBOO, TileSuit.CHARACTER, TileSuit.DOT]) {
+    for (let n = 1; n <= 9; n++) {
+      tiles.push({
+        id: `proto_${id++}`, suit, type: TileType.SUIT, number: n,
+        nameEnglish: `${n} ${suit}`, nameChinese: '', nameJapanese: '', assetPath: '',
+      });
+    }
+  }
+  for (const wind of [WindTile.EAST, WindTile.SOUTH, WindTile.WEST, WindTile.NORTH]) {
+    tiles.push({
+      id: `proto_${id++}`, suit: TileSuit.WIND, type: TileType.HONOR, wind,
+      nameEnglish: `${wind} Wind`, nameChinese: '', nameJapanese: '', assetPath: '',
+    });
+  }
+  for (const dragon of [DragonTile.RED, DragonTile.GREEN, DragonTile.WHITE]) {
+    tiles.push({
+      id: `proto_${id++}`, suit: TileSuit.DRAGON, type: TileType.HONOR, dragon,
+      nameEnglish: `${dragon} Dragon`, nameChinese: '', nameJapanese: '', assetPath: '',
+    });
+  }
+  return tiles;
+})();
 
 /**
  * Check if a set of tiles (typically 14) forms a winning hand.
@@ -44,7 +71,11 @@ export function canPlayerWin(hand: Tile[], melds: MeldInfo[]): boolean {
   const meldTiles = melds.flatMap(m => m.tiles);
   const allTiles = [...nonBonusHand, ...meldTiles];
 
-  if (allTiles.length !== 14) return false;
+  // A kong is 4 physical tiles but occupies one meld slot like a pung, so it
+  // counts as 3 toward the canonical 14-tile hand shape.
+  const effectiveTileCount = nonBonusHand.length +
+    melds.reduce((sum, m) => sum + Math.min(m.tiles.length, 3), 0);
+  if (effectiveTileCount !== 14) return false;
 
   // Special hands require all tiles concealed (no exposed melds)
   if (melds.length === 0) {
@@ -101,6 +132,42 @@ export function findDecompositions(tiles: Tile[]): HandDecomposition[] {
   findStandardDecompositions(sorted, [], results);
 
   return results;
+}
+
+/**
+ * Find all decompositions of a winning hand that has exposed melds.
+ * The concealed tiles (including the winning tile) are decomposed into the
+ * remaining melds + pair, seeded with the exposed melds. Returned
+ * decompositions include the exposed melds in `melds`.
+ */
+export function findDecompositionsWithMelds(
+  concealedTiles: Tile[],
+  exposedMelds: MeldInfo[],
+): HandDecomposition[] {
+  if (exposedMelds.length === 0) return findDecompositions(concealedTiles);
+
+  const handTiles = concealedTiles.filter(t => t.type !== TileType.BONUS);
+  const meldsNeeded = 4 - exposedMelds.length;
+  if (meldsNeeded < 0) return [];
+  if (handTiles.length !== meldsNeeded * 3 + 2) return [];
+
+  const results: HandDecomposition[] = [];
+  findStandardDecompositions(sortTiles(handTiles), [...exposedMelds], results);
+  return results;
+}
+
+/**
+ * Exact tenpai check: is this concealed hand + melds one tile away from a win?
+ * Brute-forces all 34 tile kinds through canPlayerWin, so unlike
+ * calculateShanten (a heuristic) this is authoritative — use it wherever
+ * tenpai has scoring consequences (e.g. wall-exhaustion settlement).
+ */
+export function isTenpai(concealedHand: Tile[], melds: MeldInfo[]): boolean {
+  const nonBonus = concealedHand.filter(t => t.type !== TileType.BONUS);
+  for (const proto of ALL_TILE_PROTOTYPES) {
+    if (canPlayerWin([...nonBonus, proto], melds)) return true;
+  }
+  return false;
 }
 
 // ============================================

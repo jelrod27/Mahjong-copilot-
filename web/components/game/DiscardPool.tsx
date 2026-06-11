@@ -80,7 +80,7 @@ function TileWrapper({
   }
 
   return (
-    <div className={className}>
+    <div className={className} data-flight-tile={isGhost ? undefined : tile.id}>
       <RetroTile tile={tile} size="sm" isLastDiscarded={isLast} />
     </div>
   );

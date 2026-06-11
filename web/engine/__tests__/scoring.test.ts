@@ -101,11 +101,11 @@ describe('calculateScore', () => {
     expect(result.fans.some(f => f.name === 'Seven Pairs')).toBe(true);
   });
 
-  it('scores thirteen orphans as limit hand (256 points)', () => {
+  it('scores thirteen orphans as limit hand (8192 points)', () => {
     const hand = buildThirteenOrphans();
     const ctx = baseContext({ winningTile: hand[13] });
     const result = calculateScore(hand.slice(0, 13), [], ctx);
-    expect(result.totalPoints).toBe(256);
+    expect(result.totalPoints).toBe(8192);
     expect(result.totalFan).toBe(13);
   });
 
@@ -116,20 +116,22 @@ describe('calculateScore', () => {
     expect(result.fans.some(f => f.name === 'No Flowers')).toBe(true);
   });
 
-  it('awards flower bonus per flower tile', () => {
+  it('awards seat flower fan only for seat-matching flowers', () => {
     const hand = buildChowHand();
+    // East seat: Plum (#1) matches, Orchid (#2) does not
     const flowers = [flowerTile('Plum', 1), flowerTile('Orchid', 2)];
     const ctx = baseContext({ winningTile: hand[13], flowers });
     const result = calculateScore(hand.slice(0, 13), [], ctx);
-    const flowerFan = result.fans.find(f => f.name === 'Flower Tiles');
-    expect(flowerFan?.fan).toBe(2);
+    const seatFlowers = result.fans.filter(f => f.name === 'Seat Flower');
+    expect(seatFlowers).toHaveLength(1);
+    expect(result.fans.some(f => f.name === 'Flower Tiles')).toBe(false);
   });
 
-  it('caps payment at 256 for limit hands (10+ fan)', () => {
+  it('caps payment at the limit (8192) for limit hands (10+ fan)', () => {
     const hand = buildThirteenOrphans();
     const ctx = baseContext({ winningTile: hand[13] });
     const result = calculateScore(hand.slice(0, 13), [], ctx);
-    expect(result.totalPoints).toBe(256);
+    expect(result.totalPoints).toBe(8192);
   });
 
   it('awards all chows fan (+1) when all melds are chows', () => {
@@ -189,7 +191,7 @@ describe('calculateScore', () => {
       flowers: [flowerTile('Plum', 1)],
     });
     const result = calculateScore(hand.slice(0, 13), [], ctx);
-    expect(result.totalPoints).toBe(256);
+    expect(result.totalPoints).toBe(8192);
     expect(result.fans.some(f => f.name === 'Big Three Dragons')).toBe(true);
   });
 
@@ -202,7 +204,7 @@ describe('calculateScore', () => {
       flowers: [flowerTile('Plum', 1)],
     });
     const result = calculateScore(hand.slice(0, 13), [], ctx);
-    expect(result.totalPoints).toBe(256);
+    expect(result.totalPoints).toBe(8192);
     expect(result.fans.some(f => f.name === 'Small Four Winds')).toBe(true);
   });
 

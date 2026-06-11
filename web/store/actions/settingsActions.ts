@@ -35,6 +35,10 @@ export interface SettingsState {
   npcRoster: RosterId;
   /** Auto rotates rosters each match; fixed keeps `npcRoster` until changed. */
   npcRosterMode: NpcRosterMode;
+  /** CRT scanline overlay on the game table (retro display effect). */
+  crtEffect: boolean;
+  /** Chiptune background music during play. */
+  musicEnabled: boolean;
 }
 
 export const SETTINGS_INITIALIZE = 'SETTINGS_INITIALIZE' as const;
@@ -51,6 +55,8 @@ export const SETTINGS_SET_TILE_PALETTE = 'SETTINGS_SET_TILE_PALETTE' as const;
 export const SETTINGS_SET_TABLE_FELT = 'SETTINGS_SET_TABLE_FELT' as const;
 export const SETTINGS_SET_NPC_ROSTER = 'SETTINGS_SET_NPC_ROSTER' as const;
 export const SETTINGS_SET_NPC_ROSTER_MODE = 'SETTINGS_SET_NPC_ROSTER_MODE' as const;
+export const SETTINGS_SET_CRT_EFFECT = 'SETTINGS_SET_CRT_EFFECT' as const;
+export const SETTINGS_SET_MUSIC_ENABLED = 'SETTINGS_SET_MUSIC_ENABLED' as const;
 
 export type SettingsAction =
   | { type: typeof SETTINGS_INITIALIZE; payload: SettingsState }
@@ -66,7 +72,9 @@ export type SettingsAction =
   | { type: typeof SETTINGS_SET_TILE_PALETTE; payload: TilePaletteId }
   | { type: typeof SETTINGS_SET_TABLE_FELT; payload: TableFeltId }
   | { type: typeof SETTINGS_SET_NPC_ROSTER; payload: RosterId }
-  | { type: typeof SETTINGS_SET_NPC_ROSTER_MODE; payload: NpcRosterMode };
+  | { type: typeof SETTINGS_SET_NPC_ROSTER_MODE; payload: NpcRosterMode }
+  | { type: typeof SETTINGS_SET_CRT_EFFECT; payload: boolean }
+  | { type: typeof SETTINGS_SET_MUSIC_ENABLED; payload: boolean };
 
 export const initializeSettings = () => async (dispatch: any) => {
   try {
@@ -102,6 +110,8 @@ export const initializeSettings = () => async (dispatch: any) => {
 
     const rosterModeRaw = await StorageService.getString(AppConstants.NPC_ROSTER_MODE_KEY);
     const npcRosterMode: NpcRosterMode = isNpcRosterMode(rosterModeRaw) ? rosterModeRaw : 'auto';
+    const crtEffect = await StorageService.getBool(AppConstants.CRT_EFFECT_KEY) ?? false;
+    const musicEnabled = await StorageService.getBool(AppConstants.MUSIC_ENABLED_KEY) ?? true;
 
     dispatch({
       type: SETTINGS_INITIALIZE,
@@ -119,6 +129,8 @@ export const initializeSettings = () => async (dispatch: any) => {
         tableFelt,
         npcRoster,
         npcRosterMode,
+        crtEffect,
+        musicEnabled,
       },
     });
   } catch (error) {
@@ -186,6 +198,16 @@ export const setNpcRoster = (id: RosterId) => async (dispatch: any) => {
   await StorageService.setString(AppConstants.NPC_ROSTER_MODE_KEY, 'fixed');
   dispatch({ type: SETTINGS_SET_NPC_ROSTER, payload: id });
   dispatch({ type: SETTINGS_SET_NPC_ROSTER_MODE, payload: 'fixed' });
+};
+
+export const setCrtEffect = (enabled: boolean) => async (dispatch: any) => {
+  await StorageService.setBool(AppConstants.CRT_EFFECT_KEY, enabled);
+  dispatch({ type: SETTINGS_SET_CRT_EFFECT, payload: enabled });
+};
+
+export const setMusicEnabled = (enabled: boolean) => async (dispatch: any) => {
+  await StorageService.setBool(AppConstants.MUSIC_ENABLED_KEY, enabled);
+  dispatch({ type: SETTINGS_SET_MUSIC_ENABLED, payload: enabled });
 };
 
 export const setNpcRosterMode = (mode: NpcRosterMode) => async (dispatch: any) => {

@@ -380,6 +380,40 @@ describe('claim flow', () => {
     expect(result.current.claimTimer).toBe(0);
   });
 
+  it('expiry fires PASS exactly once even when ticks continue', () => {
+    const claimGame = makeClaimGame();
+    // After pass() the engine returns a state where human has already passed,
+    // so the claim-detection effect cannot re-arm the timer.
+    const postPassGame = makeGame({
+      turnPhase: 'claim',
+      currentPlayerIndex: 1,
+      lastDiscardedBy: 'ai1',
+      lastDiscardedTile: makeTile('d1'),
+      passedPlayers: [HUMAN_ID],
+    });
+    initializeMatchMock.mockReturnValue(makeMatch(claimGame));
+    getAvailableClaimsMock.mockReturnValue([
+      { claimType: 'pung', tilesFromHand: [], priority: 2 },
+    ]);
+    // Return postPassGame on pass so the claim-detection effect sees human already passed.
+    applyActionMock.mockReturnValue(postPassGame);
+
+    const { result } = renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+
+    expect(result.current.claimTimer).toBeGreaterThan(0);
+
+    // Advance 3× the timeout to verify no duplicate fires.
+    act(() => { vi.advanceTimersByTime(30_000); });
+
+    const passCalls = applyActionMock.mock.calls.filter(
+      (c) => (c as [GameState, string, { type: string }])[1] === HUMAN_ID &&
+              (c as [GameState, string, { type: string }])[2].type === 'PASS',
+    );
+    expect(passCalls).toHaveLength(1);
+    expect(result.current.claimTimer).toBe(0);
+  });
+
   it('no claim options when human already passed', () => {
     const claimGame = makeGame({
       turnPhase: 'claim',

@@ -47,7 +47,7 @@ Solo play never requires an account — identity is an upgrade, not a gate.
 
 ## Tests
 
-`lib/__tests__/dailyHand.test.ts` (6): UTC date keying, streak extension
+`web/lib/__tests__/dailyHand.test.ts` (6): UTC date keying, streak extension
 across outcomes, missed-day reset preserving best, alive streak with
 unplayed today, first-play-wins, and the ASCII-only share card.
 

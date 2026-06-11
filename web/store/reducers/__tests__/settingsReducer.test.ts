@@ -41,6 +41,8 @@ describe('settingsReducer', () => {
       showTutor: false,
       liveFaanMeter: false,
       tileVoice: 'cantonese' as const,
+      crtEffect: true,
+      musicEnabled: false,
     };
     const state = settingsReducer(initialState, { type: SETTINGS_INITIALIZE, payload: newSettings });
     expect(state).toEqual(newSettings);

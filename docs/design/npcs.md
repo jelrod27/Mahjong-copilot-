@@ -1,7 +1,7 @@
 # NPC Sheets: The Jade Parlour Cast
 
 Ten characters: one mentor, eight floor rivals, one final boss. Six already
-exist in `content/npcs.ts` (Mei, Hana, Yuki, Riko, Aki, Sora) with portraits
+exist in `web/content/npcs.ts` (Mei, Hana, Yuki, Riko, Aki, Sora) with portraits
 and voice lines; this document recasts them into the Parlour and specs the
 four new ones (Gam, Bo, Pearl, Jin).
 
@@ -203,7 +203,7 @@ win off your discard).
 - New `NpcId`s: `gam`, `bo`, `pearl`, `jin`. Gam needs no AI (mentor only);
   Bo, Pearl, Jin need visual traits for the SVG rig until commissioned art
   arrives via `portraitImageSet`.
-- `AIPersonality` lives in the engine (`engine/ai/personality.ts`) and is
+- `AIPersonality` lives in the engine (`web/engine/ai/personality.ts`) and is
   resolved from the NPC id at the controller boundary; the engine stays
   ignorant of characters, receiving only parameter multipliers.
 - Dialogue (pre/post-match) lives in NPC data as `dialogue: { preMatch:
@@ -211,6 +211,6 @@ win off your discard).
   Barks live as `barks: { claimedAgainst: string[], tenpai: string[],
   youDealIn: string[] }` and surface through the existing speech-bubble
   system.
-- Floor definitions (`lib/parlour.ts`): floor number, npcId, AI tier,
+- Floor definitions (`web/lib/parlour.ts`): floor number, npcId, AI tier,
   personality, table rules (minFaan ramps: floors 1-3 play at 1 faan,
   4-6 at 3, 7-9 at 3), unlock state in localStorage.

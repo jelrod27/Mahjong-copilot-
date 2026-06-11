@@ -11,17 +11,16 @@ describe('normalizePersonality', () => {
     expect(normalizePersonality(undefined)).toEqual(DEFAULT_PERSONALITY);
   });
 
-  it('clamps absurd and corrupted values into [0.1, 3]', () => {
-    const p = normalizePersonality({
-      claimAppetite: 999,
-      fanGreed: -5,
-      defenseBias: NaN,
-      speedBias: Infinity,
-    });
+  it('clamps out-of-range values into [0.1, 3]', () => {
+    const p = normalizePersonality({ claimAppetite: 999, fanGreed: -5, defenseBias: 1, speedBias: 1 });
     expect(p.claimAppetite).toBe(3);
     expect(p.fanGreed).toBe(0.1);
-    expect(p.defenseBias).toBe(1); // NaN falls back to default
-    expect(p.speedBias).toBe(1); // Infinity is not finite — falls back to default
+  });
+
+  it('falls back to defaults for non-finite values', () => {
+    const p = normalizePersonality({ claimAppetite: 1, fanGreed: 1, defenseBias: NaN, speedBias: Infinity });
+    expect(p.defenseBias).toBe(1);
+    expect(p.speedBias).toBe(1);
   });
 
   it('passes sane values through unchanged', () => {

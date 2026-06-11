@@ -13,9 +13,12 @@ beforeEach(() => {
 describe('daily seed', () => {
   it('derives a UTC date key so every player gets the same hand', () => {
     expect(dailyDateKey(T0)).toBe('2026-06-10');
-    expect(dailySeed(T0)).toBe('daily-2026-06-10');
     // Late evening in any local zone still maps to the same UTC key
     expect(dailyDateKey(new Date('2026-06-10T23:59:59Z'))).toBe('2026-06-10');
+  });
+
+  it('builds the seed from the date key', () => {
+    expect(dailySeed(T0)).toBe('daily-2026-06-10');
   });
 });
 
@@ -53,14 +56,18 @@ describe('streaks reward showing up', () => {
 });
 
 describe('share card', () => {
-  it('is emoji-free and carries the result, faan bar, and streak', () => {
+  it('carries the result, faan bar, and streak', () => {
     recordDailyResult({ outcome: 'win', fan: 6, points: 512, scoreChange: 1024 }, T0);
     const text = buildShareText(getDailyState(T0));
     expect(text).toContain('Daily Hand 2026-06-10');
     expect(text).toContain('WIN  +6 faan (512 pts)');
     expect(text).toContain('FAAN [######....] 6/10');
     expect(text).toContain('Streak: 1 day');
-    // No emoji or non-ASCII art: every char is printable ASCII
+  });
+
+  it('contains only printable ASCII (no emoji)', () => {
+    recordDailyResult({ outcome: 'win', fan: 6, points: 512, scoreChange: 1024 }, T0);
+    const text = buildShareText(getDailyState(T0));
     expect([...text].every(c => c === '\n' || (c.charCodeAt(0) >= 32 && c.charCodeAt(0) < 127))).toBe(true);
   });
 });

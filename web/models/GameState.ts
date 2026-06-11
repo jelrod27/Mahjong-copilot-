@@ -169,6 +169,7 @@ export const gameStateToJson = (gameState: GameState): Record<string, any> => {
 export const gameStateFromJson = (json: Record<string, any>): GameState => {
   return {
     id: json.id as string,
+    seed: json.seed as string | undefined,
     variant: json.variant as string,
     phase: json.phase as GamePhase,
     turnPhase: (json.turnPhase as TurnPhase) ?? 'draw',
@@ -197,6 +198,7 @@ export const gameStateFromJson = (json: Record<string, any>): GameState => {
     winnerId: json.winnerId as string | undefined,
     winningTile: json.winningTile ? tileFromJson(json.winningTile) : undefined,
     isSelfDrawn: json.isSelfDrawn as boolean | undefined,
+    winMethod: json.winMethod as WinMethod | undefined,
     isRobKongOpportunity: json.isRobKongOpportunity as boolean | undefined,
     isKongReplacement: json.isKongReplacement as boolean | undefined,
     finalScores: (json.finalScores as Record<string, number>) ?? {},
@@ -232,6 +234,7 @@ function playerToJson(player: Player): Record<string, any> {
     name: player.name,
     isAI: player.isAI,
     aiDifficulty: player.aiDifficulty,
+    aiPersonality: player.aiPersonality,
     hand: player.hand.map(t => tileToJson(t)),
     melds: player.melds.map(m => meldToJson(m)),
     score: player.score,
@@ -247,6 +250,7 @@ function playerFromJson(json: Record<string, any>): Player {
     name: json.name as string,
     isAI: (json.isAI as boolean) ?? false,
     aiDifficulty: json.aiDifficulty as 'easy' | 'medium' | 'hard' | undefined,
+    aiPersonality: json.aiPersonality as AIPersonalityParams | undefined,
     hand: (json.hand as any[])?.map((t: any) => tileFromJson(t)) ?? [],
     melds: (json.melds as any[])?.map((m: any) => meldFromJson(m)) ?? [],
     score: (json.score as number) ?? 0,

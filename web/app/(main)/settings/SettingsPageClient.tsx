@@ -97,6 +97,8 @@ export default function SettingsPageClient() {
     void dispatch(setNotificationsEnabled(true));
     void dispatch(setShowTutor(true));
     void dispatch(setLiveFaanMeter(true));
+    void dispatch(setMusicEnabled(true));
+    void dispatch(setCrtEffect(false));
     void dispatch(setTileVoice('off'));
     const defaultPrefs: GamePreferences = { turnTimer: 20, autoPass: false };
     setGamePrefs(defaultPrefs);

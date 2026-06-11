@@ -134,14 +134,21 @@ class MusicEngine {
     const track = TRACKS[trackId];
     const ctx = this.getContext();
     if (!track || !ctx || !this.musicGain) return;
-    if (this.current?.id === trackId && this.timer) return; // already looping
+    const nextTranspose = (track.transpose ?? 0) + intensity * 2;
+    const nextTempo = 1 + intensity * 0.08;
+    if (this.current?.id === trackId && this.timer) {
+      // Same track: retune in place when only the intensity changed
+      this.transpose = nextTranspose;
+      this.tempoScale = nextTempo;
+      return;
+    }
 
     this.stop();
     // The scheduler walks notes in array order; patterns are authored by
     // channel, so sort by step or later channels would never schedule.
     this.current = { ...track, notes: [...track.notes].sort((a, b) => a[0] - b[0]) };
-    this.transpose = (track.transpose ?? 0) + intensity * 2;
-    this.tempoScale = 1 + intensity * 0.08;
+    this.transpose = nextTranspose;
+    this.tempoScale = nextTempo;
     this.nextNoteIndex = 0;
     this.loopStartTime = ctx.currentTime + 0.05;
     this.timer = setInterval(() => this.scheduleWindow(), LOOKAHEAD_MS);

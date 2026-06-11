@@ -26,12 +26,16 @@ of which touch game logic:
 
 1. **Identity (optional)**: Supabase auth already exists for multiplayer.
    Solo stays anonymous; linking an account is an upgrade, never a gate.
-2. **Sync up (publish)**: a `lib/sync.ts` publisher that, when (and only
-   when) a session exists, POSTs snapshots of the four stores to
-   per-user rows (`daily_results`, `parlour_progress`, `solo_stats`).
-   Local remains the write path; the server is a mirror. Conflict rule:
-   server keeps maxima (best streak, highest floor, best fan) — these
-   stores are monotonic by design, which makes sync trivially mergeable.
+2. **Sync up (publish)**: a future `web/lib/sync.ts` publisher that, when
+   (and only when) a session exists, POSTs snapshots of three stores —
+   game stats (`16bit-mahjong-stats` -> `solo_stats`), parlour progress
+   (`16bit-mahjong-parlour` -> `parlour_progress`), and daily results
+   (`16bit-mahjong-daily` -> `daily_results`). Settings and the rank-seen
+   marker stay device-local on purpose (preferences and ceremony
+   bookkeeping, not progress). Local remains the write path; the server
+   is a mirror. Conflict rule: server keeps maxima (best streak, highest
+   floor, best fan) — these stores are monotonic by design, which makes
+   sync trivially mergeable.
 3. **Read down (leaderboards)**: a daily leaderboard is one query over
    `daily_results` for today's date key (fan desc, points desc). The Daily
    Hand result dialog gains a "Global today" panel when signed in; the

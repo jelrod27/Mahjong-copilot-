@@ -41,6 +41,20 @@ function prefersReducedMotion(): boolean {
     !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 }
 
+/**
+ * The board renders mobile and desktop seat layouts simultaneously (one is
+ * display:none), so the same anchor id can match multiple elements. Pick the
+ * one that is actually visible.
+ */
+function queryVisible(selector: string): Element | null {
+  const candidates = document.querySelectorAll(selector);
+  for (const el of Array.from(candidates)) {
+    const rect = el.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) return el;
+  }
+  return null;
+}
+
 function FlightClone({ flight, onDone }: { flight: Flight; onDone: (key: string) => void }) {
   const startedRef = useRef(false);
 
@@ -65,7 +79,7 @@ function FlightClone({ flight, onDone }: { flight: Flight; onDone: (key: string)
     const dy = flight.to.top - flight.from.top;
 
     // Hide the real destination tile while its clone is in the air
-    const destEl = document.querySelector(
+    const destEl = queryVisible(
       `[data-flight-tile="${flight.tile.id}"]`,
     ) as HTMLElement | null;
     if (destEl) destEl.style.visibility = 'hidden';
@@ -144,14 +158,14 @@ export default function TileFlightLayer({
     // --- Discard: tile appeared in the pool
     const lastTile = gameState.lastDiscardedTile;
     if (!reduce && lastTile && lastTile.id !== prevDiscardId.current && gameState.lastDiscardedBy) {
-      const destEl = document.querySelector(`[data-flight-tile="${lastTile.id}"]`);
+      const destEl = queryVisible(`[data-flight-tile="${lastTile.id}"]`);
       if (destEl) {
         const to = destEl.getBoundingClientRect();
         // Human discards launch from the tile's last position in hand;
         // AI discards launch from the discarder's seat.
         let from = rectCache.current.get(lastTile.id);
-        if (!from) {
-          const seatEl = document.querySelector(
+        if (!from || from.width === 0) {
+          const seatEl = queryVisible(
             `[data-seat-anchor="${gameState.lastDiscardedBy}"]`,
           );
           if (seatEl) from = seatEl.getBoundingClientRect();
@@ -180,15 +194,19 @@ export default function TileFlightLayer({
         if (meldCounts[player.id] <= (prevMeldCounts.current[player.id] ?? 0)) continue;
         const newMeld = player.melds[player.melds.length - 1];
         if (!newMeld) continue;
-        // The claimed tile is the meld tile that was visible in the pool last render
-        const claimedTile = newMeld.tiles.find(t => rectCache.current.has(t.id));
+        // The claimed tile is the discard the meld was formed around. The
+        // last discarded tile is authoritative (hand tiles in the meld are
+        // also rect-cached, so a cache search alone could pick the wrong one).
+        const claimedTile =
+          newMeld.tiles.find(t => t.id === gameState.lastDiscardedTile?.id && rectCache.current.has(t.id)) ??
+          newMeld.tiles.find(t => rectCache.current.has(t.id));
         // Mobile compact seats don't render a meld row — snap to the seat instead
-        const meldEl = document.querySelector(`[data-meld-anchor="${player.id}"]`) ??
-          document.querySelector(`[data-seat-anchor="${player.id}"]`);
+        const meldEl = queryVisible(`[data-meld-anchor="${player.id}"]`) ??
+          queryVisible(`[data-seat-anchor="${player.id}"]`);
         if (claimedTile && meldEl) {
           const from = rectCache.current.get(claimedTile.id)!;
           const to = meldEl.getBoundingClientRect();
-          if (to.width > 0) {
+          if (to.width > 0 && from.width > 0) {
             newFlights.push({
               key: `claim-${claimedTile.id}-${meldCounts[player.id]}`,
               tile: claimedTile,

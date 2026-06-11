@@ -36,7 +36,8 @@ export function createRng(seed: string): Rng {
  * threading an RNG instance: same inputs always produce the same value.
  */
 export function deterministicNoise(...parts: (string | number)[]): number {
-  return createRng(parts.join('|'))();
+  // JSON encoding keeps tuples unambiguous (['a|b','c'] vs ['a','b|c'])
+  return createRng(JSON.stringify(parts))();
 }
 
 /** Fisher-Yates shuffle in place, driven by the given RNG. */

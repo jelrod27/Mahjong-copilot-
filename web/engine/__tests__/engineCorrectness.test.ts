@@ -73,9 +73,12 @@ describe('seedable determinism', () => {
     expect(d1.action).toEqual(d2.action);
   });
 
-  it('deterministicNoise is stable and within [0, 1)', () => {
+  it('deterministicNoise is deterministic for the same inputs', () => {
+    expect(deterministicNoise('a', 1, 'b')).toBe(deterministicNoise('a', 1, 'b'));
+  });
+
+  it('deterministicNoise returns a value in [0, 1)', () => {
     const n = deterministicNoise('a', 1, 'b');
-    expect(n).toBe(deterministicNoise('a', 1, 'b'));
     expect(n).toBeGreaterThanOrEqual(0);
     expect(n).toBeLessThan(1);
   });

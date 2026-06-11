@@ -13,7 +13,7 @@ import {
 import { TileSuit } from '@/models/Tile';
 
 describe('TILE_PALETTES', () => {
-  it('exposes 5 palettes with bone-wood as default', () => {
+  it('exposes 5 palettes including high-contrast', () => {
     expect(Object.keys(TILE_PALETTES).sort()).toEqual([
       'bone-wood',
       'high-contrast',
@@ -21,6 +21,9 @@ describe('TILE_PALETTES', () => {
       'neon',
       'retro',
     ]);
+  });
+
+  it('uses bone-wood as the default tile palette', () => {
     expect(DEFAULT_TILE_PALETTE).toBe('bone-wood');
   });
 

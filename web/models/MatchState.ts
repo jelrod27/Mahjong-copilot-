@@ -69,6 +69,7 @@ export function matchStateToJson(match: MatchState): Record<string, any> {
     playerNames: match.playerNames,
     humanPlayerId: match.humanPlayerId,
     minFaan: match.minFaan,
+    aiSeats: match.aiSeats,
   };
 }
 
@@ -90,6 +91,7 @@ export function matchStateFromJson(json: Record<string, any>): MatchState {
     playerNames: json.playerNames as string[],
     humanPlayerId: json.humanPlayerId as string,
     minFaan: normaliseMinFaan(json.minFaan),
+    aiSeats: json.aiSeats as MatchState['aiSeats'],
   };
 }
 

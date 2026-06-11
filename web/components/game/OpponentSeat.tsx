@@ -5,7 +5,6 @@ import { Flower2, ChevronRight } from 'lucide-react';
 import { Player } from '@/models/GameState';
 import { WindTile } from '@/models/Tile';
 import { GameState } from '@/models/GameState';
-import RetroTile from './RetroTile';
 import ExposedMelds from './ExposedMelds';
 import CharacterPortrait from '@/components/npc/CharacterPortrait';
 import { useNpcEmotion } from '@/components/npc/useNpcEmotion';
@@ -29,6 +28,8 @@ interface OpponentSeatProps {
   playerIndex: number;
   /** Mobile compact mode: smaller portrait + single-line layout. */
   compact?: boolean;
+  /** Cumulative match score shown on the desktop plaque. */
+  score?: number;
 }
 
 const WIND_LABELS: Record<WindTile, string> = {
@@ -51,6 +52,7 @@ export default function OpponentSeat({
   gameState,
   playerIndex,
   compact = false,
+  score,
 }: OpponentSeatProps) {
   const npc = NPCS[npcId];
   const { emotion, voiceLine, eventNonce } = useNpcEmotion(gameState, playerIndex, npcId);
@@ -123,30 +125,15 @@ export default function OpponentSeat({
     );
   }
 
-  const placeholders = Array.from({ length: tileCount }, (_, i) => (
-    <RetroTile
-      key={`back-${i}`}
-      tile={
-        player.hand[i] ?? {
-          id: `ph-${i}`,
-          suit: 'dot' as Player['hand'][number]['suit'],
-          type: 'suit' as Player['hand'][number]['type'],
-          nameEnglish: '',
-          nameChinese: '',
-          nameJapanese: '',
-          assetPath: '',
-        }
-      }
-      size="sm"
-      showBack
-    />
-  ));
+  // Desktop: a compact rim plaque — portrait, identity, concealed-tile pips,
+  // melds, and score on one card. The old 13-tile face-down strips are gone:
+  // they overflowed the table column and carried no information a count
+  // doesn't. The plaque is the seat anchor for tile flights.
+  const pipCount = Math.min(tileCount, 4);
 
   return (
     <div
-      className={`flex flex-col items-center gap-1 ${
-        isVertical ? 'justify-center' : ''
-      } rounded-lg p-1 transition-all duration-300 ${
+      className={`seat-plaque flex items-center gap-2.5 transition-all duration-300 ${
         isCurrentTurn
           ? 'ring-2 ring-highlight/60 shadow-[0_0_18px_rgba(245,183,49,0.35)]'
           : dangerRing
@@ -156,43 +143,57 @@ export default function OpponentSeat({
     >
       {/* Portrait + voice bubble */}
       <div
-        className={`relative ${haloClass}`}
+        className={`seat-plaque-portrait relative shrink-0 ${haloClass}`}
         data-testid={`portrait-wrapper-${npcId}`}
       >
         <div key={reactKey} className="animate-portrait-react">
-          <CharacterPortrait character={npcId} emotion={emotion} size="md" />
+          <CharacterPortrait character={npcId} emotion={emotion} size="sm" />
         </div>
         {voiceLine && (
           <SpeechBubble line={voiceLine} side={position === 'right' ? 'left' : 'right'} />
         )}
       </div>
 
-      {/* Name + wind */}
-      <div
-        className={`flex items-center gap-1 text-xs font-display ${
-          isCurrentTurn ? 'text-info ds-text-glow' : 'text-muted-foreground'
-        }`}
-      >
-        <span className="text-highlight">{WIND_LABELS[player.seatWind]}</span>
-        <span>{npc.name}</span>
-        {isCurrentTurn && <ChevronRight className="h-3 w-3 shrink-0 animate-blink text-info" aria-hidden />}
-      </div>
-
-      {/* Face-down tiles */}
-      <div className={`flex ${isVertical ? 'flex-col' : 'flex-row'} gap-px`}>
-        {placeholders}
-      </div>
-
-      {/* Exposed melds */}
-      {player.melds.length > 0 && <ExposedMelds melds={player.melds} size="sm" anchorId={player.id} />}
-
-      {/* Flowers */}
-      {player.flowers.length > 0 && (
-        <div className="flex items-center justify-center gap-1 font-sans text-xs text-highlight">
-          <Flower2 className="h-3.5 w-3.5" aria-hidden />
-          <span>×{player.flowers.length}</span>
+      <div className="min-w-0">
+        {/* Name + wind + turn cue */}
+        <div
+          className={`flex items-center gap-1 font-display text-xs ${
+            isCurrentTurn ? 'text-info ds-text-glow' : 'text-foreground'
+          }`}
+        >
+          <span className="text-highlight">{WIND_LABELS[player.seatWind]}</span>
+          <span className="truncate">{npc.name}</span>
+          {isCurrentTurn && <ChevronRight className="h-3 w-3 shrink-0 animate-blink text-info" aria-hidden />}
         </div>
-      )}
+
+        {/* Concealed count as pips + flowers + score */}
+        <div className="mt-1 flex items-center gap-2 font-sans text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1" aria-label={`${tileCount} concealed tiles`}>
+            <span className="flex gap-px" aria-hidden>
+              {Array.from({ length: pipCount }, (_, i) => (
+                <span key={i} className="seat-plaque-pip" />
+              ))}
+            </span>
+            {tileCount}
+          </span>
+          {player.flowers.length > 0 && (
+            <span className="flex items-center gap-0.5 text-highlight">
+              <Flower2 className="h-3 w-3" aria-hidden />
+              {player.flowers.length}
+            </span>
+          )}
+          {typeof score === 'number' && (
+            <span className="font-display tabular-nums text-info">{score}</span>
+          )}
+        </div>
+
+        {/* Exposed melds stay visible — they are public information */}
+        {player.melds.length > 0 && (
+          <div className="mt-1">
+            <ExposedMelds melds={player.melds} size="xs" anchorId={player.id} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

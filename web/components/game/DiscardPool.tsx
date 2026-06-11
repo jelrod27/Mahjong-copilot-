@@ -97,7 +97,7 @@ export default function DiscardPool({
     const playerIds = Object.keys(playerDiscards).filter(id => playerDiscards[id].length > 0);
     if (playerIds.length > 0) {
       return (
-        <div className="ds-panel p-1 md:p-2 space-y-1">
+        <div className="ds-panel p-1 md:p-2 space-y-1 md:grid md:grid-cols-2 md:gap-x-4 md:gap-y-1.5 md:space-y-0">
           {playerIds.map(playerId => (
             <div key={playerId}>
               <div className="font-sans text-[9px] text-muted-foreground mb-0.5">
@@ -129,7 +129,7 @@ export default function DiscardPool({
             </div>
           ))}
           {claimHighlight && lastDiscardedTile && (
-            <p className="mt-1.5 text-center font-sans text-[10px] font-medium text-highlight">
+            <p className="mt-1.5 text-center font-sans text-[10px] font-medium text-highlight md:col-span-2">
               Latest discard — use the action bar to call or pass.
             </p>
           )}

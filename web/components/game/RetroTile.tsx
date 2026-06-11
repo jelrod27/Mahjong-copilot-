@@ -149,7 +149,7 @@ function RetroTile({
         disabled={disabled}
         type="button"
         aria-label={tileAriaLabel}
-        className="transition-transform duration-200 ease-ds-out hover:enabled:-translate-y-0.5 hover:enabled:scale-[1.03] disabled:cursor-not-allowed disabled:opacity-50"
+        className="transition-transform duration-200 ease-ds-out hover:enabled:-translate-y-0.5 hover:enabled:scale-[1.03] disabled:cursor-default disabled:opacity-[0.88]"
       >
         {tileContent}
       </button>

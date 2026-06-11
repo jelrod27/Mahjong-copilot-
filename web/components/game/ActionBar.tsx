@@ -84,8 +84,9 @@ export default function ActionBar({
       ? `Discard ${selectedTileName}`
       : 'Discard selected tile';
     return (
-      <div className="space-y-3 py-1 md:py-2">
-        <p className="text-center font-sans text-xs text-muted-foreground md:text-sm">
+      <div className="space-y-3 py-1 md:space-y-0 md:py-1">
+        {/* The phase pill on the table already carries this guidance on desktop */}
+        <p className="text-center font-sans text-xs text-muted-foreground md:hidden">
           {selectedTileName ? (
             <>
               <span className="font-medium text-foreground">{selectedTileName}</span> is selected. Tap
@@ -212,9 +213,11 @@ export default function ActionBar({
   }
 
   if (!isHumanTurn) {
+    // Desktop: the table's phase pill already says whose turn it is —
+    // don't spend a dock row repeating it.
     return (
-      <div className="flex items-center justify-center py-3 md:py-4">
-        <p className="text-center font-sans text-sm text-muted-foreground md:text-base">
+      <div className="flex items-center justify-center py-3 md:hidden">
+        <p className="text-center font-sans text-sm text-muted-foreground">
           Opponents are playing
           <span className="animate-blink">…</span>
         </p>

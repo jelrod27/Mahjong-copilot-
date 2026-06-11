@@ -11,6 +11,7 @@ import {
   setShowTutor,
   setLiveFaanMeter,
   setCrtEffect,
+  setMusicEnabled,
   setTileVoice,
   SettingsState,
 } from '@/store/actions/settingsActions';
@@ -234,6 +235,14 @@ export default function SettingsPageClient() {
           onChange={(v) => void dispatch(setLiveFaanMeter(v))}
           label="Live faan meter"
           description="During play, show what faan your hand is building toward and whether it meets the 3-faan minimum."
+        />
+
+        {/* Music */}
+        <ToggleRow
+          checked={settings.musicEnabled}
+          onChange={(v) => void dispatch(setMusicEnabled(v))}
+          label="Parlour music"
+          description="Chiptune background score during play, with a danger motif when the wall runs low."
         />
 
         {/* CRT effect */}

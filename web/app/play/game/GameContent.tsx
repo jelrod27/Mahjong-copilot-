@@ -16,6 +16,8 @@ import { setActiveMatchRoster } from '@/store/actions/settingsActions';
 import { hasSeenPlayOnboarding } from '@/lib/playOnboarding';
 import BootOverlay from '@/components/game/BootOverlay';
 import FloorDialog from '@/components/parlour/FloorDialog';
+import musicEngine from '@/lib/musicEngine';
+import { GamePhase } from '@/models/GameState';
 import { getFloor, floorSupportCast, recordFloorAttempt, recordFloorWin } from '@/lib/parlour';
 import { computeFinalRankings } from '@/engine/matchManager';
 import { useEffect, useRef } from 'react';
@@ -66,6 +68,8 @@ export default function GameContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const musicEnabled = useAppSelector((s) => s.settings.musicEnabled);
+
   const onMatchRosterResolved = useCallback(
     (rosterId: typeof npcRoster) => {
       void dispatch(setActiveMatchRoster(rosterId));
@@ -106,6 +110,34 @@ export default function GameContent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [floorMatchOver, floorHumanWon]);
+
+  // === Music: parlour theme during play, danger motif on the last stretch
+  // of the wall; intensity rises with the Parlour wing. Stops on unmount.
+  const gamePhase = controller.game?.phase;
+  const wallLow = !!controller.game &&
+    controller.game.phase === GamePhase.PLAYING &&
+    controller.game.wall.length <= 8;
+  useEffect(() => {
+    musicEngine.setEnabled(musicEnabled);
+    if (!musicEnabled) return;
+    if (gamePhase !== GamePhase.PLAYING) return;
+    const intensity = floorDef ? (floorDef.floor <= 3 ? 0 : floorDef.floor <= 6 ? 1 : 2) : 0;
+    musicEngine.play(wallLow ? 'danger' : 'parlour', intensity);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [musicEnabled, wallLow, gamePhase]);
+  useEffect(() => {
+    // Browsers gate AudioContext on a user gesture: retry the loop on the
+    // first interaction so music starts as soon as it is allowed to.
+    const kick = () => {
+      if (musicEnabled && controller.game?.phase === GamePhase.PLAYING) {
+        musicEngine.play(wallLow ? 'danger' : 'parlour');
+      }
+    };
+    window.addEventListener('pointerdown', kick, { once: true });
+    return () => window.removeEventListener('pointerdown', kick);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [musicEnabled]);
+  useEffect(() => () => musicEngine.stop(), []);
 
   const floorSeats = floorDef
     ? (() => {

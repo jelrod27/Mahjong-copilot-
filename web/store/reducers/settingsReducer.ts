@@ -15,6 +15,7 @@ import {
   SETTINGS_SET_NPC_ROSTER,
   SETTINGS_SET_NPC_ROSTER_MODE,
   SETTINGS_SET_CRT_EFFECT,
+  SETTINGS_SET_MUSIC_ENABLED,
 } from '../actions/settingsActions';
 import { DEFAULT_TILE_PALETTE, DEFAULT_TABLE_FELT, DEFAULT_ROSTER } from '@/lib/cosmetics';
 
@@ -33,6 +34,7 @@ const initialState: SettingsState = {
   npcRoster: DEFAULT_ROSTER,
   npcRosterMode: 'auto',
   crtEffect: false,
+  musicEnabled: true,
 };
 
 export const settingsReducer = (
@@ -70,6 +72,8 @@ export const settingsReducer = (
       return { ...state, npcRosterMode: action.payload };
     case SETTINGS_SET_CRT_EFFECT:
       return { ...state, crtEffect: action.payload };
+    case SETTINGS_SET_MUSIC_ENABLED:
+      return { ...state, musicEnabled: action.payload };
     default:
       return state;
   }

@@ -11,6 +11,7 @@ import ExposedMelds from './ExposedMelds';
 import HandReplayScrubber from './HandReplayScrubber';
 import Confetti from './Confetti';
 import soundManager from '@/lib/soundManager';
+import musicEngine from '@/lib/musicEngine';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { GameResultsOverlay, GameResultsSheet, GameResultsSectionLabel } from './GameResultsChrome';
 
@@ -44,6 +45,8 @@ export default function HandResultScreen({
   useEffect(() => {
     const delay = winner ? 800 : 250;
     const timer = setTimeout(() => setShowContent(true), delay);
+    // Music steps back while the win sequence takes the stage
+    musicEngine.duck(winner ? 5000 : 2500, winner ? 0.12 : 0.4);
     return () => clearTimeout(timer);
   }, [winner]);
 

@@ -8,7 +8,7 @@
 import { TileSuit } from '@/models/Tile';
 import type { NpcId } from '@/content/npcs';
 
-export type TilePaletteId = 'retro' | 'ivory' | 'neon' | 'bone-wood';
+export type TilePaletteId = 'retro' | 'ivory' | 'neon' | 'bone-wood' | 'high-contrast';
 
 export interface TilePalette {
   id: TilePaletteId;
@@ -86,6 +86,23 @@ export const TILE_PALETTES: Record<TilePaletteId, TilePalette> = {
       [TileSuit.SEASON]: '#724020',
     },
     stripeHeight: 3,
+  },
+  'high-contrast': {
+    id: 'high-contrast',
+    label: 'High Contrast',
+    description: 'Maximum readability: pure white faces, colorblind-safe suit colors (Okabe-Ito).',
+    faceBg: '#ffffff',
+    suitColors: {
+      // Okabe-Ito palette: distinguishable across the common color-vision deficiencies
+      [TileSuit.BAMBOO]: '#009e73',
+      [TileSuit.CHARACTER]: '#d55e00',
+      [TileSuit.DOT]: '#0072b2',
+      [TileSuit.WIND]: '#000000',
+      [TileSuit.DRAGON]: '#000000',
+      [TileSuit.FLOWER]: '#cc79a7',
+      [TileSuit.SEASON]: '#e69f00',
+    },
+    stripeHeight: 6,
   },
 };
 

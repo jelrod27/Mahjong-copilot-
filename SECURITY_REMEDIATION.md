@@ -33,7 +33,25 @@ A separate **reliability and correctness** audit (below) reviewed the game engin
 - **Description:** Shuffle and `gameId` use `Math.random` and timestamps; easy AI adds non-deterministic jitter. Full-hand snapshots are the only replay artifact today, so there is no seed-plus-log path to re-simulate or verify a hand. Together that blocks a migration to verifiable replay without invalidating stored snapshot data.
 - **Fix:** Introduce an injectable RNG (seeded from `crypto.getRandomValues` for new hands), thread it through `initializeGame` shuffle and any AI paths that use `Math.random`; persist seed plus append-only `applyAction` log for new saves; document that legacy snapshot-only saves are not cryptographically verifiable and may be dropped or one-way migrated. Treat as a multi-day refactor; do not start without the trigger above.
 
-- **Status:** Open
+  **Update 2026-06-11:** The deterministic RNG half of this item is already
+  complete. `web/engine/rng.ts` ships mulberry32 + FNV-1a (`createRng(seed)`),
+  `deterministicNoise` (stateless AI randomness), and `shuffleInPlace`. Both the
+  wall shuffle and AI noise are fully seed-derived — no `Math.random` anywhere in
+  the engine except `randomSeed()` itself (the one sanctioned call site). This was
+  verified empirically on 2026-06-11 by
+  `web/engine/__tests__/replayDeterminism.spike.test.ts` (3/3 cases pass: same
+  seed → identical deal; same seed + same action sequence → identical end state;
+  `getAIDecision` is stateless). Non-deterministic fields confined to wall-clock
+  timestamps (`createdAt`, `turnStartedAt`, `finishedAt`,
+  `turnHistory[*].timestamp`) — see §5 of the design doc.
+
+  Remaining open work: (a) replace `randomSeed()`'s `Math.random` with
+  `crypto.getRandomValues`; (b) implement SavedGame v2 format with append-only
+  action log; (c) implement `replayHand(seed, actions)` in a new
+  `web/engine/replay.ts`. Full design in
+  `plans/spikes/replay-format-design.md`.
+
+- **Status:** Open (RNG half done; CSPRNG seed source + action-log persistence + replay function remain)
 
 ## Watch Items
 

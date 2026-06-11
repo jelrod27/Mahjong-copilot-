@@ -3,11 +3,15 @@
 import { useMemo } from 'react';
 
 const PARTICLE_COLORS = ['#f5b731', '#4CAF50', '#45b7d1', '#e8384f', '#FFFFFF'];
+/** Gold-dominated palette for big and limit hands — the jackpot shower. */
+const GOLD_COLORS = ['#f5b731', '#ffd700', '#c9a84c', '#fff3c4', '#f5b731'];
 const DEFAULT_COUNT = 40;
 
 interface ConfettiProps {
   active?: boolean;
   count?: number;
+  /** Big-win mode: gold-dominant particles. */
+  goldHeavy?: boolean;
 }
 
 interface Particle {
@@ -21,7 +25,7 @@ interface Particle {
   color: string;
 }
 
-function makeParticles(count: number): Particle[] {
+function makeParticles(count: number, colors: string[]): Particle[] {
   return Array.from({ length: count }, (_, i) => ({
     id: i,
     left: Math.random() * 100,
@@ -30,7 +34,7 @@ function makeParticles(count: number): Particle[] {
     drift: (Math.random() - 0.5) * 240,
     rotation: 360 + Math.random() * 720,
     size: 4 + Math.floor(Math.random() * 5),
-    color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
+    color: colors[Math.floor(Math.random() * colors.length)],
   }));
 }
 
@@ -39,10 +43,10 @@ function makeParticles(count: number): Particle[] {
  * (no canvas, no deps). Particles regenerate with fresh random values every time
  * `active` becomes true so celebrations feel organic, not replayed.
  */
-export default function Confetti({ active = true, count = DEFAULT_COUNT }: ConfettiProps) {
+export default function Confetti({ active = true, count = DEFAULT_COUNT, goldHeavy = false }: ConfettiProps) {
   const particles = useMemo(
-    () => (active ? makeParticles(count) : []),
-    [active, count],
+    () => (active ? makeParticles(count, goldHeavy ? GOLD_COLORS : PARTICLE_COLORS) : []),
+    [active, count, goldHeavy],
   );
 
   if (!active) return null;

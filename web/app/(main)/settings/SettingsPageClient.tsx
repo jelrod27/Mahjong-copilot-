@@ -10,6 +10,7 @@ import {
   setNotificationsEnabled,
   setShowTutor,
   setLiveFaanMeter,
+  setCrtEffect,
   setTileVoice,
   SettingsState,
 } from '@/store/actions/settingsActions';
@@ -233,6 +234,14 @@ export default function SettingsPageClient() {
           onChange={(v) => void dispatch(setLiveFaanMeter(v))}
           label="Live faan meter"
           description="During play, show what faan your hand is building toward and whether it meets the 3-faan minimum."
+        />
+
+        {/* CRT effect */}
+        <ToggleRow
+          checked={settings.crtEffect}
+          onChange={(v) => void dispatch(setCrtEffect(v))}
+          label="CRT scanlines"
+          description="Retro display effect over the game table. Pure cosmetics — disable if it strains your eyes."
         />
 
         {/* Tile voice callouts */}

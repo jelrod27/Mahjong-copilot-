@@ -20,6 +20,8 @@ import FaanMeter from './FaanMeter';
 import DiscardReadingPanel from './DiscardReadingPanel';
 import MobileCoachDrawer from './MobileCoachDrawer';
 import GameToast from './GameToast';
+import TileFlightLayer from './TileFlightLayer';
+import { ArrowDownUp } from 'lucide-react';
 import { TutorAdvice } from '@/engine/types';
 import { TenpaiStatus } from './useGameController';
 import { FaanProjection } from '@/engine/faanProjection';
@@ -35,6 +37,7 @@ interface GameBoardProps {
   tileClassifications?: Map<string, 'green' | 'orange' | 'red'>;
   faanProjection?: FaanProjection | null;
   onTileSelect: (tile: Tile) => void;
+  onSortHand?: () => void;
   onDiscard: () => void;
   onKong: () => void;
   onWin: () => void;
@@ -52,7 +55,7 @@ interface GameBoardProps {
 export default function GameBoard({
   gameState, match, humanPlayerId, selectedTileId, suggestedTileId, tutorAdvice,
   tenpaiStatus, tileClassifications, faanProjection,
-  onTileSelect, onDiscard, onKong, onWin, onClaimBest, onSubmitChow, onPass,
+  onTileSelect, onSortHand, onDiscard, onKong, onWin, onClaimBest, onSubmitChow, onPass,
   canDeclareKong: canKongProp, canDeclareWin: canWinProp,
   hasClaimOptions: hasClaimsProp, claimOptions = [], claimTimer,
   claimTimeoutMs = 10000,
@@ -121,6 +124,15 @@ export default function GameBoard({
   // table. Both fall back to defaults if settings aren't yet hydrated.
   const rosterId = useAppSelector(s => s.settings.npcRoster);
   const feltId = useAppSelector(s => s.settings.tableFelt);
+  const crtEffect = useAppSelector(s => s.settings.crtEffect);
+
+  // Tension treatment: the last stretch of the wall, or an opponent sitting
+  // on three exposed melds, makes the whole table breathe danger.
+  const wallLow = gameState.wall.length <= 8 && gameState.wall.length > 0;
+  const opponentThreat = gameState.players.some(
+    (p, i) => i !== humanIndex && p.melds.length >= 3,
+  );
+  const dangerMode = wallLow || opponentThreat;
   const roster = getRoster(rosterId);
   const felt = getTableFelt(feltId);
   const NPC_BY_POSITION: Record<'left' | 'top' | 'right', NpcId> = {
@@ -147,9 +159,11 @@ export default function GameBoard({
 
   return (
     <div
-      className={`game-board-root relative flex h-dvh max-h-dvh w-full flex-col overflow-hidden game-table-felt ${felt.className}`}
+      className={`game-board-root relative flex h-dvh max-h-dvh w-full flex-col overflow-hidden game-table-felt ${felt.className} ${dangerMode ? 'danger-vignette' : ''}`}
       data-testid="game-board-root"
     >
+      <TileFlightLayer gameState={gameState} humanPlayerId={humanPlayerId} />
+      {crtEffect && <div className="crt-overlay" aria-hidden />}
       <div
         className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_85%_55%_at_50%_42%,transparent_0%,rgb(0_0_0_/_0.18)_78%,rgb(0_0_0_/_0.42)_100%)]"
         aria-hidden
@@ -353,6 +367,17 @@ export default function GameBoard({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2 md:gap-4 font-sans text-xs md:text-sm">
+            {onSortHand && (
+              <button
+                type="button"
+                onClick={onSortHand}
+                className="inline-flex min-h-[32px] items-center gap-1 rounded-full border border-border/40 bg-surface/50 px-2.5 py-0.5 font-sans text-muted-foreground transition-colors duration-fast hover:text-foreground"
+                aria-label="Sort hand by suit and number"
+              >
+                <ArrowDownUp className="h-3 w-3" aria-hidden />
+                Sort
+              </button>
+            )}
             {humanPlayer.flowers.length > 0 && (
               <GlossaryTerm term="Bonus Tile">
                 <span className="rounded-full border border-highlight/25 bg-highlight/10 px-2 py-0.5 text-highlight">
@@ -416,7 +441,7 @@ export default function GameBoard({
         {/* Player exposed melds */}
         {humanPlayer.melds.length > 0 && (
           <div className="flex justify-center">
-            <ExposedMelds melds={humanPlayer.melds} size="md" />
+            <ExposedMelds melds={humanPlayer.melds} size="md" anchorId={humanPlayer.id} />
           </div>
         )}
         </div>

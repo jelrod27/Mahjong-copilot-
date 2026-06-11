@@ -50,6 +50,8 @@ export class AppConstants {
   static readonly NPC_ROSTER_MODE_KEY = 'npc_roster_mode';
   /** Monotonic counter driving auto roster rotation. */
   static readonly MATCH_ROSTER_COUNTER_KEY = 'match_roster_counter';
+  /** CRT scanline overlay on the game table. */
+  static readonly CRT_EFFECT_KEY = 'crt_effect';
   static readonly OFFLINE_PROGRESS_KEY = 'offline_progress';
 }
 

@@ -4,7 +4,7 @@ import {
   SETTINGS_INITIALIZE, SETTINGS_SET_VARIANT, SETTINGS_SET_LOCALE,
   SETTINGS_SET_THEME_MODE, SETTINGS_SET_SOUND_ENABLED, SETTINGS_SET_NOTIFICATIONS_ENABLED,
   SETTINGS_SET_LARGER_UI_TEXT, SETTINGS_SET_SHOW_TUTOR, SETTINGS_SET_LIVE_FAAN_METER,
-  SETTINGS_SET_TILE_VOICE,
+  SETTINGS_SET_TILE_VOICE, SETTINGS_SET_CRT_EFFECT,
 } from '../../actions/settingsActions';
 
 const initialState = {
@@ -21,6 +21,7 @@ const initialState = {
   tableFelt: 'classic-green' as const,
   npcRoster: 'default' as const,
   npcRosterMode: 'auto' as const,
+  crtEffect: false,
 };
 
 describe('settingsReducer', () => {
@@ -88,6 +89,11 @@ describe('settingsReducer', () => {
   it('handles SETTINGS_SET_TILE_VOICE', () => {
     const state = settingsReducer(initialState, { type: SETTINGS_SET_TILE_VOICE, payload: 'cantonese' });
     expect(state.tileVoice).toBe('cantonese');
+  });
+
+  it('handles SETTINGS_SET_CRT_EFFECT', () => {
+    const state = settingsReducer(initialState, { type: SETTINGS_SET_CRT_EFFECT, payload: true });
+    expect(state.crtEffect).toBe(true);
   });
 
   it('defaults showTutor to true', () => {

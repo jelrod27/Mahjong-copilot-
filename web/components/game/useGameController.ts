@@ -72,6 +72,8 @@ export interface GameController {
   tablePreset: TablePreset;
   selectTile: (tile: Tile) => void;
   discardSelected: () => void;
+  /** Sort the human hand by suit and number (animated via FLIP in PlayerHand). */
+  sortHand: () => void;
   declareKong: () => void;
   declareWin: () => void;
   submitClaim: (claimType: ClaimType, tilesFromHand: Tile[]) => void;
@@ -250,6 +252,26 @@ export default function useGameController(
 
   const selectTile = useCallback((tile: Tile) => {
     setSelectedTileId(prev => prev === tile.id ? undefined : tile.id);
+  }, []);
+
+  const sortHand = useCallback(() => {
+    const current = gameRef.current;
+    if (!current) return;
+    const idx = current.players.findIndex(p => p.id === HUMAN_ID);
+    if (idx === -1) return;
+    const suitOrder: Record<string, number> = { dot: 0, bamboo: 1, character: 2, wind: 3, dragon: 4 };
+    const sorted = [...current.players[idx].hand].sort((a, b) => {
+      const suitDiff = (suitOrder[a.suit] ?? 9) - (suitOrder[b.suit] ?? 9);
+      if (suitDiff !== 0) return suitDiff;
+      return (a.number ?? 0) - (b.number ?? 0);
+    });
+    if (sorted.every((t, i) => t.id === current.players[idx].hand[i].id)) return;
+    const players = [...current.players];
+    players[idx] = { ...players[idx], hand: sorted };
+    const next = { ...current, players };
+    setGame(next);
+    gameRef.current = next;
+    soundManager.play('tileDraw');
   }, []);
 
   const discardSelected = useCallback(() => {
@@ -531,7 +553,9 @@ export default function useGameController(
     }
 
     setTenpaiStatus(waits.length > 0 ? { isTenpai: true, waits } : null);
-  }, [game?.players, game?.phase, difficulty, humanIndex]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hand/meld signatures capture the inputs;
+    // keying on game.players would re-run this 34-prototype scan on every opponent action
+  }, [faanHandSig, faanMeldSig, game?.phase, difficulty, humanIndex]);
 
   // === Auto-draw for human ===
   useEffect(() => {
@@ -787,7 +811,7 @@ export default function useGameController(
     game, match, selectedTileId, suggestedTileId, tutorAdvice, tenpaiStatus,
     tileClassifications, claimOptions, claimTimer, isGameOver, isMatchOver,
     scoringResult, faanProjection, claimTimeoutMs, tablePreset,
-    selectTile, discardSelected, declareKong, declareWin,
+    selectTile, discardSelected, sortHand, declareKong, declareWin,
     submitClaim, submitChow, claimBest, pass, startNewGame, continueToNextHand,
     resumeGame, clearSavedGame: clearSavedGameAndReset,
     canDeclareKong, canDeclareWin,

@@ -76,15 +76,20 @@ export default function OpponentSeat({
   }, [emotion, eventNonce]);
 
   const haloClass = isCurrentTurn ? 'animate-ai-thinking-halo' : '';
+  // An opponent with 3+ exposed melds is one or two tiles from a win — make
+  // the table feel it.
+  const isDangerous = player.melds.length >= 3;
+  const dangerRing = isDangerous ? 'ring-2 ring-destructive/50 shadow-[0_0_16px_rgba(199,91,74,0.4)]' : '';
 
   // Compact mobile layout: tiny portrait + single-line stats.
   if (compact) {
     return (
       <div
         className={`flex items-center gap-2 rounded-md px-2 py-1 transition-all duration-300 ${
-          isCurrentTurn ? 'ring-1 ring-highlight/60 bg-highlight/5' : ''
+          isCurrentTurn ? 'ring-1 ring-highlight/60 bg-highlight/5' : dangerRing
         }`}
         data-testid={`opponent-seat-${npcId}`}
+        data-seat-anchor={player.id}
       >
         <div className={`shrink-0 relative ${haloClass}`} data-testid={`portrait-wrapper-${npcId}`}>
           <div key={reactKey} className="animate-portrait-react">
@@ -144,9 +149,10 @@ export default function OpponentSeat({
       } rounded-lg p-1 transition-all duration-300 ${
         isCurrentTurn
           ? 'ring-2 ring-highlight/60 shadow-[0_0_18px_rgba(245,183,49,0.35)]'
-          : ''
+          : dangerRing
       }`}
       data-testid={`opponent-seat-${npcId}`}
+      data-seat-anchor={player.id}
     >
       {/* Portrait + voice bubble */}
       <div
@@ -178,7 +184,7 @@ export default function OpponentSeat({
       </div>
 
       {/* Exposed melds */}
-      {player.melds.length > 0 && <ExposedMelds melds={player.melds} size="sm" />}
+      {player.melds.length > 0 && <ExposedMelds melds={player.melds} size="sm" anchorId={player.id} />}
 
       {/* Flowers */}
       {player.flowers.length > 0 && (

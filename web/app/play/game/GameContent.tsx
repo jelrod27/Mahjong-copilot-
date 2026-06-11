@@ -14,6 +14,7 @@ import { GameMode } from '@/models/MatchState';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setActiveMatchRoster } from '@/store/actions/settingsActions';
 import { hasSeenPlayOnboarding } from '@/lib/playOnboarding';
+import BootOverlay from '@/components/game/BootOverlay';
 
 const URL_DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
 const URL_MODES = ['quick', 'full'] as const;
@@ -87,6 +88,7 @@ export default function GameContent() {
   return (
     <GameErrorBoundary>
       <TilePaletteProvider>
+      <BootOverlay />
       <VoiceSubtitle />
       {showOnboarding && (
         <PlayOnboardingDialog onDone={() => setShowOnboarding(false)} />
@@ -112,6 +114,7 @@ export default function GameContent() {
         tileClassifications={controller.tileClassifications}
         faanProjection={controller.faanProjection}
         onTileSelect={controller.selectTile}
+        onSortHand={controller.sortHand}
         onDiscard={controller.discardSelected}
         onKong={controller.declareKong}
         onWin={controller.declareWin}

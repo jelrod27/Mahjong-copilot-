@@ -14,6 +14,7 @@ import {
   SETTINGS_SET_TABLE_FELT,
   SETTINGS_SET_NPC_ROSTER,
   SETTINGS_SET_NPC_ROSTER_MODE,
+  SETTINGS_SET_CRT_EFFECT,
 } from '../actions/settingsActions';
 import { DEFAULT_TILE_PALETTE, DEFAULT_TABLE_FELT, DEFAULT_ROSTER } from '@/lib/cosmetics';
 
@@ -31,6 +32,7 @@ const initialState: SettingsState = {
   tableFelt: DEFAULT_TABLE_FELT,
   npcRoster: DEFAULT_ROSTER,
   npcRosterMode: 'auto',
+  crtEffect: false,
 };
 
 export const settingsReducer = (
@@ -66,6 +68,8 @@ export const settingsReducer = (
       return { ...state, npcRoster: action.payload };
     case SETTINGS_SET_NPC_ROSTER_MODE:
       return { ...state, npcRosterMode: action.payload };
+    case SETTINGS_SET_CRT_EFFECT:
+      return { ...state, crtEffect: action.payload };
     default:
       return state;
   }

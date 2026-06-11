@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { Tile, TileType, TileSuit, WindTile, DragonTile } from '@/models/Tile';
 import { useTilePalette } from './TilePaletteContext';
 import { TilePalette } from '@/lib/cosmetics';
@@ -57,7 +58,7 @@ const TUTOR_COLORS: Record<string, string> = {
   red: '#C75B4A',
 };
 
-export default function RetroTile({
+function RetroTile({
   tile, size = 'md', showBack = false, isSelected = false, isSuggested = false,
   isLastDiscarded = false, isNewlyDrawn = false, onClick, disabled = false,
   tutorColor, tutorLabel, paletteOverride,
@@ -157,3 +158,7 @@ export default function RetroTile({
 
   return tileContent;
 }
+
+// Tiles re-render across the whole board on every action; the face itself
+// only depends on these props, so memo keeps draw/discard frames cheap.
+export default memo(RetroTile);

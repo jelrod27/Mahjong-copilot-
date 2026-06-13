@@ -837,6 +837,10 @@
 }
 
 .game-hand-scroll {
+  /* Horizontal scroll fallback for hands that exceed viewport width on
+     narrow portrait mobile. overflow-x: auto keeps the scrollbar hidden
+     when the hand fits, and only appears when content overflows. */
+  overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
   scrollbar-width: thin;

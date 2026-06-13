@@ -812,13 +812,17 @@
 .game-board-scene {
   container-type: size;
   container-name: game-board;
-  --tile-base-w: clamp(26px, min(5.5cqw, 4.8cqh), 60px);
+  /* cqh can collapse when the flex chain resolves the scene to its minimum
+     content height on compressed viewports. A viewport-derived floor via vw
+     keeps tile width stable for the same viewport width, without changing the
+     normal cqw/cqh sweet spot. */
+  --tile-base-w: clamp(26px, min(5.5cqw, max(4.8cqh, 2.7vw)), 60px);
 }
 
 /* Phone / narrow: favor slightly smaller tiles and more vertical room for the dock. */
 @media (max-width: 767px) {
   .game-board-scene {
-    --tile-base-w: clamp(22px, min(8.5cqw, 7cqh), 46px);
+    --tile-base-w: clamp(22px, min(8.5cqw, max(7cqh, 3.6vmin)), 46px);
   }
 
   .game-board-scene .tile-size-lg {

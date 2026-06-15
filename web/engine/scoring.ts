@@ -7,7 +7,7 @@
 import { Tile, TileSuit, TileType, DragonTile, WindTile, tileKey, tilesMatch } from '@/models/Tile';
 import { MeldInfo } from '@/models/GameState';
 import { ScoringContext, ScoringResult, FanItem, HandDecomposition, PaymentBreakdown } from './types';
-import { findDecompositions, isThirteenOrphans, isSevenPairs } from './winDetection';
+import { findDecompositionsWithMelds, isThirteenOrphans, isSevenPairs } from './winDetection';
 
 const BASE_POINTS = 8; // base payment in HK Mahjong
 const LIMIT_FAN = 10; // limit hand threshold
@@ -25,11 +25,11 @@ export function calculateScore(
   const handTiles = hand.filter(t => t.type !== TileType.BONUS);
 
   // Check limit hands first
-  if (isThirteenOrphans([...handTiles, context.winningTile])) {
+  if (exposedMelds.length === 0 && isThirteenOrphans([...handTiles, context.winningTile])) {
     return buildLimitResult('Thirteen Orphans', 13, [], handTiles.slice(0, 2), context);
   }
 
-  if (isNineGates(handTiles, context.winningTile)) {
+  if (exposedMelds.length === 0 && isNineGates(handTiles, context.winningTile)) {
     return buildLimitResult('Nine Gates', 13, [], handTiles.slice(0, 2), context);
   }
 
@@ -38,7 +38,7 @@ export function calculateScore(
   if (!allTiles.find(t => t.id === context.winningTile.id)) {
     allTiles.push(context.winningTile);
   }
-  const decompositions = findDecompositions(allTiles);
+  const decompositions = findDecompositionsWithMelds(allTiles, exposedMelds);
 
   // Combine concealed decompositions with exposed melds
   let bestResult: ScoringResult | null = null;

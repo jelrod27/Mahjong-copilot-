@@ -28,6 +28,18 @@ export function isWinningHand(tiles: Tile[]): boolean {
 }
 
 /**
+ * Check whether the concealed tiles complete a winning hand together with
+ * already-exposed melds. Exposed melds reduce the number of concealed melds
+ * still needed; special hands remain concealed-only.
+ */
+export function isWinningHandWithMelds(
+  tiles: Tile[],
+  exposedMelds: MeldInfo[] = [],
+): boolean {
+  return findDecompositionsWithMelds(tiles, exposedMelds).length > 0;
+}
+
+/**
  * Find all valid decompositions of a winning hand.
  * Returns all ways to arrange tiles into 4 melds + 1 pair.
  */
@@ -59,6 +71,32 @@ export function findDecompositions(tiles: Tile[]): HandDecomposition[] {
   const sorted = sortTiles(handTiles);
   findStandardDecompositions(sorted, [], results);
 
+  return results;
+}
+
+/**
+ * Find valid decompositions for the concealed portion of a hand, accounting for
+ * exposed melds that have already satisfied part of the 4-meld requirement.
+ */
+export function findDecompositionsWithMelds(
+  tiles: Tile[],
+  exposedMelds: MeldInfo[] = [],
+): HandDecomposition[] {
+  const handTiles = tiles.filter(t => t.type !== TileType.BONUS);
+  const exposedSetMelds = exposedMelds.filter(m => m.type !== 'pair');
+
+  if (exposedSetMelds.length === 0) {
+    return findDecompositions(handTiles);
+  }
+
+  if (exposedSetMelds.length > 4) return [];
+
+  const meldsNeeded = 4 - exposedSetMelds.length;
+  const expectedTileCount = meldsNeeded * 3 + 2;
+  if (handTiles.length !== expectedTileCount) return [];
+
+  const results: HandDecomposition[] = [];
+  findPartialStandardDecompositions(sortTiles(handTiles), meldsNeeded, results);
   return results;
 }
 
@@ -203,6 +241,76 @@ function findMeldsOnly(
       const chow = [first, t2, t3];
       const rest = removeFromArray(remaining, chow);
       findMeldsOnly(rest, [
+        ...currentMelds,
+        { tiles: chow, type: 'chow', isConcealed: true },
+      ], pair, results);
+    }
+  }
+}
+
+function findPartialStandardDecompositions(
+  tiles: Tile[],
+  meldsNeeded: number,
+  results: HandDecomposition[],
+): void {
+  if (meldsNeeded < 0) return;
+
+  if (meldsNeeded === 0) {
+    if (tiles.length === 2 && tilesMatch(tiles[0], tiles[1])) {
+      results.push({ melds: [], pair: [...tiles] });
+    }
+    return;
+  }
+
+  for (let i = 0; i < tiles.length - 1; i++) {
+    for (let j = i + 1; j < tiles.length; j++) {
+      if (!tilesMatch(tiles[i], tiles[j])) continue;
+
+      const pair = [tiles[i], tiles[j]];
+      const remaining = removeFromArray(tiles, pair);
+      findPartialMeldsOnly(remaining, meldsNeeded, [], pair, results);
+    }
+  }
+}
+
+function findPartialMeldsOnly(
+  remaining: Tile[],
+  meldsNeeded: number,
+  currentMelds: MeldInfo[],
+  pair: Tile[],
+  results: HandDecomposition[],
+): void {
+  if (currentMelds.length === meldsNeeded) {
+    if (remaining.length === 0) {
+      results.push({ melds: [...currentMelds], pair: [...pair] });
+    }
+    return;
+  }
+
+  if (remaining.length < 3) return;
+
+  const first = remaining[0];
+
+  const pungTiles = remaining.filter(t => tilesMatch(t, first));
+  if (pungTiles.length >= 3) {
+    const pung = pungTiles.slice(0, 3);
+    const rest = removeFromArray(remaining, pung);
+    findPartialMeldsOnly(rest, meldsNeeded, [
+      ...currentMelds,
+      { tiles: pung, type: 'pung', isConcealed: true },
+    ], pair, results);
+  }
+
+  if (first.type === TileType.SUIT && first.number !== undefined) {
+    const n = first.number;
+    const suit = first.suit;
+    const t2 = remaining.find(t => t.suit === suit && t.number === n + 1 && t.id !== first.id);
+    const t3 = remaining.find(t => t.suit === suit && t.number === n + 2 && t.id !== first.id && t.id !== t2?.id);
+
+    if (t2 && t3) {
+      const chow = [first, t2, t3];
+      const rest = removeFromArray(remaining, chow);
+      findPartialMeldsOnly(rest, meldsNeeded, [
         ...currentMelds,
         { tiles: chow, type: 'chow', isConcealed: true },
       ], pair, results);

@@ -124,6 +124,58 @@ describe('applyAction - DECLARE_WIN', () => {
     // We can't guarantee this test since hand is random, so just check it doesn't crash
     expect(result === null || result?.phase === GamePhase.FINISHED).toBe(true);
   });
+
+  it('allows self-drawn win with exposed melds', () => {
+    const state: GameState = {
+      id: 'test-exposed-self-draw-win',
+      variant: 'Hong Kong Mahjong',
+      phase: GamePhase.PLAYING,
+      turnPhase: 'discard',
+      currentPlayerIndex: 0,
+      players: [
+        makePlayer({
+          id: 'human-1',
+          name: 'Human',
+          isAI: false,
+          seatWind: WindTile.EAST,
+          hand: [
+            dot(7, 1), dot(8, 1), dot(9, 1),
+            bam(5, 1), bam(5, 2),
+          ],
+          melds: [
+            { tiles: [dot(1, 1), dot(2, 1), dot(3, 1)], type: 'chow', isConcealed: false },
+            { tiles: [bam(2, 1), bam(2, 2), bam(2, 3)], type: 'pung', isConcealed: false },
+            { tiles: [char(3, 1), char(3, 2), char(3, 3)], type: 'pung', isConcealed: false },
+          ],
+        }),
+        makePlayer({ id: 'ai_1', name: 'AI 1', isAI: true, seatWind: WindTile.SOUTH, hand: [dot(4,1)] }),
+        makePlayer({ id: 'ai_2', name: 'AI 2', isAI: true, seatWind: WindTile.WEST, hand: [dot(5,1)] }),
+        makePlayer({ id: 'ai_3', name: 'AI 3', isAI: true, seatWind: WindTile.NORTH, hand: [dot(6,1)] }),
+      ],
+      wall: [],
+      deadWall: [],
+      discardPile: [],
+      playerDiscards: { 'human-1': [], 'ai_1': [], 'ai_2': [], 'ai_3': [] },
+      lastDrawnTile: dot(9, 1),
+      lastDiscardedTile: undefined,
+      lastDiscardedBy: undefined,
+      lastAction: undefined,
+      pendingClaims: [],
+      claimablePlayers: [],
+      passedPlayers: [],
+      prevailingWind: WindTile.EAST,
+      finalScores: {},
+      createdAt: new Date(),
+      turnHistory: [],
+      turnTimeLimit: 20,
+    };
+
+    const result = applyAction(state, 'human-1', { type: 'DECLARE_WIN' });
+    expect(result).not.toBeNull();
+    expect(result!.phase).toBe(GamePhase.FINISHED);
+    expect(result!.winnerId).toBe('human-1');
+    expect(result!.isSelfDrawn).toBe(true);
+  });
 });
 
 describe('applyAction - edge cases', () => {
@@ -146,6 +198,66 @@ describe('applyAction - PASS', () => {
     const state = initializeGame(defaultOptions);
     const result = applyAction(state, 'human-1', { type: 'PASS' });
     expect(result).toBeNull();
+  });
+});
+
+describe('applyAction - CLAIM win', () => {
+  it('allows discard win with exposed melds', () => {
+    const discardedTile = dot(9, 1);
+    const state: GameState = {
+      id: 'test-exposed-claim-win',
+      variant: 'Hong Kong Mahjong',
+      phase: GamePhase.PLAYING,
+      turnPhase: 'claim',
+      currentPlayerIndex: 0,
+      players: [
+        makePlayer({
+          id: 'human-1',
+          name: 'Human',
+          isAI: false,
+          seatWind: WindTile.EAST,
+          hand: [
+            dot(7, 1), dot(8, 1),
+            bam(5, 1), bam(5, 2),
+          ],
+          melds: [
+            { tiles: [dot(1, 1), dot(2, 1), dot(3, 1)], type: 'chow', isConcealed: false },
+            { tiles: [bam(2, 1), bam(2, 2), bam(2, 3)], type: 'pung', isConcealed: false },
+            { tiles: [char(3, 1), char(3, 2), char(3, 3)], type: 'pung', isConcealed: false },
+          ],
+        }),
+        makePlayer({ id: 'ai_1', name: 'AI 1', isAI: true, seatWind: WindTile.SOUTH, hand: [dot(4,1)] }),
+        makePlayer({ id: 'ai_2', name: 'AI 2', isAI: true, seatWind: WindTile.WEST, hand: [dot(5,1)] }),
+        makePlayer({ id: 'ai_3', name: 'AI 3', isAI: true, seatWind: WindTile.NORTH, hand: [dot(6,1)] }),
+      ],
+      wall: [],
+      deadWall: [],
+      discardPile: [discardedTile],
+      playerDiscards: { 'human-1': [], 'ai_1': [discardedTile], 'ai_2': [], 'ai_3': [] },
+      lastDiscardedTile: discardedTile,
+      lastDiscardedBy: 'ai_1',
+      lastAction: undefined,
+      pendingClaims: [],
+      claimablePlayers: ['human-1'],
+      passedPlayers: [],
+      prevailingWind: WindTile.EAST,
+      finalScores: {},
+      createdAt: new Date(),
+      turnHistory: [],
+      turnTimeLimit: 20,
+    };
+
+    const result = applyAction(state, 'human-1', {
+      type: 'CLAIM',
+      claimType: 'win',
+      tilesFromHand: [],
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.phase).toBe(GamePhase.FINISHED);
+    expect(result!.winnerId).toBe('human-1');
+    expect(result!.winningTile).toEqual(discardedTile);
+    expect(result!.isSelfDrawn).toBe(false);
   });
 });
 

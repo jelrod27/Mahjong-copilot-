@@ -10,7 +10,7 @@ import { Tile, TileType, TileFactory, tilesMatch } from '@/models/Tile';
 import { initializeGame, applyAction } from '@/engine/turnManager';
 import { initializeMatch, advanceMatch, startNextHand } from '@/engine/matchManager';
 import { getAvailableClaims, getBestClaimSubmission } from '@/engine/claiming';
-import { isWinningHand } from '@/engine/winDetection';
+import { isWinningHandWithMelds } from '@/engine/winDetection';
 import { calculateScore } from '@/engine/scoring';
 import { AvailableClaim, ScoringContext, ScoringResult, WinMethod, TileClassification } from '@/engine/types';
 import { calculatePayment } from '@/engine/scoring';
@@ -303,7 +303,8 @@ export default function useGameController(
 
   const canDeclareWin = (() => {
     if (!game || game.turnPhase !== 'discard' || game.currentPlayerIndex !== humanIndex) return false;
-    return isWinningHand(game.players[humanIndex].hand);
+    const player = game.players[humanIndex];
+    return isWinningHandWithMelds(player.hand, player.melds);
   })();
 
   // === Tutor Calculation Hook ===
@@ -355,7 +356,7 @@ export default function useGameController(
     const waits: string[] = [];
     // A hand is tenpai if it's one tile away from winning
     // For efficiency, just check if the hand is already winning (0 shanten)
-    if (isWinningHand(hand)) {
+    if (isWinningHandWithMelds(hand, humanPlayer.melds)) {
       setTenpaiStatus({ isTenpai: true, waits: ['Already winning!'] });
       return;
     }
@@ -370,7 +371,7 @@ export default function useGameController(
       if (tested.has(key)) continue;
       tested.add(key);
 
-      if (isWinningHand([...hand, tile])) {
+      if (isWinningHandWithMelds([...hand, tile], humanPlayer.melds)) {
         waits.push(tile.nameEnglish);
       }
     }
@@ -475,7 +476,7 @@ export default function useGameController(
     }
   }, [game?.currentPlayerIndex, game?.turnPhase, game?.phase, doAction, currentDelays]);
 
-  // === Claim detection: show options immediately when claim phase starts (don't wait for currentPlayerIndex) ===
+  // === Claim detection: show options when it is the human claim decision ===
   useEffect(() => {
     if (!game || game.phase !== GamePhase.PLAYING) return;
     if (game.turnPhase !== 'claim') {
@@ -503,6 +504,12 @@ export default function useGameController(
       return;
     }
 
+    if (game.currentPlayerIndex !== humanIndex) {
+      setClaimOptions([]);
+      setClaimTimer(0);
+      return;
+    }
+
     const humanPlayer = game.players[humanIndex];
     const discarderIndex = game.players.findIndex(p => p.id === game.lastDiscardedBy);
     if (discarderIndex === -1 || !game.lastDiscardedTile) return;
@@ -516,7 +523,7 @@ export default function useGameController(
       // Only start timer if not already running
       setClaimTimer(prev => prev > 0 ? prev : CLAIM_TIMEOUT);
       soundManager.play('turnAlert');
-    } else if (game.currentPlayerIndex === humanIndex) {
+    } else {
       // Human has no claims and it's their turn — auto-pass
       doAction(HUMAN_ID, { type: 'PASS' });
     }

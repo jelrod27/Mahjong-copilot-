@@ -5,9 +5,9 @@
  */
 
 import { Tile, TileSuit, TileType, tilesMatch, tileKey } from '@/models/Tile';
-import { Player, ClaimType, MeldInfo } from '@/models/GameState';
+import { Player, ClaimType } from '@/models/GameState';
 import { AvailableClaim } from './types';
-import { isWinningHand } from './winDetection';
+import { isWinningHandWithMelds } from './winDetection';
 
 // ============================================
 // Basic set validation (extracted from SetBuilder)
@@ -77,7 +77,7 @@ export function getAvailableClaims(
 
   // Check for Win (any player can claim win from any discard)
   const handWithDiscard = [...hand, discardedTile];
-  if (isWinningHand(handWithDiscard)) {
+  if (isWinningHandWithMelds(handWithDiscard, player.melds)) {
     claims.push({
       playerId: player.id,
       claimType: 'win',

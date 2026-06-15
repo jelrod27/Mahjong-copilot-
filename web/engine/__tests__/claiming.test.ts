@@ -121,6 +121,23 @@ describe('getAvailableClaims', () => {
     expect(claims.some(c => c.claimType === 'win')).toBe(true);
   });
 
+  it('returns win claim when exposed melds plus discard complete the hand', () => {
+    const player = makePlayer({
+      hand: [
+        dot(7, 1), dot(8, 1),
+        bam(5, 1), bam(5, 2),
+      ],
+      melds: [
+        { tiles: [dot(1, 1), dot(2, 1), dot(3, 1)], type: 'chow', isConcealed: false },
+        { tiles: [bam(2, 1), bam(2, 2), bam(2, 3)], type: 'pung', isConcealed: false },
+        { tiles: [char(3, 1), char(3, 2), char(3, 3)], type: 'pung', isConcealed: false },
+      ],
+    });
+
+    const claims = getAvailableClaims(dot(9, 1), player, 2, 0, 4);
+    expect(claims.some(c => c.claimType === 'win')).toBe(true);
+  });
+
   it('allows chow-to-win from any seat (not just left player)', () => {
     // Hand that needs a chow-completing tile to win:
     // 3 pungs + 1 partial chow (4,5) + pair → needs 3 or 6 to complete chow and win

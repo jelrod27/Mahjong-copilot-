@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { isWinningHand, findDecompositions, isThirteenOrphans, isSevenPairs, calculateShanten } from '../winDetection';
+import {
+  isWinningHand,
+  isWinningHandWithMelds,
+  findDecompositions,
+  findDecompositionsWithMelds,
+  isThirteenOrphans,
+  isSevenPairs,
+  calculateShanten,
+} from '../winDetection';
 import {
   dot, bam, char, windTile, dragonTile,
   buildAllPungsHand, buildChowHand, buildThirteenOrphans, buildSevenPairs,
@@ -39,6 +47,32 @@ describe('isWinningHand', () => {
       dragonTile(DragonTile.WHITE, 1),
     ];
     expect(isWinningHand(hand)).toBe(false);
+  });
+});
+
+describe('isWinningHandWithMelds', () => {
+  const exposedMelds = [
+    { tiles: [dot(1, 1), dot(2, 1), dot(3, 1)], type: 'chow' as const, isConcealed: false },
+    { tiles: [bam(2, 1), bam(2, 2), bam(2, 3)], type: 'pung' as const, isConcealed: false },
+    { tiles: [char(3, 1), char(3, 2), char(3, 3)], type: 'pung' as const, isConcealed: false },
+  ];
+
+  it('returns true when exposed melds plus concealed remainder complete a hand', () => {
+    const concealedRemainder = [
+      dot(7, 1), dot(8, 1), dot(9, 1),
+      bam(5, 1), bam(5, 2),
+    ];
+
+    expect(isWinningHandWithMelds(concealedRemainder, exposedMelds)).toBe(true);
+  });
+
+  it('returns false when the concealed remainder cannot complete the missing sets', () => {
+    const concealedRemainder = [
+      dot(7, 1), dot(8, 1), char(9, 1),
+      bam(5, 1), bam(5, 2),
+    ];
+
+    expect(isWinningHandWithMelds(concealedRemainder, exposedMelds)).toBe(false);
   });
 });
 
@@ -110,6 +144,25 @@ describe('findDecompositions', () => {
       dragonTile(DragonTile.WHITE, 1),
     ];
     expect(findDecompositions(hand)).toHaveLength(0);
+  });
+});
+
+describe('findDecompositionsWithMelds', () => {
+  it('returns concealed decompositions for the melds still needed', () => {
+    const exposedMelds = [
+      { tiles: [dot(1, 1), dot(2, 1), dot(3, 1)], type: 'chow' as const, isConcealed: false },
+      { tiles: [bam(2, 1), bam(2, 2), bam(2, 3)], type: 'pung' as const, isConcealed: false },
+      { tiles: [char(3, 1), char(3, 2), char(3, 3)], type: 'pung' as const, isConcealed: false },
+    ];
+    const concealedRemainder = [
+      dot(7, 1), dot(8, 1), dot(9, 1),
+      bam(5, 1), bam(5, 2),
+    ];
+
+    const decomps = findDecompositionsWithMelds(concealedRemainder, exposedMelds);
+    expect(decomps).toHaveLength(1);
+    expect(decomps[0].melds).toHaveLength(1);
+    expect(decomps[0].pair).toHaveLength(2);
   });
 });
 

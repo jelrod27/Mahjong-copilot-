@@ -61,6 +61,23 @@ describe('calculateScore', () => {
     expect(result.fans.some(f => f.name === 'All Pungs')).toBe(true);
   });
 
+  it('scores exposed meld wins using the concealed remainder', () => {
+    const hand = [
+      dot(7, 1), dot(8, 1),
+      bam(5, 1), bam(5, 2),
+    ];
+    const exposedMelds = [
+      { tiles: [dot(1, 1), dot(2, 1), dot(3, 1)], type: 'chow' as const, isConcealed: false },
+      { tiles: [bam(2, 1), bam(2, 2), bam(2, 3)], type: 'pung' as const, isConcealed: false },
+      { tiles: [char(3, 1), char(3, 2), char(3, 3)], type: 'pung' as const, isConcealed: false },
+    ];
+    const ctx = baseContext({ winningTile: dot(9, 1), flowers: [flowerTile('Plum', 1)] });
+
+    const result = calculateScore(hand, exposedMelds, ctx);
+    expect(result.melds).toHaveLength(4);
+    expect(result.pair).toHaveLength(2);
+  });
+
   it('awards dragon pung fan (+1)', () => {
     const hand = [
       dragonTile(DragonTile.RED, 1), dragonTile(DragonTile.RED, 2), dragonTile(DragonTile.RED, 3),

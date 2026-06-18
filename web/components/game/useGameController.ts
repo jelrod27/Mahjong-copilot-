@@ -7,12 +7,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, GamePhase, ClaimType } from '@/models/GameState';
 import { MatchState, GameMode } from '@/models/MatchState';
 import { Tile, TileType, TileFactory, tilesMatch } from '@/models/Tile';
-import { initializeGame, applyAction, buildWinScoringContext, getLegalClaims } from '@/engine/turnManager';
+import { initializeGame, applyAction, buildWinScoringContext, getLegalClaims, canDeclareSelfDrawnWin, scoreSelfDrawnHand } from '@/engine/turnManager';
 import { initializeMatch, advanceMatch, startNextHand } from '@/engine/matchManager';
 import { getBestClaimSubmission } from '@/engine/claiming';
 import { isWinningHand, canPlayerWin } from '@/engine/winDetection';
 import { calculateScore } from '@/engine/scoring';
-import { AvailableClaim, ScoringResult, TileClassification } from '@/engine/types';
+import { AvailableClaim, ScoringResult, TileClassification, DEFAULT_MIN_FAAN } from '@/engine/types';
 import { calculatePayment } from '@/engine/scoring';
 import { getAIDecision, getAIClaimDecision } from '@/engine/ai';
 import { getTutorAdvice } from '@/engine/tutor';
@@ -93,6 +93,20 @@ export interface GameController {
   clearSavedGame: () => void;
   canDeclareKong: boolean;
   canDeclareWin: boolean;
+  /**
+   * Set when the human's hand is a complete winning shape on their own turn but
+   * scores below the table's faan minimum, so the engine won't accept the win
+   * and no Mahjong button is shown. Drives the "complete but short" explainer.
+   */
+  winShortfall: WinShortfall | null;
+}
+
+/** Why a structurally-complete hand can't be declared: it's under the faan floor. */
+export interface WinShortfall {
+  /** Faan the completed hand is currently worth. */
+  currentFaan: number;
+  /** Faan minimum this table requires to win. */
+  minFaan: number;
 }
 
 export default function useGameController(
@@ -480,9 +494,24 @@ export default function useGameController(
     return false;
   })();
 
-  const canDeclareWin = (() => {
-    if (!game || game.turnPhase !== 'discard' || game.currentPlayerIndex !== humanIndex) return false;
-    return canPlayerWin(game.players[humanIndex].hand, game.players[humanIndex].melds);
+  // Delegate to the engine's authoritative self-draw gate (winning shape +
+  // drawn tile in hand + minimum faan) rather than a bare structural check —
+  // otherwise the button renders on hands the engine silently rejects (a dead
+  // button). This mirrors how the claim path uses getLegalClaims and how every
+  // AI tier already gates on canDeclareSelfDrawnWin.
+  const canDeclareWin = game ? canDeclareSelfDrawnWin(game, humanIndex) : false;
+
+  // A complete winning shape that the engine refuses purely because it's under
+  // the faan floor. We don't show a dead Mahjong button for it (canDeclareWin
+  // already excludes it) — instead we explain the shortfall so the rule teaches.
+  const winShortfall: WinShortfall | null = (() => {
+    if (!game || game.turnPhase !== 'discard' || game.currentPlayerIndex !== humanIndex) return null;
+    if (canDeclareWin) return null;
+    const player = game.players[humanIndex];
+    if (!canPlayerWin(player.hand, player.melds)) return null;
+    const result = scoreSelfDrawnHand(game, humanIndex);
+    if (!result) return null;
+    return { currentFaan: result.totalFan, minFaan: game.minFaan ?? DEFAULT_MIN_FAAN };
   })();
 
   // === Tutor Calculation Hook ===
@@ -888,6 +917,6 @@ export default function useGameController(
     selectTile, discardSelected, sortHand, declareKong, declareWin,
     submitClaim, submitChow, claimBest, pass, startNewGame, continueToNextHand,
     resumeGame, clearSavedGame: clearSavedGameAndReset,
-    canDeclareKong, canDeclareWin,
+    canDeclareKong, canDeclareWin, winShortfall,
   };
 }

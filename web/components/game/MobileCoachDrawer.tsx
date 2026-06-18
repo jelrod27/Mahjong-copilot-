@@ -41,7 +41,7 @@ export default function MobileCoachDrawer({
         {open ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}
       </button>
       <div id={panelId} className={open ? 'mt-1 space-y-1' : 'hidden'}>
-        {faanProjection && <FaanMeter projection={faanProjection} compact />}
+        {faanProjection && <FaanMeter projection={faanProjection} compact minFaan={game.minFaan} />}
         <DiscardReadingPanel game={game} humanPlayerId={humanPlayerId} compact />
       </div>
     </div>

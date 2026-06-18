@@ -29,6 +29,10 @@ vi.mock('@/engine/turnManager', () => ({
   buildWinScoringContext: (...args: unknown[]) => buildWinScoringContextMock(...args),
   // Delegate to the claiming mock so tests arm claims in one place
   getLegalClaims: (...args: unknown[]) => getAvailableClaimsMock(...args),
+  // Win-availability gates — default to "no win offered" so flow tests that
+  // don't exercise winning aren't forced to stub them.
+  canDeclareSelfDrawnWin: vi.fn(() => false),
+  scoreSelfDrawnHand: vi.fn(() => null),
 }));
 
 const buildWinScoringContextMock = vi.fn(() => null);

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Fix: game board tiles no longer collapse to a fixed pixel size on compressed or extreme viewports; container query height was being zeroed by flex min-h-0 collapse, now guarded by a viewport-derived vw/vmin floor.
+- Fix: human hand tiles no longer overflow the viewport on narrow portrait mobile; `.game-hand-scroll` now allows horizontal scroll when content exceeds the row width.
+
 ## The Legendary Elevation Pass — 2026-06-10
 
 One sustained pass to take 16 Bit Mahjong from a functional learning

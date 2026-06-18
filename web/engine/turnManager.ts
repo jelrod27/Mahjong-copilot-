@@ -10,11 +10,11 @@ import {
   MeldInfo, ClaimRequest, TurnPhase, ClaimType, DrawResult, AIPersonalityParams,
 } from '@/models/GameState';
 import { TileFactory } from '@/models/Tile';
-import { GameAction, ScoringContext, WinMethod, DEFAULT_MIN_FAAN } from './types';
+import { GameAction, ScoringContext, ScoringResult, WinMethod, DEFAULT_MIN_FAAN } from './types';
 import { createRng, shuffleInPlace, randomSeed } from './rng';
 import { isWinningHand, canPlayerWin, isTenpai } from './winDetection';
 import { getAvailableClaims, resolveClaimRequests } from './claiming';
-import { meetsMinFaan } from './scoring';
+import { meetsMinFaan, calculateScore } from './scoring';
 
 /**
  * Flat noten-penalty constant used at wall exhaustion.
@@ -937,6 +937,24 @@ export function canDeclareSelfDrawnWin(state: GameState, playerIndex: number): b
   if (!canPlayerWin(player.hand, player.melds)) return false;
   const ctx = buildScoringContext(state, player, state.lastDrawnTile, { isSelfDrawn: true });
   return meetsMinFaan(player.hand, player.melds, ctx);
+}
+
+/**
+ * Score the player's current hand as if they declared a self-drawn win now,
+ * ignoring the minimum-faan gate. Returns null when the hand is not a winning
+ * shape (or the drawn tile isn't in hand). The UI uses this to explain *why* a
+ * complete hand can't be declared — e.g. "only 2 faan, this table needs 3" —
+ * without duplicating scoring logic. Win legality is still owned by
+ * canDeclareSelfDrawnWin / handleSelfDrawnWin.
+ */
+export function scoreSelfDrawnHand(state: GameState, playerIndex: number): ScoringResult | null {
+  if (state.turnPhase !== 'discard' || state.currentPlayerIndex !== playerIndex) return null;
+  const player = state.players[playerIndex];
+  if (!state.lastDrawnTile) return null;
+  if (!player.hand.find(t => t.id === state.lastDrawnTile!.id)) return null;
+  if (!canPlayerWin(player.hand, player.melds)) return null;
+  const ctx = buildScoringContext(state, player, state.lastDrawnTile, { isSelfDrawn: true });
+  return calculateScore(player.hand, player.melds, ctx);
 }
 
 /**

@@ -18,7 +18,9 @@ export default function PlayPage() {
   const router = useRouter();
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [mode, setMode] = useState<GameMode>('quick');
-  const [minFaan, setMinFaan] = useState<MinFaan>(3);
+  // Beginner-friendly default: any scoring hand wins. 3-faan HK competition
+  // rules remain a one-tap opt-in (and the upper Jade Parlour floors enforce it).
+  const [minFaan, setMinFaan] = useState<MinFaan>(1);
   const [canResume, setCanResume] = useState(false);
 
   useEffect(() => {

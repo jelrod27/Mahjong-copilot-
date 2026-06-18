@@ -28,6 +28,33 @@ describe('ActionBar discard state', () => {
     expect(screen.getByText(/tap discard to send it out/i)).toBeInTheDocument();
   });
 
+  it('explains the faan shortfall instead of a dead Mahjong button when the hand is complete but short', () => {
+    render(
+      <ActionBar
+        canDiscard
+        canDeclareKong={false}
+        canDeclareWin={false}
+        winShortfall={{ currentFaan: 2, minFaan: 3 }}
+        hasClaimOptions={false}
+        claimOptions={[]}
+        onDiscard={vi.fn()}
+        onKong={vi.fn()}
+        onWin={vi.fn()}
+        onClaimBest={vi.fn()}
+        onSubmitChow={vi.fn()}
+        onPass={vi.fn()}
+        turnPhase="discard"
+        isHumanTurn
+        selectedTileName="1 Bamboo"
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: /mahjong/i })).not.toBeInTheDocument();
+    const notice = screen.getByTestId('win-short-notice');
+    expect(notice).toHaveTextContent(/only 2 faan/i);
+    expect(notice).toHaveTextContent(/needs 3\+ to win/i);
+  });
+
   it('prompts the player to choose a tile before discarding', () => {
     render(
       <ActionBar

@@ -225,6 +225,7 @@ export default function GameContent() {
         onPass={controller.pass}
         canDeclareKong={controller.canDeclareKong}
         canDeclareWin={controller.canDeclareWin}
+        winShortfall={controller.winShortfall}
         hasClaimOptions={controller.claimOptions.length > 0}
         claimOptions={controller.claimOptions}
         claimTimer={controller.claimTimer}

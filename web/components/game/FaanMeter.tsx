@@ -153,7 +153,7 @@ export default function FaanMeter({ projection, minFaan = 3, compact = false }: 
           {/* Min-faan status line — tells the learner whether they can legally win */}
           <div className="flex items-center justify-between pt-1 border-t border-border/20 text-[10px]">
             <span className="text-muted-foreground font-sans">
-              Need {minFaan}+ faan to win
+              {minFaan <= 0 ? 'Any scoring hand wins' : `Need ${minFaan}+ faan to win`}
             </span>
             <span
               className={`font-display ${

@@ -4,12 +4,15 @@ import { Tile } from '@/models/Tile';
 import { TurnPhase } from '@/models/GameState';
 import { AvailableClaim } from '@/engine/types';
 import { getBestClaimSubmission } from '@/engine/claiming';
+import type { WinShortfall } from './useGameController';
 import ChowSelector from './ChowSelector';
 
 interface ActionBarProps {
   canDiscard: boolean;
   canDeclareKong: boolean;
   canDeclareWin: boolean;
+  /** Set when a complete hand is below the table's faan minimum — explains why there's no Mahjong button. */
+  winShortfall?: WinShortfall | null;
   hasClaimOptions: boolean;
   claimOptions: AvailableClaim[];
   discardedTile?: Tile;
@@ -64,6 +67,7 @@ export default function ActionBar({
   canDiscard,
   canDeclareKong,
   canDeclareWin,
+  winShortfall,
   hasClaimOptions,
   claimOptions,
   discardedTile,
@@ -133,6 +137,19 @@ export default function ActionBar({
             </button>
           )}
         </div>
+        {!canDeclareWin && winShortfall && (
+          <div
+            data-testid="win-short-notice"
+            className="mx-auto max-w-[22rem] rounded-lg border border-highlight/40 bg-highlight/10 px-3 py-2 text-center"
+          >
+            <p className="font-display text-xs font-semibold text-highlight">
+              Complete hand — but only {winShortfall.currentFaan} faan
+            </p>
+            <p className="font-sans text-[11px] leading-snug text-muted-foreground">
+              This table needs {winShortfall.minFaan}+ to win. Build value: go for one suit, all pungs, or a dragon/wind pung.
+            </p>
+          </div>
+        )}
       </div>
     );
   }

@@ -23,7 +23,7 @@ import GameToast from './GameToast';
 import TileFlightLayer from './TileFlightLayer';
 import { ArrowDownUp } from 'lucide-react';
 import { TutorAdvice } from '@/engine/types';
-import { TenpaiStatus } from './useGameController';
+import { TenpaiStatus, WinShortfall } from './useGameController';
 import { FaanProjection } from '@/engine/faanProjection';
 
 interface GameBoardProps {
@@ -46,6 +46,7 @@ interface GameBoardProps {
   onPass: () => void;
   canDeclareKong?: boolean;
   canDeclareWin?: boolean;
+  winShortfall?: WinShortfall | null;
   hasClaimOptions?: boolean;
   claimOptions?: AvailableClaim[];
   claimTimer?: number;
@@ -58,7 +59,7 @@ export default function GameBoard({
   gameState, match, humanPlayerId, selectedTileId, suggestedTileId, tutorAdvice,
   tenpaiStatus, tileClassifications, faanProjection,
   onTileSelect, onSortHand, onDiscard, onKong, onWin, onClaimBest, onSubmitChow, onPass,
-  canDeclareKong: canKongProp, canDeclareWin: canWinProp,
+  canDeclareKong: canKongProp, canDeclareWin: canWinProp, winShortfall,
   hasClaimOptions: hasClaimsProp, claimOptions = [], claimTimer,
   claimTimeoutMs = 10000, npcSeatsOverride,
 }: GameBoardProps) {
@@ -312,7 +313,7 @@ export default function GameBoard({
                 score={match?.playerScores?.[gameState.players.indexOf(rightPlayer)]}
               />
               <div className="flex w-full min-h-0 flex-col gap-1 overflow-y-auto">
-                {faanProjection && <FaanMeter projection={faanProjection} />}
+                {faanProjection && <FaanMeter projection={faanProjection} minFaan={gameState.minFaan} />}
                 <DiscardReadingPanel game={gameState} humanPlayerId={humanPlayerId} />
               </div>
             </div>
@@ -331,6 +332,7 @@ export default function GameBoard({
           canDiscard={canDiscard}
           canDeclareKong={canDeclareKong}
           canDeclareWin={canDeclareWin}
+          winShortfall={winShortfall}
           hasClaimOptions={hasClaimOptions}
           claimOptions={claimOptions}
           discardedTile={gameState.lastDiscardedTile}

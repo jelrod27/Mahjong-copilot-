@@ -9,6 +9,7 @@ import {
   setThemeMode,
   setNotificationsEnabled,
   setShowTutor,
+  setDisplayMode,
   setLiveFaanMeter,
   setCrtEffect,
   setMusicEnabled,
@@ -35,6 +36,12 @@ const THEME_OPTIONS: { value: SettingsState['themeMode']; label: string }[] = [
   { value: 'retro', label: 'Classic dark' },
   { value: 'dark', label: 'Dark' },
   { value: 'light', label: 'Light' },
+];
+
+const DISPLAY_MODE_OPTIONS: { value: SettingsState['displayMode']; label: string; description: string }[] = [
+  { value: 'tutor', label: 'Tutor', description: 'Beginner discard tips, claim suggestions, and safe-tile hints.' },
+  { value: 'shantenHeat', label: 'Shanten Heat', description: 'Color each tile by how close to winning you are if you discard it. Blue = tenpai, red = far. No text — just the math made visible.' },
+  { value: 'off', label: 'Off', description: 'No in-game overlay. Just you and the tiles.' },
 ];
 
 export default function SettingsPageClient() {
@@ -96,6 +103,7 @@ export default function SettingsPageClient() {
     void dispatch(setThemeMode('retro'));
     void dispatch(setNotificationsEnabled(true));
     void dispatch(setShowTutor(true));
+    void dispatch(setDisplayMode('tutor'));
     void dispatch(setLiveFaanMeter(true));
     void dispatch(setMusicEnabled(true));
     void dispatch(setCrtEffect(false));
@@ -223,13 +231,41 @@ export default function SettingsPageClient() {
           description="Automatically pass during claim phase when you have no valid claims"
         />
 
-        {/* Tutor panel */}
-        <ToggleRow
-          checked={settings.showTutor}
-          onChange={(v) => void dispatch(setShowTutor(v))}
-          label="Show tutor hints"
-          description="In-game discard tips, claim suggestions, and safe-tile hints across all difficulties."
-        />
+        {/* In-game overlay mode */}
+        <div>
+          <span className="font-sans text-foreground block mb-1">In-game overlay</span>
+          <p className="text-muted-foreground text-xs font-sans mb-2">
+            Choose how the game helps you during your discard turn.
+          </p>
+          <div className="space-y-2">
+            {DISPLAY_MODE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => void dispatch(setDisplayMode(opt.value))}
+                aria-pressed={settings.displayMode === opt.value}
+                className={`w-full text-left font-sans text-sm px-3 py-2 border transition-colors ${
+                  settings.displayMode === opt.value
+                    ? 'border-info text-info bg-info/10'
+                    : 'border-border/40 text-muted-foreground hover:border-border'
+                }`}
+              >
+                <span className="block font-medium text-foreground">{opt.label}</span>
+                <span className="block text-xs text-muted-foreground mt-0.5">{opt.description}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tutor sub-toggle — only when tutor overlay is selected */}
+        {settings.displayMode === 'tutor' && (
+          <ToggleRow
+            checked={settings.showTutor}
+            onChange={(v) => void dispatch(setShowTutor(v))}
+            label="Show tutor hints"
+            description="In-game discard tips, claim suggestions, and safe-tile hints across all difficulties."
+          />
+        )}
 
         {/* Live faan meter */}
         <ToggleRow

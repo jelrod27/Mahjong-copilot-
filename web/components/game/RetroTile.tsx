@@ -4,6 +4,7 @@ import { memo } from 'react';
 import { Tile, TileType, TileSuit, WindTile, DragonTile } from '@/models/Tile';
 import { useTilePalette } from './TilePaletteContext';
 import { TilePalette } from '@/lib/cosmetics';
+import type { TileHeatOverlay } from '@/engine/shantenHeat';
 
 interface RetroTileProps {
   tile: Tile;
@@ -17,6 +18,7 @@ interface RetroTileProps {
   disabled?: boolean;
   tutorColor?: 'green' | 'orange' | 'red';
   tutorLabel?: 'GOOD' | 'OK' | 'KEEP';
+  heatOverlay?: TileHeatOverlay;
   /** Override the contextual palette (used by cosmetics preview thumbnails). */
   paletteOverride?: TilePalette;
 }
@@ -61,7 +63,7 @@ const TUTOR_COLORS: Record<string, string> = {
 function RetroTile({
   tile, size = 'md', showBack = false, isSelected = false, isSuggested = false,
   isLastDiscarded = false, isNewlyDrawn = false, onClick, disabled = false,
-  tutorColor, tutorLabel, paletteOverride,
+  tutorColor, tutorLabel, heatOverlay, paletteOverride,
 }: RetroTileProps) {
   const ctxPalette = useTilePalette();
   const palette = paletteOverride ?? ctxPalette;
@@ -74,6 +76,7 @@ function RetroTile({
     isSelected ? 'selected' : null,
     isSuggested ? 'suggested discard' : null,
     tutorLabel ? `Beginner Assist: ${tutorLabel}` : null,
+    heatOverlay?.ariaLabel ?? null,
   ].filter(Boolean).join(', ');
   const tileAriaLabel = `Mahjong tile: ${tile.nameEnglish}${accessibilityState ? `. ${accessibilityState}.` : ''}`;
 
@@ -113,7 +116,10 @@ function RetroTile({
         ${isNewlyDrawn ? 'animate-tile-draw' : ''}
         ${isSuggested && !isSelected ? 'animate-pulse-gold' : ''}
       `}
-      style={faceStyle}
+      style={{
+        ...faceStyle,
+        ...(heatOverlay ? { boxShadow: `inset 0 0 0 3px ${heatOverlay.color}` } : {}),
+      }}
     >
       <div style={{ height: stripeHeight, width: '100%', backgroundColor: suitColor }} />
       {tutorColor && (

@@ -25,6 +25,7 @@ import { ArrowDownUp } from 'lucide-react';
 import { TutorAdvice } from '@/engine/types';
 import { TenpaiStatus, WinShortfall } from './useGameController';
 import { FaanProjection } from '@/engine/faanProjection';
+import type { TileHeatOverlay } from '@/engine/shantenHeat';
 
 interface GameBoardProps {
   gameState: GameState;
@@ -35,6 +36,7 @@ interface GameBoardProps {
   tutorAdvice?: TutorAdvice | null;
   tenpaiStatus?: TenpaiStatus | null;
   tileClassifications?: Map<string, 'green' | 'orange' | 'red'>;
+  heatOverlays?: Map<string, TileHeatOverlay>;
   faanProjection?: FaanProjection | null;
   onTileSelect: (tile: Tile) => void;
   onSortHand?: () => void;
@@ -57,7 +59,7 @@ interface GameBoardProps {
 
 export default function GameBoard({
   gameState, match, humanPlayerId, selectedTileId, suggestedTileId, tutorAdvice,
-  tenpaiStatus, tileClassifications, faanProjection,
+  tenpaiStatus, tileClassifications, heatOverlays, faanProjection,
   onTileSelect, onSortHand, onDiscard, onKong, onWin, onClaimBest, onSubmitChow, onPass,
   canDeclareKong: canKongProp, canDeclareWin: canWinProp, winShortfall,
   hasClaimOptions: hasClaimsProp, claimOptions = [], claimTimer,
@@ -404,6 +406,27 @@ export default function GameBoard({
           </div>
         )}
 
+        {/* Shanten Heat legend */}
+        {heatOverlays && heatOverlays.size > 0 && (
+          <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 px-1 text-center font-sans text-[9px] text-muted-foreground md:text-xs">
+            <span>
+              <span className="font-semibold" style={{ color: 'hsl(240, 70%, 50%)' }}>Blue</span> tenpai after discard
+            </span>
+            <span className="text-border">·</span>
+            <span>
+              <span className="font-semibold" style={{ color: 'hsl(120, 70%, 50%)' }}>Green</span> close
+            </span>
+            <span className="text-border">·</span>
+            <span>
+              <span className="font-semibold" style={{ color: 'hsl(0, 70%, 50%)' }}>Red</span> far from winning
+            </span>
+            <span className="text-border">·</span>
+            <span>
+              <span className="font-semibold text-muted-foreground">Grey</span> all equal
+            </span>
+          </div>
+        )}
+
         {/* Tenpai badge — persistent across all phases in easy mode */}
         {tenpaiStatus?.isTenpai && (
           <div className="text-center">
@@ -431,6 +454,7 @@ export default function GameBoard({
             lastDrawnTileId={gameState.lastDrawnTile?.id}
             disabled={!isHumanTurn || gameState.turnPhase !== 'discard'}
             tileClassifications={tileClassifications}
+            heatOverlays={heatOverlays}
           />
         </div>
 

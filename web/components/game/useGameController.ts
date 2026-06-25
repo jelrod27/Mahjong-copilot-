@@ -16,6 +16,8 @@ import { AvailableClaim, ScoringResult, TileClassification, DEFAULT_MIN_FAAN } f
 import { calculatePayment } from '@/engine/scoring';
 import { getAIDecision, getAIClaimDecision } from '@/engine/ai';
 import { getTutorAdvice } from '@/engine/tutor';
+import { computeHeatOverlays, type TileHeatOverlay } from '@/engine/shantenHeat';
+import type { DisplayMode } from '@/store/actions/settingsActions';
 import { projectFaan, FaanProjection } from '@/engine/faanProjection';
 import soundManager from '@/lib/soundManager';
 import { speakTile, TileVoiceLanguage } from '@/lib/tileVoice';
@@ -65,6 +67,7 @@ export interface GameController {
   tutorAdvice: TutorAdvice | null;
   tenpaiStatus: TenpaiStatus | null;
   tileClassifications: Map<string, 'green' | 'orange' | 'red'>;
+  heatOverlays: Map<string, TileHeatOverlay>;
   claimOptions: AvailableClaim[];
   claimTimer: number;
   isGameOver: boolean;
@@ -122,6 +125,7 @@ export default function useGameController(
   onMatchRosterResolved?: (rosterId: RosterId) => void,
   parlourFloor?: number,
   dailyMode: boolean = false,
+  displayMode: DisplayMode = 'tutor',
 ): GameController {
   const claimTimeoutMs = claimTimeoutForPreset(tablePreset);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>(initialDifficulty);
@@ -141,6 +145,7 @@ export default function useGameController(
   }, []);
   const [scoringResult, setScoringResult] = useState<ScoringResult | null>(null);
   const [tileClassifications, setTileClassifications] = useState<Map<string, 'green' | 'orange' | 'red'>>(new Map());
+  const [heatOverlays, setHeatOverlays] = useState<Map<string, TileHeatOverlay>>(new Map());
   const [faanProjection, setFaanProjection] = useState<FaanProjection | null>(null);
   const gameRef = useRef<GameState | null>(null);
   const matchRef = useRef<MatchState | null>(null);
@@ -163,6 +168,7 @@ export default function useGameController(
     updateClaimTimer(0);
     setScoringResult(null);
     setTileClassifications(new Map());
+    setHeatOverlays(new Map());
     setFaanProjection(null);
     processingRef.current = false;
     humanDiscardInFlightRef.current = false;
@@ -514,27 +520,48 @@ export default function useGameController(
     return { currentFaan: result.totalFan, minFaan: game.minFaan ?? DEFAULT_MIN_FAAN };
   })();
 
-  // === Tutor Calculation Hook ===
-  // Tutor is gated on the user-controlled `showTutor` setting (defaults on) so learners can
-  // keep the teacher overlay across all difficulties. Previously this was hard-gated to easy,
-  // silently discarding computed advice on medium/hard.
+  // === Display overlay hook ===
+  // Modes: tutor (beginner advice), shantenHeat (per-discard heatmap), off (none).
+  // Tutor mode is also gated on `showTutor` for backward compatibility and the in-game HUD toggle.
   useEffect(() => {
-    if (!showTutor || !game || game.phase !== GamePhase.PLAYING) {
+    if (!game || game.phase !== GamePhase.PLAYING) {
+      setTutorAdvice(null);
+      setSuggestedTileId(undefined);
+      setTileClassifications(new Map());
+      setHeatOverlays(new Map());
+      return;
+    }
+
+    const isHumanDiscardTurn = game.turnPhase === 'discard' && game.currentPlayerIndex === humanIndex;
+    const isClaimPhase = game.turnPhase === 'claim' && claimOptions.length > 0;
+
+    if (displayMode === 'shantenHeat') {
+      setTutorAdvice(null);
+      setSuggestedTileId(undefined);
+      setTileClassifications(new Map());
+
+      if (isHumanDiscardTurn) {
+        const player = game.players[humanIndex];
+        setHeatOverlays(computeHeatOverlays(player.hand, player.melds));
+      } else {
+        setHeatOverlays(new Map());
+      }
+      return;
+    }
+
+    setHeatOverlays(new Map());
+
+    if (displayMode !== 'tutor' || !showTutor) {
       setTutorAdvice(null);
       setSuggestedTileId(undefined);
       setTileClassifications(new Map());
       return;
     }
 
-    // Only provide advice when it's the human's turn to discard OR a claim is possible
-    const isHumanDiscardTurn = game.turnPhase === 'discard' && game.currentPlayerIndex === humanIndex;
-    const isClaimPhase = game.turnPhase === 'claim' && claimOptions.length > 0;
-
     if (isHumanDiscardTurn || isClaimPhase) {
       const advice = getTutorAdvice(game, humanIndex, claimOptions);
       setTutorAdvice(advice);
       setSuggestedTileId(advice?.suggestedTileId);
-      // Build tile classification map for teacher overlay
       if (advice?.tileClassifications) {
         const map = new Map<string, 'green' | 'orange' | 'red'>();
         for (const tc of advice.tileClassifications) {
@@ -549,7 +576,7 @@ export default function useGameController(
       setSuggestedTileId(undefined);
       setTileClassifications(new Map());
     }
-  }, [game?.turnPhase, game?.currentPlayerIndex, game?.phase, claimOptions, showTutor, humanIndex]);
+  }, [game?.turnPhase, game?.currentPlayerIndex, game?.phase, claimOptions, showTutor, displayMode, humanIndex]);
 
   // === Voice callouts on discard ===
   // When a tile is discarded (by any player), optionally speak it in the
@@ -912,7 +939,7 @@ export default function useGameController(
 
   return {
     game, match, selectedTileId, suggestedTileId, tutorAdvice, tenpaiStatus,
-    tileClassifications, claimOptions, claimTimer, isGameOver, isMatchOver,
+    tileClassifications, heatOverlays, claimOptions, claimTimer, isGameOver, isMatchOver,
     scoringResult, faanProjection, claimTimeoutMs, tablePreset,
     selectTile, discardSelected, sortHand, declareKong, declareWin,
     submitClaim, submitChow, claimBest, pass, startNewGame, continueToNextHand,

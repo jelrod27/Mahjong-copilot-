@@ -13,6 +13,8 @@ import {
 } from '@/lib/cosmetics';
 import { isNpcRosterMode, NpcRosterMode } from '@/lib/rosterRotation';
 
+export type DisplayMode = 'tutor' | 'shantenHeat' | 'off';
+
 export interface SettingsState {
   selectedVariant: string;
   locale: string;
@@ -23,6 +25,8 @@ export interface SettingsState {
   largerUiText: boolean;
   /** Show the in-game tutor panel (advice + tile safety hints) across all difficulties. */
   showTutor: boolean;
+  /** In-game overlay mode: tutor hints, shanten heatmap, or none. */
+  displayMode: DisplayMode;
   /** Show the live faan meter overlay during play (learning aid for HK scoring). */
   liveFaanMeter: boolean;
   /** Voice callouts for discarded tiles: 'off', 'cantonese' (preferred), or 'english'. */
@@ -49,6 +53,7 @@ export const SETTINGS_SET_SOUND_ENABLED = 'SETTINGS_SET_SOUND_ENABLED' as const;
 export const SETTINGS_SET_NOTIFICATIONS_ENABLED = 'SETTINGS_SET_NOTIFICATIONS_ENABLED' as const;
 export const SETTINGS_SET_LARGER_UI_TEXT = 'SETTINGS_SET_LARGER_UI_TEXT' as const;
 export const SETTINGS_SET_SHOW_TUTOR = 'SETTINGS_SET_SHOW_TUTOR' as const;
+export const SETTINGS_SET_DISPLAY_MODE = 'SETTINGS_SET_DISPLAY_MODE' as const;
 export const SETTINGS_SET_LIVE_FAAN_METER = 'SETTINGS_SET_LIVE_FAAN_METER' as const;
 export const SETTINGS_SET_TILE_VOICE = 'SETTINGS_SET_TILE_VOICE' as const;
 export const SETTINGS_SET_TILE_PALETTE = 'SETTINGS_SET_TILE_PALETTE' as const;
@@ -67,6 +72,7 @@ export type SettingsAction =
   | { type: typeof SETTINGS_SET_NOTIFICATIONS_ENABLED; payload: boolean }
   | { type: typeof SETTINGS_SET_LARGER_UI_TEXT; payload: boolean }
   | { type: typeof SETTINGS_SET_SHOW_TUTOR; payload: boolean }
+  | { type: typeof SETTINGS_SET_DISPLAY_MODE; payload: DisplayMode }
   | { type: typeof SETTINGS_SET_LIVE_FAAN_METER; payload: boolean }
   | { type: typeof SETTINGS_SET_TILE_VOICE; payload: SettingsState['tileVoice'] }
   | { type: typeof SETTINGS_SET_TILE_PALETTE; payload: TilePaletteId }
@@ -85,6 +91,13 @@ export const initializeSettings = () => async (dispatch: any) => {
     const languageCode = await StorageService.getString(AppConstants.LANGUAGE_KEY) || 'en';
     const largerUiText = await StorageService.getBool(AppConstants.LARGER_UI_TEXT_KEY) ?? false;
     const showTutor = await StorageService.getBool(AppConstants.SHOW_TUTOR_KEY) ?? true;
+    const displayModeRaw = await StorageService.getString(AppConstants.DISPLAY_MODE_KEY);
+    const displayMode: DisplayMode =
+      displayModeRaw === 'shantenHeat' || displayModeRaw === 'off'
+        ? displayModeRaw
+        : showTutor
+          ? 'tutor'
+          : 'off';
     const liveFaanMeter = await StorageService.getBool(AppConstants.LIVE_FAAN_METER_KEY) ?? true;
     const tileVoiceRaw = await StorageService.getString(AppConstants.TILE_VOICE_KEY);
     const tileVoice: SettingsState['tileVoice'] =
@@ -123,6 +136,7 @@ export const initializeSettings = () => async (dispatch: any) => {
         notificationsEnabled: true,
         largerUiText,
         showTutor,
+        displayMode,
         liveFaanMeter,
         tileVoice,
         tilePalette,
@@ -171,6 +185,11 @@ export const setLargerUiText = (enabled: boolean) => async (dispatch: any) => {
 export const setShowTutor = (enabled: boolean) => async (dispatch: any) => {
   await StorageService.setBool(AppConstants.SHOW_TUTOR_KEY, enabled);
   dispatch({ type: SETTINGS_SET_SHOW_TUTOR, payload: enabled });
+};
+
+export const setDisplayMode = (mode: DisplayMode) => async (dispatch: any) => {
+  await StorageService.setString(AppConstants.DISPLAY_MODE_KEY, mode);
+  dispatch({ type: SETTINGS_SET_DISPLAY_MODE, payload: mode });
 };
 
 export const setLiveFaanMeter = (enabled: boolean) => async (dispatch: any) => {

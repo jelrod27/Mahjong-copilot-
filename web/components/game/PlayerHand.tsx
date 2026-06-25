@@ -3,6 +3,7 @@
 import { memo, useRef, useLayoutEffect } from 'react';
 import { Tile } from '@/models/Tile';
 import RetroTile from './RetroTile';
+import type { TileHeatOverlay } from '@/engine/shantenHeat';
 
 interface PlayerHandProps {
   tiles: Tile[];
@@ -12,11 +13,12 @@ interface PlayerHandProps {
   lastDrawnTileId?: string;
   disabled?: boolean;
   tileClassifications?: Map<string, 'green' | 'orange' | 'red'>;
+  heatOverlays?: Map<string, TileHeatOverlay>;
 }
 
 function PlayerHand({
   tiles, selectedTileId, suggestedTileId, onTileSelect, lastDrawnTileId,
-  disabled = false, tileClassifications,
+  disabled = false, tileClassifications, heatOverlays,
 }: PlayerHandProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const prevRects = useRef<Map<string, DOMRect>>(new Map());
@@ -63,6 +65,7 @@ function PlayerHand({
         const isLastDrawn = tile.id === lastDrawnTileId;
         const tutorColor = tileClassifications?.get(tile.id);
         const tutorLabel = tutorColor === 'green' ? 'GOOD' : tutorColor === 'orange' ? 'OK' : tutorColor === 'red' ? 'KEEP' : null;
+        const heatOverlay = heatOverlays?.get(tile.id);
         return (
           <div
             key={tile.id}
@@ -80,6 +83,7 @@ function PlayerHand({
               disabled={disabled}
               tutorColor={tutorColor}
               tutorLabel={tutorLabel ?? undefined}
+              heatOverlay={heatOverlay}
             />
             {tutorLabel && (
               <div

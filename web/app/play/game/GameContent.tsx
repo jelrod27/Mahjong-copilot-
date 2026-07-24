@@ -56,6 +56,7 @@ export default function GameContent() {
   const effectiveDifficulty = isTrainingTable ? 'easy' : difficulty;
   const effectiveMinFaan = isTrainingTable ? 0 : minFaan;
   const showTutor = useAppSelector((s) => s.settings.showTutor);
+  const displayMode = useAppSelector((s) => s.settings.displayMode);
   const liveFaanMeter = useAppSelector((s) => s.settings.liveFaanMeter);
   const tileVoice = useAppSelector((s) => s.settings.tileVoice);
   const npcRosterMode = useAppSelector((s) => s.settings.npcRosterMode);
@@ -94,6 +95,7 @@ export default function GameContent() {
     onMatchRosterResolved,
     floorDef?.floor,
     dailyMode,
+    displayMode,
   );
 
   // Daily Hand outcome: derive from the single hand and record once.
@@ -214,6 +216,7 @@ export default function GameContent() {
         tutorAdvice={controller.tutorAdvice}
         tenpaiStatus={controller.tenpaiStatus}
         tileClassifications={controller.tileClassifications}
+        heatOverlays={controller.heatOverlays}
         faanProjection={controller.faanProjection}
         onTileSelect={controller.selectTile}
         onSortHand={controller.sortHand}

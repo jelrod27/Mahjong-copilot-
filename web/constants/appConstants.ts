@@ -41,6 +41,8 @@ export class AppConstants {
   static readonly SOUND_ENABLED_KEY = 'sound_enabled';
   static readonly LARGER_UI_TEXT_KEY = 'larger_ui_text';
   static readonly SHOW_TUTOR_KEY = 'show_tutor';
+  /** In-game overlay mode: tutor, shantenHeat, or off. */
+  static readonly DISPLAY_MODE_KEY = 'display_mode';
   static readonly LIVE_FAAN_METER_KEY = 'live_faan_meter';
   static readonly TILE_VOICE_KEY = 'tile_voice';
   static readonly TILE_PALETTE_KEY = 'tile_palette';

@@ -100,14 +100,13 @@ function buildDiscardAdvice(
   const nonBonus = hand.filter(t => t.type !== TileType.BONUS);
   if (nonBonus.length === 0) return null;
 
-  // Evaluate tiles for discard
-  const currentShanten = calculateShanten(nonBonus.slice(0, 13));
+  const currentShanten = calculateShanten(nonBonus, melds);
 
   const scores: ScoredTile[] = nonBonus.map(tile => {
     const remaining = hand.filter(t => t.id !== tile.id);
-    const testHand = remaining.filter(t => t.type !== TileType.BONUS).slice(0, 13);
+    const testHand = remaining.filter(t => t.type !== TileType.BONUS);
 
-    const shanten = testHand.length >= 13 ? calculateShanten(testHand) : 8;
+    const shanten = calculateShanten(testHand, melds);
     const danger = tileDangerScore(tile, gameState, playerIndex);
     const priority = tileDiscardPriority(tile);
     const safe = isSafeTile(tile, gameState, playerIndex);
@@ -127,9 +126,14 @@ function buildDiscardAdvice(
   // Classify tiles
   const tileClassifications = classifyTiles(scores);
 
-  // Check tenpai
-  if (currentShanten === 0) {
-    const waits = findTenpaiWaits(nonBonus.slice(0, 13), melds);
+  // Tenpai on the current hand, or after the suggested discard (post-draw)
+  const handAfterBest = nonBonus.filter(t => t.id !== best.tile.id);
+  const shantenAfterBest = calculateShanten(handAfterBest, melds);
+  const tenpaiHand = currentShanten === 0 ? nonBonus
+    : shantenAfterBest === 0 ? handAfterBest
+    : null;
+  if (tenpaiHand) {
+    const waits = findTenpaiWaits(tenpaiHand, melds);
     const waitNames = waits.map(t => t.nameEnglish);
     return {
       type: 'discard',
@@ -142,7 +146,7 @@ function buildDiscardAdvice(
   }
 
   const closingNote =
-    currentShanten <= 1
+    Math.min(currentShanten, shantenAfterBest) <= 1
       ? ' Your hand stays close to winning.'
       : ' Your hand stays the same distance from winning.';
 

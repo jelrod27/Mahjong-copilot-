@@ -4,8 +4,8 @@
  */
 
 import { Tile, TileType, TileSuit, tileKey, tilesMatch } from '@/models/Tile';
-import { GameState } from '@/models/GameState';
-import { AIDecision, AvailableClaim } from '../types';
+import { GameState, MeldInfo } from '@/models/GameState';
+import { AIDecision, AvailableClaim, ClaimType } from '../types';
 import { calculateShanten } from '../winDetection';
 import { canDeclareSelfDrawnWin } from '../turnManager';
 import {
@@ -13,6 +13,20 @@ import {
   isOpponentDangerous, detectOpponentSuitFocus,
 } from './aiUtils';
 import { normalizePersonality, AIPersonality } from './personality';
+
+/** Provisional meld formed by claiming the live discard with tiles from hand. */
+function claimMeld(
+  claimType: ClaimType,
+  tilesFromHand: Tile[],
+  discarded: Tile | undefined,
+): MeldInfo {
+  const type = claimType === 'chow' ? 'chow' : claimType === 'kong' ? 'kong' : 'pung';
+  return {
+    type,
+    tiles: discarded ? [...tilesFromHand, discarded] : tilesFromHand,
+    isConcealed: false,
+  };
+}
 
 /** Check if any opponent appears dangerous, scaled by defenseBias. */
 function shouldPlayDefensive(
@@ -66,15 +80,13 @@ export function getHardDiscard(gameState: GameState, playerIndex: number): AIDec
   const entries = Array.from(keyCounts.entries());
   for (const [, tiles] of entries) {
     if (tiles.length === 4) {
-      // Build comparable 13-tile hands: kong-declared treats the 4 as a fixed pung
-      // (3 copies + remaining ~10); kong-kept keeps all 4 in hand and drops one
-      // other tile, preserving the seven-pairs option that kong would forfeit.
+      // Kong-declared: remaining concealed tiles + kong as a completed set.
+      // Kong-kept: full hand (preserves seven-pairs option the kong would forfeit).
       const nonBonusHand = hand.filter(t => t.type !== TileType.BONUS);
       const remaining = nonBonusHand.filter(t => !tilesMatch(t, tiles[0]));
-      const handWithoutKong = [...remaining, tiles[0], tiles[1], tiles[2]].slice(0, 13);
-      const handKeepingKong = [...remaining.slice(0, Math.max(0, remaining.length - 1)), ...tiles].slice(0, 13);
-      const shantenWithout = calculateShanten(handWithoutKong);
-      const shantenWith = calculateShanten(handKeepingKong);
+      const kongMeld: MeldInfo = { type: 'kong', tiles, isConcealed: true };
+      const shantenWithout = calculateShanten(remaining, [...player.melds, kongMeld]);
+      const shantenWith = calculateShanten(nonBonusHand, player.melds);
       if (shantenWithout <= shantenWith) {
         return {
           action: { type: 'DECLARE_KONG', tile: tiles[0] },
@@ -96,7 +108,7 @@ export function getHardDiscard(gameState: GameState, playerIndex: number): AIDec
   }
 
   const personality = normalizePersonality(player.aiPersonality);
-  const currentShanten = calculateShanten(nonBonus.slice(0, 13));
+  const currentShanten = calculateShanten(nonBonus, player.melds);
   const defensive = shouldPlayDefensive(gameState, playerIndex, personality);
 
   interface DiscardCandidate {
@@ -110,10 +122,10 @@ export function getHardDiscard(gameState: GameState, playerIndex: number): AIDec
 
   for (const tile of nonBonus) {
     const remaining = hand.filter(t => t.id !== tile.id);
-    const testHand = remaining.filter(t => t.type !== TileType.BONUS).slice(0, 13);
+    const testHand = remaining.filter(t => t.type !== TileType.BONUS);
     if (testHand.length === 0) continue;
 
-    const shanten = calculateShanten(testHand);
+    const shanten = calculateShanten(testHand, player.melds);
     const baseDanger = tileDangerScore(tile, gameState, playerIndex);
     const focusDanger = suitFocusDanger(tile, gameState, playerIndex);
     const danger = baseDanger + focusDanger;
@@ -194,9 +206,8 @@ export function getHardClaimDecision(
   }
 
   const currentHand = player.hand.filter(t => t.type !== TileType.BONUS);
-  const currentShanten = currentHand.length >= 13
-    ? calculateShanten(currentHand.slice(0, 13))
-    : 8;
+  const currentShanten = calculateShanten(currentHand, player.melds);
+  const discarded = gameState.lastDiscardedTile;
 
   // Evaluate all pung/kong claims
   for (const claim of availableClaims) {
@@ -204,36 +215,35 @@ export function getHardClaimDecision(
       const tiles = claim.tilesFromHand[0];
       if (!tiles) continue;
 
-      const handAfter = player.hand.filter(t => !tiles.find(ct => ct.id === t.id));
-      const testHand = handAfter.filter(t => t.type !== TileType.BONUS);
+      const handAfter = player.hand
+        .filter(t => !tiles.find(ct => ct.id === t.id))
+        .filter(t => t.type !== TileType.BONUS);
+      const newMelds = [...player.melds, claimMeld(claim.claimType, tiles, discarded)];
+      const newShanten = calculateShanten(handAfter, newMelds);
 
-      if (testHand.length >= 10) {
-        const newShanten = calculateShanten(testHand.slice(0, 13));
+      // Hard AI claims more aggressively:
+      // - Always claim if shanten improves
+      // - Claim at equal shanten for valuable tiles (dragons, winds)
+      // - Claim at equal shanten if close to winning (shanten <= 1)
+      if (newShanten < currentShanten) {
+        return {
+          action: { type: 'CLAIM', claimType: claim.claimType, tilesFromHand: tiles },
+          reasoning: `Hard AI: claiming ${claim.claimType} (shanten ${currentShanten}→${newShanten})`,
+        };
+      }
 
-        // Hard AI claims more aggressively:
-        // - Always claim if shanten improves
-        // - Claim at equal shanten for valuable tiles (dragons, winds)
-        // - Claim at equal shanten if close to winning (shanten <= 1)
-        if (newShanten < currentShanten) {
+      if (newShanten === currentShanten) {
+        const claimedTile = tiles[0];
+        const isDragon = claimedTile?.suit === TileSuit.DRAGON;
+        const isValuableWind = claimedTile?.suit === TileSuit.WIND &&
+          (claimedTile.wind === player.seatWind || claimedTile.wind === gameState.prevailingWind);
+        const isCloseToWin = currentShanten <= 1;
+
+        if (isDragon || isValuableWind || isCloseToWin) {
           return {
             action: { type: 'CLAIM', claimType: claim.claimType, tilesFromHand: tiles },
-            reasoning: `Hard AI: claiming ${claim.claimType} (shanten ${currentShanten}→${newShanten})`,
+            reasoning: `Hard AI: aggressive claim ${claim.claimType} (close/valuable)`,
           };
-        }
-
-        if (newShanten === currentShanten) {
-          const claimedTile = tiles[0];
-          const isDragon = claimedTile?.suit === TileSuit.DRAGON;
-          const isValuableWind = claimedTile?.suit === TileSuit.WIND &&
-            (claimedTile.wind === player.seatWind || claimedTile.wind === gameState.prevailingWind);
-          const isCloseToWin = currentShanten <= 1;
-
-          if (isDragon || isValuableWind || isCloseToWin) {
-            return {
-              action: { type: 'CLAIM', claimType: claim.claimType, tilesFromHand: tiles },
-              reasoning: `Hard AI: aggressive claim ${claim.claimType} (close/valuable)`,
-            };
-          }
         }
       }
     }
@@ -245,14 +255,13 @@ export function getHardClaimDecision(
 
   for (const claim of chowClaims) {
     for (const tiles of claim.tilesFromHand) {
-      const handAfter = player.hand.filter(t => !tiles.find(ct => ct.id === t.id));
-      const testHand = handAfter.filter(t => t.type !== TileType.BONUS);
-
-      if (testHand.length >= 10) {
-        const newShanten = calculateShanten(testHand.slice(0, 13));
-        if (newShanten < currentShanten && (!bestChow || newShanten < bestChow.shanten)) {
-          bestChow = { tiles, shanten: newShanten };
-        }
+      const handAfter = player.hand
+        .filter(t => !tiles.find(ct => ct.id === t.id))
+        .filter(t => t.type !== TileType.BONUS);
+      const newMelds = [...player.melds, claimMeld('chow', tiles, discarded)];
+      const newShanten = calculateShanten(handAfter, newMelds);
+      if (newShanten < currentShanten && (!bestChow || newShanten < bestChow.shanten)) {
+        bestChow = { tiles, shanten: newShanten };
       }
     }
   }

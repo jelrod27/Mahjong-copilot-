@@ -23,9 +23,7 @@ export function computeHints(game: GameState, humanPlayerIndex: number): HintDat
   const player = game.players[humanPlayerIndex];
   const hand = player.hand.filter(t => t.type !== TileType.BONUS);
 
-  const shantenCount = hand.length >= 13
-    ? calculateShanten(hand.slice(0, 13))
-    : 8;
+  const shantenCount = calculateShanten(hand, player.melds);
 
   const safeTileIds = new Set<string>();
   for (const tile of hand) {

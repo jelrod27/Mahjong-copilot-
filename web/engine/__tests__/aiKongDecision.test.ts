@@ -8,13 +8,10 @@ import {
 } from './testHelpers';
 
 /**
- * Regression: calculateShanten only returns a real number for 13-tile non-bonus
- * input. Medium and Hard AI previously passed the ~10-tile "hand without the
- * quad" into calculateShanten, which fell through to the worst-case 8, so the
- * `shantenWithout <= shantenWith` kong-declaration guard was almost never true.
- * With the fix, both sides of the comparison are structurally-equivalent 13-tile
- * hands, so the AI correctly declares a concealed kong when it does not hurt
- * the hand.
+ * Regression: calculateShanten is meld-aware. Declaring a concealed kong is
+ * evaluated as (remaining tiles + kong meld) vs keeping the quad in hand, so
+ * the AI correctly declares when the kong does not hurt shanten (and refuses
+ * when it would wreck a seven-pairs shape).
  */
 
 function buildGameState(hand: Tile[]): GameState {

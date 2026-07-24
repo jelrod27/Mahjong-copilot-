@@ -173,10 +173,8 @@ describe('projectFaan', () => {
     });
 
     it('detects tenpai when the player has exposed melds', () => {
-      // Regression: calculateShanten on concealed-only missed tenpai for
-      // hands with claimed melds. Waits must be derived via canPlayerWin
-      // which accounts for exposed melds. 3 chows + 1 lone bamboo + an
-      // exposed pung = tenpai waiting for a second bam(1) to pair up.
+      // Regression: meld-aware shanten + wait finding. 3 chows + 1 lone
+      // bamboo + an exposed pung = tenpai waiting for a second bam(1).
       const melds: MeldInfo[] = [
         { type: 'pung', tiles: [dragonTile(DragonTile.RED), dragonTile(DragonTile.RED, 2), dragonTile(DragonTile.RED, 3)], isConcealed: false },
       ];

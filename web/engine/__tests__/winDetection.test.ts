@@ -5,6 +5,7 @@ import {
   buildAllPungsHand, buildChowHand, buildThirteenOrphans, buildSevenPairs,
 } from './testHelpers';
 import { WindTile, DragonTile } from '@/models/Tile';
+import { MeldInfo } from '@/models/GameState';
 
 describe('isWinningHand', () => {
   it('returns true for 4 pungs + pair', () => {
@@ -134,5 +135,46 @@ describe('calculateShanten', () => {
       dragonTile(DragonTile.RED, 1),
     ];
     expect(calculateShanten(hand)).toBeGreaterThan(0);
+  });
+
+  it('returns -1 for a winning hand with exposed melds', () => {
+    const melds: MeldInfo[] = [
+      {
+        type: 'pung',
+        tiles: [dragonTile(DragonTile.RED, 1), dragonTile(DragonTile.RED, 2), dragonTile(DragonTile.RED, 3)],
+        isConcealed: false,
+      },
+    ];
+    // 3 concealed pungs + pair + 1 exposed pung = winning
+    const hand = [
+      dot(1, 1), dot(1, 2), dot(1, 3),
+      bam(2, 1), bam(2, 2), bam(2, 3),
+      char(3, 1), char(3, 2), char(3, 3),
+      windTile(WindTile.EAST, 1), windTile(WindTile.EAST, 2),
+    ];
+    expect(calculateShanten(hand, melds)).toBe(-1);
+  });
+
+  it('returns 0 for tenpai with exposed melds (no .slice hack)', () => {
+    const melds: MeldInfo[] = [
+      {
+        type: 'pung',
+        tiles: [dragonTile(DragonTile.RED, 1), dragonTile(DragonTile.RED, 2), dragonTile(DragonTile.RED, 3)],
+        isConcealed: false,
+      },
+    ];
+    // 3 chows + lone bam waiting to pair = tenpai (10 concealed + 1 meld)
+    const hand = [
+      dot(1, 1), dot(2, 1), dot(3, 1),
+      bam(4, 1), bam(5, 1), bam(6, 1),
+      char(7, 1), char(8, 1), char(9, 1),
+      bam(1, 1),
+    ];
+    expect(calculateShanten(hand, melds)).toBe(0);
+  });
+
+  it('omitted melds matches empty-array concealed-only path', () => {
+    const hand = buildAllPungsHand().slice(0, 13);
+    expect(calculateShanten(hand)).toBe(calculateShanten(hand, []));
   });
 });

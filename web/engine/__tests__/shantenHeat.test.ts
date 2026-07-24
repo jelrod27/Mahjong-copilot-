@@ -9,16 +9,18 @@ import { dot, windTile, buildAllPungsHand } from './testHelpers';
 import { MeldInfo } from '@/models/GameState';
 import { type Tile, WindTile } from '@/models/Tile';
 
-/** 14-tile hand with varying discard quality (not winning). */
-function buildOneAwayHand(): Tile[] {
+/** 14-tile hand with clearly better/worse discards (not a complete shape). */
+function buildVariedDiscardHand(): Tile[] {
   return [
+    // Two solid pungs + one chow + a pair, then three isolated honors.
+    // Dumping an isolated honor is better than breaking a pung/pair.
     dot(1, 1), dot(1, 2), dot(1, 3),
     dot(2, 1), dot(2, 2), dot(2, 3),
     dot(3, 1), dot(4, 1), dot(5, 1),
-    dot(7, 1),
-    dot(8, 1),
-    dot(9, 1),
     windTile(WindTile.EAST, 1), windTile(WindTile.EAST, 2),
+    windTile(WindTile.SOUTH, 1),
+    windTile(WindTile.WEST, 1),
+    windTile(WindTile.NORTH, 1),
   ];
 }
 
@@ -42,7 +44,7 @@ describe('computeShantenHeat', () => {
   });
 
   it('computes varying discard quality for a 14-tile hand', () => {
-    const hand = buildOneAwayHand();
+    const hand = buildVariedDiscardHand();
     expect(hand.length).toBe(14);
     const result = computeShantenHeat(hand, []);
     expect(result.entries.length).toBe(14);
@@ -115,7 +117,7 @@ describe('shantenToHeatMeaning', () => {
 
 describe('computeHeatOverlays', () => {
   it('returns overlays with semantic labels for each tile', () => {
-    const hand = buildOneAwayHand();
+    const hand = buildVariedDiscardHand();
     const overlays = computeHeatOverlays(hand, []);
     expect(overlays.size).toBe(14);
     for (const overlay of overlays.values()) {

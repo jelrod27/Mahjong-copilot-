@@ -1,141 +1,17 @@
 /**
  * Medium AI — shanten-based discard with scoring pattern awareness.
- * Claims more aggressively when it helps build fan-scoring patterns.
+ * Thin wrapper over the shared shanten policy (no danger/defense terms).
  */
 
-import { Tile, TileType, TileSuit, tileKey, tilesMatch } from '@/models/Tile';
 import { GameState } from '@/models/GameState';
 import { AIDecision, AvailableClaim } from '../types';
-import { calculateShanten } from '../winDetection';
-import { canDeclareSelfDrawnWin } from '../turnManager';
-import { tileDiscardPriority } from './aiUtils';
-import { normalizePersonality } from './personality';
-
-/** Bonus for keeping tiles that contribute to known fan patterns. */
-function fanRetentionBonus(tile: Tile, hand: Tile[], gameState: GameState, playerIndex: number): number {
-  let bonus = 0;
-  const player = gameState.players[playerIndex];
-
-  // Dragon tiles: keeping pairs/triplets toward dragon pung (1 faan each)
-  if (tile.suit === TileSuit.DRAGON) {
-    const count = hand.filter(t => t.suit === TileSuit.DRAGON && t.dragon === tile.dragon).length;
-    if (count >= 2) bonus += 8;  // pair of dragons — keep strongly
-    else bonus += 3;              // single dragon — moderate keep
-  }
-
-  // Seat wind: keeping toward seat wind pung (1 faan)
-  if (tile.suit === TileSuit.WIND && tile.wind === player.seatWind) {
-    const count = hand.filter(t => t.wind === player.seatWind).length;
-    if (count >= 2) bonus += 8;
-    else bonus += 3;
-  }
-
-  // Prevailing wind: keeping toward prevailing wind pung (1 faan)
-  if (tile.suit === TileSuit.WIND && tile.wind === gameState.prevailingWind) {
-    const count = hand.filter(t => t.wind === gameState.prevailingWind).length;
-    if (count >= 2) bonus += 6;
-    else bonus += 2;
-  }
-
-  // One-suit concentration: if 10+ tiles are same suit, keep tiles of that suit
-  const suitCounts = new Map<string, number>();
-  for (const t of hand) {
-    if (t.type === TileType.SUIT) {
-      suitCounts.set(t.suit, (suitCounts.get(t.suit) || 0) + 1);
-    }
-  }
-  for (const [suit, count] of Array.from(suitCounts.entries())) {
-    if (count >= 10 && tile.suit === suit) {
-      bonus += 5; // pursuing one-suit hand
-    } else if (count >= 8 && tile.suit === suit) {
-      bonus += 2;
-    }
-  }
-
-  return bonus;
-}
+import { chooseDiscard, chooseClaim } from './shantenPolicy';
 
 export function getMediumDiscard(gameState: GameState, playerIndex: number): AIDecision {
-  const player = gameState.players[playerIndex];
-  const hand = player.hand;
-  const personality = normalizePersonality(player.aiPersonality);
-
-  // Check for self-drawn win
-  if (canDeclareSelfDrawnWin(gameState, playerIndex)) {
-    return { action: { type: 'DECLARE_WIN' }, reasoning: 'Medium AI: winning hand' };
-  }
-
-  // Check for concealed kong (4 of a kind)
-  const keyCounts = new Map<string, Tile[]>();
-  for (const t of hand) {
-    const key = tileKey(t);
-    const arr = keyCounts.get(key) || [];
-    arr.push(t);
-    keyCounts.set(key, arr);
-  }
-  const entries = Array.from(keyCounts.entries());
-  for (const [, tiles] of entries) {
-    if (tiles.length === 4) {
-      // Build comparable 13-tile hands: kong-declared treats the 4 as a fixed pung
-      // (3 copies + remaining ~10); kong-kept keeps all 4 in hand and drops one
-      // other tile, preserving the seven-pairs option that kong would forfeit.
-      const nonBonusHand = hand.filter(t => t.type !== TileType.BONUS);
-      const remaining = nonBonusHand.filter(t => !tilesMatch(t, tiles[0]));
-      const handWithoutKong = [...remaining, tiles[0], tiles[1], tiles[2]].slice(0, 13);
-      const handKeepingKong = [...remaining.slice(0, Math.max(0, remaining.length - 1)), ...tiles].slice(0, 13);
-      const shantenWithout = calculateShanten(handWithoutKong);
-      const shantenWith = calculateShanten(handKeepingKong);
-      if (shantenWithout <= shantenWith) {
-        return {
-          action: { type: 'DECLARE_KONG', tile: tiles[0] },
-          reasoning: 'Medium AI: declaring kong (no shanten loss)',
-        };
-      }
-    }
-  }
-
-  // Evaluate each tile: calculate shanten + fan retention
-  const nonBonus = hand.filter(t => t.type !== TileType.BONUS);
-
-  // Guard: bonus-only hand (shouldn't happen in normal play, but prevents crashes)
-  if (nonBonus.length === 0) {
-    const tile = hand[0];
-    return {
-      action: { type: 'DISCARD', tile },
-      reasoning: `Medium AI: discard ${tile?.nameEnglish || 'tile'} (bonus-only)`,
-    };
-  }
-
-  let bestTile = nonBonus[0];
-  let bestScore = Infinity;
-
-  for (const tile of nonBonus) {
-    const remaining = hand.filter(t => t.id !== tile.id);
-    const testHand = remaining.filter(t => t.type !== TileType.BONUS).slice(0, 13);
-    if (testHand.length === 0) continue;
-
-    const shanten = calculateShanten(testHand);
-    const priority = tileDiscardPriority(tile);
-    const fanBonus = fanRetentionBonus(tile, hand, gameState, playerIndex);
-
-    // Combined score: lower = better to discard
-    // Primary: keep shanten low. Secondary: keep fan-valuable tiles. Tertiary: isolated tiles first.
-    let score = shanten * 100;
-    // fanGreed scales value-chasing; speedBias erodes it (racers drop value
-    // tiles to keep tempo)
-    score += fanBonus * 3 * (personality.fanGreed / Math.max(1, personality.speedBias));
-    score -= priority * 1;    // prefer discarding isolated/terminal tiles
-
-    if (score < bestScore) {
-      bestScore = score;
-      bestTile = tile;
-    }
-  }
-
-  return {
-    action: { type: 'DISCARD', tile: bestTile },
-    reasoning: `Medium AI: discard ${bestTile.nameEnglish} (score=${bestScore})`,
-  };
+  return chooseDiscard(gameState, playerIndex, {
+    label: 'Medium AI',
+    defenseWeight: 0,
+  });
 }
 
 export function getMediumClaimDecision(
@@ -143,85 +19,8 @@ export function getMediumClaimDecision(
   playerIndex: number,
   availableClaims: AvailableClaim[],
 ): AIDecision {
-  const player = gameState.players[playerIndex];
-  const personality = normalizePersonality(player.aiPersonality);
-  // High appetite or raw speed lowers the bar for taking tiles off the table
-  const aggressive = Math.max(personality.claimAppetite, personality.speedBias) >= 1.4;
-  const reluctant = personality.claimAppetite <= 0.7;
-
-  // Always claim win
-  const winClaim = availableClaims.find(c => c.claimType === 'win');
-  if (winClaim) {
-    return {
-      action: { type: 'CLAIM', claimType: 'win', tilesFromHand: winClaim.tilesFromHand[0] || [] },
-      reasoning: 'Medium AI: claiming win',
-    };
-  }
-
-  const currentHand = player.hand.filter(t => t.type !== TileType.BONUS);
-  const currentShanten = currentHand.length >= 13
-    ? calculateShanten(currentHand.slice(0, 13))
-    : 8;
-
-  // For pung/kong: claim if it improves or maintains shanten, or if it's a valuable tile
-  for (const claim of availableClaims) {
-    if (claim.claimType === 'kong' || claim.claimType === 'pung') {
-      const tiles = claim.tilesFromHand[0];
-      if (!tiles) continue;
-
-      const handAfter = player.hand.filter(t => !tiles.find(ct => ct.id === t.id));
-      const testHand = handAfter.filter(t => t.type !== TileType.BONUS).slice(0, 13);
-
-      if (testHand.length >= 10) {
-        const newShanten = calculateShanten(testHand);
-
-        // Claim if shanten improves
-        if (newShanten < currentShanten) {
-          return {
-            action: { type: 'CLAIM', claimType: claim.claimType, tilesFromHand: tiles },
-            reasoning: `Medium AI: claiming ${claim.claimType} (shanten ${currentShanten}→${newShanten})`,
-          };
-        }
-
-        // Also claim dragons and wind pungs even at equal shanten (guaranteed 1 faan)
-        if (newShanten === currentShanten && tiles[0] && !reluctant) {
-          const claimedTile = tiles[0];
-          const isDragon = claimedTile.suit === TileSuit.DRAGON;
-          const isSeatWind = claimedTile.suit === TileSuit.WIND && claimedTile.wind === player.seatWind;
-          const isPrevailingWind = claimedTile.suit === TileSuit.WIND && claimedTile.wind === gameState.prevailingWind;
-
-          if (isDragon || isSeatWind || isPrevailingWind || aggressive) {
-            return {
-              action: { type: 'CLAIM', claimType: claim.claimType, tilesFromHand: tiles },
-              reasoning: `Medium AI: claiming ${claim.claimType} at equal shanten`,
-            };
-          }
-        }
-      }
-    }
-  }
-
-  // For chow: claim if it reduces shanten. Reluctant claimers never chow —
-  // it opens the hand for the least value.
-  const chowClaim = availableClaims.find(c => c.claimType === 'chow');
-  if (chowClaim && chowClaim.tilesFromHand[0] && !reluctant) {
-    const tiles = chowClaim.tilesFromHand[0];
-    const handAfter = player.hand.filter(t => !tiles.find(ct => ct.id === t.id));
-    const testHand = handAfter.filter(t => t.type !== TileType.BONUS).slice(0, 13);
-
-    if (testHand.length >= 10) {
-      const newShanten = calculateShanten(testHand);
-      if (newShanten < currentShanten) {
-        return {
-          action: { type: 'CLAIM', claimType: 'chow', tilesFromHand: tiles },
-          reasoning: `Medium AI: claiming chow (shanten ${currentShanten}→${newShanten})`,
-        };
-      }
-    }
-  }
-
-  return {
-    action: { type: 'PASS' },
-    reasoning: 'Medium AI: no beneficial claim',
-  };
+  return chooseClaim(gameState, playerIndex, availableClaims, {
+    label: 'Medium AI',
+    claimWhenClose: false,
+  });
 }

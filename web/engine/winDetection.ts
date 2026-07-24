@@ -418,29 +418,26 @@ function removeFromArray(arr: Tile[], toRemove: Tile[]): Tile[] {
 /**
  * Calculate shanten number — distance from winning.
  * 0 = tenpai (one tile away), -1 = already won, >0 = further away.
- * Simplified calculation for AI use.
+ * Melds (exposed/claimed sets) count as completed sets; omitted melds
+ * preserves the concealed-only path for classic 13/14-tile hands.
  */
-export function calculateShanten(hand: Tile[]): number {
+export function calculateShanten(hand: Tile[], melds: MeldInfo[] = []): number {
   const tiles = hand.filter(t => t.type !== TileType.BONUS);
 
-  // Already winning
-  if (tiles.length === 14 && isWinningHand(tiles)) return -1;
+  // Authoritative win / tenpai (accounts for exposed melds)
+  if (canPlayerWin(tiles, melds)) return -1;
+  if (isTenpai(tiles, melds)) return 0;
 
-  // For 13-tile hand, try adding each possible tile and check if it wins
-  if (tiles.length === 13) {
-    // Check thirteen orphans shanten
-    const orphansShanten = thirteenOrphansShanten(tiles);
+  const setsNeeded = 4 - melds.length;
+  let best = standardShanten_calc(tiles, setsNeeded);
 
-    // Check seven pairs shanten
-    const sevenPairsShanten = sevenPairsShanten_calc(tiles);
-
-    // Check standard shanten
-    const standardShanten = standardShanten_calc(tiles);
-
-    return Math.min(orphansShanten, sevenPairsShanten, standardShanten);
+  // Special hands require a fully concealed hand
+  if (melds.length === 0) {
+    best = Math.min(best, thirteenOrphansShanten(tiles));
+    best = Math.min(best, sevenPairsShanten_calc(tiles));
   }
 
-  return 8; // worst case
+  return Math.max(best, 0);
 }
 
 function thirteenOrphansShanten(tiles: Tile[]): number {
@@ -479,17 +476,19 @@ function sevenPairsShanten_calc(tiles: Tile[]): number {
   return 6 - pairs;
 }
 
-function standardShanten_calc(tiles: Tile[]): number {
-  // Simplified: count mentsu (complete melds) and partial melds
+function standardShanten_calc(tiles: Tile[], setsNeeded: number): number {
+  // Simplified: count mentsu (complete melds) and partial melds toward
+  // the remaining sets still needed (4 - already-completed melds).
+  const base = 2 * Math.max(setsNeeded, 0);
   const sorted = sortTiles(tiles);
-  let bestShanten = 8;
+  let bestShanten = base;
 
   // Try each possible pair
   for (let i = 0; i < sorted.length - 1; i++) {
     if (tilesMatch(sorted[i], sorted[i + 1])) {
       const remaining = [...sorted.slice(0, i), ...sorted.slice(i + 2)];
-      const { melds, partials } = countMeldsAndPartials(remaining);
-      const shanten = 8 - 2 * melds - partials - 1; // -1 for having pair
+      const { melds, partials } = countMeldsAndPartials(remaining, setsNeeded);
+      const shanten = base - 2 * melds - partials - 1; // -1 for having pair
       bestShanten = Math.min(bestShanten, Math.max(shanten, -1));
 
       // Skip duplicate pair attempts
@@ -498,14 +497,17 @@ function standardShanten_calc(tiles: Tile[]): number {
   }
 
   // Try without extracting a pair
-  const { melds, partials } = countMeldsAndPartials(sorted);
-  const shanten = 8 - 2 * melds - partials;
+  const { melds, partials } = countMeldsAndPartials(sorted, setsNeeded);
+  const shanten = base - 2 * melds - partials;
   bestShanten = Math.min(bestShanten, shanten);
 
   return Math.max(bestShanten, -1);
 }
 
-function countMeldsAndPartials(tiles: Tile[]): { melds: number; partials: number } {
+function countMeldsAndPartials(
+  tiles: Tile[],
+  setsNeeded: number,
+): { melds: number; partials: number } {
   if (tiles.length === 0) return { melds: 0, partials: 0 };
 
   let bestMelds = 0;
@@ -518,7 +520,7 @@ function countMeldsAndPartials(tiles: Tile[]): { melds: number; partials: number
   const matching = tiles.filter(t => tilesMatch(t, first));
   if (matching.length >= 3) {
     const afterPung = removeFromArray(tiles, matching.slice(0, 3));
-    const r = countMeldsAndPartials(afterPung);
+    const r = countMeldsAndPartials(afterPung, setsNeeded);
     if (r.melds + 1 > bestMelds || (r.melds + 1 === bestMelds && r.partials > bestPartials)) {
       bestMelds = r.melds + 1;
       bestPartials = r.partials;
@@ -534,7 +536,7 @@ function countMeldsAndPartials(tiles: Tile[]): { melds: number; partials: number
 
     if (t2 && t3) {
       const afterChow = removeFromArray(tiles, [first, t2, t3]);
-      const r = countMeldsAndPartials(afterChow);
+      const r = countMeldsAndPartials(afterChow, setsNeeded);
       if (r.melds + 1 > bestMelds || (r.melds + 1 === bestMelds && r.partials > bestPartials)) {
         bestMelds = r.melds + 1;
         bestPartials = r.partials;
@@ -544,7 +546,7 @@ function countMeldsAndPartials(tiles: Tile[]): { melds: number; partials: number
     // Try partial: pair
     if (matching.length >= 2) {
       const afterPair = removeFromArray(tiles, matching.slice(0, 2));
-      const r = countMeldsAndPartials(afterPair);
+      const r = countMeldsAndPartials(afterPair, setsNeeded);
       if (r.melds > bestMelds || (r.melds === bestMelds && r.partials + 1 > bestPartials)) {
         bestMelds = r.melds;
         bestPartials = r.partials + 1;
@@ -554,7 +556,7 @@ function countMeldsAndPartials(tiles: Tile[]): { melds: number; partials: number
     // Try partial: adjacent pair (e.g. 3,4 waiting for 2 or 5)
     if (t2) {
       const afterAdj = removeFromArray(tiles, [first, t2]);
-      const r = countMeldsAndPartials(afterAdj);
+      const r = countMeldsAndPartials(afterAdj, setsNeeded);
       if (r.melds > bestMelds || (r.melds === bestMelds && r.partials + 1 > bestPartials)) {
         bestMelds = r.melds;
         bestPartials = r.partials + 1;
@@ -566,7 +568,7 @@ function countMeldsAndPartials(tiles: Tile[]): { melds: number; partials: number
       const t3direct = tiles.find(t => t.suit === suit && t.number === n + 2 && t.id !== first.id);
       if (t3direct) {
         const afterGap = removeFromArray(tiles, [first, t3direct]);
-        const r = countMeldsAndPartials(afterGap);
+        const r = countMeldsAndPartials(afterGap, setsNeeded);
         if (r.melds > bestMelds || (r.melds === bestMelds && r.partials + 1 > bestPartials)) {
           bestMelds = r.melds;
           bestPartials = r.partials + 1;
@@ -577,7 +579,7 @@ function countMeldsAndPartials(tiles: Tile[]): { melds: number; partials: number
     // Honor tile: try partial pair
     if (matching.length >= 2) {
       const afterPair = removeFromArray(tiles, matching.slice(0, 2));
-      const r = countMeldsAndPartials(afterPair);
+      const r = countMeldsAndPartials(afterPair, setsNeeded);
       if (r.melds > bestMelds || (r.melds === bestMelds && r.partials + 1 > bestPartials)) {
         bestMelds = r.melds;
         bestPartials = r.partials + 1;
@@ -586,14 +588,14 @@ function countMeldsAndPartials(tiles: Tile[]): { melds: number; partials: number
   }
 
   // Try skipping first tile entirely
-  const r = countMeldsAndPartials(rest);
+  const r = countMeldsAndPartials(rest, setsNeeded);
   if (r.melds > bestMelds || (r.melds === bestMelds && r.partials > bestPartials)) {
     bestMelds = r.melds;
     bestPartials = r.partials;
   }
 
-  // Cap partials: can't have more melds+partials than 4
-  const cappedPartials = Math.min(bestPartials, 4 - bestMelds);
+  // Cap partials: can't have more melds+partials than sets still needed
+  const cappedPartials = Math.min(bestPartials, Math.max(setsNeeded - bestMelds, 0));
 
   return { melds: bestMelds, partials: cappedPartials };
 }

@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-16 Bit Mahjong — a Hong Kong Mahjong learning and solo/multiplayer platform. Live at 16bitmahjong.co.
+16 Bit Mahjong — a Hong Kong Mahjong learning and solo play platform. Live at 16bitmahjong.co.
 
-Two codebases:
-- **Web app** (`/web/`): Next.js 15 + React 18 + TypeScript + Redux Toolkit + Tailwind CSS + Supabase + Sentry. Primary active codebase.
-- **Mobile app** (`/src/`): Legacy React Native 0.73 shell. Not actively developed.
+**Active codebase:** `web/` only (Next.js 15 + React 18 + TypeScript + Redux Toolkit for settings/progress + Tailwind CSS + Sentry).
 
-Supabase powers auth and multiplayer. The solo game runs fully offline — Supabase env vars are optional for local dev.
+Auth, multiplayer, ranked, and profile routes exist as deferred placeholders (`DeferredFeaturePage`). There is no Supabase client in the tree. Archived multiplayer SQL and Elo helpers live under `docs/archive/`.
+
+The solo game runs fully offline.
 
 ## Common Commands
 
@@ -54,10 +54,10 @@ Pure TypeScript, zero runtime dependencies, no side effects. Framework-agnostic 
 ### Data flow
 
 ```
-User action → engine.applyAction() → new GameState → Redux store → React re-render
+User action → engine.applyAction() → new GameState → useGameController React state → re-render
 ```
 
-`useGameController` (`/web/components/game/useGameController.ts`) is the bridge between the engine and UI. It owns game state, orchestrates AI turn timing, manages claim timeouts, and exposes action methods to components. Engine modules never import React or Redux.
+`useGameController` (`/web/components/game/useGameController.ts`) is the bridge between the engine and UI. It owns game/match session state (not the Redux `game` slice), orchestrates AI turn timing, manages claim timeouts, and exposes action methods to components. Engine modules never import React or Redux.
 
 ### Key types
 
@@ -69,16 +69,12 @@ User action → engine.applyAction() → new GameState → Redux store → React
 ### Web app routing (Next.js App Router)
 
 - `/(main)/` — Learning screens with bottom nav (home, learn, practice, reference, progress, settings).
-- `/play/` — Solo play: difficulty selector, `/play/game` (the `GameContent.tsx` → `GameBoard.tsx` stack), plus `lobby/` and `multiplayer/` entry points.
-- `/multiplayer/` — Supabase-backed multiplayer: `lobby/`, `game/`, `ranked/`.
-- `/login`, `/signup`, `/auth/*`, `/profile/` — Supabase auth flow.
-- `/leaderboard/` — Ranked leaderboard.
-
-`web/middleware.ts` handles Supabase session refresh. `web/supabase/` holds SQL migrations and edge-function code.
+- `/play/` — Solo play: difficulty selector, `/play/game` (the `GameContent.tsx` → `GameBoard.tsx` stack).
+- `/multiplayer/`, `/login`, `/signup`, `/profile/`, `/leaderboard/` — Deferred placeholders (not wired to a backend).
 
 ### State management
 
-Redux Toolkit in `/web/store/`. Reducers: `gameReducer`, `authReducer`, `settingsReducer`, `progressReducer` (see `rootReducer.ts`).
+Redux Toolkit in `/web/store/` for **settings** and **progress** (see `rootReducer.ts`). Live solo play state is owned by `useGameController` + `web/lib/matchStorage.ts`.
 
 ### Observability
 

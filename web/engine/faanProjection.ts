@@ -244,13 +244,10 @@ export function projectFaan(
   }
 
   // --- Shanten + best-case projection ---
-  // Compute waits FIRST using canPlayerWin (which correctly accounts for
-  // exposed melds). Deriving shanten from that avoids a subtle bug: running
-  // calculateShanten on just the concealed portion mis-reports tenpai for
-  // hands with exposed melds, which then silently skips wait-finding.
+  // calculateShanten is meld-aware (win/tenpai via canPlayerWin/isTenpai).
+  // Waits are still enumerated explicitly for the projection UI.
   const waitTiles = findTenpaiWaits(concealed, exposedMelds);
-  const isTenpai = waitTiles.length > 0;
-  const shanten = isTenpai ? 0 : calculateShanten(concealed);
+  const shanten = calculateShanten(concealed, exposedMelds);
   const waits: Tile[] = waitTiles;
   let bestCase: ScoringResult | null = null;
 

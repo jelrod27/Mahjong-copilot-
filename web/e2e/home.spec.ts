@@ -6,7 +6,7 @@ test.describe('Home', () => {
 
     await expect(page.getByRole('main').getByRole('heading', { name: /16 BIT MAHJONG/i })).toBeVisible();
     await expect(page.getByRole('link', { name: /local progress/i })).toBeVisible();
-    await expect(page.locator('a[href="/learn"]').filter({ hasText: /Know Your Tiles/i })).toBeVisible();
+    await expect(page.locator('a[href="/learn"]').filter({ hasText: /lessons across/i })).toBeVisible();
   });
 
   test('mobile layout still exposes core navigation', async ({ page }) => {

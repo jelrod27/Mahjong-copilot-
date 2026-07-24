@@ -2,7 +2,7 @@
  * Shanten Heat: per-discard shanten overlay for intermediate players.
  *
  * For each discard candidate, simulates removing that tile and computes the
- * resulting shanten on the remaining 13 tiles (including exposed melds).
+ * resulting shanten on the remaining concealed tiles plus exposed melds.
  * The UI maps absolute shanten values to a color scale.
  */
 
@@ -30,11 +30,6 @@ export interface TileHeatOverlay {
   ariaLabel: string;
 }
 
-/** Completed melds count as three tiles for shanten projection, even kongs. */
-function meldTilesForShanten(melds: MeldInfo[]): Tile[] {
-  return melds.flatMap(m => m.tiles.slice(0, 3));
-}
-
 /**
  * Compute the shanten number that results from discarding each non-bonus tile
  * in the player's concealed hand during the 14-tile discard phase.
@@ -45,21 +40,18 @@ export function computeShantenHeat(
 ): ShantenHeatResult {
   const concealed = hand.filter(t => t.type !== TileType.BONUS);
 
+  // 14 effective tiles: concealed + 3 per completed meld (kongs count as 3).
   if (concealed.length + melds.length * 3 !== 14) {
     return { entries: [], currentShanten: -1, bestShanten: -1, worstShanten: -1 };
   }
 
-  const meldTiles = meldTilesForShanten(melds);
   const entries: ShantenHeatEntry[] = [];
 
   for (let i = 0; i < concealed.length; i++) {
     const remaining = [...concealed.slice(0, i), ...concealed.slice(i + 1)];
-    const thirteenTiles = [...remaining, ...meldTiles];
-    if (thirteenTiles.length !== 13) continue;
-
     entries.push({
       tileId: concealed[i].id,
-      shantenAfterDiscard: calculateShanten(thirteenTiles),
+      shantenAfterDiscard: calculateShanten(remaining, melds),
     });
   }
 

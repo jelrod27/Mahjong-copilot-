@@ -180,39 +180,14 @@ function findChowCombinations(hand: Tile[], discarded: Tile): Tile[][] {
 }
 
 /**
- * Resolve competing claims — highest priority wins.
- * On tie, closest to discarder in turn order wins.
+ * Shared priority sort: win > kong > pung > chow; tie → closest to discarder.
  */
-export function resolveClaims(
-  claims: AvailableClaim[],
+function pickHighestPriorityClaim<T extends { playerId: string; claimType: ClaimType }>(
+  claims: T[],
   discarderIndex: number,
   numPlayers: number,
   playerIndexMap: Record<string, number>,
-): AvailableClaim | null {
-  if (claims.length === 0) return null;
-
-  return [...claims].sort((a, b) => {
-    // Higher priority wins
-    if (b.priority !== a.priority) return b.priority - a.priority;
-    // On tie, closer to discarder in turn order wins
-    const distA = ((playerIndexMap[a.playerId] - discarderIndex) + numPlayers) % numPlayers;
-    const distB = ((playerIndexMap[b.playerId] - discarderIndex) + numPlayers) % numPlayers;
-    return distA - distB;
-  })[0];
-}
-
-/**
- * Resolve competing pending claim requests using the same priority rule as
- * resolveClaims (win > kong > pung > chow; tie goes to the claimant closest
- * to the discarder in turn order). Single source of truth for the turn
- * manager's claim resolution.
- */
-export function resolveClaimRequests(
-  claims: ClaimRequest[],
-  discarderIndex: number,
-  numPlayers: number,
-  playerIndexMap: Record<string, number>,
-): ClaimRequest | null {
+): T | null {
   if (claims.length === 0) return null;
 
   return [...claims].sort((a, b) => {
@@ -222,4 +197,31 @@ export function resolveClaimRequests(
     const distB = ((playerIndexMap[b.playerId] - discarderIndex) + numPlayers) % numPlayers;
     return distA - distB;
   })[0];
+}
+
+/**
+ * Resolve competing claims — highest priority wins.
+ * On tie, closest to discarder in turn order wins.
+ */
+export function resolveClaims(
+  claims: AvailableClaim[],
+  discarderIndex: number,
+  numPlayers: number,
+  playerIndexMap: Record<string, number>,
+): AvailableClaim | null {
+  return pickHighestPriorityClaim(claims, discarderIndex, numPlayers, playerIndexMap);
+}
+
+/**
+ * Resolve competing pending claim requests using the same priority rule as
+ * resolveClaims (win > kong > pung > chow; tie goes to the claimant closest
+ * to the discarder in turn order).
+ */
+export function resolveClaimRequests(
+  claims: ClaimRequest[],
+  discarderIndex: number,
+  numPlayers: number,
+  playerIndexMap: Record<string, number>,
+): ClaimRequest | null {
+  return pickHighestPriorityClaim(claims, discarderIndex, numPlayers, playerIndexMap);
 }

@@ -13,7 +13,7 @@ import { TileFactory } from '@/models/Tile';
 import { GameAction, ScoringContext, ScoringResult, WinMethod, DEFAULT_MIN_FAAN } from './types';
 import { createRng, shuffleInPlace, randomSeed } from './rng';
 import { isWinningHand, canPlayerWin, isTenpai } from './winDetection';
-import { getAvailableClaims, resolveClaimRequests } from './claiming';
+import { getAvailableClaims, resolveClaimRequests, isChow, isPung, isKong } from './claiming';
 import { meetsMinFaan, calculateScore } from './scoring';
 
 /**
@@ -577,23 +577,17 @@ function handleClaim(
       if (!player.hand.find(h => h.id === t.id)) return null;
     }
     const meldTiles = [...tilesFromHand, discardedTile];
-    // Validate meld formation
+    // Validate meld formation via canonical claiming helpers
     if (claimType === 'chow') {
       // Chow is only legal for the player to the discarder's left (next in turn order)
       const discarderIdx = state.players.findIndex(p => p.id === state.lastDiscardedBy);
       if (discarderIdx === -1) return null;
       if (playerIndex !== (discarderIdx + 1) % state.players.length) return null;
-      const sorted = [...meldTiles].sort((a, b) => (a.number || 0) - (b.number || 0));
-      if (sorted.length !== 3) return null;
-      if (sorted.some(t => t.type !== TileType.SUIT)) return null;
-      if (sorted.some(t => t.suit !== sorted[0].suit)) return null;
-      if (sorted[1].number !== sorted[0].number! + 1 || sorted[2].number !== sorted[1].number! + 1) return null;
+      if (!isChow(meldTiles)) return null;
     } else if (claimType === 'pung') {
-      if (meldTiles.length !== 3) return null;
-      if (!meldTiles.every(t => tilesMatch(t, meldTiles[0]))) return null;
+      if (!isPung(meldTiles)) return null;
     } else if (claimType === 'kong') {
-      if (meldTiles.length !== 4) return null;
-      if (!meldTiles.every(t => tilesMatch(t, meldTiles[0]))) return null;
+      if (!isKong(meldTiles)) return null;
     } else {
       return null;
     }

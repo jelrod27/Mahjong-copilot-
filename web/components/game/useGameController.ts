@@ -7,8 +7,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, GamePhase, ClaimType } from '@/models/GameState';
 import { MatchState, GameMode } from '@/models/MatchState';
 import { Tile, TileType, TileFactory, tilesMatch } from '@/models/Tile';
-import { initializeGame, applyAction, buildWinScoringContext, getLegalClaims, canDeclareSelfDrawnWin, scoreSelfDrawnHand } from '@/engine/turnManager';
-import { initializeMatch, advanceMatch, startNextHand } from '@/engine/matchManager';
+import { applyAction, buildWinScoringContext, getLegalClaims, canDeclareSelfDrawnWin, scoreSelfDrawnHand } from '@/engine/turnManager';
+import { advanceMatch, startNextHand } from '@/engine/matchManager';
 import { getBestClaimSubmission } from '@/engine/claiming';
 import { isWinningHand, canPlayerWin } from '@/engine/winDetection';
 import { calculateScore } from '@/engine/scoring';
@@ -19,13 +19,11 @@ import { projectFaan, FaanProjection } from '@/engine/faanProjection';
 import soundManager from '@/lib/soundManager';
 import { speakTile, TileVoiceLanguage } from '@/lib/tileVoice';
 import { saveGame, loadGame, clearSavedGame, hasSavedGame, canResume } from '@/lib/matchStorage';
-import { resolveMatchRoster, NpcRosterMode } from '@/lib/rosterRotation';
-import { RosterId, getRoster } from '@/lib/cosmetics';
-import { getFloor, floorSupportCast } from '@/lib/parlour';
-import { dailySeed } from '@/lib/dailyHand';
-import { NPCS } from '@/content/npcs';
+import { NpcRosterMode } from '@/lib/rosterRotation';
+import { RosterId } from '@/lib/cosmetics';
 import * as Sentry from '@sentry/nextjs';
 import { startAiTurn } from './aiTurnRunner';
+import { launchDailyMatch, launchParlourMatch, launchStandardMatch } from './matchLaunch';
 
 const HUMAN_ID = 'human-player';
 
@@ -172,85 +170,41 @@ export default function useGameController(
   }, [updateClaimTimer]);
 
   const startNewGame = useCallback((newDifficulty: 'easy' | 'medium' | 'hard', newMode?: GameMode) => {
-    // Daily Hand: one seeded single hand, identical for every player. The
-    // fixed roster and personalities keep the AI deterministic worldwide.
     if (dailyMode) {
-      const seats = getRoster('default').seats;
-      setDifficulty('medium');
-      setMode('single');
-      const dailyMatch = initializeMatch({
-        mode: 'single',
-        difficulty: 'medium',
-        playerNames: ['You', NPCS[seats.right].name, NPCS[seats.top].name, NPCS[seats.left].name],
-        humanPlayerId: HUMAN_ID,
-        minFaan: 1,
-        seed: dailySeed(),
-        aiSeats: [
-          { index: 1, difficulty: 'medium', personality: NPCS[seats.right].personality },
-          { index: 2, difficulty: 'medium', personality: NPCS[seats.top].personality },
-          { index: 3, difficulty: 'medium', personality: NPCS[seats.left].personality },
-        ],
-      });
-      setMatch(dailyMatch);
-      setGame(dailyMatch.currentHand);
+      const launched = launchDailyMatch();
+      setDifficulty(launched.difficulty);
+      setMode(launched.mode);
+      setMatch(launched.match);
+      setGame(launched.match.currentHand);
       resetHandState();
       return;
     }
 
-    // Parlour floor matches configure the table from the floor definition:
-    // the rival sits across from you (seat 2), already-beaten NPCs fill the
-    // side seats one tier down.
-    const floorDef = parlourFloor ? getFloor(parlourFloor) : undefined;
-    if (floorDef) {
-      const rival = NPCS[floorDef.rival];
-      const [castA, castB] = floorSupportCast(floorDef.floor);
-      const supportDifficulty = floorDef.difficulty === 'hard' ? 'medium' : 'easy';
-      setDifficulty(floorDef.difficulty);
-      setMode('quick');
-      const floorMatch = initializeMatch({
-        mode: 'quick',
-        difficulty: floorDef.difficulty,
-        playerNames: ['You', NPCS[castA].name, rival.name, NPCS[castB].name],
-        humanPlayerId: HUMAN_ID,
-        minFaan: floorDef.minFaan,
-        aiSeats: [
-          { index: 1, difficulty: supportDifficulty, personality: NPCS[castA].personality },
-          { index: 2, difficulty: floorDef.difficulty, personality: rival.personality },
-          { index: 3, difficulty: supportDifficulty, personality: NPCS[castB].personality },
-        ],
-      });
-      setMatch(floorMatch);
-      setGame(floorMatch.currentHand);
-      resetHandState();
-      return;
+    if (parlourFloor) {
+      const launched = launchParlourMatch(parlourFloor);
+      if (launched) {
+        setDifficulty(launched.difficulty);
+        setMode(launched.mode);
+        setMatch(launched.match);
+        setGame(launched.match.currentHand);
+        resetHandState();
+        return;
+      }
     }
 
-    setDifficulty(newDifficulty);
     const gameMode = newMode ?? mode;
-    setMode(gameMode);
-
-    const matchRoster = resolveMatchRoster(npcRosterMode, fixedNpcRoster);
-    onMatchRosterResolved?.(matchRoster);
-
-    // Seat indices: 1 = right, 2 = top, 3 = left (see GameBoard.getOpponent).
-    // The board portraits come from the same roster, so the names finally
-    // match the faces instead of reading "West AI".
-    const seats = getRoster(matchRoster).seats;
-    const newMatch = initializeMatch({
-      mode: gameMode,
+    const launched = launchStandardMatch({
       difficulty: newDifficulty,
-      playerNames: ['You', NPCS[seats.right].name, NPCS[seats.top].name, NPCS[seats.left].name],
-      humanPlayerId: HUMAN_ID,
-      minFaan: initialMinFaan,
-      aiSeats: [
-        { index: 1, difficulty: newDifficulty, personality: NPCS[seats.right].personality },
-        { index: 2, difficulty: newDifficulty, personality: NPCS[seats.top].personality },
-        { index: 3, difficulty: newDifficulty, personality: NPCS[seats.left].personality },
-      ],
+      mode: gameMode,
+      minFaan: initialMinFaan ?? DEFAULT_MIN_FAAN,
+      npcRosterMode,
+      fixedNpcRoster,
     });
-
-    setMatch(newMatch);
-    setGame(newMatch.currentHand);
+    if (launched.resolvedRoster) onMatchRosterResolved?.(launched.resolvedRoster);
+    setDifficulty(launched.difficulty);
+    setMode(launched.mode);
+    setMatch(launched.match);
+    setGame(launched.match.currentHand);
     resetHandState();
   }, [mode, resetHandState, initialMinFaan, npcRosterMode, fixedNpcRoster, onMatchRosterResolved, parlourFloor, dailyMode]);
 

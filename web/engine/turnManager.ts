@@ -27,6 +27,60 @@ import { meetsMinFaan, calculateScore } from './scoring';
  */
 export const NOTEN_PENALTY_PER_NOTEN = 1500;
 
+/**
+ * Prefer dead wall, then live wall. Shared by kong replacement and flower draws.
+ */
+function takeFromReplacementWall(
+  state: GameState
+): { tile: Tile; state: GameState } | null {
+  if (state.deadWall.length > 0) {
+    return {
+      tile: state.deadWall[0],
+      state: { ...state, deadWall: state.deadWall.slice(1) },
+    };
+  }
+  if (state.wall.length > 0) {
+    return {
+      tile: state.wall[0],
+      state: { ...state, wall: state.wall.slice(1) },
+    };
+  }
+  return null;
+}
+
+/**
+ * Draw a replacement tile into a player's hand (kong / flower policy).
+ * Empty walls → wall exhaustion on the provided state.
+ */
+function drawReplacement(
+  state: GameState,
+  playerIndex: number,
+  options: { isKongReplacement?: boolean } = {}
+): GameState {
+  const taken = takeFromReplacementWall(state);
+  if (!taken) {
+    return handleWallExhaustion(state);
+  }
+
+  const newPlayers = [...taken.state.players];
+  newPlayers[playerIndex] = {
+    ...newPlayers[playerIndex],
+    hand: [...newPlayers[playerIndex].hand, taken.tile],
+  };
+
+  const result: GameState = {
+    ...taken.state,
+    players: newPlayers,
+    lastDrawnTile: taken.tile,
+    ...(options.isKongReplacement ? { isKongReplacement: true } : {}),
+  };
+
+  if (taken.tile.type === TileType.BONUS) {
+    return handleFlowerDraw(result, playerIndex, taken.tile);
+  }
+  return result;
+}
+
 function applyDeferredKong(state: GameState, declarerIndex: number, kongTile: Tile): GameState {
   const player = state.players[declarerIndex];
 
@@ -61,45 +115,21 @@ function applyDeferredKong(state: GameState, declarerIndex: number, kongTile: Ti
     melds: newMelds,
   };
 
-  // Draw replacement from dead wall
-  let updatedState: GameState = {
-    ...state,
-    players: newPlayers,
-    pendingClaims: [],
-    claimablePlayers: [],
-    passedPlayers: [],
-    isRobKongOpportunity: undefined,
-    turnPhase: 'discard',
-    currentPlayerIndex: declarerIndex,
-    turnStartedAt: new Date(),
-  };
-
-  if (state.deadWall.length === 0 && state.wall.length === 0) {
-    return handleWallExhaustion(updatedState);
-  }
-
-  const sourceWall = state.deadWall.length > 0 ? state.deadWall : state.wall;
-  const replacement = sourceWall[0];
-  const newSourceWall = sourceWall.slice(1);
-
-  newPlayers[declarerIndex] = {
-    ...newPlayers[declarerIndex],
-    hand: [...newPlayers[declarerIndex].hand, replacement],
-  };
-
-  const wallKey = state.deadWall.length > 0 ? 'deadWall' : 'wall';
-
-  const result: GameState = {
-    ...updatedState,
-    players: newPlayers,
-    [wallKey]: newSourceWall,
-    lastDrawnTile: replacement,
-    isKongReplacement: true,
-  };
-  if (replacement.type === TileType.BONUS) {
-    return handleFlowerDraw(result, declarerIndex, replacement);
-  }
-  return result;
+  return drawReplacement(
+    {
+      ...state,
+      players: newPlayers,
+      pendingClaims: [],
+      claimablePlayers: [],
+      passedPlayers: [],
+      isRobKongOpportunity: undefined,
+      turnPhase: 'discard',
+      currentPlayerIndex: declarerIndex,
+      turnStartedAt: new Date(),
+    },
+    declarerIndex,
+    { isKongReplacement: true }
+  );
 }
 
 // ============================================
@@ -287,28 +317,25 @@ function handleFlowerDraw(state: GameState, playerIndex: number, flowerTile: Til
     player.flowers = [...player.flowers, currentTile];
     newPlayers[playerIndex] = player;
 
-    // Draw replacement from dead wall (prefer dead wall, fall back to wall)
-    if (currentState.deadWall.length === 0 && currentState.wall.length === 0) {
-      return handleWallExhaustion({ ...currentState, players: newPlayers });
+    const withFlowerMoved: GameState = { ...currentState, players: newPlayers };
+    const taken = takeFromReplacementWall(withFlowerMoved);
+    if (!taken) {
+      return handleWallExhaustion(withFlowerMoved);
     }
 
-    const replacementSource = currentState.deadWall.length > 0 ? 'deadWall' : 'wall';
-    const sourceWall = replacementSource === 'deadWall' ? currentState.deadWall : currentState.wall;
-    const replacement = sourceWall[0];
-    const newSourceWall = sourceWall.slice(1);
-
-    player.hand = [...player.hand, replacement];
-    newPlayers[playerIndex] = player;
+    newPlayers[playerIndex] = {
+      ...newPlayers[playerIndex],
+      hand: [...newPlayers[playerIndex].hand, taken.tile],
+    };
 
     currentState = {
-      ...currentState,
+      ...taken.state,
       players: newPlayers,
-      [replacementSource]: newSourceWall,
-      lastDrawnTile: replacement,
+      lastDrawnTile: taken.tile,
     };
 
     // If replacement is also a bonus tile, loop again; otherwise we're done
-    currentTile = replacement.type === TileType.BONUS ? replacement : null;
+    currentTile = taken.tile.type === TileType.BONUS ? taken.tile : null;
   }
 
   return currentState;
@@ -411,7 +438,7 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
   const player = state.players[playerIndex];
   const matchingInHand = player.hand.filter(t => tilesMatch(t, tile));
 
-  // Concealed kong: 4 matching tiles in hand
+    // Concealed kong: 4 matching tiles in hand
   if (matchingInHand.length === 4) {
     const newPlayers = [...state.players];
     newPlayers[playerIndex] = {
@@ -423,10 +450,8 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
       ],
     };
 
-    // Draw replacement from dead wall
-    if (state.deadWall.length === 0 && state.wall.length === 0) {
-      // Kong is valid but no replacement tile exists — transition to draw game
-      return handleWallExhaustion({
+    return drawReplacement(
+      {
         ...state,
         players: newPlayers,
         pendingClaims: [],
@@ -436,29 +461,10 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
         turnPhase: 'discard',
         currentPlayerIndex: playerIndex,
         turnStartedAt: new Date(),
-      });
-    }
-    const sourceWall = state.deadWall.length > 0 ? state.deadWall : state.wall;
-    const replacement = sourceWall[0];
-
-    newPlayers[playerIndex] = {
-      ...newPlayers[playerIndex],
-      hand: [...newPlayers[playerIndex].hand, replacement],
-    };
-
-    const wallKey = state.deadWall.length > 0 ? 'deadWall' : 'wall';
-    const kongState: GameState = {
-      ...state,
-      players: newPlayers,
-      [wallKey]: sourceWall.slice(1),
-      lastDrawnTile: replacement,
-      turnPhase: 'discard', // player must discard after kong
-      isKongReplacement: true,
-    };
-    if (replacement.type === TileType.BONUS) {
-      return handleFlowerDraw(kongState, playerIndex, replacement);
-    }
-    return kongState;
+      },
+      playerIndex,
+      { isKongReplacement: true }
+    );
   }
 
   // Add to existing pung: 1 matching tile in hand + existing pung meld
@@ -516,10 +522,8 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
         melds: newMelds,
       };
 
-      // Draw replacement
-      if (state.deadWall.length === 0 && state.wall.length === 0) {
-        // Kong is valid but no replacement tile exists — transition to draw game
-        return handleWallExhaustion({
+      return drawReplacement(
+        {
           ...state,
           players: newPlayers,
           pendingClaims: [],
@@ -529,29 +533,10 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
           turnPhase: 'discard',
           currentPlayerIndex: playerIndex,
           turnStartedAt: new Date(),
-        });
-      }
-      const sourceWall = state.deadWall.length > 0 ? state.deadWall : state.wall;
-      const replacement = sourceWall[0];
-
-      newPlayers[playerIndex] = {
-        ...newPlayers[playerIndex],
-        hand: [...newPlayers[playerIndex].hand, replacement],
-      };
-
-      const wallKey2 = state.deadWall.length > 0 ? 'deadWall' : 'wall';
-      const deferredKongState: GameState = {
-        ...state,
-        players: newPlayers,
-        [wallKey2]: sourceWall.slice(1),
-        lastDrawnTile: replacement,
-        turnPhase: 'discard',
-        isKongReplacement: true,
-      };
-      if (replacement.type === TileType.BONUS) {
-        return handleFlowerDraw(deferredKongState, playerIndex, replacement);
-      }
-      return deferredKongState;
+        },
+        playerIndex,
+        { isKongReplacement: true }
+      );
     }
   }
 
@@ -725,33 +710,15 @@ function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameSta
 
   // Kong: draw replacement tile
   if (winner.claimType === 'kong') {
-    const sourceWall = newState.deadWall.length > 0 ? 'deadWall' : 'wall';
-    if ((newState[sourceWall] as Tile[]).length > 0) {
-      const replacement = (newState[sourceWall] as Tile[])[0];
-      newPlayers[winnerIndex] = {
-        ...newPlayers[winnerIndex],
-        hand: [...newPlayers[winnerIndex].hand, replacement],
-      };
-      newState = {
+    return drawReplacement(
+      {
         ...newState,
-        players: newPlayers,
-        [sourceWall]: (newState[sourceWall] as Tile[]).slice(1),
-        lastDrawnTile: replacement,
-        turnPhase: 'discard',
-        isKongReplacement: true,
-      };
-      if (replacement.type === TileType.BONUS) {
-        newState = handleFlowerDraw(newState, winnerIndex, replacement);
-      }
-    } else {
-      // Both walls empty — kong is valid but no replacement. Transition to draw game.
-      return handleWallExhaustion({
-        ...newState,
-        players: newPlayers,
         turnPhase: 'discard',
         currentPlayerIndex: winnerIndex,
-      });
-    }
+      },
+      winnerIndex,
+      { isKongReplacement: true }
+    );
   }
 
   return newState;
@@ -1055,45 +1022,45 @@ function handleFlowers(state: GameState, playerIndex: number): GameState {
   const initialFlowers = player.hand.filter(t => t.type === TileType.BONUS);
   if (initialFlowers.length === 0) return state;
 
+  let currentState = state;
   const newPlayers = [...state.players];
   let hand = player.hand.filter(t => t.type !== TileType.BONUS);
   const playerFlowers: Tile[] = [...player.flowers, ...initialFlowers];
-
-  // Draw replacements
-  let wall = [...state.wall];
-  let deadWall = [...state.deadWall];
-
-  // Use an explicit growing-index loop instead of mutating a `const` array
-  // with for-loop push, which is fragile and violates the const naming.
-  const flowersToProcess: Tile[] = [...initialFlowers];
-  let i = 0;
-  while (i < flowersToProcess.length) {
-    const sourceWall = deadWall.length > 0 ? deadWall : wall;
-    if (sourceWall.length === 0) break;
-    const replacement = sourceWall[0];
-    if (deadWall.length > 0) {
-      deadWall = deadWall.slice(1);
-    } else {
-      wall = wall.slice(1);
-    }
-
-    if (replacement.type === TileType.BONUS) {
-      playerFlowers.push(replacement);
-      // Queue another iteration for the bonus replacement
-      flowersToProcess.push(replacement);
-    } else {
-      hand.push(replacement);
-    }
-    i++;
-  }
 
   newPlayers[playerIndex] = {
     ...newPlayers[playerIndex],
     hand,
     flowers: playerFlowers,
   };
+  currentState = { ...currentState, players: newPlayers };
 
-  return { ...state, players: newPlayers, wall, deadWall };
+  const flowersToProcess: Tile[] = [...initialFlowers];
+  let i = 0;
+  while (i < flowersToProcess.length) {
+    const taken = takeFromReplacementWall(currentState);
+    // Deal-time: stop quietly if the wall is empty rather than ending the hand.
+    if (!taken) break;
+
+    if (taken.tile.type === TileType.BONUS) {
+      playerFlowers.push(taken.tile);
+      flowersToProcess.push(taken.tile);
+      newPlayers[playerIndex] = {
+        ...newPlayers[playerIndex],
+        flowers: [...playerFlowers],
+      };
+    } else {
+      hand = [...hand, taken.tile];
+      newPlayers[playerIndex] = {
+        ...newPlayers[playerIndex],
+        hand,
+        flowers: [...playerFlowers],
+      };
+    }
+    currentState = { ...taken.state, players: newPlayers };
+    i++;
+  }
+
+  return currentState;
 }
 
 function sortHand(hand: Tile[]): Tile[] {

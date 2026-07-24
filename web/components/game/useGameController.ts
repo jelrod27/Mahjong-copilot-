@@ -14,7 +14,6 @@ import { isWinningHand, canPlayerWin } from '@/engine/winDetection';
 import { calculateScore } from '@/engine/scoring';
 import { AvailableClaim, ScoringResult, TileClassification, DEFAULT_MIN_FAAN } from '@/engine/types';
 import { calculatePayment } from '@/engine/scoring';
-import { getAIDecision, getAIClaimDecision } from '@/engine/ai';
 import { getTutorAdvice } from '@/engine/tutor';
 import { projectFaan, FaanProjection } from '@/engine/faanProjection';
 import soundManager from '@/lib/soundManager';
@@ -26,6 +25,7 @@ import { getFloor, floorSupportCast } from '@/lib/parlour';
 import { dailySeed } from '@/lib/dailyHand';
 import { NPCS } from '@/content/npcs';
 import * as Sentry from '@sentry/nextjs';
+import { startAiTurn } from './aiTurnRunner';
 
 const HUMAN_ID = 'human-player';
 
@@ -145,6 +145,9 @@ export default function useGameController(
   const gameRef = useRef<GameState | null>(null);
   const matchRef = useRef<MatchState | null>(null);
   const processingRef = useRef(false);
+  const aiBusyRef = useRef(false);
+  const aiCancelRef = useRef<(() => void) | null>(null);
+  const [aiEpoch, setAiEpoch] = useState(0);
   // Mutex shared by human discard paths (manual click + auto-discard timer) so
   // whichever fires first wins and the other no-ops. Cleared after the hand
   // state transitions (resetHandState) or when phase leaves discard.
@@ -703,79 +706,52 @@ export default function useGameController(
     return () => clearTimeout(timer);
   }, [game?.turnPhase, game?.currentPlayerIndex, game?.phase, humanIndex, doAction]);
 
-  // === AI turn processing with dynamic delays ===
+  // === AI turn processing — single in-flight chain (no draw/discard race) ===
   useEffect(() => {
-    if (!game || game.phase !== GamePhase.PLAYING) return;
-    if (processingRef.current) return;
+    if (!game || game.phase !== GamePhase.PLAYING) {
+      aiCancelRef.current?.();
+      aiCancelRef.current = null;
+      processingRef.current = false;
+      aiBusyRef.current = false;
+      return;
+    }
 
     const currentPlayer = game.players[game.currentPlayerIndex];
-    if (!currentPlayer.isAI) return;
-
-    // AI needs to draw
-    if (game.turnPhase === 'draw') {
-      processingRef.current = true;
-      let followUpTimer: ReturnType<typeof setTimeout> | undefined;
-      const timer = setTimeout(() => {
-        const afterDraw = doAction(currentPlayer.id, { type: 'DRAW' });
-        processingRef.current = false;
-        if (!afterDraw) return;
-
-        // After draw, use AI decision
-        if (afterDraw.phase === GamePhase.PLAYING && afterDraw.turnPhase === 'discard') {
-          const decision = getAIDecision(afterDraw, afterDraw.currentPlayerIndex);
-          if (decision.action.type === 'DECLARE_WIN' || decision.action.type === 'DECLARE_KONG') {
-            followUpTimer = setTimeout(() => {
-              doAction(currentPlayer.id, decision.action);
-            }, 500); // 500ms between draw and special action
-            return;
-          }
-        }
-      }, currentDelays.draw);
-      return () => {
-        clearTimeout(timer);
-        if (followUpTimer !== undefined) clearTimeout(followUpTimer);
-        processingRef.current = false;
-      };
+    if (!currentPlayer.isAI) {
+      aiCancelRef.current?.();
+      aiCancelRef.current = null;
+      processingRef.current = false;
+      aiBusyRef.current = false;
+      return;
     }
 
-    // AI needs to discard
-    if (game.turnPhase === 'discard') {
-      processingRef.current = true;
-      const timer = setTimeout(() => {
-        const decision = getAIDecision(game, game.currentPlayerIndex);
-        const applied = doAction(currentPlayer.id, decision.action);
-        if (!applied && decision.action.type !== 'DISCARD') {
-          // Engine rejected a special action (win/kong) — fall back to a
-          // plain discard so the game can never stall on an AI turn.
-          const live = gameRef.current;
-          const aiPlayer = live?.players[live.currentPlayerIndex];
-          const fallback = aiPlayer?.hand.find(t => t.type !== TileType.BONUS);
-          if (fallback) doAction(currentPlayer.id, { type: 'DISCARD', tile: fallback });
-        }
-        processingRef.current = false;
-      }, currentDelays.discard);
-      return () => { clearTimeout(timer); processingRef.current = false; };
-    }
+    // A chain is already owning this seat — ignore turnPhase churn from our own DRAW.
+    if (aiBusyRef.current || processingRef.current) return;
 
-    // AI in claim phase — submit immediately (no inter-AI delay)
-    if (game.turnPhase === 'claim' && game.lastDiscardedBy !== currentPlayer.id) {
-      processingRef.current = true;
-      // Brief delay so the claim phase is visible, then submit
-      const timer = setTimeout(() => {
-        const claims = getLegalClaims(game, game.currentPlayerIndex);
-        if (claims.length > 0) {
-          const decision = getAIClaimDecision(game, game.currentPlayerIndex, claims);
-          const applied = doAction(currentPlayer.id, decision.action);
-          // A rejected claim must degrade to a pass, never a stall
-          if (!applied) doAction(currentPlayer.id, { type: 'PASS' });
-        } else {
-          doAction(currentPlayer.id, { type: 'PASS' });
-        }
+    const needsAction =
+      game.turnPhase === 'draw' ||
+      game.turnPhase === 'discard' ||
+      (game.turnPhase === 'claim' && game.lastDiscardedBy !== currentPlayer.id);
+    if (!needsAction) return;
+
+    processingRef.current = true;
+    aiBusyRef.current = true;
+
+    // Do not cancel from effect cleanup on turnPhase changes — that killed win/kong
+    // follow-ups after DRAW. Cancel only when leaving AI play (branches above).
+    aiCancelRef.current = startAiTurn(game, {
+      delays: { draw: currentDelays.draw, discard: currentDelays.discard },
+      claimDelayMs: 150,
+      apply: (playerId, action) => doAction(playerId, action),
+      getGame: () => gameRef.current,
+      onComplete: () => {
         processingRef.current = false;
-      }, 150); // Fast: 150ms per AI instead of full claim delay
-      return () => { clearTimeout(timer); processingRef.current = false; };
-    }
-  }, [game?.currentPlayerIndex, game?.turnPhase, game?.phase, doAction, currentDelays]);
+        aiBusyRef.current = false;
+        aiCancelRef.current = null;
+        setAiEpoch(n => n + 1);
+      },
+    });
+  }, [game?.currentPlayerIndex, game?.turnPhase, game?.phase, doAction, currentDelays, aiEpoch]);
 
   // === Claim detection: show options immediately when claim phase starts (don't wait for currentPlayerIndex) ===
   useEffect(() => {

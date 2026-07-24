@@ -4,15 +4,15 @@
 
 A Hong Kong Mahjong learning and solo play platform. Live at [16bitmahjong.co](https://16bitmahjong.co).
 
-The product centers on a deterministic, dependency-free game engine: dealing, drawing, discarding, claims (chow, pung, kong, win), Hong Kong fan scoring, and three AI difficulties. The web app adds learning paths, practice drills, an immersive solo table, cosmetics (tile palettes and table felts), tutor hints, a live faan meter, glossary tooltips, match persistence across reloads, and entry points for Supabase-backed multiplayer.
+The product centers on a deterministic, dependency-free game engine: dealing, drawing, discarding, claims (chow, pung, kong, win), Hong Kong fan scoring, and three AI difficulties. The web app adds learning paths, practice drills, an immersive solo table, cosmetics (tile palettes and table felts), tutor hints, a live faan meter, glossary tooltips, and match persistence across reloads.
+
+Auth, multiplayer, ranked play, and leaderboards are deferred (placeholder routes only). Archived Supabase SQL and Elo helpers live under `docs/archive/`.
 
 ## Stack
 
-**Web app** (`web/`): Next.js 15 (App Router), React 18, Redux Toolkit, Tailwind CSS, Supabase (auth and multiplayer), Sentry, Vercel Analytics.
+**Web app** (`web/`): Next.js 15 (App Router), React 18, Redux Toolkit (settings/progress), Tailwind CSS, Sentry, Vercel Analytics.
 
 **Game engine** (`web/engine/`): Pure TypeScript, no runtime dependencies, no side effects. Framework-agnostic and fully unit-tested.
-
-**Mobile** (`src/`): Legacy React Native shell. Not actively developed.
 
 ## Running locally
 
@@ -21,11 +21,11 @@ The product centers on a deterministic, dependency-free game engine: dealing, dr
 ```bash
 cd web
 npm ci
-cp .env.example .env.local   # optional for offline play
+cp .env.example .env.local   # optional
 npm run dev
 ```
 
-The app runs on `localhost:3000`. Supabase environment variables are only required for auth and multiplayer; the solo game runs offline without them.
+The app runs on `localhost:3000`. The solo game runs fully offline.
 
 ## Commands
 
@@ -68,7 +68,7 @@ Core engine modules:
 - **reviewAnalyzer.ts** -- Post-hand review over turn history.
 - **ai/** -- Easy, medium, and hard opponents plus shared utilities.
 
-Routing highlights: learning and practice under `web/app/(main)/`, solo and lobby play under `web/app/play/`, multiplayer under `web/app/multiplayer/`, auth and profile under `web/app/login`, `signup`, `auth/`, and `profile/`.
+Routing highlights: learning and practice under `web/app/(main)/`, solo play under `web/app/play/`. Multiplayer/auth/profile/leaderboard routes are deferred placeholders.
 
 ## Security and reliability tracking
 

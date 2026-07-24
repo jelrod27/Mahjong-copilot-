@@ -1,10 +1,12 @@
 import { UserProgress, userProgressToJson, userProgressFromJson } from '@/models/UserProgress';
-import { GameState, gameStateToJson, gameStateFromJson } from '@/models/GameState';
 
 /**
  * Prefixes used by this app's localStorage keys.
  * `clear()` only removes keys matching one of these prefixes,
  * so other apps on the same origin are not affected.
+ *
+ * Legacy `game_*` / `current_game_id` keys from the removed Redux game path
+ * are still cleared so old installs do not leave orphan snapshots.
  */
 const APP_KEY_PREFIXES = [
   '16bit-mahjong-',
@@ -87,27 +89,6 @@ class StorageService {
       return userProgressFromJson(JSON.parse(data));
     } catch (error) {
       console.error('StorageService.getProgress error:', error);
-      return null;
-    }
-  }
-
-  static async saveGame(gameState: GameState): Promise<void> {
-    try {
-      const json = gameStateToJson(gameState);
-      localStorage.setItem(`game_${gameState.id}`, JSON.stringify(json));
-      localStorage.setItem('current_game_id', gameState.id);
-    } catch (error) {
-      console.error('StorageService.saveGame error:', error);
-    }
-  }
-
-  static async getGame(gameId: string): Promise<GameState | null> {
-    try {
-      const data = localStorage.getItem(`game_${gameId}`);
-      if (!data) return null;
-      return gameStateFromJson(JSON.parse(data));
-    } catch (error) {
-      console.error('StorageService.getGame error:', error);
       return null;
     }
   }

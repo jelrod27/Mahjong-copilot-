@@ -558,7 +558,7 @@ function handleClaim(
 
   // During a rob-the-kong window the tile is not a real discard — it is
   // still in the kong declarer's hand. Only a win may take it.
-  if (state.isRobKongOpportunity && claimType !== 'win') return null;
+  if (getClaimMode(state) === 'robKong' && claimType !== 'win') return null;
 
   // Validate the claim
   if (claimType === 'win') {
@@ -593,41 +593,16 @@ function handleClaim(
     }
   }
 
-  // Store the claim as pending
   const newPending: ClaimRequest = {
     playerId: player.id,
     claimType,
     tiles: tilesFromHand,
   };
-  const updatedPending = [...state.pendingClaims, newPending];
 
-  // Check if all claimable players have now acted (claimed or passed)
-  const actedPlayerIds = new Set([
-    ...state.passedPlayers,
-    ...updatedPending.map(c => c.playerId),
-  ]);
-  const allActed = state.claimablePlayers.length > 0 &&
-    state.claimablePlayers.every(id => actedPlayerIds.has(id));
-
-  if (!allActed) {
-    // More players still need to decide — advance to next claimer
-    const discarderIndex = state.players.findIndex(p => p.id === state.lastDiscardedBy);
-    let nextIndex = (playerIndex + 1) % state.players.length;
-    while (nextIndex === discarderIndex || actedPlayerIds.has(state.players[nextIndex].id)) {
-      nextIndex = (nextIndex + 1) % state.players.length;
-      if (nextIndex === playerIndex) break; // safety
-    }
-    return {
-      ...state,
-      pendingClaims: updatedPending,
-      currentPlayerIndex: nextIndex,
-      turnPhase: 'claim',
-      turnStartedAt: new Date(),
-    };
-  }
-
-  // All players have acted — resolve claims by priority
-  return resolveAndApplyClaim(state, updatedPending);
+  return advanceClaimRound(state, playerIndex, {
+    pendingClaims: [...state.pendingClaims, newPending],
+    passedPlayers: state.passedPlayers,
+  });
 }
 
 function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameState {
@@ -718,57 +693,95 @@ function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameSta
   return newState;
 }
 
+/** Active claim window: discard claim vs rob-the-kong. */
+export type ClaimMode = 'discard' | 'robKong';
+
+export function getClaimMode(state: GameState): ClaimMode {
+  return state.isRobKongOpportunity ? 'robKong' : 'discard';
+}
+
+function nextClaimantIndex(
+  state: GameState,
+  fromIndex: number,
+  discarderIndex: number,
+  actedPlayerIds: Set<string>,
+): number {
+  let nextIndex = (fromIndex + 1) % state.players.length;
+  let checked = 0;
+  while (
+    (nextIndex === discarderIndex || actedPlayerIds.has(state.players[nextIndex].id)) &&
+    checked < state.players.length
+  ) {
+    nextIndex = (nextIndex + 1) % state.players.length;
+    checked++;
+  }
+  return nextIndex;
+}
+
+/**
+ * Shared claim-round advancement for CLAIM and PASS.
+ * Keeps "all acted?" / next-claimer / resolve / resume-draw in one place.
+ */
+function advanceClaimRound(
+  state: GameState,
+  playerIndex: number,
+  opts: {
+    pendingClaims: ClaimRequest[];
+    passedPlayers: string[];
+  },
+): GameState {
+  const discarderIndex = state.players.findIndex(p => p.id === state.lastDiscardedBy);
+  const actedPlayerIds = new Set([
+    ...opts.passedPlayers,
+    ...opts.pendingClaims.map(c => c.playerId),
+  ]);
+  const allActed =
+    state.claimablePlayers.length > 0 &&
+    state.claimablePlayers.every(id => actedPlayerIds.has(id));
+
+  if (!allActed) {
+    return {
+      ...state,
+      pendingClaims: opts.pendingClaims,
+      passedPlayers: opts.passedPlayers,
+      currentPlayerIndex: nextClaimantIndex(state, playerIndex, discarderIndex, actedPlayerIds),
+      turnPhase: 'claim',
+      turnStartedAt: new Date(),
+    };
+  }
+
+  if (opts.pendingClaims.length > 0) {
+    return resolveAndApplyClaim(
+      { ...state, pendingClaims: opts.pendingClaims, passedPlayers: opts.passedPlayers },
+      opts.pendingClaims,
+    );
+  }
+
+  if (getClaimMode(state) === 'robKong' && state.lastDiscardedTile) {
+    return applyDeferredKong(state, discarderIndex, state.lastDiscardedTile);
+  }
+
+  return {
+    ...state,
+    currentPlayerIndex: (discarderIndex + 1) % state.players.length,
+    turnPhase: 'draw',
+    pendingClaims: [],
+    claimablePlayers: [],
+    passedPlayers: [],
+    isRobKongOpportunity: undefined,
+    turnStartedAt: new Date(),
+  };
+}
+
 function handlePass(state: GameState, playerIndex: number): GameState | null {
   if (state.turnPhase !== 'claim') return null;
   if (state.currentPlayerIndex !== playerIndex) return null;
 
   const playerId = state.players[playerIndex].id;
-  const newPassedPlayers = [...state.passedPlayers, playerId];
-  const discarderIndex = state.players.findIndex(p => p.id === state.lastDiscardedBy);
-
-  // Check if all claimable players have now acted
-  const actedPlayerIds = new Set([
-    ...newPassedPlayers,
-    ...state.pendingClaims.map(c => c.playerId),
-  ]);
-  const allActed = state.claimablePlayers.length > 0 &&
-    state.claimablePlayers.every(id => actedPlayerIds.has(id));
-
-  if (allActed) {
-    // Everyone has acted — resolve any pending claims or end claim phase
-    if (state.pendingClaims.length > 0) {
-      return resolveAndApplyClaim({ ...state, passedPlayers: newPassedPlayers }, state.pendingClaims);
-    }
-    // If this was a deferred kong (robbing opportunity) and nobody claimed, complete it
-    if (state.isRobKongOpportunity && state.lastDiscardedTile) {
-      return applyDeferredKong(state, discarderIndex, state.lastDiscardedTile);
-    }
-    return {
-      ...state,
-      currentPlayerIndex: (discarderIndex + 1) % state.players.length,
-      turnPhase: 'draw',
-      pendingClaims: [],
-      claimablePlayers: [],
-      passedPlayers: [],
-      turnStartedAt: new Date(),
-    };
-  }
-
-  // Find next non-discarder player who hasn't acted yet
-  let nextIndex = (playerIndex + 1) % state.players.length;
-  let checked = 0;
-  while ((nextIndex === discarderIndex || actedPlayerIds.has(state.players[nextIndex].id)) && checked < state.players.length) {
-    nextIndex = (nextIndex + 1) % state.players.length;
-    checked++;
-  }
-
-  return {
-    ...state,
-    currentPlayerIndex: nextIndex,
-    turnPhase: 'claim',
-    passedPlayers: newPassedPlayers,
-    turnStartedAt: new Date(),
-  };
+  return advanceClaimRound(state, playerIndex, {
+    pendingClaims: state.pendingClaims,
+    passedPlayers: [...state.passedPlayers, playerId],
+  });
 }
 
 function handleWallExhaustion(state: GameState): GameState {
@@ -831,7 +844,7 @@ export function deriveWinMethod(state: GameState, isSelfDrawn: boolean): WinMeth
     if (state.wall.length === 0) return 'lastTileDraw';
     return 'selfDraw';
   }
-  if (state.isRobKongOpportunity) return 'robKong';
+  if (getClaimMode(state) === 'robKong') return 'robKong';
   if (state.wall.length === 0) return 'lastTileClaim';
   return 'discard';
 }

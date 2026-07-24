@@ -6,14 +6,14 @@ test.describe('Multiplayer deferred scope', () => {
 
     await page.getByRole('button', { name: /MULTIPLAYER/i }).click();
     await expect(page).toHaveURL(/\/play\/lobby/);
-    await expect(page.getByText('Online rooms are deferred')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Online rooms are deferred' })).toBeVisible();
   });
 
   test('play lobby explains multiplayer is deferred', async ({ page }) => {
     await page.goto('/play/lobby');
 
     await expect(page.getByText('MULTIPLAYER LATER')).toBeVisible();
-    await expect(page.getByText('Online rooms are deferred')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Online rooms are deferred' })).toBeVisible();
     await expect(page.getByRole('link', { name: /PLAY SOLO/i })).toBeVisible();
   });
 

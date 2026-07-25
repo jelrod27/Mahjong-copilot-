@@ -822,8 +822,13 @@
 /* Phone / narrow: favor slightly smaller tiles and more vertical room for the dock. */
 @media (max-width: 767px) {
   .game-board-scene {
-    /* Hand wraps to two rows on narrow portrait (PlayerHand.tsx), so tiles
-       no longer have to fit 14-across. Bigger tiles, comfortable touch. */
+    --tile-base-w: clamp(22px, min(8.5cqw, max(7cqh, 3.6vmin)), 46px);
+  }
+
+  /* The hand wraps to two rows (PlayerHand.tsx), so its tiles no longer have
+     to fit 14-across and can be comfortably larger. Scoped to the hand only —
+     the discard pool and opponent seats keep their tuned board-level size. */
+  .game-hand-row {
     --tile-base-w: clamp(30px, min(11cqw, max(7cqh, 3.6vmin)), 52px);
   }
 

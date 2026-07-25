@@ -20,7 +20,7 @@ const initialState = {
   liveFaanMeter: true,
   tileVoice: 'off' as const,
   tilePalette: 'bone-wood' as const,
-  tableFelt: 'classic-green' as const,
+  tableFelt: 'bamboo-mat' as const,
   npcRoster: 'default' as const,
   npcRosterMode: 'auto' as const,
   crtEffect: false,

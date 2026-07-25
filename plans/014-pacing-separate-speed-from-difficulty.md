@@ -104,7 +104,7 @@ From `/Users/justinelrod/Projects/Mahjong-copilot-/web`:
 - `web/components/game/useGameController.ts`
 - `web/store/reducers/settingsReducer.ts`
 - `web/store/actions/settingsActions.ts`
-- `web/lib/settingsStorage.ts`
+- `web/constants/appConstants.ts` (add the per-key storage constant)
 - `web/app/(main)/settings/SettingsPageClient.tsx`
 - `web/app/play/game/GameContent.tsx`
 - `web/store/reducers/__tests__/settingsReducer.test.ts` (add cases)
@@ -173,7 +173,13 @@ defaulting to `'normal'`.
 Wire it through, matching the existing pattern of a comparable setting exactly:
 - the slice's initial state and reducer case in `settingsReducer.ts`
 - the action creator in `settingsActions.ts`
-- persistence + rehydration in `settingsStorage.ts`
+- persistence + rehydration via `StorageService` + a new per-key constant in
+  `web/constants/appConstants.ts` — this is the path every other setting
+  actually uses (see `displayMode`)
+
+⚠️ **Do NOT use `web/lib/settingsStorage.ts`.** An earlier draft named it; it is
+dead code — `loadSettings` has zero callers repo-wide (finding F4 in
+`plans/README.md`). Editing it will neither persist nor rehydrate anything.
 
 **Verify**: `npx vitest run store/reducers/__tests__/settingsReducer.test.ts`
 → passes.

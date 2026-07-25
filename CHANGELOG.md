@@ -8,7 +8,7 @@
 ### UX, game feel, and design overhaul
 
 - Play: the discard turn timer is now visible, and running it out discards the tile you selected rather than the one you drew.
-- Play: claim buttons are shown only once the claim rotation reaches you, with a "Opponents deciding…" state (announced to screen readers) in between. An expired claim window can no longer wedge the hand.
+- Play: claim buttons are shown only once the claim rotation reaches you, with an "Opponents deciding…" state (announced to screen readers) in between. An expired claim window can no longer wedge the hand.
 - Play: rejected actions now give audio and shake feedback instead of failing silently.
 - Play: new **Game speed** setting (relaxed / normal / fast), independent of AI difficulty. Default pacing is substantially faster — an AI lap drops from ~10.5s to ~4.8s.
 - Visual: real fibre-noise felt texture replacing stripe gradients, a softened vignette, a layered wood rail, and a new default table (bamboo mat). In-game panels and dock are now hue-neutral so they read as shadow over any felt.

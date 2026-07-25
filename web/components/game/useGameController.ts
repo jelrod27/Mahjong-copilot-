@@ -460,11 +460,15 @@ export default function useGameController(
   }, [humanIndex, doAction]);
 
   const declareWin = useCallback((): boolean => {
+    // doAction returns null for BOTH a debounced double-tap and a genuine
+    // engine rejection. Only the latter is worth reporting — otherwise every
+    // impatient double-tap raises a false alarm, and the noise would bury the
+    // real regression this is here to catch.
+    const wasDebounced = Date.now() - lastActionTimeRef.current < DEBOUNCE_MS;
     const next = doAction(HUMAN_ID, { type: 'DECLARE_WIN' });
-    if (!next) {
-      // The UI only shows this button when canDeclareWin is true, so a
+    if (!next && !wasDebounced) {
+      // The button only renders when canDeclareWin is true, so a non-debounced
       // rejection means the UI and the engine disagree about a winning hand.
-      // That divergence is a bug worth knowing about, not just a mistap.
       Sentry.captureException(new Error('DECLARE_WIN rejected while the Mahjong button was live'));
     }
     return !!next;

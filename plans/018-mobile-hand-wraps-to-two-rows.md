@@ -242,6 +242,7 @@ grew ~28% and the discard panel swelled to 37% of the mobile viewport.)
        Scoped to the hand — the pool and opponent seats keep their size. */
     --tile-base-w: clamp(30px, min(11cqw, max(7cqh, 3.6vmin)), 52px);
   }
+}
 ```
 
 Tune the `11cqw` and the clamp bounds by eye in Step 4 — the target is roughly

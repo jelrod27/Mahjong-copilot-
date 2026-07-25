@@ -80,8 +80,9 @@ breathing room ≈ 900ms** or tiles will visibly collide with the next move.
 ### Settings conventions
 
 Settings live in Redux — `web/store/reducers/settingsReducer.ts`, with actions
-in `web/store/actions/settingsActions.ts` and persistence via
-`web/lib/settingsStorage.ts`. The settings UI is
+in `web/store/actions/settingsActions.ts` and per-key persistence via
+`StorageService` + `web/constants/appConstants.ts`. (`web/lib/settingsStorage.ts`
+looks like the persistence layer but is dead code — see the warning in Step 2.) The settings UI is
 `web/app/(main)/settings/SettingsPageClient.tsx`. **Read one existing
 boolean/enum setting end-to-end before adding yours** and match it exactly —
 including how it is persisted and rehydrated by

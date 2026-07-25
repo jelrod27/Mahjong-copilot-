@@ -23,6 +23,14 @@
     @apply rounded-lg border border-border/60 bg-elevated/80 backdrop-blur-md shadow-ds-sm;
   }
 
+  /* On the game board a felt shows through, so panels must not impose their
+     own hue — any non-green felt would clash. Match .game-hud-surface:
+     neutral translucent black over blur. Off-board .ds-panel is unchanged. */
+  .game-board-scene .ds-panel {
+    background: rgb(0 0 0 / 0.28);
+    border-color: rgb(92 61 46 / 0.4);
+  }
+
   .ds-card {
     @apply rounded-lg border border-border/40 bg-card/90 p-4 text-card-foreground shadow-ds-xs;
   }
@@ -93,8 +101,8 @@
     backdrop-filter: blur(20px);
     background: linear-gradient(
       to bottom,
-      rgb(44 58 48 / 0.96) 0%,
-      rgb(13 15 20 / 0.94) 100%
+      rgb(0 0 0 / 0.42) 0%,
+      rgb(0 0 0 / 0.72) 100%
     );
   }
 
@@ -612,9 +620,14 @@
   animation: bubble-pop 2.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Shared table frame: fibre-noise weave (::before) + wood rail (::after).
+   Both are automatic for every .felt-* class — a new felt only needs to
+   supply a `background`. Do not re-add per-felt stripe textures. A felt may
+   override the rail's outermost accent line (first box-shadow layer) for
+   character, as tournament-red and casino-black do below, but should keep
+   the shared wood body + drop-shadow layers underneath it. */
 .game-table-felt {
   position: relative;
-  background-blend-mode: multiply;
 }
 
 .game-table-felt::before {
@@ -622,95 +635,59 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.35) 100%);
+  opacity: 0.3;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 .game-table-felt::after {
   content: "";
   position: absolute;
-  inset: 6px;
+  inset: 0;
   pointer-events: none;
-  border: 2px solid rgba(120, 75, 40, 0.45);
-  border-radius: 8px;
+  border-radius: 14px;
   box-shadow:
-    inset 0 0 0 1px rgba(180, 130, 80, 0.2),
-    0 0 24px rgba(0, 0, 0, 0.5);
+    inset 0 0 0 1px rgb(92 61 46 / 0.55),
+    inset 0 0 0 6px rgb(46 30 22 / 0.5),
+    inset 0 6px 18px rgb(0 0 0 / 0.35);
 }
 
 .felt-classic-green {
   background:
-    radial-gradient(ellipse at center, #2a4d3a 0%, #1f3a2c 55%, #14271d 100%),
-    repeating-linear-gradient(
-      45deg,
-      rgba(0, 0, 0, 0.04) 0,
-      rgba(0, 0, 0, 0.04) 1px,
-      transparent 1px,
-      transparent 3px
-    );
+    radial-gradient(ellipse 120% 100% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.22) 100%),
+    radial-gradient(ellipse at center, #1d3b30 0%, #162c24 55%, #0e1d18 100%);
 }
 
 .felt-tournament-red {
   background:
-    radial-gradient(ellipse at center, #6b1f24 0%, #4a1518 55%, #2a0c0e 100%),
-    repeating-linear-gradient(
-      30deg,
-      rgba(245, 158, 11, 0.04) 0,
-      rgba(245, 158, 11, 0.04) 1px,
-      transparent 1px,
-      transparent 4px
-    );
+    radial-gradient(ellipse 120% 100% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.22) 100%),
+    radial-gradient(ellipse at center, #6b1f24 0%, #4a1518 55%, #2a0c0e 100%);
 }
 
 .felt-tournament-red.game-table-felt::after {
-  border-color: rgba(245, 158, 11, 0.55);
   box-shadow:
-    inset 0 0 0 1px rgba(245, 200, 90, 0.25),
-    0 0 28px rgba(40, 0, 0, 0.55);
+    inset 0 0 0 1px rgb(201 168 76 / 0.55),
+    inset 0 0 0 6px rgb(46 30 22 / 0.5),
+    inset 0 6px 18px rgb(0 0 0 / 0.35);
 }
 
 .felt-casino-black {
   background:
-    radial-gradient(ellipse at center, #1a1320 0%, #0d0813 60%, #050308 100%),
-    repeating-linear-gradient(
-      45deg,
-      rgba(56, 189, 248, 0.03) 0,
-      rgba(56, 189, 248, 0.03) 1px,
-      transparent 1px,
-      transparent 3px
-    );
+    radial-gradient(ellipse 120% 100% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.22) 100%),
+    radial-gradient(ellipse at center, #1a1320 0%, #0d0813 60%, #050308 100%);
 }
 
 .felt-casino-black.game-table-felt::after {
-  border-color: rgba(56, 189, 248, 0.45);
   box-shadow:
-    inset 0 0 0 1px rgba(56, 189, 248, 0.2),
-    0 0 32px rgba(0, 0, 0, 0.7);
+    inset 0 0 0 1px rgb(56 189 248 / 0.45),
+    inset 0 0 0 6px rgb(46 30 22 / 0.5),
+    inset 0 6px 18px rgb(0 0 0 / 0.35);
 }
 
 .felt-bamboo-mat {
   background:
-    radial-gradient(ellipse at center, #9c7a44 0%, #7e5f30 55%, #574020 100%),
-    repeating-linear-gradient(
-      90deg,
-      rgba(0, 0, 0, 0.06) 0,
-      rgba(0, 0, 0, 0.06) 2px,
-      transparent 2px,
-      transparent 6px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      rgba(0, 0, 0, 0.04) 0,
-      rgba(0, 0, 0, 0.04) 2px,
-      transparent 2px,
-      transparent 6px
-    );
-}
-
-.felt-bamboo-mat.game-table-felt::after {
-  border-color: rgba(80, 50, 20, 0.6);
-  box-shadow:
-    inset 0 0 0 1px rgba(140, 100, 60, 0.3),
-    0 0 20px rgba(40, 25, 10, 0.4);
+    radial-gradient(ellipse 120% 100% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.22) 100%),
+    radial-gradient(ellipse at center, #9c7a44 0%, #7e5f30 55%, #574020 100%);
 }
 
 @keyframes active-seat-glow {
@@ -819,6 +796,18 @@
   --tile-base-w: clamp(26px, min(5.5cqw, max(4.8cqh, 2.7vw)), 60px);
 }
 
+/* Below `sm` the hand wraps to two rows (PlayerHand.tsx uses
+   `flex-wrap sm:flex-nowrap`), so its tiles no longer have to fit 14-across
+   and can be comfortably larger. This breakpoint MUST match that one: at
+   640-767px the row is still nowrap, and larger tiles there would overflow a
+   board-root that has `overflow-hidden` and no scroll fallback. Scoped to the
+   hand only — the discard pool and opponent seats keep their board-level size. */
+@media (max-width: 639px) {
+  .game-hand-row {
+    --tile-base-w: clamp(30px, min(11cqw, max(7cqh, 3.6vmin)), 52px);
+  }
+}
+
 /* Phone / narrow: favor slightly smaller tiles and more vertical room for the dock. */
 @media (max-width: 767px) {
   .game-board-scene {
@@ -834,16 +823,6 @@
     padding-left: max(0.5rem, env(safe-area-inset-left));
     padding-right: max(0.5rem, env(safe-area-inset-right));
   }
-}
-
-.game-hand-scroll {
-  /* Horizontal scroll fallback for hands that exceed viewport width on
-     narrow portrait mobile. overflow-x: auto keeps the scrollbar hidden
-     when the hand fits, and only appears when content overflows. */
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
-  scrollbar-width: thin;
 }
 
 .tile-scale-root {

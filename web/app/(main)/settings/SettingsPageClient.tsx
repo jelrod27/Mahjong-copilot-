@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { Settings } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
@@ -10,6 +11,7 @@ import {
   setNotificationsEnabled,
   setShowTutor,
   setDisplayMode,
+  setGameSpeed,
   setLiveFaanMeter,
   setCrtEffect,
   setMusicEnabled,
@@ -42,6 +44,12 @@ const DISPLAY_MODE_OPTIONS: { value: SettingsState['displayMode']; label: string
   { value: 'tutor', label: 'Tutor', description: 'Beginner discard tips, claim suggestions, and safe-tile hints.' },
   { value: 'shantenHeat', label: 'Shanten Heat', description: 'Color each tile by how close to winning you are if you discard it. Blue = tenpai, red = far. No text — just the math made visible.' },
   { value: 'off', label: 'Off', description: 'No in-game overlay. Just you and the tiles.' },
+];
+
+const GAME_SPEED_OPTIONS: { value: SettingsState['gameSpeed']; label: string; description: string }[] = [
+  { value: 'relaxed', label: 'Relaxed', description: 'More time to read the table between moves.' },
+  { value: 'normal', label: 'Normal', description: 'Balanced pacing.' },
+  { value: 'fast', label: 'Fast', description: 'Minimal waiting. Best once you know the flow.' },
 ];
 
 export default function SettingsPageClient() {
@@ -104,6 +112,7 @@ export default function SettingsPageClient() {
     void dispatch(setNotificationsEnabled(true));
     void dispatch(setShowTutor(true));
     void dispatch(setDisplayMode('tutor'));
+    void dispatch(setGameSpeed('normal'));
     void dispatch(setLiveFaanMeter(true));
     void dispatch(setMusicEnabled(true));
     void dispatch(setCrtEffect(false));
@@ -194,6 +203,22 @@ export default function SettingsPageClient() {
         </div>
       </section>
 
+      {/* ── Cosmetics ─────────────────────────────────────────────────── */}
+      <section className="ds-panel p-4 space-y-3" aria-labelledby="settings-cosmetics-heading">
+        <h2
+          id="settings-cosmetics-heading"
+          className="font-display text-[10px] text-highlight uppercase tracking-widest"
+        >
+          Cosmetics
+        </h2>
+        <p className="text-muted-foreground text-sm font-sans">
+          Tile palette, table felt, and NPC roster — all free, all local.
+        </p>
+        <Link href="/cosmetics" className="ds-btn font-sans text-sm w-full py-2 inline-block text-center">
+          Open cosmetics
+        </Link>
+      </section>
+
       {/* ── Game Preferences ──────────────────────────────────────────── */}
       <section className="ds-panel p-4 space-y-4" aria-labelledby="settings-game-heading">
         <h2
@@ -218,6 +243,32 @@ export default function SettingsPageClient() {
                 }`}
               >
                 {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Game speed */}
+        <div>
+          <span className="font-sans text-foreground block mb-1">Game speed</span>
+          <p className="text-muted-foreground text-xs font-sans mb-2">
+            How fast opponents take their turns. Separate from difficulty.
+          </p>
+          <div className="space-y-2">
+            {GAME_SPEED_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => void dispatch(setGameSpeed(opt.value))}
+                aria-pressed={settings.gameSpeed === opt.value}
+                className={`w-full text-left font-sans text-sm px-3 py-2 border transition-colors ${
+                  settings.gameSpeed === opt.value
+                    ? 'border-info text-info bg-info/10'
+                    : 'border-border/40 text-muted-foreground hover:border-border'
+                }`}
+              >
+                <span className="block font-medium text-foreground">{opt.label}</span>
+                <span className="block text-xs text-muted-foreground mt-0.5">{opt.description}</span>
               </button>
             ))}
           </div>

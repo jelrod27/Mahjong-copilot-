@@ -15,6 +15,13 @@ vi.mock('next/link', () => ({
 }));
 
 import BottomNav from '../BottomNav';
+import { navItems, bottomNavPrimaryItems, bottomNavMoreItems } from '@/constants/navItems';
+
+describe('nav item tiers', () => {
+  it('primary + more items together cover exactly navItems', () => {
+    expect([...bottomNavPrimaryItems, ...bottomNavMoreItems]).toEqual(navItems);
+  });
+});
 
 describe('BottomNav', () => {
   it('renders primary tabs and More control in the main nav', () => {

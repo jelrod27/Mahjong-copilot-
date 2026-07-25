@@ -35,7 +35,12 @@ export function AppSidebar() {
             <SidebarMenu>
               {navItems.map(({ href, label, icon: Icon }) => {
                 const isActive =
-                  href === "/" ? pathname === "/" : pathname.startsWith(href);
+                  href === "/"
+                    ? pathname === "/"
+                    : pathname.startsWith(href) ||
+                      // The Parlour is a play mode with no nav slot of its own;
+                      // treat it as part of Play rather than adding an 8th item.
+                      (href === "/play" && pathname.startsWith("/parlour"));
                 return (
                   <SidebarMenuItem key={href}>
                     <SidebarMenuButton

@@ -161,6 +161,10 @@ const discardsByHuman = () =>
   applyActionMock.mock.calls.filter(
     (c) => (c as ApplyCall)[1] === HUMAN_ID && (c as ApplyCall)[2].type === 'DISCARD',
   );
+const passesByHuman = () =>
+  applyActionMock.mock.calls.filter(
+    (c) => (c as ApplyCall)[1] === HUMAN_ID && (c as ApplyCall)[2].type === 'PASS',
+  );
 
 // ---- Tests ----------------------------------------------------------------
 
@@ -254,5 +258,270 @@ describe('useGameController timer race / leak fixes', () => {
 
     expect(applyActionMock.mock.calls.length).toBe(callsAfterPass);
     expect(result.current.claimTimer).toBe(0);
+  });
+
+  it('Plan 013: auto-pass retries when the first attempt is rejected', () => {
+    // It is genuinely the human's turn in the claim rotation, so the only
+    // thing that can reject a PASS here is the debounce / a transient engine
+    // rejection — exactly the scenario the original bug wedged on.
+    const claimGame = makeGame({
+      turnPhase: 'claim',
+      currentPlayerIndex: 0,
+      lastDiscardedBy: 'ai1',
+      lastDiscardedTile: makeTile('d1'),
+    });
+    initializeMatchMock.mockReturnValue(makeMatch(claimGame));
+    getAvailableClaimsMock.mockReturnValue([
+      { claimType: 'pung', tilesFromHand: [], priority: 2 },
+    ]);
+
+    let humanPassAttempts = 0;
+    applyActionMock.mockImplementation(
+      (state: GameState, playerId: string, action: { type: string }) => {
+        if (playerId !== HUMAN_ID || action.type !== 'PASS') return state;
+        humanPassAttempts += 1;
+        // The first PASS is rejected (e.g. a race with another resolution).
+        // Every attempt after succeeds and leaves the claim phase. Stay on
+        // the human's own seat (turnPhase 'discard', currentPlayerIndex the
+        // human) so this doesn't incidentally wake the AI-turn effect for
+        // seats we aren't testing here.
+        // Reject the first TWO attempts. The manual tap below consumes #1,
+        // so the countdown's forced pass at the zero tick is #2 and is ALSO
+        // rejected — meaning only a genuine RETRY on a later tick reaches #3
+        // and succeeds. Rejecting just once would let the forced pass succeed
+        // first try and the test would pass without any retry occurring.
+        if (humanPassAttempts <= 2) return null;
+        return { ...claimGame, turnPhase: 'discard' as const, currentPlayerIndex: 0 };
+      },
+    );
+
+    const { result } = renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+    expect(result.current.claimTimer).toBeGreaterThan(0);
+
+    // Drain the countdown to just short of expiry, then fire a human tap.
+    // This sets the shared debounce timestamp to "now" — within DEBOUNCE_MS
+    // of the interval's upcoming zero-tick — and the mock rejects it
+    // (humanPassAttempts -> 1), leaving the claim window still armed.
+    act(() => { vi.advanceTimersByTime(9_900); });
+    act(() => { result.current.pass(); });
+
+    // Advance past the zero tick. The retry (forcePass) bypasses the human
+    // debounce, so the recent tap above must not be what blocks it — if the
+    // countdown still called plain pass() here, this would wedge forever.
+    act(() => { vi.advanceTimersByTime(500); });
+
+    // >= 3 proves a real retry: #1 manual tap (rejected), #2 forced at the
+    // zero tick (rejected), #3 forced on a LATER tick (accepted). A one-shot
+    // countdown stops at #2 and wedges the hand forever.
+    expect(humanPassAttempts).toBeGreaterThanOrEqual(3);
+    expect(result.current.claimTimer).toBe(0);
+    expect(result.current.game?.turnPhase).toBe('discard');
+  });
+
+  it('Plan 013: the forced auto-pass bypasses the human action debounce', () => {
+    // A human tap immediately before the zero tick sets the shared debounce
+    // timestamp. If the countdown used plain pass(), that 200ms window would
+    // swallow the forced pass and the claim window would sit expired.
+    const claimGame = makeGame({
+      turnPhase: 'claim',
+      currentPlayerIndex: 0,
+      lastDiscardedBy: 'ai1',
+      lastDiscardedTile: makeTile('d1'),
+    });
+    initializeMatchMock.mockReturnValue(makeMatch(claimGame));
+    getAvailableClaimsMock.mockReturnValue([
+      { claimType: 'pung', tilesFromHand: [], priority: 2 },
+    ]);
+
+    let forcedPasses = 0;
+    applyActionMock.mockImplementation(
+      (state: GameState, playerId: string, action: { type: string }) => {
+        if (playerId !== HUMAN_ID || action.type !== 'PASS') return state;
+        forcedPasses += 1;
+        // Reject only the manual tap, so the claim window stays armed and the
+        // countdown still has work to do. After that the ONLY thing that can
+        // block the forced pass is the debounce — which is what we're testing.
+        if (forcedPasses === 1) return null;
+        return { ...claimGame, turnPhase: 'discard' as const, currentPlayerIndex: 0 };
+      },
+    );
+
+    const { result } = renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+
+    // Tap 50ms before expiry, then advance just past the zero tick — less
+    // than DEBOUNCE_MS, so a non-bypassing pass would still be blocked.
+    act(() => { vi.advanceTimersByTime(9_950); });
+    act(() => { result.current.pass(); });
+    // Advance only 150ms past the tap — still inside DEBOUNCE_MS (200ms), so a
+    // non-bypassing pass would still be swallowed at both the 10_000 and
+    // 10_100 ticks and the phase would remain 'claim'.
+    act(() => { vi.advanceTimersByTime(150); });
+
+    expect(forcedPasses).toBeGreaterThanOrEqual(2);
+    expect(result.current.game?.turnPhase).toBe('discard');
+  });
+
+  it('Plan 013: does not spin when the claim rotation is on another seat', () => {
+    // The engine's handlePass rejects whenever currentPlayerIndex is not this
+    // player. If the countdown expires while the rotation is still at an AI
+    // seat, retrying can NEVER succeed — and a 10Hz retry also refreshes the
+    // human debounce window every tick, silently swallowing every tap the
+    // player makes. Bounded retries are the fix; this pins it.
+    const claimGame = makeGame({
+      turnPhase: 'claim',
+      currentPlayerIndex: 1, // an AI seat — NOT the human
+      lastDiscardedBy: 'ai2',
+      lastDiscardedTile: makeTile('d1'),
+    });
+    initializeMatchMock.mockReturnValue(makeMatch(claimGame));
+    getAvailableClaimsMock.mockReturnValue([
+      { claimType: 'pung', tilesFromHand: [], priority: 2 },
+    ]);
+
+    let humanPassAttempts = 0;
+    applyActionMock.mockImplementation(
+      (state: GameState, playerId: string, action: { type: string }) => {
+        if (playerId !== HUMAN_ID || action.type !== 'PASS') return state;
+        humanPassAttempts += 1;
+        // Mirror the real engine: a PASS off our rotation turn is rejected.
+        return null;
+      },
+    );
+
+    const { result } = renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+    // Well past expiry, then a further 30s of ticks.
+    act(() => { vi.advanceTimersByTime(10_500); });
+    act(() => { vi.advanceTimersByTime(30_000); });
+
+    // Unbounded retry produced ~300 attempts here before the rotation guard.
+    expect(humanPassAttempts).toBeLessThan(5);
+  });
+
+  it('Plan 013: claim countdown stops once the claim phase ends (no infinite retry)', () => {
+    const claimGame = makeGame({
+      turnPhase: 'claim',
+      currentPlayerIndex: 0,
+      lastDiscardedBy: 'ai1',
+      lastDiscardedTile: makeTile('d1'),
+    });
+    initializeMatchMock.mockReturnValue(makeMatch(claimGame));
+    getAvailableClaimsMock.mockReturnValue([
+      { claimType: 'pung', tilesFromHand: [], priority: 2 },
+    ]);
+
+    // Every human PASS attempt succeeds immediately and leaves the claim
+    // phase, staying on the human's own seat so this doesn't incidentally
+    // wake the AI-turn effect for seats we aren't testing here. If the
+    // countdown's teardown condition were wrong (e.g. still gated on
+    // claimTimer > 0 instead of turnPhase/claimOptions), the interval would
+    // keep calling forcePass() every 100ms forever — a busy loop that this
+    // test catches via a growing call count.
+    applyActionMock.mockImplementation(
+      (state: GameState, playerId: string, action: { type: string }) => {
+        if (playerId !== HUMAN_ID || action.type !== 'PASS') return state;
+        return { ...claimGame, turnPhase: 'discard' as const, currentPlayerIndex: 0 };
+      },
+    );
+
+    const { result } = renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+    expect(result.current.claimTimer).toBeGreaterThan(0);
+
+    // Run past expiry — the single forced pass should succeed and exit.
+    act(() => { vi.advanceTimersByTime(10_100); });
+
+    const passCallsAtExit = passesByHuman().length;
+    expect(passCallsAtExit).toBe(1);
+    expect(result.current.claimTimer).toBe(0);
+
+    // Keep fake time running well past the original window. A broken
+    // teardown would keep firing pass() every 100ms against a game that has
+    // already left 'claim'; a correct one produces zero further attempts.
+    act(() => { vi.advanceTimersByTime(20_000); });
+
+    expect(passesByHuman().length).toBe(passCallsAtExit);
+  });
+});
+
+describe('useGameController auto-discard respects player selection (Plan 012)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    applyActionMock.mockReset();
+    advanceMatchMock.mockClear();
+    initializeMatchMock.mockReset();
+    getAvailableClaimsMock.mockReset();
+    getAvailableClaimsMock.mockReturnValue([]);
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  });
+
+  it('auto-discard discards the selected tile', () => {
+    // hand = [t1, t2]; lastDrawnTile defaults to t1 (hand[0]). Select t2 —
+    // the tile that is NOT lastDrawnTile — so this only passes if the
+    // selection, not the drawn-tile fallback, drives the auto-discard.
+    const game = makeGame();
+    initializeMatchMock.mockReturnValue(makeMatch(game));
+    applyActionMock.mockReturnValue(game);
+
+    const { result } = renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+
+    act(() => { result.current.selectTile(game.players[0].hand[1]); }); // select t2
+    act(() => { vi.advanceTimersByTime(20_000); });
+
+    const discards = discardsByHuman();
+    expect(discards).toHaveLength(1);
+    expect((discards[0] as ApplyCall)[2]).toMatchObject({ type: 'DISCARD', tile: { id: 't2' } });
+  });
+
+  it('auto-discard falls back to the drawn tile when nothing is selected', () => {
+    // Pins the pre-existing fallback: with no selection, lastDrawnTile is discarded.
+    const game = makeGame(); // lastDrawnTile = hand[0] = t1
+    initializeMatchMock.mockReturnValue(makeMatch(game));
+    applyActionMock.mockReturnValue(game);
+
+    const { result } = renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+
+    // No selectTile() call.
+    act(() => { vi.advanceTimersByTime(20_000); });
+
+    const discards = discardsByHuman();
+    expect(discards).toHaveLength(1);
+    expect((discards[0] as ApplyCall)[2]).toMatchObject({
+      type: 'DISCARD',
+      tile: { id: game.lastDrawnTile!.id },
+    });
+  });
+
+  it('changing the selection does not reset the turn timer', () => {
+    // Regression guard for the ref-based read in the auto-discard effect: if
+    // selectedTileId were in the effect's dependency array instead, re-selecting
+    // a tile would tear down and restart the setTimeout, pushing the deadline
+    // back by however long was already spent — silently defeating the 20s cap.
+    const game = makeGame(); // hand = [t1, t2]
+    initializeMatchMock.mockReturnValue(makeMatch(game));
+    applyActionMock.mockReturnValue(game);
+
+    const { result } = renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+
+    act(() => { result.current.selectTile(game.players[0].hand[0]); }); // select t1
+    act(() => { vi.advanceTimersByTime(15_000); }); // 15s of the original 20s window elapse
+
+    act(() => { result.current.selectTile(game.players[0].hand[1]); }); // change selection to t2
+
+    // Advance 6s more (21s total). If the timer had been reset by the
+    // re-selection above, a fresh 20s window starting at t=15s would not fire
+    // until t=35s, and no discard would have happened yet.
+    act(() => { vi.advanceTimersByTime(6_000); });
+
+    expect(discardsByHuman()).toHaveLength(1);
   });
 });

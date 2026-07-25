@@ -1,5 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+
+vi.mock('@/lib/soundManager', () => ({
+  default: { play: vi.fn(), setEnabled: vi.fn(), isEnabled: () => false },
+}));
+import soundManager from '@/lib/soundManager';
 import ActionBar from '../ActionBar';
 import { dragonTile } from '@/engine/__tests__/testHelpers';
 import { DragonTile } from '@/models/Tile';
@@ -43,6 +48,7 @@ const baseProps = {
   onPass: vi.fn(),
   turnPhase: 'claim' as const,
   isHumanTurn: true,
+  isMyClaimTurn: true,
 };
 
 describe('ActionBar — claim guidance (PRD GAME-06)', () => {
@@ -110,5 +116,105 @@ describe('ActionBar — claim guidance (PRD GAME-06)', () => {
     );
     const passHint = screen.getByTestId('claim-pass-hint');
     expect(passHint.textContent).toMatch(/concealed|improve|shape/i);
+  });
+
+  it('claim buttons are not rendered before the human\'s claim turn', () => {
+    render(
+      <ActionBar
+        {...baseProps}
+        isMyClaimTurn={false}
+        claimOptions={[pungClaim]}
+        discardedTile={dragon}
+      />,
+    );
+    // The buttons would be inert until the claim rotation reaches the human —
+    // an absent control is honest, a dead-looking one still invites the tap.
+    expect(screen.queryByTestId('claim-best-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('claim-pass-button')).not.toBeInTheDocument();
+    expect(screen.getByTestId('claim-waiting-state')).toBeInTheDocument();
+  });
+
+  it('claim buttons render on the human\'s claim turn', () => {
+    render(
+      <ActionBar
+        {...baseProps}
+        isMyClaimTurn={true}
+        claimOptions={[pungClaim]}
+        discardedTile={dragon}
+      />,
+    );
+    expect(screen.getByTestId('claim-best-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('claim-waiting-state')).not.toBeInTheDocument();
+  });
+
+  it('announces the waiting state to assistive technology', () => {
+    render(
+      <ActionBar
+        {...baseProps}
+        isMyClaimTurn={false}
+        claimOptions={[pungClaim]}
+        discardedTile={dragon}
+      />,
+    );
+    // The claim window opens and closes without any user action, so a screen
+    // reader must be told — otherwise the state change is silent.
+    expect(screen.getByTestId('claim-waiting-state')).toHaveAttribute('aria-live', 'polite');
+  });
+});
+
+describe('ActionBar — rejected-action feedback', () => {
+  const dragon = dragonTile(DragonTile.RED, 1);
+  const SHAKE_DURATION_MS = 550;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // fireEvent rather than userEvent: userEvent's async event loop deadlocks
+  // against fake timers, and the behaviour under test is a plain click →
+  // setState → setTimeout sequence that needs no pointer simulation.
+  const clickClaim = (accepted: boolean) => {
+    render(
+      <ActionBar
+        {...baseProps}
+        onClaimBest={vi.fn().mockReturnValue(accepted)}
+        claimOptions={[pungClaim]}
+        discardedTile={dragon}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('claim-best-button'));
+  };
+
+  it('shakes the claim button and plays a cue when the claim is rejected', () => {
+    clickClaim(false);
+
+    expect(screen.getByTestId('claim-best-button')).toHaveClass('animate-screen-shake');
+    // 'invalid', never 'pass' — 'pass' is the SUCCESS cue, so playing it on a
+    // rejection would tell the player their tap had worked.
+    expect(soundManager.play).toHaveBeenCalledWith('invalid');
+    expect(soundManager.play).not.toHaveBeenCalledWith('pass');
+  });
+
+  it('clears the shake once the animation window elapses', () => {
+    clickClaim(false);
+    expect(screen.getByTestId('claim-best-button')).toHaveClass('animate-screen-shake');
+
+    // Without this the class would stick permanently after the first
+    // rejection, so a later rejection would produce no visible shake at all.
+    act(() => {
+      vi.advanceTimersByTime(SHAKE_DURATION_MS);
+    });
+    expect(screen.getByTestId('claim-best-button')).not.toHaveClass('animate-screen-shake');
+  });
+
+  it('neither shakes nor plays a cue when the claim is accepted', () => {
+    clickClaim(true);
+
+    expect(screen.getByTestId('claim-best-button')).not.toHaveClass('animate-screen-shake');
+    expect(soundManager.play).not.toHaveBeenCalledWith('invalid');
   });
 });

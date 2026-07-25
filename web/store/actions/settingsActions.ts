@@ -14,6 +14,7 @@ import {
 import { isNpcRosterMode, NpcRosterMode } from '@/lib/rosterRotation';
 
 export type DisplayMode = 'tutor' | 'shantenHeat' | 'off';
+export type GameSpeed = 'relaxed' | 'normal' | 'fast';
 
 export interface SettingsState {
   selectedVariant: string;
@@ -27,6 +28,8 @@ export interface SettingsState {
   showTutor: boolean;
   /** In-game overlay mode: tutor hints, shanten heatmap, or none. */
   displayMode: DisplayMode;
+  /** Pacing of AI turns during play, independent of AI difficulty. */
+  gameSpeed: GameSpeed;
   /** Show the live faan meter overlay during play (learning aid for HK scoring). */
   liveFaanMeter: boolean;
   /** Voice callouts for discarded tiles: 'off', 'cantonese' (preferred), or 'english'. */
@@ -54,6 +57,7 @@ export const SETTINGS_SET_NOTIFICATIONS_ENABLED = 'SETTINGS_SET_NOTIFICATIONS_EN
 export const SETTINGS_SET_LARGER_UI_TEXT = 'SETTINGS_SET_LARGER_UI_TEXT' as const;
 export const SETTINGS_SET_SHOW_TUTOR = 'SETTINGS_SET_SHOW_TUTOR' as const;
 export const SETTINGS_SET_DISPLAY_MODE = 'SETTINGS_SET_DISPLAY_MODE' as const;
+export const SETTINGS_SET_GAME_SPEED = 'SETTINGS_SET_GAME_SPEED' as const;
 export const SETTINGS_SET_LIVE_FAAN_METER = 'SETTINGS_SET_LIVE_FAAN_METER' as const;
 export const SETTINGS_SET_TILE_VOICE = 'SETTINGS_SET_TILE_VOICE' as const;
 export const SETTINGS_SET_TILE_PALETTE = 'SETTINGS_SET_TILE_PALETTE' as const;
@@ -73,6 +77,7 @@ export type SettingsAction =
   | { type: typeof SETTINGS_SET_LARGER_UI_TEXT; payload: boolean }
   | { type: typeof SETTINGS_SET_SHOW_TUTOR; payload: boolean }
   | { type: typeof SETTINGS_SET_DISPLAY_MODE; payload: DisplayMode }
+  | { type: typeof SETTINGS_SET_GAME_SPEED; payload: GameSpeed }
   | { type: typeof SETTINGS_SET_LIVE_FAAN_METER; payload: boolean }
   | { type: typeof SETTINGS_SET_TILE_VOICE; payload: SettingsState['tileVoice'] }
   | { type: typeof SETTINGS_SET_TILE_PALETTE; payload: TilePaletteId }
@@ -98,6 +103,9 @@ export const initializeSettings = () => async (dispatch: any) => {
         : showTutor
           ? 'tutor'
           : 'off';
+    const gameSpeedRaw = await StorageService.getString(AppConstants.GAME_SPEED_KEY);
+    const gameSpeed: GameSpeed =
+      gameSpeedRaw === 'relaxed' || gameSpeedRaw === 'fast' ? gameSpeedRaw : 'normal';
     const liveFaanMeter = await StorageService.getBool(AppConstants.LIVE_FAAN_METER_KEY) ?? true;
     const tileVoiceRaw = await StorageService.getString(AppConstants.TILE_VOICE_KEY);
     const tileVoice: SettingsState['tileVoice'] =
@@ -137,6 +145,7 @@ export const initializeSettings = () => async (dispatch: any) => {
         largerUiText,
         showTutor,
         displayMode,
+        gameSpeed,
         liveFaanMeter,
         tileVoice,
         tilePalette,
@@ -190,6 +199,11 @@ export const setShowTutor = (enabled: boolean) => async (dispatch: any) => {
 export const setDisplayMode = (mode: DisplayMode) => async (dispatch: any) => {
   await StorageService.setString(AppConstants.DISPLAY_MODE_KEY, mode);
   dispatch({ type: SETTINGS_SET_DISPLAY_MODE, payload: mode });
+};
+
+export const setGameSpeed = (speed: GameSpeed) => async (dispatch: any) => {
+  await StorageService.setString(AppConstants.GAME_SPEED_KEY, speed);
+  dispatch({ type: SETTINGS_SET_GAME_SPEED, payload: speed });
 };
 
 export const setLiveFaanMeter = (enabled: boolean) => async (dispatch: any) => {

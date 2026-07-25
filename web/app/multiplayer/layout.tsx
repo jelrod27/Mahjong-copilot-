@@ -1,7 +1,7 @@
 export default function MultiplayerLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <main className="min-h-screen bg-background text-foreground">
       {children}
-    </div>
+    </main>
   );
 }

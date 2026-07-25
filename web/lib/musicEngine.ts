@@ -83,6 +83,17 @@ const LOOKAHEAD_MS = 25;
 const SCHEDULE_AHEAD_S = 0.12;
 const MUSIC_GAIN = 0.14; // mixed well under the tile clack (see audio spec)
 
+/* ── Sample-based playback ───────────────────────────────────────────────
+   Buffer-backed alternative to the oscillator scheduler below, added
+   behind the same play/stop/duck API so consumers never change. A track
+   only takes this path once a real, licensed asset URL is registered here;
+   until then play() falls through to the oscillator scheduler exactly as
+   today. Buffers are fetched and decoded lazily (on first play, never
+   during page load) and cached per URL so repeat plays cost nothing. */
+
+/** Track id → licensed asset URL. Empty until a real asset is approved and added. */
+const SAMPLE_ASSETS: Partial<Record<'parlour' | 'danger', string>> = {};
+
 class MusicEngine {
   private ctx: AudioContext | null = null;
   private musicGain: GainNode | null = null;
@@ -95,6 +106,13 @@ class MusicEngine {
   /** Floor-intensity variant: semitones added and bpm multiplier. */
   private transpose = 0;
   private tempoScale = 1;
+  /** Decoded ambient beds, cached per URL so repeat plays skip the fetch. */
+  private bufferCache = new Map<string, AudioBuffer>();
+  private bufferSource: AudioBufferSourceNode | null = null;
+  /** Track id currently playing via the sample path (mutually exclusive with `current`). */
+  private sampleTrackId: string | null = null;
+  /** Monotonic id for the newest sample request, so stale fetches can be discarded. */
+  private sampleRequestId = 0;
 
   private getContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -122,18 +140,28 @@ class MusicEngine {
   }
 
   isPlaying(trackId?: string): boolean {
+    if (this.sampleTrackId) return !trackId || this.sampleTrackId === trackId;
     return !!this.timer && (!trackId || this.current?.id === trackId);
   }
 
   /**
    * Start a track loop. `intensity` 0-2 raises tempo and pitch for higher
-   * Parlour wings (one pattern, three moods).
+   * Parlour wings (one pattern, three moods). Not yet meaningful for the
+   * sample path — no registered asset varies by intensity today.
    */
   play(trackId: 'parlour' | 'danger', intensity: 0 | 1 | 2 = 0) {
     if (!this.enabled) return;
-    const track = TRACKS[trackId];
     const ctx = this.getContext();
-    if (!track || !ctx || !this.musicGain) return;
+    if (!ctx || !this.musicGain) return;
+
+    const sampleUrl = SAMPLE_ASSETS[trackId];
+    if (sampleUrl) {
+      this.playSample(trackId, sampleUrl, ctx);
+      return;
+    }
+
+    const track = TRACKS[trackId];
+    if (!track) return;
     const nextTranspose = (track.transpose ?? 0) + intensity * 2;
     const nextTempo = 1 + intensity * 0.08;
     if (this.current?.id === trackId && this.timer) {
@@ -176,6 +204,56 @@ class MusicEngine {
     }
     this.scheduled = [];
     this.current = null;
+    if (this.bufferSource) {
+      try { this.bufferSource.stop(); } catch { /* already stopped */ }
+      this.bufferSource.disconnect();
+      this.bufferSource = null;
+    }
+    this.sampleTrackId = null;
+  }
+
+  /** Start (or resume from cache) a looping buffer for `trackId`. */
+  private playSample(trackId: string, url: string, ctx: AudioContext) {
+    if (this.sampleTrackId === trackId && this.bufferSource) return; // already looping
+    this.stop();
+    this.sampleTrackId = trackId;
+    // Track the specific request, not just the track id: play('parlour') →
+    // stop() → play('parlour') leaves two in-flight fetches that both match
+    // on id alone, so the stale one would start a second overlapping loop.
+    const requestId = ++this.sampleRequestId;
+
+    const cached = this.bufferCache.get(url);
+    if (cached) {
+      this.startBufferSource(cached, trackId, requestId, ctx);
+      return;
+    }
+
+    fetch(url)
+      .then((res) => res.arrayBuffer())
+      .then((data) => ctx.decodeAudioData(data))
+      .then((buffer) => {
+        this.bufferCache.set(url, buffer);
+        // A different track or a newer request for the same track may have
+        // started (or stop() may have been called) while this fetch/decode
+        // was in flight — bail rather than starting a loop nobody asked for.
+        if (this.sampleRequestId !== requestId) return;
+        this.startBufferSource(buffer, trackId, requestId, ctx);
+      })
+      .catch(() => {
+        // Fail soft: background audio must never throw or surface an
+        // unhandled rejection. The game stays playable without ambience.
+        if (this.sampleRequestId === requestId) this.sampleTrackId = null;
+      });
+  }
+
+  private startBufferSource(buffer: AudioBuffer, trackId: string, requestId: number, ctx: AudioContext) {
+    if (this.sampleRequestId !== requestId || this.sampleTrackId !== trackId || !this.musicGain) return;
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    source.connect(this.musicGain);
+    source.start();
+    this.bufferSource = source;
   }
 
   /** Lower the music under a foreground moment (win sequence), then recover. */

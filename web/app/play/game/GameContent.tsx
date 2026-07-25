@@ -58,6 +58,7 @@ export default function GameContent() {
   const showTutor = useAppSelector((s) => s.settings.showTutor);
   const displayMode = useAppSelector((s) => s.settings.displayMode);
   const liveFaanMeter = useAppSelector((s) => s.settings.liveFaanMeter);
+  const gameSpeed = useAppSelector((s) => s.settings.gameSpeed);
   const tileVoice = useAppSelector((s) => s.settings.tileVoice);
   const npcRosterMode = useAppSelector((s) => s.settings.npcRosterMode);
   const npcRoster = useAppSelector((s) => s.settings.npcRoster);
@@ -96,6 +97,7 @@ export default function GameContent() {
     floorDef?.floor,
     dailyMode,
     displayMode,
+    gameSpeed,
   );
 
   // Daily Hand outcome: derive from the single hand and record once.
@@ -233,6 +235,8 @@ export default function GameContent() {
         claimOptions={controller.claimOptions}
         claimTimer={controller.claimTimer}
         claimTimeoutMs={controller.claimTimeoutMs}
+        turnTimer={controller.turnTimer}
+        turnTimeoutMs={controller.turnTimeout}
         npcSeatsOverride={floorSeats}
       />
 

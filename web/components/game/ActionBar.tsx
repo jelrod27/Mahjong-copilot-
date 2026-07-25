@@ -1,11 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import { Tile } from '@/models/Tile';
 import { TurnPhase } from '@/models/GameState';
 import { AvailableClaim } from '@/engine/types';
 import { getBestClaimSubmission } from '@/engine/claiming';
 import type { WinShortfall } from './useGameController';
 import ChowSelector from './ChowSelector';
+import TurnTimer from './TurnTimer';
+import soundManager from '@/lib/soundManager';
 
 interface ActionBarProps {
   canDiscard: boolean;
@@ -17,17 +20,29 @@ interface ActionBarProps {
   claimOptions: AvailableClaim[];
   discardedTile?: Tile;
   selectedTileName?: string;
-  onDiscard: () => void;
-  onKong: () => void;
-  onWin: () => void;
-  onClaimBest: () => void;
-  onSubmitChow: (tilesFromHand: Tile[]) => void;
-  onPass: () => void;
+  /** Returns true when the discard was accepted, false when rejected. */
+  onDiscard: () => boolean;
+  onKong: () => boolean;
+  onWin: () => boolean;
+  /** Returns true when the claim was accepted, false when rejected. */
+  onClaimBest: () => boolean;
+  /** Returns true when the chow claim was accepted, false when rejected. */
+  onSubmitChow: (tilesFromHand: Tile[]) => boolean;
+  /** Returns true when the pass was accepted, false when rejected. */
+  onPass: () => boolean;
   turnPhase: TurnPhase;
   isHumanTurn: boolean;
+  /** True only once the claim rotation has actually reached the human — gates the claim/pass buttons. */
+  isMyClaimTurn?: boolean;
   claimTimer?: number;
   claimTimeout?: number;
+  turnTimer?: number;
+  turnTimeout?: number;
 }
+
+/** Identifies which rendered button a rejection-shake should apply to. */
+type ShakeTarget = 'discard' | 'claim' | 'pass' | 'kong' | 'win' | null;
+const SHAKE_DURATION_MS = 550;
 
 function claimSummaryLabel(claimType: string): string {
   switch (claimType) {
@@ -80,9 +95,29 @@ export default function ActionBar({
   onPass,
   turnPhase,
   isHumanTurn,
+  isMyClaimTurn = false,
   claimTimer = 0,
   claimTimeout = 10000,
+  turnTimer = 0,
+  turnTimeout = 0,
 }: ActionBarProps) {
+  const [shakingButton, setShakingButton] = useState<ShakeTarget>(null);
+
+  // Rejected actions (debounce, or a claim rotation that hasn't reached the
+  // human yet) previously failed silently — no sound, no visual, nothing to
+  // tell "I was too early" from "the app is broken". Give every rejection a
+  // short "not now" cue plus a brief shake on the button that was pressed.
+  const handleActionResult = (button: Exclude<ShakeTarget, null>, accepted: boolean) => {
+    if (accepted) return;
+    // 'invalid', not 'pass' — 'pass' is the cue a SUCCESSFUL pass plays, so
+    // using it here told the player their rejected tap had worked.
+    soundManager.play('invalid');
+    setShakingButton(button);
+    window.setTimeout(() => {
+      setShakingButton((current) => (current === button ? null : current));
+    }, SHAKE_DURATION_MS);
+  };
+
   if (turnPhase === 'discard' && isHumanTurn) {
     const discardAria = selectedTileName
       ? `Discard ${selectedTileName}`
@@ -100,13 +135,16 @@ export default function ActionBar({
             <>Select one tile from your hand, then confirm discard.</>
           )}
         </p>
+        <TurnTimer timeRemaining={turnTimer} totalTime={turnTimeout} />
         <div className="flex flex-wrap items-center justify-center gap-2">
           <button
             type="button"
             data-testid="discard-tile-button"
             aria-label={discardAria}
-            className="ds-btn-accent min-h-[48px] min-w-[140px] flex-col gap-0.5 px-6 py-2.5 md:min-w-[180px]"
-            onClick={onDiscard}
+            className={`ds-btn-accent min-h-[48px] min-w-[140px] flex-col gap-0.5 px-6 py-2.5 md:min-w-[180px] ${
+              shakingButton === 'discard' ? 'animate-screen-shake' : ''
+            }`}
+            onClick={() => handleActionResult('discard', onDiscard())}
             disabled={!canDiscard}
           >
             <span className="font-display text-sm font-bold tracking-wide">Discard</span>
@@ -121,8 +159,10 @@ export default function ActionBar({
           {canDeclareKong && (
             <button
               type="button"
-              className="ds-btn-highlight min-h-[48px] px-5 py-2.5 font-display text-sm font-semibold"
-              onClick={onKong}
+              className={`ds-btn-highlight min-h-[48px] px-5 py-2.5 font-display text-sm font-semibold ${
+                shakingButton === 'kong' ? 'animate-screen-shake' : ''
+              }`}
+              onClick={() => handleActionResult('kong', onKong())}
             >
               Kong
             </button>
@@ -130,8 +170,10 @@ export default function ActionBar({
           {canDeclareWin && (
             <button
               type="button"
-              className="ds-btn-success min-h-[48px] px-5 py-2.5 font-display text-sm font-semibold"
-              onClick={onWin}
+              className={`ds-btn-success min-h-[48px] px-5 py-2.5 font-display text-sm font-semibold ${
+                shakingButton === 'win' ? 'animate-screen-shake' : ''
+              }`}
+              onClick={() => handleActionResult('win', onWin())}
             >
               Mahjong
             </button>
@@ -155,9 +197,36 @@ export default function ActionBar({
   }
 
   if (turnPhase === 'claim' && hasClaimOptions && claimOptions.length > 0) {
-    const best = getBestClaimSubmission(claimOptions);
     const timerPct = claimTimer > 0 ? (claimTimer / claimTimeout) * 100 : 0;
     const timerColor = timerPct > 50 ? 'bg-info' : timerPct > 20 ? 'bg-highlight' : 'bg-accent';
+
+    if (!isMyClaimTurn) {
+      // The engine resolves claims in rotation order — an opponent ahead of
+      // the human in that rotation may still be deciding. Rendering live
+      // buttons here would be a lie: tapping them does nothing until the
+      // rotation actually reaches the human. An absent control is honest; a
+      // dead-looking one still invites the tap.
+      return (
+        <div className="space-y-3 py-1 md:space-y-4 md:py-2 md:px-1">
+          <div className="mx-1 h-1.5 overflow-hidden rounded-full bg-elevated">
+            <div
+              className={`h-full rounded-full transition-all duration-100 ${timerColor}`}
+              style={{ width: `${timerPct}%` }}
+            />
+          </div>
+          <p
+            data-testid="claim-waiting-state"
+            role="status"
+            aria-live="polite"
+            className="text-center font-sans text-sm text-muted-foreground"
+          >
+            Opponents deciding<span className="animate-blink">…</span>
+          </p>
+        </div>
+      );
+    }
+
+    const best = getBestClaimSubmission(claimOptions);
 
     const chowClaim = claimOptions.find((c) => c.claimType === 'chow');
     const hasMultipleChows = chowClaim && chowClaim.tilesFromHand.length > 1;
@@ -175,8 +244,8 @@ export default function ActionBar({
           <ChowSelector
             options={chowClaim!.tilesFromHand}
             discardedTile={discardedTile}
-            onSelect={onSubmitChow}
-            onPass={onPass}
+            onSelect={(tiles) => handleActionResult('claim', onSubmitChow(tiles))}
+            onPass={() => handleActionResult('pass', onPass())}
           />
         </div>
       );
@@ -200,16 +269,18 @@ export default function ActionBar({
               best?.claimType === 'win'
                 ? 'ds-btn-success border-success/40 shadow-ds-md'
                 : 'border-accent/45 bg-accent/15 text-highlight shadow-ds-sm hover:bg-accent/25'
-            }`}
-            onClick={onClaimBest}
+            } ${shakingButton === 'claim' ? 'animate-screen-shake' : ''}`}
+            onClick={() => handleActionResult('claim', onClaimBest())}
           >
             {primaryLabel}
           </button>
           <button
             type="button"
             data-testid="claim-pass-button"
-            className="min-h-[52px] rounded-xl border border-border/50 bg-background/40 px-6 py-3 font-sans text-sm font-semibold text-muted-foreground backdrop-blur-sm transition-colors hover:border-border hover:text-foreground sm:px-8"
-            onClick={onPass}
+            className={`min-h-[52px] rounded-xl border border-border/50 bg-background/40 px-6 py-3 font-sans text-sm font-semibold text-muted-foreground backdrop-blur-sm transition-colors hover:border-border hover:text-foreground sm:px-8 ${
+              shakingButton === 'pass' ? 'animate-screen-shake' : ''
+            }`}
+            onClick={() => handleActionResult('pass', onPass())}
           >
             Pass
           </button>

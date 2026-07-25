@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { GameState } from '@/models/GameState';
+import { GameState, GamePhase } from '@/models/GameState';
 import { MatchState } from '@/models/MatchState';
 import type { AvailableClaim } from '@/engine/types';
 import type { Tile } from '@/models/Tile';
@@ -40,12 +40,18 @@ interface GameBoardProps {
   faanProjection?: FaanProjection | null;
   onTileSelect: (tile: Tile) => void;
   onSortHand?: () => void;
-  onDiscard: () => void;
-  onKong: () => void;
-  onWin: () => void;
-  onClaimBest: () => void;
-  onSubmitChow: (tilesFromHand: Tile[]) => void;
-  onPass: () => void;
+  /** Returns true when the discard was accepted, false when rejected. */
+  onDiscard: () => boolean;
+  /** Returns true when accepted, false when rejected (drives the shake cue). */
+  onKong: () => boolean;
+  /** Returns true when accepted, false when rejected (drives the shake cue). */
+  onWin: () => boolean;
+  /** Returns true when the claim was accepted, false when rejected. */
+  onClaimBest: () => boolean;
+  /** Returns true when the chow claim was accepted, false when rejected. */
+  onSubmitChow: (tilesFromHand: Tile[]) => boolean;
+  /** Returns true when the pass was accepted, false when rejected. */
+  onPass: () => boolean;
   canDeclareKong?: boolean;
   canDeclareWin?: boolean;
   winShortfall?: WinShortfall | null;
@@ -53,6 +59,8 @@ interface GameBoardProps {
   claimOptions?: AvailableClaim[];
   claimTimer?: number;
   claimTimeoutMs?: number;
+  turnTimer?: number;
+  turnTimeoutMs?: number;
   /** Parlour floor matches pin specific NPCs to seats (overrides roster). */
   npcSeatsOverride?: Record<'left' | 'top' | 'right', NpcId>;
 }
@@ -63,7 +71,7 @@ export default function GameBoard({
   onTileSelect, onSortHand, onDiscard, onKong, onWin, onClaimBest, onSubmitChow, onPass,
   canDeclareKong: canKongProp, canDeclareWin: canWinProp, winShortfall,
   hasClaimOptions: hasClaimsProp, claimOptions = [], claimTimer,
-  claimTimeoutMs = 10000, npcSeatsOverride,
+  claimTimeoutMs = 10000, turnTimer, turnTimeoutMs = 0, npcSeatsOverride,
 }: GameBoardProps) {
   const humanIndex = gameState.players.findIndex(p => p.id === humanPlayerId);
   const humanPlayer = gameState.players[humanIndex];
@@ -122,8 +130,14 @@ export default function GameBoard({
   const canDeclareWin = canWinProp ?? false;
   const canDeclareKong = canKongProp ?? false;
   const hasClaimOptions = hasClaimsProp ?? false;
-  const showClaimHighlight =
-    gameState.turnPhase === 'claim' && hasClaimOptions && isHumanTurn;
+  // True only once the sequential claim rotation has actually reached the
+  // human — claimOptions/claimTimer are armed as soon as the claim phase
+  // starts, before AI claimants ahead of the human have acted. Derived here
+  // rather than in useGameController so there is a single definition: it
+  // depends only on gameState + humanPlayerId, both already props.
+  const isMyClaimTurn =
+    gameState.phase === GamePhase.PLAYING && gameState.turnPhase === 'claim' && isHumanTurn;
+  const showClaimHighlight = hasClaimOptions && isMyClaimTurn;
 
   const playerNames = useMemo(
     () => Object.fromEntries(gameState.players.map(p => [p.id, p.name])),
@@ -347,8 +361,11 @@ export default function GameBoard({
           onPass={onPass}
           turnPhase={gameState.turnPhase}
           isHumanTurn={isHumanTurn}
+          isMyClaimTurn={isMyClaimTurn}
           claimTimer={claimTimer}
           claimTimeout={claimTimeoutMs}
+          turnTimer={turnTimer}
+          turnTimeout={turnTimeoutMs}
         />
 
         {/* Player info bar */}
@@ -444,8 +461,8 @@ export default function GameBoard({
           </div>
         )}
 
-        {/* Player hand — horizontal scroll on narrow screens when holding 13–14 tiles */}
-        <div className="game-hand-scroll w-full max-w-full">
+        {/* Player hand — wraps to two rows on narrow portrait screens (PlayerHand.tsx) */}
+        <div className="w-full max-w-full">
           <PlayerHand
             tiles={humanPlayer.hand}
             selectedTileId={selectedTileId}

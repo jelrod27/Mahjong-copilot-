@@ -3,7 +3,17 @@
 ## Unreleased
 
 - Fix: game board tiles no longer collapse to a fixed pixel size on compressed or extreme viewports; container query height was being zeroed by flex min-h-0 collapse, now guarded by a viewport-derived vw/vmin floor.
-- Fix: human hand tiles no longer overflow the viewport on narrow portrait mobile; `.game-hand-scroll` now allows horizontal scroll when content exceeds the row width.
+- Fix: the human hand now wraps to two rows on narrow portrait mobile instead of scrolling horizontally — all 14 tiles are visible at once (previously 8 of 14, behind a scroll). The `.game-hand-scroll` horizontal-scroll fallback has been removed; the enlarged tile size is scoped to `.game-hand-row` so discard, meld, and opponent tiles keep their sizing.
+
+### UX, game feel, and design overhaul
+
+- Play: the discard turn timer is now visible, and running it out discards the tile you selected rather than the one you drew.
+- Play: claim buttons are shown only once the claim rotation reaches you, with a "Opponents deciding…" state (announced to screen readers) in between. An expired claim window can no longer wedge the hand.
+- Play: rejected actions now give audio and shake feedback instead of failing silently.
+- Play: new **Game speed** setting (relaxed / normal / fast), independent of AI difficulty. Default pacing is substantially faster — an AI lap drops from ~10.5s to ~4.5s.
+- Visual: real fibre-noise felt texture replacing stripe gradients, a softened vignette, a layered wood rail, and a new default table (bamboo mat). In-game panels and dock are now hue-neutral so they read as shadow over any felt.
+- Navigation: the app shell is restored on `/play` (the immersive table at `/play/game` is unchanged), the multiplayer dead-end button is gone, `/cosmetics` is reachable from Settings for the first time, and `<main>` landmarks are correct across all deferred routes.
+- Audio: internal sample-playback path added behind the existing music API. Dormant until licensed assets are added; nothing sounds different yet.
 
 ## The Legendary Elevation Pass — 2026-06-10
 

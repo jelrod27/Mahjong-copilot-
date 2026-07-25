@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import ActionBar from '../ActionBar';
 import { dragonTile } from '@/engine/__tests__/testHelpers';
 import { DragonTile } from '@/models/Tile';
@@ -140,5 +141,51 @@ describe('ActionBar — claim guidance (PRD GAME-06)', () => {
     );
     expect(screen.getByTestId('claim-best-button')).toBeInTheDocument();
     expect(screen.queryByTestId('claim-waiting-state')).not.toBeInTheDocument();
+  });
+
+  it('announces the waiting state to assistive technology', () => {
+    render(
+      <ActionBar
+        {...baseProps}
+        isMyClaimTurn={false}
+        claimOptions={[pungClaim]}
+        discardedTile={dragon}
+      />,
+    );
+    // The claim window opens and closes without any user action, so a screen
+    // reader must be told — otherwise the state change is silent.
+    expect(screen.getByTestId('claim-waiting-state')).toHaveAttribute('aria-live', 'polite');
+  });
+});
+
+describe('ActionBar — rejected-action feedback', () => {
+  const dragon = dragonTile(DragonTile.RED, 1);
+
+  it('shakes the claim button when the claim is rejected', async () => {
+    const user = userEvent.setup();
+    render(
+      <ActionBar
+        {...baseProps}
+        onClaimBest={vi.fn().mockReturnValue(false)}
+        claimOptions={[pungClaim]}
+        discardedTile={dragon}
+      />,
+    );
+    await user.click(screen.getByTestId('claim-best-button'));
+    expect(screen.getByTestId('claim-best-button')).toHaveClass('animate-screen-shake');
+  });
+
+  it('does not shake the claim button when the claim is accepted', async () => {
+    const user = userEvent.setup();
+    render(
+      <ActionBar
+        {...baseProps}
+        onClaimBest={vi.fn().mockReturnValue(true)}
+        claimOptions={[pungClaim]}
+        discardedTile={dragon}
+      />,
+    );
+    await user.click(screen.getByTestId('claim-best-button'));
+    expect(screen.getByTestId('claim-best-button')).not.toHaveClass('animate-screen-shake');
   });
 });

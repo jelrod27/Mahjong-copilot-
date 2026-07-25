@@ -1,5 +1,10 @@
 import DeferredFeaturePage from '@/components/DeferredFeaturePage';
 
+export const metadata = {
+  title: 'Sign up — paused',
+  description: 'Account creation is paused while solo play, learning, and reference ship first. No account is required to play.',
+};
+
 export default function SignupPage() {
   return (
     <main className="min-h-dvh flex items-center justify-center">

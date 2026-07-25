@@ -102,7 +102,7 @@ test.describe('Tile scaling across viewports', () => {
     const boardRoot = page.getByTestId('game-board-root');
     await boardRoot.waitFor({ state: 'visible', timeout: 60_000 });
 
-    const handTiles = page.locator('button[aria-label^="Mahjong tile"]');
+    const handTiles = page.locator('[data-testid="human-hand-tile"]');
     await handTiles.first().waitFor({ state: 'visible', timeout: 60_000 });
 
     // The 14-tile hand should wrap to two rows rather than scroll or overflow.

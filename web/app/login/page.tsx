@@ -1,5 +1,10 @@
 import DeferredFeaturePage from '@/components/DeferredFeaturePage';
 
+export const metadata = {
+  title: 'Sign in — paused',
+  description: 'Accounts are paused while solo play, learning, and reference ship first. No sign-in is required to play.',
+};
+
 export default function LoginPage() {
   return (
     <main className="min-h-dvh flex items-center justify-center">

@@ -127,8 +127,18 @@ From `/Users/justinelrod/Projects/Mahjong-copilot-/web`:
 
 ### Step 1: Retune the base delays
 
-Replace the `DELAYS` table with values that keep every tier above the ~900ms
-animation floor:
+Replace the `DELAYS` table with the values below.
+
+**On the animation floor**: the constraint is not that each tier's `discard`
+value alone must clear the animation budget — it is that the *interval between
+two consecutive discards* must. That interval is
+`claim window (150ms) + next player's draw delay + next player's discard delay`,
+and the discard leg is floor-clamped by `MIN_DISCARD_DELAY_MS` (Step 3). At the
+tightest combination (hard AI, `fast` speed) that is 150 + 260 + 800 = 1210ms
+against a 420ms flight + 300ms arrival = 720ms animation — comfortable margin.
+So `hard.discard: 550` is fine even though 550 < 720: the clamp and the
+preceding legs carry it. Verified by measurement in Step 6 (no collisions
+observed at any speed).
 
 ```ts
 // Base AI delays (ms). These are pacing only — AI strength lives in engine/ai.

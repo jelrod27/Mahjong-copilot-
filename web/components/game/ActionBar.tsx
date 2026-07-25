@@ -210,6 +210,8 @@ export default function ActionBar({
           </div>
           <p
             data-testid="claim-waiting-state"
+            role="status"
+            aria-live="polite"
             className="text-center font-sans text-sm text-muted-foreground"
           >
             Opponents deciding<span className="animate-blink">…</span>

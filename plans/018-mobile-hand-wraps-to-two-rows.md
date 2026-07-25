@@ -227,11 +227,19 @@ If it appears anywhere besides `globals.css`, `GameBoard.tsx`, and
 With two rows, tiles no longer need to be 32px. In `web/app/globals.css`, raise
 the mobile floor and ceiling:
 
+⚠️ Scope this to the hand row, **not** `.game-board-scene`. `--tile-base-w` is
+inherited, so setting it on the scene enlarges every tile surface on the board
+— discard pool, opponent hands, melds, results — when only the hand wraps.
+(The first execution of this plan made exactly that mistake; non-hand tiles
+grew ~28% and the discard panel swelled to 37% of the mobile viewport.)
+
 ```css
 @media (max-width: 767px) {
-  .game-board-scene {
+  /* Leave .game-board-scene's --tile-base-w alone. */
+  .game-hand-row {
     /* Hand wraps to two rows on narrow portrait (PlayerHand.tsx), so tiles
-       no longer have to fit 14-across. Bigger tiles, comfortable touch. */
+       no longer have to fit 14-across. Bigger tiles, comfortable touch.
+       Scoped to the hand — the pool and opponent seats keep their size. */
     --tile-base-w: clamp(30px, min(11cqw, max(7cqh, 3.6vmin)), 52px);
   }
 ```

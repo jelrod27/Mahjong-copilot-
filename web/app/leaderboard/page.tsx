@@ -1,5 +1,10 @@
 import DeferredFeaturePage from '@/components/DeferredFeaturePage';
 
+export const metadata = {
+  title: 'Leaderboard — deferred',
+  description: 'Leaderboards are deferred until online play returns. Solo progress is tracked locally.',
+};
+
 export default function LeaderboardPage() {
   return (
     <main className="min-h-dvh flex items-center justify-center">

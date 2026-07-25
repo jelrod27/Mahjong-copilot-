@@ -1,5 +1,10 @@
 import DeferredFeaturePage from '@/components/DeferredFeaturePage';
 
+export const metadata = {
+  title: 'Profile — deferred',
+  description: 'Profiles are deferred until accounts return. Your progress is stored locally on this device.',
+};
+
 export default function ProfilePage() {
   return (
     <main className="min-h-dvh flex items-center justify-center">

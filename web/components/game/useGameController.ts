@@ -80,12 +80,6 @@ export interface GameController {
   heatOverlays: Map<string, TileHeatOverlay>;
   claimOptions: AvailableClaim[];
   claimTimer: number;
-  /**
-   * True only once the sequential claim rotation has actually reached the
-   * human — as opposed to `claimOptions` being populated the instant the
-   * claim phase starts, before AI claimants ahead of the human have acted.
-   */
-  isMyClaimTurn: boolean;
   /** ms remaining on the human's discard-phase turn timer (0 when inactive). */
   turnTimer: number;
   /** Total ms for the human's discard-phase turn timer (0 when inactive). */
@@ -220,7 +214,7 @@ export default function useGameController(
     setFaanProjection(null);
     processingRef.current = false;
     humanDiscardInFlightRef.current = false;
-  }, [updateClaimTimer]);
+  }, [updateClaimTimer, updateClaimOptions]);
 
   const startNewGame = useCallback((newDifficulty: 'easy' | 'medium' | 'hard', newMode?: GameMode) => {
     if (dailyMode) {
@@ -328,14 +322,6 @@ export default function useGameController(
   const isHumanTurn = game?.currentPlayerIndex === humanIndex;
   const isGameOver = game?.phase === GamePhase.FINISHED;
   const isMatchOver = match?.phase === 'finished';
-  // True only once the sequential claim rotation has actually reached the
-  // human — claimOptions/claimTimer are armed as soon as the claim phase
-  // starts, before AI claimants ahead of the human have acted.
-  const isMyClaimTurn =
-    !!game &&
-    game.phase === GamePhase.PLAYING &&
-    game.turnPhase === 'claim' &&
-    game.currentPlayerIndex === humanIndex;
 
   // Apply an action and update state (with rapid-click debouncing for human).
   // `bypassDebounce` is for the claim countdown's forced auto-pass retry — a
@@ -454,7 +440,7 @@ export default function useGameController(
       soundManager.play(claimType === 'win' ? 'win' : 'claim');
     }
     return !!next;
-  }, [doAction, updateClaimTimer]);
+  }, [doAction, updateClaimTimer, updateClaimOptions]);
 
   const claimBest = useCallback((): boolean => {
     const current = gameRef.current;
@@ -473,7 +459,7 @@ export default function useGameController(
       soundManager.play(best.claimType === 'win' ? 'win' : 'claim');
     }
     return !!next;
-  }, [doAction, humanIndex, updateClaimTimer]);
+  }, [doAction, humanIndex, updateClaimTimer, updateClaimOptions]);
 
   const submitChow = useCallback((tilesFromHand: Tile[]): boolean => {
     const next = doAction(HUMAN_ID, { type: 'CLAIM', claimType: 'chow' as ClaimType, tilesFromHand });
@@ -485,7 +471,7 @@ export default function useGameController(
       soundManager.play('claim');
     }
     return !!next;
-  }, [doAction, updateClaimTimer]);
+  }, [doAction, updateClaimTimer, updateClaimOptions]);
 
   const pass = useCallback((): boolean => {
     const next = doAction(HUMAN_ID, { type: 'PASS' });
@@ -497,7 +483,7 @@ export default function useGameController(
       soundManager.play('pass');
     }
     return !!next;
-  }, [doAction, updateClaimTimer]);
+  }, [doAction, updateClaimTimer, updateClaimOptions]);
 
   // Same effect as pass(), but bypasses the human double-tap debounce. Used
   // only by the claim countdown's expiry retry below: a timer firing is not
@@ -514,7 +500,7 @@ export default function useGameController(
       soundManager.play('pass');
     }
     return !!next;
-  }, [doAction, updateClaimTimer]);
+  }, [doAction, updateClaimTimer, updateClaimOptions]);
 
   // === Computed state ===
 
@@ -920,6 +906,8 @@ export default function useGameController(
     humanIndex,
     doAction,
     claimTimeoutMs,
+    updateClaimOptions,
+    updateClaimTimer,
   ]);
 
   // === Claim countdown ===
@@ -1012,7 +1000,7 @@ export default function useGameController(
 
   return {
     game, match, selectedTileId, suggestedTileId, tutorAdvice, tenpaiStatus,
-    tileClassifications, heatOverlays, claimOptions, claimTimer, isMyClaimTurn, turnTimer, turnTimeout, isGameOver, isMatchOver,
+    tileClassifications, heatOverlays, claimOptions, claimTimer, turnTimer, turnTimeout, isGameOver, isMatchOver,
     scoringResult, faanProjection, claimTimeoutMs, tablePreset,
     selectTile, discardSelected, sortHand, declareKong, declareWin,
     submitClaim, submitChow, claimBest, pass, startNewGame, continueToNextHand,

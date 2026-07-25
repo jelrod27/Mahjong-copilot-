@@ -189,7 +189,9 @@ From `/Users/justinelrod/Projects/Mahjong-copilot-/web`:
 - `web/lib/soundManager.ts`
 - `web/public/audio/**` (new directory for licensed assets)
 - `web/app/(main)/settings/SettingsPageClient.tsx` (audio toggles)
-- `docs/design/audio.md` (create — it is referenced but missing)
+- `docs/design/audio.md` (**update, do NOT create or overwrite** — this file
+  already exists and already contains design notes and a "Path to commissioned
+  tracks" section. Append licence records to it; preserve what is there.)
 
 **Out of scope**:
 - `web/components/game/**` — call sites should not need to change. The whole

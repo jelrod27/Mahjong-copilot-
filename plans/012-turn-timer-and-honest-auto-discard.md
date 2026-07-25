@@ -190,10 +190,10 @@ unconditionally — the original code only reached that last fallback when
 would have produced `undefined` and silently skipped the discard entirely.
 This chain closes that hole too.
 
-You must add `selectedTileId` to the effect's dependency array. Because the
-effect's `setTimeout` would otherwise be torn down and restarted on every tile
-tap (resetting the player's clock each time they change their mind), read it
-from a ref instead:
+Reading `selectedTileId` inside the effect would normally oblige you to add it
+to the dependency array — but doing so tears down and restarts the effect's
+`setTimeout` on every tile tap, resetting the player's clock each time they
+change their mind. Read it from a ref instead:
 
 - Add a `selectedTileIdRef` alongside the existing `gameRef` /
   `humanDiscardInFlightRef` refs (search for `useRef` in the file to find the

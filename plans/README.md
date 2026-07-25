@@ -4,8 +4,10 @@ Two audit rounds are recorded here.
 
 - **Round 1 (2026-06-11, commit `efb5a21`)** — plans 001–010, all DONE. Correctness,
   security, perf, tests, debt. See "Round 1" below.
-- **Round 2 (2026-07-25, commit `700769d`)** — plans 011–017, all TODO. **UX, game
-  feel, visual design, navigation, audio.** See "Round 2" below.
+- **Round 2 (2026-07-25, commit `700769d`)** — plans 011–019. **UX, game feel,
+  visual design, navigation, audio.** All executed: 012–019 DONE, 011 REJECTED
+  (wrong approach, superseded by 018). Four follow-up findings F1–F4 recorded
+  below. See "Round 2" below.
 
 All verification commands run from `/web` unless a plan says otherwise. Repo
 conventions: branch `feature/<description>`, conventional-style commit messages

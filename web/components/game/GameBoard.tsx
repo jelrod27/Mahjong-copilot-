@@ -130,8 +130,9 @@ export default function GameBoard({
   const hasClaimOptions = hasClaimsProp ?? false;
   // True only once the sequential claim rotation has actually reached the
   // human — claimOptions/claimTimer are armed as soon as the claim phase
-  // starts, before AI claimants ahead of the human have acted. Mirrors
-  // useGameController's isMyClaimTurn (same inputs are already in scope here).
+  // starts, before AI claimants ahead of the human have acted. Derived here
+  // rather than in useGameController so there is a single definition: it
+  // depends only on gameState + humanPlayerId, both already props.
   const isMyClaimTurn =
     gameState.phase === GamePhase.PLAYING && gameState.turnPhase === 'claim' && isHumanTurn;
   const showClaimHighlight = hasClaimOptions && isMyClaimTurn;

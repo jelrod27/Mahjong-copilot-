@@ -126,7 +126,12 @@ From `/Users/justinelrod/Projects/Mahjong-copilot-/web`:
 - `web/app/play/page.tsx`
 - `web/components/DeferredFeaturePage.tsx`
 - `web/constants/navItems.ts`
+- `web/components/layout/AppSidebar.tsx` (Step 4 — map `/parlour` to the Play
+  item's active state)
 - `web/app/(main)/settings/SettingsPageClient.tsx` (add a Cosmetics link)
+- `web/app/multiplayer/layout.tsx`, and `web/app/{login,signup,profile,leaderboard}/page.tsx`
+  (Step 5 — these host `DeferredFeaturePage` standalone, so when it stops
+  rendering `<main>` they must supply the landmark themselves)
 - `web/e2e/navigation.spec.ts`, `web/e2e/multiplayer-lobby.spec.ts` (update)
 
 **Out of scope** (do NOT touch):

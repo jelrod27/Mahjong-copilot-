@@ -111,6 +111,8 @@ class MusicEngine {
   private bufferSource: AudioBufferSourceNode | null = null;
   /** Track id currently playing via the sample path (mutually exclusive with `current`). */
   private sampleTrackId: string | null = null;
+  /** Monotonic id for the newest sample request, so stale fetches can be discarded. */
+  private sampleRequestId = 0;
 
   private getContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -215,10 +217,14 @@ class MusicEngine {
     if (this.sampleTrackId === trackId && this.bufferSource) return; // already looping
     this.stop();
     this.sampleTrackId = trackId;
+    // Track the specific request, not just the track id: play('parlour') →
+    // stop() → play('parlour') leaves two in-flight fetches that both match
+    // on id alone, so the stale one would start a second overlapping loop.
+    const requestId = ++this.sampleRequestId;
 
     const cached = this.bufferCache.get(url);
     if (cached) {
-      this.startBufferSource(cached, trackId, ctx);
+      this.startBufferSource(cached, trackId, requestId, ctx);
       return;
     }
 
@@ -227,21 +233,21 @@ class MusicEngine {
       .then((data) => ctx.decodeAudioData(data))
       .then((buffer) => {
         this.bufferCache.set(url, buffer);
-        // A different track may have started (or stop() may have been
-        // called) while this fetch/decode was in flight — bail rather than
-        // starting a loop nobody asked for anymore.
-        if (this.sampleTrackId !== trackId) return;
-        this.startBufferSource(buffer, trackId, ctx);
+        // A different track or a newer request for the same track may have
+        // started (or stop() may have been called) while this fetch/decode
+        // was in flight — bail rather than starting a loop nobody asked for.
+        if (this.sampleRequestId !== requestId) return;
+        this.startBufferSource(buffer, trackId, requestId, ctx);
       })
       .catch(() => {
         // Fail soft: background audio must never throw or surface an
         // unhandled rejection. The game stays playable without ambience.
-        if (this.sampleTrackId === trackId) this.sampleTrackId = null;
+        if (this.sampleRequestId === requestId) this.sampleTrackId = null;
       });
   }
 
-  private startBufferSource(buffer: AudioBuffer, trackId: string, ctx: AudioContext) {
-    if (this.sampleTrackId !== trackId || !this.musicGain) return;
+  private startBufferSource(buffer: AudioBuffer, trackId: string, requestId: number, ctx: AudioContext) {
+    if (this.sampleRequestId !== requestId || this.sampleTrackId !== trackId || !this.musicGain) return;
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.loop = true;

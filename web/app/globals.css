@@ -796,17 +796,22 @@
   --tile-base-w: clamp(26px, min(5.5cqw, max(4.8cqh, 2.7vw)), 60px);
 }
 
+/* Below `sm` the hand wraps to two rows (PlayerHand.tsx uses
+   `flex-wrap sm:flex-nowrap`), so its tiles no longer have to fit 14-across
+   and can be comfortably larger. This breakpoint MUST match that one: at
+   640-767px the row is still nowrap, and larger tiles there would overflow a
+   board-root that has `overflow-hidden` and no scroll fallback. Scoped to the
+   hand only — the discard pool and opponent seats keep their board-level size. */
+@media (max-width: 639px) {
+  .game-hand-row {
+    --tile-base-w: clamp(30px, min(11cqw, max(7cqh, 3.6vmin)), 52px);
+  }
+}
+
 /* Phone / narrow: favor slightly smaller tiles and more vertical room for the dock. */
 @media (max-width: 767px) {
   .game-board-scene {
     --tile-base-w: clamp(22px, min(8.5cqw, max(7cqh, 3.6vmin)), 46px);
-  }
-
-  /* The hand wraps to two rows (PlayerHand.tsx), so its tiles no longer have
-     to fit 14-across and can be comfortably larger. Scoped to the hand only —
-     the discard pool and opponent seats keep their tuned board-level size. */
-  .game-hand-row {
-    --tile-base-w: clamp(30px, min(11cqw, max(7cqh, 3.6vmin)), 52px);
   }
 
   .game-board-scene .tile-size-lg {

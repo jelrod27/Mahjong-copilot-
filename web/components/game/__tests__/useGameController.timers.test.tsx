@@ -285,7 +285,12 @@ describe('useGameController timer race / leak fixes', () => {
         // the human's own seat (turnPhase 'discard', currentPlayerIndex the
         // human) so this doesn't incidentally wake the AI-turn effect for
         // seats we aren't testing here.
-        if (humanPassAttempts === 1) return null;
+        // Reject the first TWO attempts. The manual tap below consumes #1,
+        // so the countdown's forced pass at the zero tick is #2 and is ALSO
+        // rejected — meaning only a genuine RETRY on a later tick reaches #3
+        // and succeeds. Rejecting just once would let the forced pass succeed
+        // first try and the test would pass without any retry occurring.
+        if (humanPassAttempts <= 2) return null;
         return { ...claimGame, turnPhase: 'discard' as const, currentPlayerIndex: 0 };
       },
     );
@@ -306,9 +311,93 @@ describe('useGameController timer race / leak fixes', () => {
     // countdown still called plain pass() here, this would wedge forever.
     act(() => { vi.advanceTimersByTime(500); });
 
-    expect(humanPassAttempts).toBeGreaterThan(1);
+    // >= 3 proves a real retry: #1 manual tap (rejected), #2 forced at the
+    // zero tick (rejected), #3 forced on a LATER tick (accepted). A one-shot
+    // countdown stops at #2 and wedges the hand forever.
+    expect(humanPassAttempts).toBeGreaterThanOrEqual(3);
     expect(result.current.claimTimer).toBe(0);
     expect(result.current.game?.turnPhase).toBe('discard');
+  });
+
+  it('Plan 013: the forced auto-pass bypasses the human action debounce', () => {
+    // A human tap immediately before the zero tick sets the shared debounce
+    // timestamp. If the countdown used plain pass(), that 200ms window would
+    // swallow the forced pass and the claim window would sit expired.
+    const claimGame = makeGame({
+      turnPhase: 'claim',
+      currentPlayerIndex: 0,
+      lastDiscardedBy: 'ai1',
+      lastDiscardedTile: makeTile('d1'),
+    });
+    initializeMatchMock.mockReturnValue(makeMatch(claimGame));
+    getAvailableClaimsMock.mockReturnValue([
+      { claimType: 'pung', tilesFromHand: [], priority: 2 },
+    ]);
+
+    let forcedPasses = 0;
+    applyActionMock.mockImplementation(
+      (state: GameState, playerId: string, action: { type: string }) => {
+        if (playerId !== HUMAN_ID || action.type !== 'PASS') return state;
+        forcedPasses += 1;
+        // Reject only the manual tap, so the claim window stays armed and the
+        // countdown still has work to do. After that the ONLY thing that can
+        // block the forced pass is the debounce — which is what we're testing.
+        if (forcedPasses === 1) return null;
+        return { ...claimGame, turnPhase: 'discard' as const, currentPlayerIndex: 0 };
+      },
+    );
+
+    const { result } = renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+
+    // Tap 50ms before expiry, then advance just past the zero tick — less
+    // than DEBOUNCE_MS, so a non-bypassing pass would still be blocked.
+    act(() => { vi.advanceTimersByTime(9_950); });
+    act(() => { result.current.pass(); });
+    // Advance only 150ms past the tap — still inside DEBOUNCE_MS (200ms), so a
+    // non-bypassing pass would still be swallowed at both the 10_000 and
+    // 10_100 ticks and the phase would remain 'claim'.
+    act(() => { vi.advanceTimersByTime(150); });
+
+    expect(forcedPasses).toBeGreaterThanOrEqual(2);
+    expect(result.current.game?.turnPhase).toBe('discard');
+  });
+
+  it('Plan 013: does not spin when the claim rotation is on another seat', () => {
+    // The engine's handlePass rejects whenever currentPlayerIndex is not this
+    // player. If the countdown expires while the rotation is still at an AI
+    // seat, retrying can NEVER succeed — and a 10Hz retry also refreshes the
+    // human debounce window every tick, silently swallowing every tap the
+    // player makes. Bounded retries are the fix; this pins it.
+    const claimGame = makeGame({
+      turnPhase: 'claim',
+      currentPlayerIndex: 1, // an AI seat — NOT the human
+      lastDiscardedBy: 'ai2',
+      lastDiscardedTile: makeTile('d1'),
+    });
+    initializeMatchMock.mockReturnValue(makeMatch(claimGame));
+    getAvailableClaimsMock.mockReturnValue([
+      { claimType: 'pung', tilesFromHand: [], priority: 2 },
+    ]);
+
+    let humanPassAttempts = 0;
+    applyActionMock.mockImplementation(
+      (state: GameState, playerId: string, action: { type: string }) => {
+        if (playerId !== HUMAN_ID || action.type !== 'PASS') return state;
+        humanPassAttempts += 1;
+        // Mirror the real engine: a PASS off our rotation turn is rejected.
+        return null;
+      },
+    );
+
+    const { result } = renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+    // Well past expiry, then a further 30s of ticks.
+    act(() => { vi.advanceTimersByTime(10_500); });
+    act(() => { vi.advanceTimersByTime(30_000); });
+
+    // Unbounded retry produced ~300 attempts here before the rotation guard.
+    expect(humanPassAttempts).toBeLessThan(5);
   });
 
   it('Plan 013: claim countdown stops once the claim phase ends (no infinite retry)', () => {

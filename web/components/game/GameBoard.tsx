@@ -42,8 +42,10 @@ interface GameBoardProps {
   onSortHand?: () => void;
   /** Returns true when the discard was accepted, false when rejected. */
   onDiscard: () => boolean;
-  onKong: () => void;
-  onWin: () => void;
+  /** Returns true when accepted, false when rejected (drives the shake cue). */
+  onKong: () => boolean;
+  /** Returns true when accepted, false when rejected (drives the shake cue). */
+  onWin: () => boolean;
   /** Returns true when the claim was accepted, false when rejected. */
   onClaimBest: () => boolean;
   /** Returns true when the chow claim was accepted, false when rejected. */

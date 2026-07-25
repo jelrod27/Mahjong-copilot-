@@ -337,10 +337,16 @@ describe('claim flow', () => {
     vi.useRealTimers();
   });
 
-  function makeClaimGame() {
+  /**
+   * @param currentPlayerIndex which seat the claim rotation is on. 1 (an AI
+   *   seat) is the "options armed but not yet our turn" state; 0 is the
+   *   human's own rotation turn, which is the only state where the engine
+   *   accepts a human PASS (turnManager handlePass rejects otherwise).
+   */
+  function makeClaimGame(currentPlayerIndex = 1) {
     return makeGame({
       turnPhase: 'claim',
-      currentPlayerIndex: 1,
+      currentPlayerIndex,
       lastDiscardedBy: 'ai1',
       lastDiscardedTile: makeTile('d1'),
     });
@@ -361,7 +367,8 @@ describe('claim flow', () => {
   });
 
   it('claim timeout auto-passes exactly once after 11s', () => {
-    const claimGame = makeClaimGame();
+    // Rotation on the human's own seat — the only state where a PASS is legal.
+    const claimGame = makeClaimGame(0);
     initializeMatchMock.mockReturnValue(makeMatch(claimGame));
     getAvailableClaimsMock.mockReturnValue([
       { claimType: 'pung', tilesFromHand: [], priority: 2 },
@@ -385,7 +392,7 @@ describe('claim flow', () => {
   });
 
   it('expiry fires PASS exactly once even when ticks continue', () => {
-    const claimGame = makeClaimGame();
+    const claimGame = makeClaimGame(0);
     // After pass() the engine returns a state where human has already passed,
     // so the claim-detection effect cannot re-arm the timer.
     const postPassGame = makeGame({

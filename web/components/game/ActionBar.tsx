@@ -22,8 +22,8 @@ interface ActionBarProps {
   selectedTileName?: string;
   /** Returns true when the discard was accepted, false when rejected. */
   onDiscard: () => boolean;
-  onKong: () => void;
-  onWin: () => void;
+  onKong: () => boolean;
+  onWin: () => boolean;
   /** Returns true when the claim was accepted, false when rejected. */
   onClaimBest: () => boolean;
   /** Returns true when the chow claim was accepted, false when rejected. */
@@ -41,7 +41,7 @@ interface ActionBarProps {
 }
 
 /** Identifies which rendered button a rejection-shake should apply to. */
-type ShakeTarget = 'discard' | 'claim' | 'pass' | null;
+type ShakeTarget = 'discard' | 'claim' | 'pass' | 'kong' | 'win' | null;
 const SHAKE_DURATION_MS = 550;
 
 function claimSummaryLabel(claimType: string): string {
@@ -109,7 +109,9 @@ export default function ActionBar({
   // short "not now" cue plus a brief shake on the button that was pressed.
   const handleActionResult = (button: Exclude<ShakeTarget, null>, accepted: boolean) => {
     if (accepted) return;
-    soundManager.play('pass');
+    // 'invalid', not 'pass' — 'pass' is the cue a SUCCESSFUL pass plays, so
+    // using it here told the player their rejected tap had worked.
+    soundManager.play('invalid');
     setShakingButton(button);
     window.setTimeout(() => {
       setShakingButton((current) => (current === button ? null : current));
@@ -157,8 +159,10 @@ export default function ActionBar({
           {canDeclareKong && (
             <button
               type="button"
-              className="ds-btn-highlight min-h-[48px] px-5 py-2.5 font-display text-sm font-semibold"
-              onClick={onKong}
+              className={`ds-btn-highlight min-h-[48px] px-5 py-2.5 font-display text-sm font-semibold ${
+                shakingButton === 'kong' ? 'animate-screen-shake' : ''
+              }`}
+              onClick={() => handleActionResult('kong', onKong())}
             >
               Kong
             </button>
@@ -166,8 +170,10 @@ export default function ActionBar({
           {canDeclareWin && (
             <button
               type="button"
-              className="ds-btn-success min-h-[48px] px-5 py-2.5 font-display text-sm font-semibold"
-              onClick={onWin}
+              className={`ds-btn-success min-h-[48px] px-5 py-2.5 font-display text-sm font-semibold ${
+                shakingButton === 'win' ? 'animate-screen-shake' : ''
+              }`}
+              onClick={() => handleActionResult('win', onWin())}
             >
               Mahjong
             </button>

@@ -193,7 +193,10 @@ describe('ActionBar — rejected-action feedback', () => {
     clickClaim(false);
 
     expect(screen.getByTestId('claim-best-button')).toHaveClass('animate-screen-shake');
-    expect(soundManager.play).toHaveBeenCalledWith('pass');
+    // 'invalid', never 'pass' — 'pass' is the SUCCESS cue, so playing it on a
+    // rejection would tell the player their tap had worked.
+    expect(soundManager.play).toHaveBeenCalledWith('invalid');
+    expect(soundManager.play).not.toHaveBeenCalledWith('pass');
   });
 
   it('clears the shake once the animation window elapses', () => {
@@ -212,6 +215,6 @@ describe('ActionBar — rejected-action feedback', () => {
     clickClaim(true);
 
     expect(screen.getByTestId('claim-best-button')).not.toHaveClass('animate-screen-shake');
-    expect(soundManager.play).not.toHaveBeenCalledWith('pass');
+    expect(soundManager.play).not.toHaveBeenCalledWith('invalid');
   });
 });

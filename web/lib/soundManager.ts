@@ -12,7 +12,10 @@ type SoundName =
   | 'winLimitHand'
   | 'pass'
   | 'turnAlert'
-  | 'kong';
+  | 'kong'
+  /** Action rejected (too early, not your turn, debounced). Must NOT sound
+   *  like any affirmative cue — a false-success chime is worse than silence. */
+  | 'invalid';
 
 class SoundManager {
   private ctx: AudioContext | null = null;
@@ -129,6 +132,12 @@ class SoundManager {
       case 'turnAlert':
         this.playTone(gain, 1200, 0.04, 'square');
         this.playTone(gain, 1200, 0.04, 'square', 0.08);
+        break;
+      case 'invalid':
+        // Low descending double-blip — deliberately unlike 'pass' (300Hz sine)
+        // and 'claim', so a rejection can never be mistaken for success.
+        this.playTone(gain, 180, 0.06, 'square');
+        this.playTone(gain, 120, 0.08, 'square', 0.07);
         break;
     }
   }

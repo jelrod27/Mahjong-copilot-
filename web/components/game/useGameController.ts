@@ -30,8 +30,10 @@ import { launchDailyMatch, launchParlourMatch, launchStandardMatch } from './mat
 const HUMAN_ID = 'human-player';
 
 // Base AI delays (ms). These are pacing only — AI strength lives in engine/ai.
-// Floor: an AI turn must exceed the 420ms flight + 300ms pool-arrival
-// animations, or tiles collide with the next action.
+// The real constraint is the DISCARD-TO-DISCARD interval, not any single leg:
+// 150ms claim window + next player's draw + next player's (clamped) discard.
+// At the tightest combination (hard AI, `fast`) that is 150 + 260 + 800 =
+// 1210ms against ~800ms of animation, which is why hard.discard: 550 is safe.
 const DELAYS = {
   easy: { draw: 700, discard: 900 },
   medium: { draw: 500, discard: 700 },
@@ -39,13 +41,36 @@ const DELAYS = {
 };
 
 // Player-controlled pacing multiplier, independent of AI difficulty.
-// Discard is floor-clamped below (see MIN_DISCARD_DELAY_MS) — this is
-// deliberately allowed to push draw/discard below the animation floor at
-// `fast` on its own.
+// Only `draw` may fall below the animation budget (hard x fast = 260ms);
+// that is fine because nothing animates during a draw. `discard` cannot —
+// it is floor-clamped by MIN_DISCARD_DELAY_MS below.
 const SPEED_MULTIPLIER: Record<GameSpeed, number> = { relaxed: 1.6, normal: 1, fast: 0.65 };
-// Coupled to the 420ms flight animation (TileFlightLayer.tsx) — discard must
-// never resolve faster than the tile can visibly land, or turns collide.
-const MIN_DISCARD_DELAY_MS = 800;
+// 420ms flight (TileFlightLayer.tsx:107) + 380ms pool arrival
+// (.animate-tile-arrive, globals.css) = exactly 800. An AI discard must not
+// resolve before the previous tile has visibly landed. Applies to AI pacing
+// only — human discards are not governed here. If either animation duration
+// changes, change this with it.
+export const MIN_DISCARD_DELAY_MS = 800;
+
+/**
+ * Resolve AI pacing from difficulty (how hard) and game speed (how fast) —
+ * two independent axes. Extracted as a pure function so the clamp, which is
+ * the one piece here with a correctness rationale rather than a taste one,
+ * is unit-testable; inline in the hook it was reachable only through a live
+ * game and so was never covered.
+ */
+export function resolveAiDelays(
+  difficulty: 'easy' | 'medium' | 'hard',
+  gameSpeed: GameSpeed,
+): { draw: number; discard: number } {
+  const base = DELAYS[difficulty];
+  const multiplier = SPEED_MULTIPLIER[gameSpeed];
+  return {
+    // Draw is deliberately unclamped — nothing animates during it.
+    draw: base.draw * multiplier,
+    discard: Math.max(MIN_DISCARD_DELAY_MS, base.discard * multiplier),
+  };
+}
 
 const CLAIM_TIMEOUT_STANDARD = 10000;
 const CLAIM_TIMEOUT_TRAINING = 20000;
@@ -95,8 +120,10 @@ export interface GameController {
   discardSelected: () => boolean;
   /** Sort the human hand by suit and number (animated via FLIP in PlayerHand). */
   sortHand: () => void;
-  declareKong: () => void;
-  declareWin: () => void;
+  /** Returns true when the kong was accepted, false when rejected. */
+  declareKong: () => boolean;
+  /** Returns true when the win was accepted, false when rejected. */
+  declareWin: () => boolean;
   /** Returns true when the claim was accepted, false when the engine rejected it. */
   submitClaim: (claimType: ClaimType, tilesFromHand: Tile[]) => boolean;
   /** Submit a specific chow combination (from ChowSelector). Returns true when accepted. */
@@ -314,10 +341,8 @@ export default function useGameController(
     resetHandState();
   }, [resetHandState]);
 
-  const currentDelays = DELAYS[difficulty];
-  const speedMultiplier = SPEED_MULTIPLIER[gameSpeed];
-  const effectiveDrawDelay = currentDelays.draw * speedMultiplier;
-  const effectiveDiscardDelay = Math.max(MIN_DISCARD_DELAY_MS, currentDelays.discard * speedMultiplier);
+  const { draw: effectiveDrawDelay, discard: effectiveDiscardDelay } =
+    resolveAiDelays(difficulty, gameSpeed);
   const humanIndex = game?.players.findIndex(p => p.id === HUMAN_ID) ?? 0;
   const isHumanTurn = game?.currentPlayerIndex === humanIndex;
   const isGameOver = game?.phase === GamePhase.FINISHED;
@@ -331,8 +356,13 @@ export default function useGameController(
     // Debounce human actions
     if (playerId === HUMAN_ID) {
       const now = Date.now();
-      if (!opts?.bypassDebounce && now - lastActionTimeRef.current < DEBOUNCE_MS) return null;
-      lastActionTimeRef.current = now;
+      if (!opts?.bypassDebounce) {
+        if (now - lastActionTimeRef.current < DEBOUNCE_MS) return null;
+        // Only a real human tap moves the debounce window. A machine-driven
+        // retry firing at 10Hz would otherwise refresh this every tick and
+        // permanently starve the player — every tap silently swallowed.
+        lastActionTimeRef.current = now;
+      }
     }
 
     const current = gameRef.current;
@@ -390,9 +420,9 @@ export default function useGameController(
     return true;
   }, [selectedTileId, humanIndex, doAction]);
 
-  const declareKong = useCallback(() => {
+  const declareKong = useCallback((): boolean => {
     const current = gameRef.current;
-    if (!current || current.turnPhase !== 'discard' || current.currentPlayerIndex !== humanIndex) return;
+    if (!current || current.turnPhase !== 'discard' || current.currentPlayerIndex !== humanIndex) return false;
     const hand = current.players[humanIndex].hand;
 
     // Check concealed kong (4 of a kind in hand)
@@ -408,7 +438,7 @@ export default function useGameController(
       if (tiles.length === 4) {
         const next = doAction(HUMAN_ID, { type: 'DECLARE_KONG', tile: tiles[0] });
         if (next) soundManager.play('kong');
-        return;
+        return !!next;
       }
     }
 
@@ -420,14 +450,24 @@ export default function useGameController(
         if (match) {
           const next = doAction(HUMAN_ID, { type: 'DECLARE_KONG', tile: match });
           if (next) soundManager.play('kong');
-          return;
+          return !!next;
         }
       }
     }
+    // No legal kong found — the button should not have been live, so this
+    // is a rejection from the player's point of view.
+    return false;
   }, [humanIndex, doAction]);
 
-  const declareWin = useCallback(() => {
-    doAction(HUMAN_ID, { type: 'DECLARE_WIN' });
+  const declareWin = useCallback((): boolean => {
+    const next = doAction(HUMAN_ID, { type: 'DECLARE_WIN' });
+    if (!next) {
+      // The UI only shows this button when canDeclareWin is true, so a
+      // rejection means the UI and the engine disagree about a winning hand.
+      // That divergence is a bug worth knowing about, not just a mistap.
+      Sentry.captureException(new Error('DECLARE_WIN rejected while the Mahjong button was live'));
+    }
+    return !!next;
   }, [doAction]);
 
   const submitClaim = useCallback((claimType: ClaimType, tilesFromHand: Tile[]): boolean => {
@@ -866,9 +906,17 @@ export default function useGameController(
 
     // Don't show claim options if human was the discarder
     if (game.lastDiscardedBy === HUMAN_ID) {
-      // Still need to auto-pass if it's our turn in the rotation
-      if (game.currentPlayerIndex === humanIndex) {
-        doAction(HUMAN_ID, { type: 'PASS' });
+      // Still need to auto-pass if it's our turn in the rotation.
+      // forcePass, not doAction: this is engine-driven, not a human tap, so
+      // the 200ms double-tap debounce has no business rejecting it. A silent
+      // rejection here wedges the hand — claimOptions is empty by
+      // construction, so the countdown retry never covers this path and no
+      // effect dependency changes to re-run us.
+      if (game.currentPlayerIndex === humanIndex && !forcePass()) {
+        Sentry.captureException(
+          new Error('Auto-pass rejected: human seat stuck in claim phase (self-discard)'),
+          { extra: { turnPhase: game.turnPhase, currentPlayerIndex: game.currentPlayerIndex, humanIndex } },
+        );
       }
       return;
     }
@@ -893,8 +941,15 @@ export default function useGameController(
       if (claimTimerRef.current <= 0) updateClaimTimer(claimTimeoutMs);
       soundManager.play('turnAlert');
     } else if (game.currentPlayerIndex === humanIndex) {
-      // Human has no claims and it's their turn — auto-pass
-      doAction(HUMAN_ID, { type: 'PASS' });
+      // Human has no claims and it's their turn — auto-pass. Same reasoning as
+      // the self-discard branch above: forcePass so the debounce can't wedge
+      // the hand, and report if the engine still refuses.
+      if (!forcePass()) {
+        Sentry.captureException(
+          new Error('Auto-pass rejected: human seat stuck in claim phase (no legal claims)'),
+          { extra: { turnPhase: game.turnPhase, currentPlayerIndex: game.currentPlayerIndex, humanIndex } },
+        );
+      }
     }
   }, [
     game?.turnPhase,
@@ -908,6 +963,7 @@ export default function useGameController(
     claimTimeoutMs,
     updateClaimOptions,
     updateClaimTimer,
+    forcePass,
   ]);
 
   // === Claim countdown ===
@@ -929,7 +985,17 @@ export default function useGameController(
       // stays 'claim' for other claimants still deciding — retrying further
       // would just spam rejected PASS calls at the (already-moved-on) engine.
       const live = gameRef.current;
-      if (!live || live.phase !== GamePhase.PLAYING || live.turnPhase !== 'claim' || claimOptionsRef.current.length === 0) {
+      // currentPlayerIndex is not optional here: engine handlePass rejects
+      // when the rotation is not on this seat (turnManager.ts), so retrying
+      // outside our turn can never succeed — it just spins at 10Hz. The timer
+      // re-arms via the claim-detection effect once the rotation arrives.
+      if (
+        !live ||
+        live.phase !== GamePhase.PLAYING ||
+        live.turnPhase !== 'claim' ||
+        live.currentPlayerIndex !== humanIndex ||
+        claimOptionsRef.current.length === 0
+      ) {
         updateClaimTimer(0);
         return;
       }
@@ -941,14 +1007,13 @@ export default function useGameController(
         // NOT one-shot (unlike a "the countdown just crossed zero" sound
         // would be): a single rejected forcePass() must not wedge the hand
         // forever, which is exactly the bug this replaces. The guard above —
-        // turnPhase leaving 'claim' or claimOptionsRef going empty, both of
-        // which follow a successful pass — is what stops the retries, not a
-        // guard here.
+        // turnPhase leaving 'claim', the rotation moving off our seat, or
+        // claimOptionsRef going empty — is what stops the retries.
         forcePass();
       }
     }, 100);
     return () => clearInterval(interval);
-  }, [claimOptions.length > 0 && game?.turnPhase === 'claim', game?.phase, forcePass]);
+  }, [claimOptions.length > 0 && game?.turnPhase === 'claim', game?.phase, humanIndex, forcePass]);
 
   // === Scoring on hand over ===
   useEffect(() => {

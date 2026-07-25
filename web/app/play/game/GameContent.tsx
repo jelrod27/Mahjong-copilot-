@@ -233,6 +233,8 @@ export default function GameContent() {
         claimOptions={controller.claimOptions}
         claimTimer={controller.claimTimer}
         claimTimeoutMs={controller.claimTimeoutMs}
+        turnTimer={controller.turnTimer}
+        turnTimeoutMs={controller.turnTimeout}
         npcSeatsOverride={floorSeats}
       />
 

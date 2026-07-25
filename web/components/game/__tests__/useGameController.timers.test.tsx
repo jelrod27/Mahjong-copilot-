@@ -256,3 +256,83 @@ describe('useGameController timer race / leak fixes', () => {
     expect(result.current.claimTimer).toBe(0);
   });
 });
+
+describe('useGameController auto-discard respects player selection (Plan 012)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    applyActionMock.mockReset();
+    advanceMatchMock.mockClear();
+    initializeMatchMock.mockReset();
+    getAvailableClaimsMock.mockReset();
+    getAvailableClaimsMock.mockReturnValue([]);
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  });
+
+  it('auto-discard discards the selected tile', () => {
+    // hand = [t1, t2]; lastDrawnTile defaults to t1 (hand[0]). Select t2 —
+    // the tile that is NOT lastDrawnTile — so this only passes if the
+    // selection, not the drawn-tile fallback, drives the auto-discard.
+    const game = makeGame();
+    initializeMatchMock.mockReturnValue(makeMatch(game));
+    applyActionMock.mockReturnValue(game);
+
+    const { result } = renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+
+    act(() => { result.current.selectTile(game.players[0].hand[1]); }); // select t2
+    act(() => { vi.advanceTimersByTime(20_000); });
+
+    const discards = discardsByHuman();
+    expect(discards).toHaveLength(1);
+    expect((discards[0] as ApplyCall)[2]).toMatchObject({ type: 'DISCARD', tile: { id: 't2' } });
+  });
+
+  it('auto-discard falls back to the drawn tile when nothing is selected', () => {
+    // Pins the pre-existing fallback: with no selection, lastDrawnTile is discarded.
+    const game = makeGame(); // lastDrawnTile = hand[0] = t1
+    initializeMatchMock.mockReturnValue(makeMatch(game));
+    applyActionMock.mockReturnValue(game);
+
+    const { result } = renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+
+    // No selectTile() call.
+    act(() => { vi.advanceTimersByTime(20_000); });
+
+    const discards = discardsByHuman();
+    expect(discards).toHaveLength(1);
+    expect((discards[0] as ApplyCall)[2]).toMatchObject({
+      type: 'DISCARD',
+      tile: { id: game.lastDrawnTile!.id },
+    });
+  });
+
+  it('changing the selection does not reset the turn timer', () => {
+    // Regression guard for the ref-based read in the auto-discard effect: if
+    // selectedTileId were in the effect's dependency array instead, re-selecting
+    // a tile would tear down and restart the setTimeout, pushing the deadline
+    // back by however long was already spent — silently defeating the 20s cap.
+    const game = makeGame(); // hand = [t1, t2]
+    initializeMatchMock.mockReturnValue(makeMatch(game));
+    applyActionMock.mockReturnValue(game);
+
+    const { result } = renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+
+    act(() => { result.current.selectTile(game.players[0].hand[0]); }); // select t1
+    act(() => { vi.advanceTimersByTime(15_000); }); // 15s of the original 20s window elapse
+
+    act(() => { result.current.selectTile(game.players[0].hand[1]); }); // change selection to t2
+
+    // Advance 6s more (21s total). If the timer had been reset by the
+    // re-selection above, a fresh 20s window starting at t=15s would not fire
+    // until t=35s, and no discard would have happened yet.
+    act(() => { vi.advanceTimersByTime(6_000); });
+
+    expect(discardsByHuman()).toHaveLength(1);
+  });
+});

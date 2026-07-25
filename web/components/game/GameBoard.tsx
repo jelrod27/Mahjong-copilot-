@@ -53,6 +53,8 @@ interface GameBoardProps {
   claimOptions?: AvailableClaim[];
   claimTimer?: number;
   claimTimeoutMs?: number;
+  turnTimer?: number;
+  turnTimeoutMs?: number;
   /** Parlour floor matches pin specific NPCs to seats (overrides roster). */
   npcSeatsOverride?: Record<'left' | 'top' | 'right', NpcId>;
 }
@@ -63,7 +65,7 @@ export default function GameBoard({
   onTileSelect, onSortHand, onDiscard, onKong, onWin, onClaimBest, onSubmitChow, onPass,
   canDeclareKong: canKongProp, canDeclareWin: canWinProp, winShortfall,
   hasClaimOptions: hasClaimsProp, claimOptions = [], claimTimer,
-  claimTimeoutMs = 10000, npcSeatsOverride,
+  claimTimeoutMs = 10000, turnTimer, turnTimeoutMs = 0, npcSeatsOverride,
 }: GameBoardProps) {
   const humanIndex = gameState.players.findIndex(p => p.id === humanPlayerId);
   const humanPlayer = gameState.players[humanIndex];
@@ -349,6 +351,8 @@ export default function GameBoard({
           isHumanTurn={isHumanTurn}
           claimTimer={claimTimer}
           claimTimeout={claimTimeoutMs}
+          turnTimer={turnTimer}
+          turnTimeout={turnTimeoutMs}
         />
 
         {/* Player info bar */}

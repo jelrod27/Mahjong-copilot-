@@ -39,6 +39,7 @@ const DELAYS = {
 const CLAIM_TIMEOUT_STANDARD = 10000;
 const CLAIM_TIMEOUT_TRAINING = 20000;
 const DEBOUNCE_MS = 200;
+const TURN_TIMER_TICK_MS = 100;
 
 export type TablePreset = 'standard' | 'training';
 
@@ -68,6 +69,10 @@ export interface GameController {
   heatOverlays: Map<string, TileHeatOverlay>;
   claimOptions: AvailableClaim[];
   claimTimer: number;
+  /** ms remaining on the human's discard-phase turn timer (0 when inactive). */
+  turnTimer: number;
+  /** Total ms for the human's discard-phase turn timer (0 when inactive). */
+  turnTimeout: number;
   isGameOver: boolean;
   isMatchOver: boolean;
   scoringResult: ScoringResult | null;
@@ -141,6 +146,13 @@ export default function useGameController(
     claimTimerRef.current = value;
     setClaimTimer(value);
   }, []);
+  const [turnTimer, setTurnTimer] = useState(0);
+  const turnTimerRef = useRef(0);
+  const updateTurnTimer = useCallback((value: number) => {
+    turnTimerRef.current = value;
+    setTurnTimer(value);
+  }, []);
+  const [turnTimeout, setTurnTimeout] = useState(0);
   const [scoringResult, setScoringResult] = useState<ScoringResult | null>(null);
   const [tileClassifications, setTileClassifications] = useState<Map<string, 'green' | 'orange' | 'red'>>(new Map());
   const [heatOverlays, setHeatOverlays] = useState<Map<string, TileHeatOverlay>>(new Map());
@@ -156,9 +168,14 @@ export default function useGameController(
   // state transitions (resetHandState) or when phase leaves discard.
   const humanDiscardInFlightRef = useRef(false);
   const lastActionTimeRef = useRef(0);
+  // Mirrors selectedTileId for the auto-discard timeout below. Read from a ref
+  // (not the dependency array) so the timeout is NOT torn down and restarted
+  // every time the player taps a different tile — that would reset their clock.
+  const selectedTileIdRef = useRef<string | undefined>(undefined);
   // Keep refs in sync
   useEffect(() => { gameRef.current = game; }, [game]);
   useEffect(() => { matchRef.current = match; }, [match]);
+  useEffect(() => { selectedTileIdRef.current = selectedTileId; }, [selectedTileId]);
 
   const resetHandState = useCallback(() => {
     setSelectedTileId(undefined);
@@ -670,10 +687,19 @@ export default function useGameController(
       const current = gameRef.current;
       if (!current || current.turnPhase !== 'discard' || current.currentPlayerIndex !== humanIndex) return;
       const hand = current.players[humanIndex].hand;
-      // Auto-discard last drawn tile, or last tile in hand
-      const autoTile = current.lastDrawnTile
-        ? hand.find(t => t.id === current.lastDrawnTile?.id)
-        : hand[hand.length - 1];
+      // Auto-discard the player's selection, then the last drawn tile, then
+      // fall back to the last tile in hand. Read the selection from a ref
+      // (not the effect deps) so re-selecting a tile never restarts this timer.
+      const selectedTileId = selectedTileIdRef.current;
+      const selected = selectedTileId
+        ? hand.find(t => t.id === selectedTileId)
+        : undefined;
+      const autoTile =
+        selected ??
+        (current.lastDrawnTile
+          ? hand.find(t => t.id === current.lastDrawnTile?.id)
+          : undefined) ??
+        hand[hand.length - 1];
       if (autoTile) {
         humanDiscardInFlightRef.current = true;
         const next = doAction(HUMAN_ID, { type: 'DISCARD', tile: autoTile });
@@ -681,11 +707,54 @@ export default function useGameController(
           humanDiscardInFlightRef.current = false;
           return;
         }
+        soundManager.play('tilePlace');
         setSelectedTileId(undefined);
       }
     }, (game.turnTimeLimit ?? 20) * 1000);
     return () => clearTimeout(timer);
   }, [game?.turnPhase, game?.currentPlayerIndex, game?.phase, humanIndex, doAction]);
+
+  // === Turn timer reset — (re)arm the discard countdown when a fresh human
+  // discard phase begins; clear it once the phase moves on. ===
+  useEffect(() => {
+    if (!game || game.phase !== GamePhase.PLAYING) {
+      updateTurnTimer(0);
+      setTurnTimeout(0);
+      return;
+    }
+    if (game.turnPhase !== 'discard' || game.currentPlayerIndex !== humanIndex) {
+      updateTurnTimer(0);
+      setTurnTimeout(0);
+      return;
+    }
+    const total = (game.turnTimeLimit ?? 20) * 1000;
+    setTurnTimeout(total);
+    updateTurnTimer(total);
+  }, [game?.turnPhase, game?.currentPlayerIndex, game?.phase, humanIndex]);
+
+  // === Turn countdown tick — ticks turnTimer down every 100ms and plays a
+  // warning sound once it crosses the 5s mark. Mirrors the claim countdown. ===
+  useEffect(() => {
+    if (turnTimer <= 0) return;
+    if (!game || game.phase !== GamePhase.PLAYING || game.turnPhase !== 'discard' || game.currentPlayerIndex !== humanIndex) {
+      if (turnTimer !== 0) updateTurnTimer(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      const live = gameRef.current;
+      if (!live || live.phase !== GamePhase.PLAYING || live.turnPhase !== 'discard' || live.currentPlayerIndex !== humanIndex) {
+        updateTurnTimer(0);
+        return;
+      }
+      const prev = turnTimerRef.current;
+      const next = Math.max(0, prev - TURN_TIMER_TICK_MS);
+      updateTurnTimer(next);
+      if (next <= 5000 && prev > 5000) {
+        soundManager.play('turnAlert');
+      }
+    }, TURN_TIMER_TICK_MS);
+    return () => clearInterval(interval);
+  }, [turnTimer > 0, game?.phase, game?.turnPhase, game?.currentPlayerIndex, humanIndex]);
 
   // === AI turn processing — single in-flight chain (no draw/discard race) ===
   useEffect(() => {
@@ -869,7 +938,7 @@ export default function useGameController(
 
   return {
     game, match, selectedTileId, suggestedTileId, tutorAdvice, tenpaiStatus,
-    tileClassifications, heatOverlays, claimOptions, claimTimer, isGameOver, isMatchOver,
+    tileClassifications, heatOverlays, claimOptions, claimTimer, turnTimer, turnTimeout, isGameOver, isMatchOver,
     scoringResult, faanProjection, claimTimeoutMs, tablePreset,
     selectTile, discardSelected, sortHand, declareKong, declareWin,
     submitClaim, submitChow, claimBest, pass, startNewGame, continueToNextHand,

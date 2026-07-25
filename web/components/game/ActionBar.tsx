@@ -6,6 +6,7 @@ import { AvailableClaim } from '@/engine/types';
 import { getBestClaimSubmission } from '@/engine/claiming';
 import type { WinShortfall } from './useGameController';
 import ChowSelector from './ChowSelector';
+import TurnTimer from './TurnTimer';
 
 interface ActionBarProps {
   canDiscard: boolean;
@@ -27,6 +28,8 @@ interface ActionBarProps {
   isHumanTurn: boolean;
   claimTimer?: number;
   claimTimeout?: number;
+  turnTimer?: number;
+  turnTimeout?: number;
 }
 
 function claimSummaryLabel(claimType: string): string {
@@ -82,6 +85,8 @@ export default function ActionBar({
   isHumanTurn,
   claimTimer = 0,
   claimTimeout = 10000,
+  turnTimer = 0,
+  turnTimeout = 0,
 }: ActionBarProps) {
   if (turnPhase === 'discard' && isHumanTurn) {
     const discardAria = selectedTileName
@@ -100,6 +105,7 @@ export default function ActionBar({
             <>Select one tile from your hand, then confirm discard.</>
           )}
         </p>
+        <TurnTimer timeRemaining={turnTimer} totalTime={turnTimeout} />
         <div className="flex flex-wrap items-center justify-center gap-2">
           <button
             type="button"

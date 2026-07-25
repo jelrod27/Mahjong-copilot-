@@ -23,13 +23,57 @@ session in a real browser at desktop (1280×800) and mobile (375×812).
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 011 | [Mobile hand fits without horizontal scroll](011-mobile-hand-fits-without-scroll.md) | P1 | M | — | TODO |
-| 012 | [Turn timer + honest auto-discard](012-turn-timer-and-honest-auto-discard.md) | P1 | S | — | TODO |
+| 011 | [Mobile hand fits without horizontal scroll](011-mobile-hand-fits-without-scroll.md) | P1 | M | — | **REJECTED** — wrong approach; superseded by 018 |
+| 012 | [Turn timer + honest auto-discard](012-turn-timer-and-honest-auto-discard.md) | P1 | S | — | IN PROGRESS |
 | 013 | [Claim window reliability and feedback](013-claim-window-reliability-and-feedback.md) | P1 | M | 012 (soft) | TODO |
 | 014 | [Pacing — separate speed from difficulty](014-pacing-separate-speed-from-difficulty.md) | P1 | M | 013 (soft) | TODO |
-| 015 | [Table art direction — kill the generic green felt](015-table-art-direction.md) | P1 | M | — | TODO |
-| 016 | [Audio identity — replace oscillator chiptune](016-audio-identity.md) | P2 | M | operator decision gate | TODO |
-| 017 | [Navigation shell and dead ends](017-navigation-shell-and-dead-ends.md) | P2 | M | — | TODO |
+| 015 | [Table art direction — kill the generic green felt](015-table-art-direction.md) | P1 | M | — | IN PROGRESS |
+| 016 | [Audio identity — replace oscillator chiptune](016-audio-identity.md) | P2 | M | operator asset approval | **DONE (run 1)** — architecture landed, awaiting assets |
+| 017 | [Navigation shell and dead ends](017-navigation-shell-and-dead-ends.md) | P2 | M | — | **DONE** — approved after 1 revision |
+| 018 | [Mobile hand wraps to two rows](018-mobile-hand-wraps-to-two-rows.md) | P1 | S | — | IN PROGRESS |
+
+### Execution record — round 2 (2026-07-25)
+
+Executed via dispatched subagents in isolated worktrees; each diff reviewed by
+the advisor against its done criteria before a verdict.
+
+- **011 → REJECTED, superseded by 018.** The plan assumed `.tile-scale-root`
+  was the hand row's direct flex child. It is not — the flex item is a
+  `shrink-0` wrapper `<div>` that also contains the tutor label. The CSS
+  shrank the tile to **2px** while the wrapper held at 39px, giving **0 of 14**
+  tiles fully visible, worse than the 8/14 baseline. Executor correctly hit the
+  STOP condition, diagnosed the root cause, and left the work uncommitted.
+  Plan 018 replaces shrink-to-fit with wrapping to two rows.
+- **016 run 1 — APPROVED.** Sample-playback path added behind the unchanged
+  `play`/`stop`/`duck` API; `SAMPLE_ASSETS` empty so the oscillator path stays
+  active. One file changed, no audio binaries added. Verified independently:
+  typecheck exit 0, 587/587 tests. Executor also corrected two factual errors
+  in the plan (see the CORRECTION notes in 016).
+- **017 — APPROVED after one revision round.** First pass completed all six
+  steps but removing `<main>` from `DeferredFeaturePage` left **7 routes with
+  zero `<main>` landmarks** (worse than the nested-landmark bug it fixed).
+  Executor flagged this itself in NOTES. Revision added `<main>` to
+  `multiplayer/layout.tsx` and a centering `<main>` wrapper to the four
+  standalone deferred pages — restoring both the landmark and the lost vertical
+  centering. Verified: all nine routes at exactly 1 `<main>`, `/play/game`
+  still chrome-free, 588/588 tests, 18 e2e pass.
+- **Scope rulings**: `AppSidebar.tsx` (017 step 4) and `GameBoard.tsx`
+  (011/018 step for the `game-hand-scroll` token) were both absent from their
+  plans' Scope lists but explicitly required by the step bodies. Advisor ruled
+  these plan oversights, not executor scope violations.
+
+### Environment traps found during execution (read before dispatching more work)
+
+- **`preview_start({name})` reads `.claude/launch.json` from the MAIN REPO
+  ROOT, not the worktree.** Worktree executors using it silently verify against
+  stale main-branch code. Two executors hit this independently. Workaround:
+  start `npx next dev -p <port>` from the worktree's `web/` via Bash, then drive
+  the Browser pane with `navigate`/`javascript_tool` against that port.
+- **The Browser pane is shared across concurrent agents.** One executor had its
+  tab hijacked mid-task twice by another agent's navigation. Always confirm
+  `window.location.href` before trusting a measurement.
+- Fresh worktrees have no `node_modules`; `npm install` first is expected setup.
+- Playwright may need `npx playwright install chromium` in a fresh worktree.
 
 ## Round 2 dependency notes
 

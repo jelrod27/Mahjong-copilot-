@@ -1,4 +1,22 @@
-# Plan 011: Make the player's full hand visible on portrait mobile without horizontal scrolling
+# Plan 011: ❌ REJECTED — superseded by plan 018
+
+> **DO NOT EXECUTE THIS PLAN.** Its approach is wrong and was proven so in
+> execution on 2026-07-25. See `plans/018-mobile-hand-wraps-to-two-rows.md`.
+>
+> **Why it failed**: the plan assumed `.tile-scale-root` is the hand row's
+> direct flex child. It is not — the real flex item is a `shrink-0` wrapper
+> `<div>` that also contains the GOOD/OK/KEEP tutor label, which has its own
+> intrinsic text width. Applying `flex-shrink: 1` to `.tile-scale-root`
+> shrank the *tile* to 2px while the wrapper stayed at 39px, held open by the
+> label. The row still overflowed to 610px and **0 of 14** tiles were fully
+> visible — strictly worse than the 8/14 baseline.
+>
+> The file is kept as the record. Plan 018 documents the true DOM and wraps the
+> hand to two rows instead.
+
+---
+
+# Plan 011 (original text): Make the player's full hand visible on portrait mobile without horizontal scrolling
 
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving to the

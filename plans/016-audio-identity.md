@@ -56,8 +56,18 @@ play/stop/duck API. The swap is architecturally cheap.
  */
 ```
 
-Note: `docs/design/audio.md` referenced there **does not exist** —
-`ls web/../docs/design/` fails. Treat the comment as intent, not as a spec.
+**CORRECTION (2026-07-25, from run 1)**: an earlier draft of this plan claimed
+`docs/design/audio.md` does not exist. That was wrong — the advisor checked the
+wrong path. It **does** exist at repo-root `docs/design/audio.md` (added in
+commit `8b171c5`), and it already documents a "Path to commissioned tracks"
+section describing the `BufferTrack` / `decodeAudioData` /
+`AudioBufferSourceNode.loop` approach. **Read it before run 2** — the intended
+design is already written down there.
+
+**CORRECTION 2**: Step 5 of this plan is largely pre-done.
+`web/app/(main)/settings/SettingsPageClient.tsx` already has independent
+`soundEnabled` ("Game sounds") and `musicEnabled` ("Parlour music") toggles
+wired to Redux. Verify rather than rebuild.
 
 Structure: `MusicTrack` objects (`bpm`, `steps`, `notes`, optional `transpose`)
 where each note is `[stepIndex, midiNote, durationInSteps, channel]`. Tracks
@@ -84,10 +94,41 @@ find web/public -type f \( -name "*.mp3" -o -name "*.ogg" -o -name "*.wav" \)
 - Sound is user-mutable — `GameHUD.tsx:138` has a mute control backed by
   `soundManager.isEnabled()`. Any new audio must respect it.
 
-## Step 1 — DECISION GATE (operator input required)
+## Step 1 — DECISION GATE — ✅ ANSWERED 2026-07-25
 
-**Do not write code until the operator has answered these.** Present the
-options, get a decision, record it in this file, then proceed.
+The operator has made both calls. **Recorded decisions, binding on this plan:**
+
+> **Direction: A — Parlour room tone.** No melodic loop by default. An ambient
+> bed (distant tile clatter, low room hum, occasional muted chatter) plus real
+> tile-clack samples for actions. Do **not** add a melodic loop in this plan.
+>
+> **Asset source: Pixabay Audio and/or OpenGameArt.** Royalty-free or CC0 only.
+> Because these require no attribution, **no in-app credits surface is needed**
+> — which keeps this plan's scope as written.
+>
+> **Hard licence rule**: every asset must be royalty-free or CC0, permitting
+> commercial use and web distribution, with **no attribution requirement**. If
+> a candidate asset is CC-BY, CC-BY-NC, or has unclear terms, reject it and
+> find another. Do not "note the attribution and move on" — that changes this
+> plan's scope and is a STOP condition.
+
+### ⚠️ Download restriction — read before Step 3
+
+**The executor must NOT download any audio file.** Asset acquisition is the
+operator's action, not the executor's.
+
+Instead, the executor's job for assets is to produce a **shortlist for
+approval**: for each needed sound, 2–3 candidates with the direct URL, the file
+size, the exact licence, and a one-line description. The operator downloads and
+places the approved files, then a follow-up run completes Steps 4–6.
+
+This means a single executor run covers **Step 2 only** (the sample-playback
+architecture, which needs no assets) plus the shortlist. Steps 3–6 resume once
+files are in place. Report `STATUS: COMPLETE` for that scope and say plainly
+in NOTES that Steps 3–6 are pending assets.
+
+<details>
+<summary>Original decision-gate options (kept for the record)</summary>
 
 ### Question A: what should this game sound like?
 
@@ -125,7 +166,10 @@ distribution permitted, and whether attribution is required. **If attribution
 is required, this plan must add a credits surface — flag that back before
 proceeding.**
 
-**STOP here until both questions are answered.**
+</details>
+
+**Both questions are answered — the gate is passed. Proceed under the recorded
+decisions at the top of this section.**
 
 ## Commands you will need
 
@@ -235,16 +279,26 @@ Audio is largely untestable in jsdom. Keep the surface honest instead:
 
 ## Done criteria
 
-ALL must hold:
+### Run 1 — architecture + shortlist (no assets yet)
 
-- [ ] Decision gate answered and recorded in this file
-- [ ] Licences recorded in `docs/design/audio.md`
+- [x] Decision gate answered and recorded in this file
+- [ ] Sample-playback path added behind the unchanged `play`/`stop`/`duck` API
 - [ ] `npm run typecheck` exits 0
 - [ ] `npm run lint` exits 0
 - [ ] `npm test` exits 0
 - [ ] `npm run build` exits 0
-- [ ] `grep -n "OscillatorNode\|midiToFreq" web/lib/musicEngine.ts` → no matches
+- [ ] Oscillator path still present and still the active default (it is removed
+      only in run 2, once real assets are proven working)
 - [ ] No files under `web/components/game/` modified (`git status`)
+- [ ] **No audio files downloaded or added to the repo**
+- [ ] Asset shortlist delivered: per sound, 2–3 candidates with direct URL,
+      file size, exact licence, one-line description — all royalty-free/CC0
+      with no attribution requirement
+
+### Run 2 — after the operator supplies approved assets
+
+- [ ] Licences recorded in `docs/design/audio.md`
+- [ ] `grep -n "OscillatorNode\|midiToFreq" web/lib/musicEngine.ts` → no matches
 - [ ] Ambient bed under 500KB
 - [ ] Music and SFX independently mutable
 - [ ] `plans/README.md` status row updated

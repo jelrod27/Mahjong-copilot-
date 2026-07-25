@@ -69,6 +69,12 @@ export interface GameController {
   heatOverlays: Map<string, TileHeatOverlay>;
   claimOptions: AvailableClaim[];
   claimTimer: number;
+  /**
+   * True only once the sequential claim rotation has actually reached the
+   * human — as opposed to `claimOptions` being populated the instant the
+   * claim phase starts, before AI claimants ahead of the human have acted.
+   */
+  isMyClaimTurn: boolean;
   /** ms remaining on the human's discard-phase turn timer (0 when inactive). */
   turnTimer: number;
   /** Total ms for the human's discard-phase turn timer (0 when inactive). */
@@ -80,17 +86,20 @@ export interface GameController {
   claimTimeoutMs: number;
   tablePreset: TablePreset;
   selectTile: (tile: Tile) => void;
-  discardSelected: () => void;
+  /** Returns true when the discard was accepted, false when the engine/debounce rejected it. */
+  discardSelected: () => boolean;
   /** Sort the human hand by suit and number (animated via FLIP in PlayerHand). */
   sortHand: () => void;
   declareKong: () => void;
   declareWin: () => void;
-  submitClaim: (claimType: ClaimType, tilesFromHand: Tile[]) => void;
-  /** Submit a specific chow combination (from ChowSelector). */
-  submitChow: (tilesFromHand: Tile[]) => void;
-  /** Recomputes best claim from live game state (avoids stale tile refs), then submits. */
-  claimBest: () => void;
-  pass: () => void;
+  /** Returns true when the claim was accepted, false when the engine rejected it. */
+  submitClaim: (claimType: ClaimType, tilesFromHand: Tile[]) => boolean;
+  /** Submit a specific chow combination (from ChowSelector). Returns true when accepted. */
+  submitChow: (tilesFromHand: Tile[]) => boolean;
+  /** Recomputes best claim from live game state (avoids stale tile refs), then submits. Returns true when accepted. */
+  claimBest: () => boolean;
+  /** Returns true when the pass was accepted, false when the engine rejected it. */
+  pass: () => boolean;
   startNewGame: (difficulty: 'easy' | 'medium' | 'hard', mode?: GameMode) => void;
   continueToNextHand: () => void;
   /** Resume an in-progress match from localStorage. */
@@ -140,6 +149,15 @@ export default function useGameController(
   const [tutorAdvice, setTutorAdvice] = useState<TutorAdvice | null>(null);
   const [tenpaiStatus, setTenpaiStatus] = useState<TenpaiStatus | null>(null);
   const [claimOptions, setClaimOptions] = useState<AvailableClaim[]>([]);
+  // Mirrors claimOptions for the claim countdown below — read from a ref
+  // (not React state) so a tick that fires within the same macrotask as a
+  // just-accepted forcePass() sees the human's claim window as resolved
+  // immediately, rather than waiting for a re-render to notice.
+  const claimOptionsRef = useRef<AvailableClaim[]>([]);
+  const updateClaimOptions = useCallback((value: AvailableClaim[]) => {
+    claimOptionsRef.current = value;
+    setClaimOptions(value);
+  }, []);
   const [claimTimer, setClaimTimer] = useState(0);
   const claimTimerRef = useRef(0);
   const updateClaimTimer = useCallback((value: number) => {
@@ -182,7 +200,7 @@ export default function useGameController(
     setSuggestedTileId(undefined);
     setTutorAdvice(null);
     setTenpaiStatus(null);
-    setClaimOptions([]);
+    updateClaimOptions([]);
     updateClaimTimer(0);
     setScoringResult(null);
     setTileClassifications(new Map());
@@ -295,13 +313,24 @@ export default function useGameController(
   const isHumanTurn = game?.currentPlayerIndex === humanIndex;
   const isGameOver = game?.phase === GamePhase.FINISHED;
   const isMatchOver = match?.phase === 'finished';
+  // True only once the sequential claim rotation has actually reached the
+  // human — claimOptions/claimTimer are armed as soon as the claim phase
+  // starts, before AI claimants ahead of the human have acted.
+  const isMyClaimTurn =
+    !!game &&
+    game.phase === GamePhase.PLAYING &&
+    game.turnPhase === 'claim' &&
+    game.currentPlayerIndex === humanIndex;
 
-  // Apply an action and update state (with rapid-click debouncing for human)
-  const doAction = useCallback((playerId: string, action: any): GameState | null => {
+  // Apply an action and update state (with rapid-click debouncing for human).
+  // `bypassDebounce` is for the claim countdown's forced auto-pass retry — a
+  // timer expiry is not a human double-tap, so it must not be swallowed by
+  // the same guard that protects against one.
+  const doAction = useCallback((playerId: string, action: any, opts?: { bypassDebounce?: boolean }): GameState | null => {
     // Debounce human actions
     if (playerId === HUMAN_ID) {
       const now = Date.now();
-      if (now - lastActionTimeRef.current < DEBOUNCE_MS) return null;
+      if (!opts?.bypassDebounce && now - lastActionTimeRef.current < DEBOUNCE_MS) return null;
       lastActionTimeRef.current = now;
     }
 
@@ -341,22 +370,23 @@ export default function useGameController(
     soundManager.play('tileDraw');
   }, []);
 
-  const discardSelected = useCallback(() => {
+  const discardSelected = useCallback((): boolean => {
     const current = gameRef.current;
-    if (!current || current.turnPhase !== 'discard' || current.currentPlayerIndex !== humanIndex) return;
+    if (!current || current.turnPhase !== 'discard' || current.currentPlayerIndex !== humanIndex) return false;
     // Bug #7: mutex against auto-discard timer — whichever fires first wins.
-    if (humanDiscardInFlightRef.current) return;
+    if (humanDiscardInFlightRef.current) return false;
     const tile = current.players[humanIndex].hand.find(t => t.id === selectedTileId);
-    if (!tile) return;
+    if (!tile) return false;
     humanDiscardInFlightRef.current = true;
     const next = doAction(HUMAN_ID, { type: 'DISCARD', tile });
     if (!next) {
       // Debounce or engine rejection — release the mutex so a retry/auto can fire.
       humanDiscardInFlightRef.current = false;
-      return;
+      return false;
     }
     setSelectedTileId(undefined);
     soundManager.play('tilePlace');
+    return true;
   }, [selectedTileId, humanIndex, doAction]);
 
   const declareKong = useCallback(() => {
@@ -399,55 +429,76 @@ export default function useGameController(
     doAction(HUMAN_ID, { type: 'DECLARE_WIN' });
   }, [doAction]);
 
-  const submitClaim = useCallback((claimType: ClaimType, tilesFromHand: Tile[]) => {
+  const submitClaim = useCallback((claimType: ClaimType, tilesFromHand: Tile[]): boolean => {
     const next = doAction(HUMAN_ID, { type: 'CLAIM', claimType, tilesFromHand });
     if (next) {
-      setClaimOptions([]);
+      updateClaimOptions([]);
       updateClaimTimer(0);
       setTutorAdvice(null);
       setSuggestedTileId(undefined);
       soundManager.play(claimType === 'win' ? 'win' : 'claim');
     }
+    return !!next;
   }, [doAction, updateClaimTimer]);
 
-  const claimBest = useCallback(() => {
+  const claimBest = useCallback((): boolean => {
     const current = gameRef.current;
-    if (!current || current.phase !== GamePhase.PLAYING || current.turnPhase !== 'claim') return;
-    if (current.currentPlayerIndex !== humanIndex) return;
-    if (current.lastDiscardedBy === HUMAN_ID) return;
+    if (!current || current.phase !== GamePhase.PLAYING || current.turnPhase !== 'claim') return false;
+    if (current.currentPlayerIndex !== humanIndex) return false;
+    if (current.lastDiscardedBy === HUMAN_ID) return false;
     const claims = getLegalClaims(current, humanIndex);
     const best = getBestClaimSubmission(claims);
-    if (!best) return;
+    if (!best) return false;
     const next = doAction(HUMAN_ID, { type: 'CLAIM', claimType: best.claimType, tilesFromHand: best.tilesFromHand });
     if (next) {
-      setClaimOptions([]);
+      updateClaimOptions([]);
       updateClaimTimer(0);
       setTutorAdvice(null);
       setSuggestedTileId(undefined);
       soundManager.play(best.claimType === 'win' ? 'win' : 'claim');
     }
+    return !!next;
   }, [doAction, humanIndex, updateClaimTimer]);
 
-  const submitChow = useCallback((tilesFromHand: Tile[]) => {
+  const submitChow = useCallback((tilesFromHand: Tile[]): boolean => {
     const next = doAction(HUMAN_ID, { type: 'CLAIM', claimType: 'chow' as ClaimType, tilesFromHand });
     if (next) {
-      setClaimOptions([]);
+      updateClaimOptions([]);
       updateClaimTimer(0);
       setTutorAdvice(null);
       setSuggestedTileId(undefined);
       soundManager.play('claim');
     }
+    return !!next;
   }, [doAction, updateClaimTimer]);
 
-  const pass = useCallback(() => {
+  const pass = useCallback((): boolean => {
     const next = doAction(HUMAN_ID, { type: 'PASS' });
     if (next) {
-      setClaimOptions([]);
+      updateClaimOptions([]);
       updateClaimTimer(0);
       setTutorAdvice(null);
       setSuggestedTileId(undefined);
       soundManager.play('pass');
     }
+    return !!next;
+  }, [doAction, updateClaimTimer]);
+
+  // Same effect as pass(), but bypasses the human double-tap debounce. Used
+  // only by the claim countdown's expiry retry below: a timer firing is not
+  // a double-tap, so the 200ms guard that protects against an accidental
+  // repeat tap must not also be the thing that lets the auto-pass wedge the
+  // hand forever (the original bug).
+  const forcePass = useCallback((): boolean => {
+    const next = doAction(HUMAN_ID, { type: 'PASS' }, { bypassDebounce: true });
+    if (next) {
+      updateClaimOptions([]);
+      updateClaimTimer(0);
+      setTutorAdvice(null);
+      setSuggestedTileId(undefined);
+      soundManager.play('pass');
+    }
+    return !!next;
   }, [doAction, updateClaimTimer]);
 
   // === Computed state ===
@@ -807,7 +858,7 @@ export default function useGameController(
   useEffect(() => {
     if (!game || game.phase !== GamePhase.PLAYING) return;
     if (game.turnPhase !== 'claim') {
-      setClaimOptions([]);
+      updateClaimOptions([]);
       updateClaimTimer(0);
       return;
     }
@@ -826,7 +877,7 @@ export default function useGameController(
     const alreadyActed = game.passedPlayers.includes(humanId) ||
       game.pendingClaims.some(c => c.playerId === humanId);
     if (alreadyActed) {
-      setClaimOptions([]);
+      updateClaimOptions([]);
       updateClaimTimer(0);
       return;
     }
@@ -836,7 +887,7 @@ export default function useGameController(
     const claims = getLegalClaims(game, humanIndex);
 
     if (claims.length > 0) {
-      setClaimOptions(claims);
+      updateClaimOptions(claims);
       // Only start timer if not already running
       if (claimTimerRef.current <= 0) updateClaimTimer(claimTimeoutMs);
       soundManager.play('turnAlert');
@@ -861,7 +912,7 @@ export default function useGameController(
     // Bug #8: stop ticking as soon as the hand ends (robbing-the-kong win, wall
     // exhaustion, etc.) or the claim opportunity is gone — otherwise the
     // interval keeps calling pass() against a FINISHED state.
-    if (claimTimer <= 0 || claimOptions.length === 0) return;
+    if (claimOptions.length === 0) return;
     if (!game || game.phase !== GamePhase.PLAYING || game.turnPhase !== 'claim') {
       // Reset timer synchronously so lingering UI also clears.
       if (claimTimer !== 0) updateClaimTimer(0);
@@ -869,24 +920,32 @@ export default function useGameController(
     }
     const interval = setInterval(() => {
       // Re-check inside the tick — phase may have flipped between scheduling
-      // and firing.
+      // and firing. Also re-check claimOptionsRef: a forcePass() that just
+      // succeeded on THIS same tick batch clears it synchronously, and the
+      // human's own claim window is resolved at that point even if turnPhase
+      // stays 'claim' for other claimants still deciding — retrying further
+      // would just spam rejected PASS calls at the (already-moved-on) engine.
       const live = gameRef.current;
-      if (!live || live.phase !== GamePhase.PLAYING || live.turnPhase !== 'claim') {
+      if (!live || live.phase !== GamePhase.PLAYING || live.turnPhase !== 'claim' || claimOptionsRef.current.length === 0) {
         updateClaimTimer(0);
         return;
       }
       const prev = claimTimerRef.current;
       const next = Math.max(0, prev - 100);
       updateClaimTimer(next);
-      if (next === 0 && prev > 0) {
-        // Time's up — auto-pass (side effect in callback, not a state updater).
-        // Guard prev > 0 so we only fire once: on the tick that transitions to 0,
-        // not on subsequent ticks before the interval is cleared.
-        pass();
+      if (next === 0) {
+        // Time's up — retry every tick until it takes. This is intentionally
+        // NOT one-shot (unlike a "the countdown just crossed zero" sound
+        // would be): a single rejected forcePass() must not wedge the hand
+        // forever, which is exactly the bug this replaces. The guard above —
+        // turnPhase leaving 'claim' or claimOptionsRef going empty, both of
+        // which follow a successful pass — is what stops the retries, not a
+        // guard here.
+        forcePass();
       }
     }, 100);
     return () => clearInterval(interval);
-  }, [claimTimer > 0, claimOptions.length, game?.phase, game?.turnPhase, pass]);
+  }, [claimOptions.length > 0 && game?.turnPhase === 'claim', game?.phase, forcePass]);
 
   // === Scoring on hand over ===
   useEffect(() => {
@@ -938,7 +997,7 @@ export default function useGameController(
 
   return {
     game, match, selectedTileId, suggestedTileId, tutorAdvice, tenpaiStatus,
-    tileClassifications, heatOverlays, claimOptions, claimTimer, turnTimer, turnTimeout, isGameOver, isMatchOver,
+    tileClassifications, heatOverlays, claimOptions, claimTimer, isMyClaimTurn, turnTimer, turnTimeout, isGameOver, isMatchOver,
     scoringResult, faanProjection, claimTimeoutMs, tablePreset,
     selectTile, discardSelected, sortHand, declareKong, declareWin,
     submitClaim, submitChow, claimBest, pass, startNewGame, continueToNextHand,

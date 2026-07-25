@@ -43,6 +43,7 @@ const baseProps = {
   onPass: vi.fn(),
   turnPhase: 'claim' as const,
   isHumanTurn: true,
+  isMyClaimTurn: true,
 };
 
 describe('ActionBar — claim guidance (PRD GAME-06)', () => {
@@ -110,5 +111,34 @@ describe('ActionBar — claim guidance (PRD GAME-06)', () => {
     );
     const passHint = screen.getByTestId('claim-pass-hint');
     expect(passHint.textContent).toMatch(/concealed|improve|shape/i);
+  });
+
+  it('claim buttons are not rendered before the human\'s claim turn', () => {
+    render(
+      <ActionBar
+        {...baseProps}
+        isMyClaimTurn={false}
+        claimOptions={[pungClaim]}
+        discardedTile={dragon}
+      />,
+    );
+    // The buttons would be inert until the claim rotation reaches the human —
+    // an absent control is honest, a dead-looking one still invites the tap.
+    expect(screen.queryByTestId('claim-best-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('claim-pass-button')).not.toBeInTheDocument();
+    expect(screen.getByTestId('claim-waiting-state')).toBeInTheDocument();
+  });
+
+  it('claim buttons render on the human\'s claim turn', () => {
+    render(
+      <ActionBar
+        {...baseProps}
+        isMyClaimTurn={true}
+        claimOptions={[pungClaim]}
+        discardedTile={dragon}
+      />,
+    );
+    expect(screen.getByTestId('claim-best-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('claim-waiting-state')).not.toBeInTheDocument();
   });
 });

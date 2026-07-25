@@ -24,13 +24,14 @@ session in a real browser at desktop (1280×800) and mobile (375×812).
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | 011 | [Mobile hand fits without horizontal scroll](011-mobile-hand-fits-without-scroll.md) | P1 | M | — | **REJECTED** — wrong approach; superseded by 018 |
-| 012 | [Turn timer + honest auto-discard](012-turn-timer-and-honest-auto-discard.md) | P1 | S | — | IN PROGRESS |
-| 013 | [Claim window reliability and feedback](013-claim-window-reliability-and-feedback.md) | P1 | M | 012 (soft) | TODO |
-| 014 | [Pacing — separate speed from difficulty](014-pacing-separate-speed-from-difficulty.md) | P1 | M | 013 (soft) | TODO |
-| 015 | [Table art direction — kill the generic green felt](015-table-art-direction.md) | P1 | M | — | IN PROGRESS |
+| 012 | [Turn timer + honest auto-discard](012-turn-timer-and-honest-auto-discard.md) | P1 | S | — | **DONE** |
+| 013 | [Claim window reliability and feedback](013-claim-window-reliability-and-feedback.md) | P1 | M | 012 (soft) | **DONE** |
+| 014 | [Pacing — separate speed from difficulty](014-pacing-separate-speed-from-difficulty.md) | P1 | M | 013 (soft) | **DONE** |
+| 015 | [Table art direction — kill the generic green felt](015-table-art-direction.md) | P1 | M | — | **DONE** — see follow-up finding F1 |
 | 016 | [Audio identity — replace oscillator chiptune](016-audio-identity.md) | P2 | M | operator asset approval | **DONE (run 1)** — architecture landed, awaiting assets |
 | 017 | [Navigation shell and dead ends](017-navigation-shell-and-dead-ends.md) | P2 | M | — | **DONE** — approved after 1 revision |
-| 018 | [Mobile hand wraps to two rows](018-mobile-hand-wraps-to-two-rows.md) | P1 | S | — | IN PROGRESS |
+| 018 | [Mobile hand wraps to two rows](018-mobile-hand-wraps-to-two-rows.md) | P1 | S | — | **DONE** — approved after 1 revision |
+| 019 | [Felt-agnostic board chrome](019-felt-agnostic-board-chrome.md) | P1 | S | 015 | **DONE** — closes F1 |
 
 ### Execution record — round 2 (2026-07-25)
 
@@ -61,6 +62,115 @@ the advisor against its done criteria before a verdict.
   (011/018 step for the `game-hand-scroll` token) were both absent from their
   plans' Scope lists but explicitly required by the step bodies. Advisor ruled
   these plan oversights, not executor scope violations.
+
+### F1 — NEW FINDING from executing 015: board chrome is colour-coupled to the green felt
+
+Surfaced by the advisor's own visual check after merging 015, at 1280×800 on
+the new `bamboo-mat` default. **Not a defect in 015** — 015 did exactly what it
+was asked. This is an emergent issue the felt change exposed.
+
+- **Evidence**: with the warm tan bamboo-mat felt active, the discard-pool
+  panel (`ds-panel`) and the bottom dock still render in the dark-green
+  `surface` / `elevated` tokens from `web/tailwind.config.ts:22-23`
+  (`rgb(26 43 30)` / `rgb(36 53 40)`). The result is a warm tan upper table
+  with a dark-green panel floating on it and a hard tan/green seam across the
+  dock edge.
+- **Why it was invisible before**: the chrome tokens were tuned when the felt
+  was always green, so panel and felt blended. Any non-green felt breaks that
+  assumption — `tournament-red` and `bamboo-mat` both clash; `casino-black`
+  is the least affected.
+- **Impact**: the felt itself is a clear improvement (real fibre texture,
+  softer vignette, proper rail), but overall board coherence at the default
+  setting is arguably worse than before, because two unrelated colour systems
+  now sit adjacent.
+- **Fix sketch**: make the in-game panel/dock surfaces felt-agnostic — either
+  translucent (`bg-black/25` + `backdrop-blur`) so they read as a shadow on
+  whatever felt is beneath, or derive them from a per-felt CSS variable the
+  felt classes set. The translucent route is smaller and works for all four
+  felts without per-felt tuning.
+- **Effort**: S–M. **Risk**: LOW (presentation only). **Confidence**: HIGH
+  (observed directly in a screenshot).
+
+### F2 — NEW FINDING from executing 019: the cosmetics page's active-state indicator is unreliable
+
+- **Evidence**: reported by the 019 executor while switching felts to take
+  screenshots. Clicking a felt card on `/cosmetics` writes the correct value to
+  the `table_felt` localStorage key (verified — the `felt-*` class on
+  `.game-board-root` does change), but the page's own "ACTIVE" badge does not
+  reliably reflect the selection on next load. A hydration-timing issue, not a
+  persistence failure — the setting itself works.
+- **Why this now matters more**: plan 017 added the first-ever inbound link to
+  `/cosmetics` (from Settings). Before that the page was unreachable except by
+  typing the URL, so the bug was invisible. It is now on a path users can
+  actually walk.
+- **Impact**: the player picks a felt, the page appears not to register it, so
+  they click again or assume it is broken — while the setting has in fact
+  applied. Confusing rather than destructive.
+- **Effort**: S. **Risk**: LOW. **Confidence**: MED — reported by an executor
+  as an incidental observation and not independently reproduced by the advisor.
+  **Verify before planning.**
+- **Fix sketch**: the page likely reads the stored value during render instead
+  of after mount. `web/app/(main)/page.tsx:32-43` already uses a post-mount
+  hydration guard for rank/daily/parlour state — apply the same pattern in
+  `web/app/(main)/cosmetics/page.tsx`.
+
+### F3 — NEW FINDING from executing 013: duplicate React keys in TileFlightLayer
+
+- **Evidence**: `web/components/game/TileFlightLayer.tsx:175` — the flight key
+  `discard-${lastTile.id}` collides when the same tile id produces two
+  concurrent flights. Observed as live React console errors during manual play
+  by the 013 executor.
+- **Impact**: duplicate keys make React's reconciliation unreliable for the
+  affected nodes — animations can attach to the wrong element or fail to clean
+  up. This is the layer responsible for every discard/claim animation, so
+  symptoms would read as intermittent "the tile animated weirdly" rather than
+  as an obvious error.
+- **Effort**: S. **Risk**: LOW. **Confidence**: MED — console errors observed
+  directly, but the visual consequence was not isolated. Reproduce before
+  planning.
+- **Fix sketch**: include the flight's own sequence/nonce in the key rather
+  than the tile id alone.
+- **Note**: pre-existing, not introduced by any round-2 plan. Related to the
+  already-recorded finding that `TileFlightLayer` re-measures every
+  `[data-flight-tile]` in the document on each state change.
+
+### F4 — NEW FINDING from executing 014: `web/lib/settingsStorage.ts` is dead code
+
+- **Evidence**: `grep -rn "loadSettings" web/` returns exactly one hit — its own
+  definition at `web/lib/settingsStorage.ts:8`. Nothing calls it. The module is
+  a full-state mirror that no longer participates in the real persistence path.
+- **The real path** every setting actually uses is `StorageService` +
+  per-key constants in `web/constants/appConstants.ts`, driven from
+  `web/store/actions/settingsActions.ts`. Plan 014 originally named
+  `settingsStorage.ts` as the file to edit; that was an advisor error, caught
+  and corrected by the executor, which followed the real pattern instead.
+- **Impact**: a misleading module that reads as the settings-persistence layer
+  and will send the next contributor (human or agent) down the wrong path —
+  as it did here.
+- **Effort**: S. **Risk**: LOW. **Confidence**: HIGH (grep is conclusive).
+- **Fix sketch**: delete `settingsStorage.ts`, or if `saveSettings` still has a
+  caller, reduce the module to just that and rename it to say so.
+
+### Advisor plan errors found by executors (round 2)
+
+Recorded honestly — these were defects in the plans, not the execution:
+
+1. **011** assumed the wrong DOM (`.tile-scale-root` as flex child). Fatal;
+   plan rejected and replaced by 018.
+2. **016** claimed `docs/design/audio.md` did not exist. It does — the advisor
+   checked `web/../docs/design/` from the wrong working directory.
+3. **018 step 3** raised `--tile-base-w` on `.game-board-scene`, enlarging
+   every tile surface when only the hand was intended. Caught in advisor review,
+   fixed by scoping to `.game-hand-row`.
+4. **017 / 018 / 012 / 013** all had Scope lists missing a file their own step
+   bodies required (`AppSidebar.tsx`, `GameBoard.tsx`, `GameContent.tsx`).
+   Executors flagged each rather than silently expanding scope.
+5. **014** named `settingsStorage.ts` as the persistence path; it is dead code
+   (F4 above).
+
+Lesson for future rounds: verify the DOM/actual call path before writing CSS
+selectors or naming files in Scope, and derive Scope from the step bodies
+rather than writing it first.
 
 ### Environment traps found during execution (read before dispatching more work)
 

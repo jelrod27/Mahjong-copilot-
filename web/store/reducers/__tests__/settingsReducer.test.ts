@@ -4,6 +4,7 @@ import {
   SETTINGS_INITIALIZE, SETTINGS_SET_VARIANT, SETTINGS_SET_LOCALE,
   SETTINGS_SET_THEME_MODE, SETTINGS_SET_SOUND_ENABLED, SETTINGS_SET_NOTIFICATIONS_ENABLED,
   SETTINGS_SET_LARGER_UI_TEXT, SETTINGS_SET_SHOW_TUTOR, SETTINGS_SET_DISPLAY_MODE,
+  SETTINGS_SET_GAME_SPEED,
   SETTINGS_SET_LIVE_FAAN_METER,
   SETTINGS_SET_TILE_VOICE, SETTINGS_SET_CRT_EFFECT, SETTINGS_SET_MUSIC_ENABLED,
 } from '../../actions/settingsActions';
@@ -17,6 +18,7 @@ const initialState = {
   largerUiText: false,
   showTutor: true,
   displayMode: 'tutor' as const,
+  gameSpeed: 'normal' as const,
   liveFaanMeter: true,
   tileVoice: 'off' as const,
   tilePalette: 'bone-wood' as const,
@@ -95,6 +97,16 @@ describe('settingsReducer', () => {
   it('defaults displayMode to tutor', () => {
     const state = settingsReducer(undefined, { type: 'UNKNOWN' });
     expect(state.displayMode).toBe('tutor');
+  });
+
+  it('handles SETTINGS_SET_GAME_SPEED', () => {
+    const state = settingsReducer(initialState, { type: SETTINGS_SET_GAME_SPEED, payload: 'fast' });
+    expect(state.gameSpeed).toBe('fast');
+  });
+
+  it('defaults gameSpeed to normal', () => {
+    const state = settingsReducer(undefined, { type: 'UNKNOWN' });
+    expect(state.gameSpeed).toBe('normal');
   });
 
   it('handles SETTINGS_SET_LIVE_FAAN_METER', () => {

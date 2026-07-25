@@ -9,6 +9,7 @@ import {
   SETTINGS_SET_LARGER_UI_TEXT,
   SETTINGS_SET_SHOW_TUTOR,
   SETTINGS_SET_DISPLAY_MODE,
+  SETTINGS_SET_GAME_SPEED,
   SETTINGS_SET_LIVE_FAAN_METER,
   SETTINGS_SET_TILE_VOICE,
   SETTINGS_SET_TILE_PALETTE,
@@ -29,6 +30,7 @@ const initialState: SettingsState = {
   largerUiText: false,
   showTutor: true,
   displayMode: 'tutor',
+  gameSpeed: 'normal',
   liveFaanMeter: true,
   tileVoice: 'off',
   tilePalette: DEFAULT_TILE_PALETTE,
@@ -62,6 +64,8 @@ export const settingsReducer = (
       return { ...state, showTutor: action.payload };
     case SETTINGS_SET_DISPLAY_MODE:
       return { ...state, displayMode: action.payload };
+    case SETTINGS_SET_GAME_SPEED:
+      return { ...state, gameSpeed: action.payload };
     case SETTINGS_SET_LIVE_FAAN_METER:
       return { ...state, liveFaanMeter: action.payload };
     case SETTINGS_SET_TILE_VOICE:

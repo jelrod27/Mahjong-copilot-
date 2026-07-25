@@ -43,6 +43,8 @@ export class AppConstants {
   static readonly SHOW_TUTOR_KEY = 'show_tutor';
   /** In-game overlay mode: tutor, shantenHeat, or off. */
   static readonly DISPLAY_MODE_KEY = 'display_mode';
+  /** Pacing of AI turns during play: relaxed, normal, or fast. */
+  static readonly GAME_SPEED_KEY = 'game_speed';
   static readonly LIVE_FAAN_METER_KEY = 'live_faan_meter';
   static readonly TILE_VOICE_KEY = 'tile_voice';
   static readonly TILE_PALETTE_KEY = 'tile_palette';

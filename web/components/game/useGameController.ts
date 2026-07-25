@@ -16,7 +16,7 @@ import { AvailableClaim, ScoringResult, TileClassification, DEFAULT_MIN_FAAN } f
 import { calculatePayment } from '@/engine/scoring';
 import { getTutorAdvice } from '@/engine/tutor';
 import { computeHeatOverlays, type TileHeatOverlay } from '@/engine/shantenHeat';
-import type { DisplayMode } from '@/store/actions/settingsActions';
+import type { DisplayMode, GameSpeed } from '@/store/actions/settingsActions';
 import { projectFaan, FaanProjection } from '@/engine/faanProjection';
 import soundManager from '@/lib/soundManager';
 import { speakTile, TileVoiceLanguage } from '@/lib/tileVoice';
@@ -29,12 +29,23 @@ import { launchDailyMatch, launchParlourMatch, launchStandardMatch } from './mat
 
 const HUMAN_ID = 'human-player';
 
-// Difficulty-based delays (ms) [DRAW, DISCARD]
+// Base AI delays (ms). These are pacing only — AI strength lives in engine/ai.
+// Floor: an AI turn must exceed the 420ms flight + 300ms pool-arrival
+// animations, or tiles collide with the next action.
 const DELAYS = {
-  easy: { draw: 1500, discard: 2000, claim: 800 },
-  medium: { draw: 1000, discard: 1200, claim: 500 },
-  hard: { draw: 600, discard: 800, claim: 400 },
+  easy: { draw: 700, discard: 900 },
+  medium: { draw: 500, discard: 700 },
+  hard: { draw: 400, discard: 550 },
 };
+
+// Player-controlled pacing multiplier, independent of AI difficulty.
+// Discard is floor-clamped below (see MIN_DISCARD_DELAY_MS) — this is
+// deliberately allowed to push draw/discard below the animation floor at
+// `fast` on its own.
+const SPEED_MULTIPLIER: Record<GameSpeed, number> = { relaxed: 1.6, normal: 1, fast: 0.65 };
+// Coupled to the 420ms flight animation (TileFlightLayer.tsx) — discard must
+// never resolve faster than the tile can visibly land, or turns collide.
+const MIN_DISCARD_DELAY_MS = 800;
 
 const CLAIM_TIMEOUT_STANDARD = 10000;
 const CLAIM_TIMEOUT_TRAINING = 20000;
@@ -138,6 +149,7 @@ export default function useGameController(
   parlourFloor?: number,
   dailyMode: boolean = false,
   displayMode: DisplayMode = 'tutor',
+  gameSpeed: GameSpeed = 'normal',
 ): GameController {
   const claimTimeoutMs = claimTimeoutForPreset(tablePreset);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>(initialDifficulty);
@@ -309,6 +321,9 @@ export default function useGameController(
   }, [resetHandState]);
 
   const currentDelays = DELAYS[difficulty];
+  const speedMultiplier = SPEED_MULTIPLIER[gameSpeed];
+  const effectiveDrawDelay = currentDelays.draw * speedMultiplier;
+  const effectiveDiscardDelay = Math.max(MIN_DISCARD_DELAY_MS, currentDelays.discard * speedMultiplier);
   const humanIndex = game?.players.findIndex(p => p.id === HUMAN_ID) ?? 0;
   const isHumanTurn = game?.currentPlayerIndex === humanIndex;
   const isGameOver = game?.phase === GamePhase.FINISHED;
@@ -841,7 +856,7 @@ export default function useGameController(
     // Do not cancel from effect cleanup on turnPhase changes — that killed win/kong
     // follow-ups after DRAW. Cancel only when leaving AI play (branches above).
     aiCancelRef.current = startAiTurn(game, {
-      delays: { draw: currentDelays.draw, discard: currentDelays.discard },
+      delays: { draw: effectiveDrawDelay, discard: effectiveDiscardDelay },
       claimDelayMs: 150,
       apply: (playerId, action) => doAction(playerId, action),
       getGame: () => gameRef.current,
@@ -852,7 +867,7 @@ export default function useGameController(
         setAiEpoch(n => n + 1);
       },
     });
-  }, [game?.currentPlayerIndex, game?.turnPhase, game?.phase, doAction, currentDelays, aiEpoch]);
+  }, [game?.currentPlayerIndex, game?.turnPhase, game?.phase, doAction, effectiveDrawDelay, effectiveDiscardDelay, aiEpoch]);
 
   // === Claim detection: show options immediately when claim phase starts (don't wait for currentPlayerIndex) ===
   useEffect(() => {

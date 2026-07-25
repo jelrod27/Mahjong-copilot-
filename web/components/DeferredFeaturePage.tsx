@@ -23,7 +23,7 @@ export default function DeferredFeaturePage({
   secondaryLabel = 'HOME',
 }: DeferredFeaturePageProps) {
   return (
-    <main className="min-h-screen bg-background font-sans text-foreground flex items-center justify-center p-4">
+    <div className="bg-background font-sans text-foreground flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl p-6 md:p-8 border-border/40 bg-elevated/40 text-center shadow-[8px_8px_0_rgba(0,0,0,0.25)]">
         <p className="font-display text-[10px] text-info uppercase tracking-[0.3em] mb-4">
           {eyebrow}
@@ -57,6 +57,6 @@ export default function DeferredFeaturePage({
           </Link>
         </div>
       </Card>
-    </main>
+    </div>
   );
 }

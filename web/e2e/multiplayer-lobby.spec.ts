@@ -1,12 +1,11 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Multiplayer deferred scope', () => {
-  test('navigate from /play to deferred multiplayer page', async ({ page }) => {
+  test('play page has no multiplayer lobby control', async ({ page }) => {
     await page.goto('/play');
 
-    await page.getByRole('button', { name: /MULTIPLAYER/i }).click();
-    await expect(page).toHaveURL(/\/play\/lobby/);
-    await expect(page.getByRole('heading', { name: 'Online rooms are deferred' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /MULTIPLAYER/i })).toHaveCount(0);
+    await expect(page.getByText('Online play is coming after solo polish.')).toBeVisible();
   });
 
   test('play lobby explains multiplayer is deferred', async ({ page }) => {

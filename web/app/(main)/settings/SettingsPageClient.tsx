@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { Settings } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
@@ -192,6 +193,22 @@ export default function SettingsPageClient() {
             Theme switching coming in a future update.
           </p>
         </div>
+      </section>
+
+      {/* ── Cosmetics ─────────────────────────────────────────────────── */}
+      <section className="ds-panel p-4 space-y-3" aria-labelledby="settings-cosmetics-heading">
+        <h2
+          id="settings-cosmetics-heading"
+          className="font-display text-[10px] text-highlight uppercase tracking-widest"
+        >
+          Cosmetics
+        </h2>
+        <p className="text-muted-foreground text-sm font-sans">
+          Tile palette, table felt, and NPC roster — all free, all local.
+        </p>
+        <Link href="/cosmetics" className="ds-btn font-sans text-sm w-full py-2 inline-block text-center">
+          Open cosmetics
+        </Link>
       </section>
 
       {/* ── Game Preferences ──────────────────────────────────────────── */}

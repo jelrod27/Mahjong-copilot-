@@ -42,7 +42,7 @@ export default function PlayPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-3 md:p-4">
+    <div className="flex flex-col items-center p-3 md:p-4">
       {/* Title */}
       <div className="text-center mb-4 md:mb-8">
         <h1 className="font-display text-base md:text-xl text-accent ds-text-glow-strong mb-1 md:mb-2">
@@ -174,14 +174,9 @@ export default function PlayPage() {
       </p>
 
       {/* Multiplayer */}
-      <button
-        type="button"
-        data-testid="multiplayer-lobby-button"
-        onClick={() => router.push('/play/lobby')}
-        className="ds-btn mt-3 min-h-[48px] border-info/50 px-8 py-3 font-display text-sm font-semibold text-info md:text-base"
-      >
-        Multiplayer lobby
-      </button>
+      <p className="mt-3 max-w-xs text-center font-sans text-[11px] text-muted-foreground">
+        Online play is coming after solo polish.
+      </p>
 
       {/* Quick reference */}
       <div className="mt-4 md:mt-8 ds-panel p-3 w-full max-w-xs">

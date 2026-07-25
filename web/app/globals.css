@@ -23,6 +23,14 @@
     @apply rounded-lg border border-border/60 bg-elevated/80 backdrop-blur-md shadow-ds-sm;
   }
 
+  /* On the game board a felt shows through, so panels must not impose their
+     own hue — any non-green felt would clash. Match .game-hud-surface:
+     neutral translucent black over blur. Off-board .ds-panel is unchanged. */
+  .game-board-scene .ds-panel {
+    background: rgb(0 0 0 / 0.28);
+    border-color: rgb(92 61 46 / 0.4);
+  }
+
   .ds-card {
     @apply rounded-lg border border-border/40 bg-card/90 p-4 text-card-foreground shadow-ds-xs;
   }
@@ -93,8 +101,8 @@
     backdrop-filter: blur(20px);
     background: linear-gradient(
       to bottom,
-      rgb(44 58 48 / 0.96) 0%,
-      rgb(13 15 20 / 0.94) 100%
+      rgb(0 0 0 / 0.42) 0%,
+      rgb(0 0 0 / 0.72) 100%
     );
   }
 

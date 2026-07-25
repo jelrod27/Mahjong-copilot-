@@ -444,8 +444,8 @@ export default function GameBoard({
           </div>
         )}
 
-        {/* Player hand — horizontal scroll on narrow screens when holding 13–14 tiles */}
-        <div className="game-hand-scroll w-full max-w-full">
+        {/* Player hand — wraps to two rows on narrow portrait screens (PlayerHand.tsx) */}
+        <div className="w-full max-w-full">
           <PlayerHand
             tiles={humanPlayer.hand}
             selectedTileId={selectedTileId}

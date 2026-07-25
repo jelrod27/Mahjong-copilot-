@@ -57,14 +57,10 @@ test.describe('Tile scaling across viewports', () => {
 
       const lastBox = await lastTile.boundingBox();
       expect(lastBox).not.toBeNull();
-      // The absolute right edge may overflow on narrow portrait viewports because the
-      // hand row scrolls inside .game-hand-scroll. The visible right edge is what
-      // matters for the viewport-fit assertion: clip it to the scroll container.
-      const scrollContainer = page.locator('.game-hand-scroll');
-      const scrollBox = await scrollContainer.boundingBox();
-      expect(scrollBox).not.toBeNull();
-      const visibleLastTileRight = Math.min(lastBox!.x + lastBox!.width, scrollBox!.x + scrollBox!.width);
-      lastTileRights[name] = visibleLastTileRight;
+      // The hand wraps to a second row on narrow portrait viewports instead of
+      // scrolling horizontally, so the last hand tile's right edge sits within
+      // the viewport on its own — no scroll-container clipping needed.
+      lastTileRights[name] = lastBox!.x + lastBox!.width;
 
       // eslint-disable-next-line no-console
       console.log(`Tile width at ${viewport.width}x${viewport.height}: ${widths[name]}px; last tile right edge: ${lastTileRights[name].toFixed(2)}px`);
@@ -94,6 +90,34 @@ test.describe('Tile scaling across viewports', () => {
       expect(
         lastTileRight,
         `Last human-hand tile right edge at ${name} (${viewport.width}x${viewport.height}) should fit within viewport width (${viewport.width}px), but was ${lastTileRight.toFixed(2)}px`
+      ).toBeLessThanOrEqual(viewport.width + 2);
+    }
+  });
+
+  test('player hand is fully visible on portrait mobile', async ({ page }) => {
+    const viewport = { width: 375, height: 812 };
+    await page.setViewportSize(viewport);
+    await page.goto('/play/game?table=training&mode=quick&difficulty=easy&minFaan=0');
+
+    const boardRoot = page.getByTestId('game-board-root');
+    await boardRoot.waitFor({ state: 'visible', timeout: 60_000 });
+
+    const handTiles = page.locator('button[aria-label^="Mahjong tile"]');
+    await handTiles.first().waitFor({ state: 'visible', timeout: 60_000 });
+
+    // The 14-tile hand should wrap to two rows rather than scroll or overflow.
+    // Assert the behaviour (every tile fully within the viewport), not a
+    // specific pixel width.
+    const count = await handTiles.count();
+    expect(count).toBeGreaterThan(0);
+
+    for (let i = 0; i < count; i++) {
+      const box = await handTiles.nth(i).boundingBox();
+      expect(box).not.toBeNull();
+      const tileRight = box!.x + box!.width;
+      expect(
+        tileRight,
+        `Hand tile ${i} right edge should fit within viewport width (${viewport.width}px), but was ${tileRight.toFixed(2)}px`
       ).toBeLessThanOrEqual(viewport.width + 2);
     }
   });

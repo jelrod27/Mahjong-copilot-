@@ -131,30 +131,30 @@ export const TABLE_FELTS: Record<TableFeltId, TableFelt> = {
   'classic-green': {
     id: 'classic-green',
     label: 'Classic Green',
-    description: 'Tournament-standard felt. Deep forest with cross-hatch.',
+    description: 'Deep jade-green felt for players who want the traditional look.',
     className: 'felt-classic-green',
   },
   'tournament-red': {
     id: 'tournament-red',
     label: 'Tournament Red',
-    description: 'Crimson felt with gold-trim frame. High-stakes vibe.',
+    description: 'Crimson felt with a warm gold rim. High-stakes vibe.',
     className: 'felt-tournament-red',
   },
   'casino-black': {
     id: 'casino-black',
     label: 'Casino Black',
-    description: 'Inky charcoal with neon edge glow. Vegas after dark.',
+    description: 'Inky charcoal with a cool neon rim. Vegas after dark.',
     className: 'felt-casino-black',
   },
   'bamboo-mat': {
     id: 'bamboo-mat',
     label: 'Bamboo Mat',
-    description: 'Warm tan bamboo weave with wood frame. Tea-house tabletop.',
+    description: 'Warm woven bamboo on a wood rail. A Hong Kong parlour tabletop.',
     className: 'felt-bamboo-mat',
   },
 };
 
-export const DEFAULT_TABLE_FELT: TableFeltId = 'classic-green';
+export const DEFAULT_TABLE_FELT: TableFeltId = 'bamboo-mat';
 
 export function getTableFelt(id: TableFeltId | undefined | null): TableFelt {
   if (!id || !(id in TABLE_FELTS)) return TABLE_FELTS[DEFAULT_TABLE_FELT];

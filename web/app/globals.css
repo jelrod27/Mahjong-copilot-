@@ -822,7 +822,9 @@
 /* Phone / narrow: favor slightly smaller tiles and more vertical room for the dock. */
 @media (max-width: 767px) {
   .game-board-scene {
-    --tile-base-w: clamp(22px, min(8.5cqw, max(7cqh, 3.6vmin)), 46px);
+    /* Hand wraps to two rows on narrow portrait (PlayerHand.tsx), so tiles
+       no longer have to fit 14-across. Bigger tiles, comfortable touch. */
+    --tile-base-w: clamp(30px, min(11cqw, max(7cqh, 3.6vmin)), 52px);
   }
 
   .game-board-scene .tile-size-lg {
@@ -834,16 +836,6 @@
     padding-left: max(0.5rem, env(safe-area-inset-left));
     padding-right: max(0.5rem, env(safe-area-inset-right));
   }
-}
-
-.game-hand-scroll {
-  /* Horizontal scroll fallback for hands that exceed viewport width on
-     narrow portrait mobile. overflow-x: auto keeps the scrollbar hidden
-     when the hand fits, and only appears when content overflows. */
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
-  scrollbar-width: thin;
 }
 
 .tile-scale-root {

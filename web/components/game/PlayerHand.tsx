@@ -59,7 +59,7 @@ function PlayerHand({
   return (
     <div
       ref={containerRef}
-      className="flex min-w-min flex-nowrap items-end justify-center gap-px px-1 sm:gap-0.5"
+      className="game-hand-row flex flex-wrap sm:flex-nowrap items-end justify-center gap-px gap-y-1 px-1 sm:min-w-min sm:gap-0.5"
     >
       {tiles.map((tile) => {
         const isLastDrawn = tile.id === lastDrawnTileId;

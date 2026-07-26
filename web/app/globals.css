@@ -186,23 +186,12 @@
 
 @layer utilities {
   .ds-text-glow {
-    text-shadow: 0 0 12px rgb(99 102 241 / 0.35);
+    text-shadow: 0 0 14px currentColor;
+    opacity: 1;
   }
 
   .ds-text-glow-strong {
-    text-shadow: 0 0 6px rgb(245 158 11 / 0.45), 0 0 20px rgb(245 158 11 / 0.25);
-  }
-
-  .text-glow-accent {
-    text-shadow: 0 0 12px rgb(99 102 241 / 0.45), 0 0 24px rgb(99 102 241 / 0.2);
-  }
-
-  .text-glow-info {
-    text-shadow: 0 0 12px rgb(56 189 248 / 0.45), 0 0 24px rgb(56 189 248 / 0.2);
-  }
-
-  .text-glow-highlight {
-    text-shadow: 0 0 12px rgb(245 158 11 / 0.45), 0 0 24px rgb(245 158 11 / 0.2);
+    text-shadow: 0 0 8px currentColor, 0 0 22px currentColor;
   }
 
   .bottom-nav-label {
@@ -899,21 +888,21 @@
   :root {
     --background: #0d0f14;
     --foreground: #e8dfd0;
-    --card: #1e2c22;
+    --card: #252628;
     --card-foreground: #e8dfd0;
-    --popover: #1c2620;
+    --popover: #565552;
     --popover-foreground: #e8dfd0;
     --primary: #c9a84c;
     --primary-foreground: #1a1208;
     --secondary: #243528;
     --secondary-foreground: #e8dfd0;
-    --muted: #1e2a22;
+    --muted: #202224;
     --muted-foreground: #a89b8c;
     --accent: #c9a84c;
     --accent-foreground: #1a1208;
     --destructive: #c75b4a;
     --destructive-foreground: #fff8f0;
-    --border: #2a3530;
+    --border: rgb(255 248 225 / 0.14);
     --input: #3c4a42;
     --ring: #c9a84c;
     --chart-1: #c9a84c;

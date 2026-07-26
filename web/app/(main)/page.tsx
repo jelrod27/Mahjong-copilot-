@@ -87,7 +87,7 @@ export default function HomePage() {
         <div className="flex justify-between items-start mb-3">
           <div>
             <p className="text-xs text-muted-foreground font-mono uppercase tracking-[0.2em] mb-1">{greeting}</p>
-            <h1 className="font-display text-xl md:text-2xl text-highlight text-glow-highlight">
+            <h1 className="font-display text-xl md:text-2xl text-highlight ds-text-glow">
               16 BIT MAHJONG
             </h1>
           </div>
@@ -246,7 +246,7 @@ export default function HomePage() {
             <p className="text-xl font-medium text-foreground mb-1 font-sans">
               {randomTile?.nameEnglish ?? ''}
             </p>
-            <p className="text-2xl text-highlight font-sans mb-3 text-glow-highlight">
+            <p className="text-2xl text-highlight font-sans mb-3 ds-text-glow">
               {randomTile?.nameChinese ?? ''}
             </p>
             <Badge variant="secondary" className="bg-surface/50 border-border/20 text-muted-foreground text-[10px] uppercase font-mono tracking-widest px-3 py-1">

@@ -44,7 +44,7 @@ audits after PR #94 merged (`b6b570a`).
 |------|-------|----------|--------|------------|--------|
 | 020 | [Scoring content truthfulness](020-scoring-content-truthfulness.md) | **P0** | M | — | TODO |
 | 025 | [Elevation ladder + glow fix](025-elevation-ladder-and-glow-fix.md) | P1 | S | — | **DONE** |
-| 026 | [Landing page redesign — Direction A, "The Table"](026-landing-page-redesign.md) | P1 | M | 025 (done) | TODO |
+| 026 | [Landing page redesign — Direction A, "The Table"](026-landing-page-redesign.md) | P1 | M | 025 (done) | **DONE** |
 
 Not yet written, in recommended order: `021` missing gameplay curriculum, `022` Tailwind
 v3/v4 decision + token unification (**awaiting a maintainer decision**), `023`

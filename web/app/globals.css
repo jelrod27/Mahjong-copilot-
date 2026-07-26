@@ -1303,6 +1303,13 @@
     --chart-4: #c75b4a;
     --chart-5: #a89b8c;
     --radius: 0.625rem;
+    /* --sidebar* tokens below are not wired into @theme (no --color-sidebar*
+       mapping), so bg-sidebar/text-sidebar-foreground/etc. do not resolve to
+       any generated utility — this predates the v4 migration (plan 022) and
+       is not a regression from it. Wiring them is a design decision
+       deferred to the primitives extraction work (roadmap 023): #141c18 is
+       the darkest of the old chrome-green palette that plan 025 deliberately
+       neutralised, so mapping it in now would reintroduce green chrome. */
     --sidebar: #141c18;
     --sidebar-foreground: #e8dfd0;
     --sidebar-primary: #c9a84c;

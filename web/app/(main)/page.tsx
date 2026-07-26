@@ -4,22 +4,50 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AllLevels } from '@/content';
 import { MahjongTile } from '@/components/MahjongTile';
-import { getAllTiles } from '@/models/Tile';
+import RetroTile from '@/components/game/RetroTile';
+import { getAllTiles, TileFactory, TileSuit, WindTile, type Tile } from '@/models/Tile';
 import useCompletedLessons from '@/hooks/useCompletedLessons';
 import CharacterPortrait from '@/components/npc/CharacterPortrait';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getParlourProgress, PARLOUR_FLOORS, getFloor } from '@/lib/parlour';
+import { getParlourProgress } from '@/lib/parlour';
 import { getDailyState, gamStreakLine, DailyState } from '@/lib/dailyHand';
 import { getCurrentRank, consumeRankUp, PlayerRank } from '@/lib/ranks';
+import { hasSavedGame } from '@/lib/matchStorage';
+import { loadStats } from '@/lib/gameStats';
 import soundManager from '@/lib/soundManager';
-import {
-  Lightbulb,
-  Sparkles,
-  GraduationCap,
-  Gamepad2,
-  Building2,
-} from 'lucide-react';
+import { Lightbulb, GraduationCap } from 'lucide-react';
+
+/**
+ * A real 8-tile hand for the hero, sourced from TileFactory so these are
+ * genuine Tile objects rather than a hand-authored fixture. Deterministic
+ * (no randomness, no localStorage), so it's safe to build once at module
+ * scope without the post-mount hydration guard the rest of this file needs.
+ */
+const HERO_HAND: Tile[] = (() => {
+  const all = TileFactory.getAllTiles();
+  const suitTile = (suit: TileSuit, number: number, skip = 0): Tile => {
+    let seen = 0;
+    for (const t of all) {
+      if (t.suit === suit && t.number === number) {
+        if (seen === skip) return t;
+        seen++;
+      }
+    }
+    throw new Error(`hero hand tile not found: ${suit} ${number}`);
+  };
+  const east = all.find(t => t.wind === WindTile.EAST)!;
+  return [
+    suitTile(TileSuit.DOT, 4),
+    suitTile(TileSuit.DOT, 5),
+    suitTile(TileSuit.DOT, 6),
+    suitTile(TileSuit.BAMBOO, 7),
+    suitTile(TileSuit.BAMBOO, 8),
+    suitTile(TileSuit.CHARACTER, 3, 0),
+    suitTile(TileSuit.CHARACTER, 3, 1),
+    east,
+  ];
+})();
 
 export default function HomePage() {
   const { completedLessons } = useCompletedLessons();
@@ -28,6 +56,11 @@ export default function HomePage() {
   const [rankUp, setRankUp] = useState<PlayerRank | null>(null);
   const [floorsLit, setFloorsLit] = useState(0);
   const [daily, setDaily] = useState<DailyState | null>(null);
+  // Post-mount hydration guard: these read localStorage, so they must start
+  // at a value that matches the server render (no saved game, no games
+  // played yet) and only update once mounted on the client.
+  const [hasSaved, setHasSaved] = useState(false);
+  const [gamesPlayed, setGamesPlayed] = useState(0);
 
   useEffect(() => {
     const tiles = getAllTiles();
@@ -35,6 +68,8 @@ export default function HomePage() {
     setRank(getCurrentRank());
     setFloorsLit(getParlourProgress().highestCleared);
     setDaily(getDailyState());
+    setHasSaved(hasSavedGame());
+    setGamesPlayed(loadStats().gamesPlayed);
     const up = consumeRankUp();
     if (up) {
       setRankUp(up);
@@ -46,15 +81,6 @@ export default function HomePage() {
   const lessonsDone = completedLessons.length;
   const learnProgress = totalLessons > 0 ? (lessonsDone / totalLessons) * 100 : 0;
 
-  const [greeting, setGreeting] = useState('Welcome');
-  useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) setGreeting('Good morning');
-    else if (hour < 17) setGreeting('Good afternoon');
-    else setGreeting('Good evening');
-  }, []);
-
-  const nextFloor = getFloor(Math.min(floorsLit + 1, PARLOUR_FLOORS.length));
   const gamLine = floorsLit === 0
     ? 'The Parlour only sleeps. Wake it up.'
     : floorsLit >= 9
@@ -69,12 +95,19 @@ export default function HomePage() {
         ? `${randomTile.dragon} dragon`
         : 'Bonus tile';
 
+  const primaryCtaLabel = hasSaved
+    ? 'Resume your match'
+    : gamesPlayed === 0 && lessonsDone === 0
+      ? 'Play your first hand'
+      : 'Play a hand';
+  const primaryCtaHref = hasSaved ? '/play/game' : '/play';
+
   return (
     <div className="space-y-6 animate-slide-up">
-      {/* Rank-up ceremony */}
+      {/* Rank-up ceremony — a transient celebration, so it sits above even the hero */}
       {rankUp && (
         <div className="ds-card-elevated border-highlight/50 p-4 text-center" role="status">
-          <p className="font-display text-[10px] tracking-[0.3em] text-highlight">RANK UP</p>
+          <p className="font-display text-2xs tracking-[0.3em] text-highlight">RANK UP</p>
           <p className="mt-1 font-display text-lg text-highlight ds-text-glow-strong animate-score-punch">
             {rankUp.name}
           </p>
@@ -82,60 +115,102 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Header: who you are */}
-      <div className="relative overflow-hidden p-6 rounded-lg bg-elevated/30 border border-border/10 backdrop-blur-sm shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)]">
-        <div className="flex justify-between items-start mb-3">
-          <div>
-            <p className="text-xs text-muted-foreground font-mono uppercase tracking-[0.2em] mb-1">{greeting}</p>
-            <h1 className="font-display text-xl md:text-2xl text-highlight ds-text-glow">
-              16 BIT MAHJONG
+      {/* Hero: the felt. Reuses the board's own texture, vignette and wood
+          rail (.game-table-felt + .felt-bamboo-mat) so the landing page and
+          the game itself read as one product. Text sits on the same
+          translucent-black scrim the board uses for its own HUD surfaces
+          (see .game-hud-surface) so cream text clears WCAG contrast against
+          the warm felt underneath it. */}
+      <section className="game-table-felt felt-bamboo-mat relative overflow-hidden rounded-lg p-3 sm:p-6 md:p-10">
+        <div className="relative z-10 mx-auto flex max-w-3xl flex-col items-center gap-6">
+          <div className="w-full rounded-lg bg-black/40 px-5 py-6 text-center backdrop-blur-sm sm:px-8 sm:py-8">
+            <p className="font-display text-caption uppercase tracking-[0.25em] text-highlight">
+              Hong Kong rules · 4 players
+            </p>
+            <h1 className="mt-3 font-display text-title-lg text-foreground md:text-display">
+              Real table mahjong. Not the tile-matching one.
             </h1>
+            <p className="mx-auto mt-4 max-w-xl font-sans text-body-lg text-foreground">
+              Learn Hong Kong mahjong properly, then play a full hand against three AI
+              opponents — with <span className="font-semibold text-highlight">coach hints while you play</span> and
+              a review of every decision after.
+            </p>
           </div>
-          <Link
-            href="/progress"
-            className="flex items-center gap-2 px-3 py-1.5 rounded-sm border border-highlight/30 bg-highlight/5 hover:bg-highlight/10 transition-all group"
-          >
-            <Sparkles size={14} className="text-highlight group-hover:scale-110 transition-transform" aria-hidden />
-            <span className="font-display home-micro-track text-[9px] text-highlight">
-              LOCAL PROGRESS
-            </span>
-          </Link>
-        </div>
 
-        {rank && (
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-info/30 bg-info/10 px-3 py-1">
-            <span className="font-display text-[10px] tracking-widest text-info">{rank.name.toUpperCase()}</span>
-            <span className="hidden font-sans text-[11px] text-muted-foreground sm:inline">{rank.flavor}</span>
+          <div
+            className="flex flex-wrap items-center justify-center gap-1.5"
+            style={{ '--tile-base-w': 'clamp(30px, 8vw, 44px)' } as React.CSSProperties}
+          >
+            {HERO_HAND.map(tile => (
+              <RetroTile key={tile.id} tile={tile} size="md" />
+            ))}
           </div>
-        )}
 
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href="/parlour"
-            className="inline-flex items-center gap-2 rounded-sm border border-highlight/40 bg-highlight/10 px-4 py-2.5 font-display text-xs text-highlight transition-colors hover:bg-highlight/20"
-          >
-            <Building2 size={14} aria-hidden />
-            {floorsLit === 0 ? 'Enter the Jade Parlour' : `Climb to ${nextFloor?.name ?? 'the top'}`}
-          </Link>
-          <Link
-            href="/play"
-            className="inline-flex items-center gap-2 rounded-sm border border-success/40 bg-success/10 px-4 py-2.5 font-display text-xs text-success transition-colors hover:bg-success/20"
-          >
-            <Gamepad2 size={14} aria-hidden />
-            Free play
-          </Link>
+          <div className="flex w-full flex-col items-center gap-3 rounded-lg bg-black/40 px-5 py-5 backdrop-blur-sm">
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Link
+                href={primaryCtaHref}
+                data-testid="home-primary-cta"
+                className="ds-btn-accent min-h-[48px] px-8 py-3 font-display text-sm font-bold tracking-wide md:text-base"
+              >
+                {primaryCtaLabel}
+              </Link>
+              <Link
+                href="/learn"
+                className="inline-flex min-h-[48px] items-center justify-center rounded-md border border-foreground/60 px-6 py-3 font-display text-sm font-semibold text-foreground transition-colors hover:bg-white/10"
+              >
+                Start from the basics
+              </Link>
+            </div>
+            <p className="text-center font-sans text-caption text-foreground">
+              No account. Nothing to install. Your progress stays on this device.
+            </p>
+          </div>
         </div>
+      </section>
+
+      {/* Three pillars — what the product actually does */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <Card className="p-5">
+          <p className="font-display text-2xs tracking-widest text-info">WHILE YOU PLAY</p>
+          <p className="mt-1 font-sans text-sm font-medium text-foreground">Coach hints</p>
+          <p className="mt-1 font-sans text-xs text-muted-foreground">
+            Every tile marked keep, neutral or safe to discard — with the reason.
+          </p>
+        </Card>
+        <Card className="p-5">
+          <p className="font-display text-2xs tracking-widest text-info">AFTER THE HAND</p>
+          <p className="mt-1 font-sans text-sm font-medium text-foreground">Hand review</p>
+          <p className="mt-1 font-sans text-xs text-muted-foreground">
+            What you played well, and the discard that cost you.
+          </p>
+        </Card>
+        <Link href="/parlour" className="block">
+          <Card className="h-full p-5 transition-all hover:scale-[1.01]">
+            <p className="font-display text-2xs tracking-widest text-info">WHEN YOU&apos;RE READY</p>
+            <p className="mt-1 font-sans text-sm font-medium text-foreground">The Jade Parlour</p>
+            <p className="mt-1 font-sans text-xs text-muted-foreground">
+              Nine floors, nine rivals, each one teaching a different skill.
+            </p>
+          </Card>
+        </Link>
       </div>
 
-      {/* The Parlour: primary progress */}
+      {/* The Parlour: ongoing progress. Also carries the rank pill — demoted
+          out of the hero, but kept visible here rather than dropped. */}
       <Link href="/parlour" className="block group">
         <Card className="border-l-4 border-l-highlight p-5 transition-all hover:scale-[1.01]">
           <div className="flex items-center gap-4">
             <CharacterPortrait character="gam" emotion="idle" size="sm" />
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
-                <p className="font-display text-[10px] tracking-widest text-highlight">THE JADE PARLOUR</p>
-                <span className="font-display text-xs text-muted-foreground">{floorsLit}/9 lit</span>
+                <p className="font-sans text-sm font-medium text-highlight">The Jade Parlour</p>
+                <div className="flex shrink-0 items-center gap-2">
+                  {rank && (
+                    <span className="font-display text-2xs tracking-widest text-info">{rank.name.toUpperCase()}</span>
+                  )}
+                  <span className="font-display text-xs text-muted-foreground">{floorsLit}/9 lit</span>
+                </div>
               </div>
               <p className="mt-1 truncate font-sans text-sm text-foreground">{gamLine}</p>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface">
@@ -158,9 +233,9 @@ export default function HomePage() {
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="font-display text-[10px] tracking-widest text-info">DAILY HAND</p>
+                  <p className="font-sans text-sm font-medium text-info">Daily Hand</p>
                   {daily.streak > 0 && (
-                    <Badge variant="secondary" className="bg-highlight/10 border-highlight/30 text-highlight text-[9px] font-display h-5">
+                    <Badge variant="secondary" className="bg-highlight/10 border-highlight/30 text-highlight text-2xs font-display h-5">
                       {daily.streak} DAY STREAK
                     </Badge>
                   )}
@@ -178,7 +253,7 @@ export default function HomePage() {
                   {gamStreakLine(daily)}
                 </p>
               </div>
-              <span className={`shrink-0 font-display text-[10px] ${daily.playedToday ? 'text-success' : 'text-info'}`}>
+              <span className={`shrink-0 font-display text-2xs ${daily.playedToday ? 'text-success' : 'text-info'}`}>
                 {daily.playedToday ? 'DONE' : 'PLAY'}
               </span>
             </div>
@@ -189,7 +264,7 @@ export default function HomePage() {
       {/* Dashboard Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8 space-y-4">
-          <h2 className="font-display text-[10px] text-info uppercase tracking-[0.3em] ml-1">
+          <h2 className="font-display text-2xs text-info uppercase tracking-[0.3em] ml-1">
             KEEP LEARNING
           </h2>
 
@@ -201,11 +276,11 @@ export default function HomePage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-1">
-                    <span className="font-display text-[10px] text-highlight tracking-widest">
-                      LESSONS
+                    <span className="font-sans text-sm font-medium text-highlight">
+                      Lessons
                     </span>
                     {lessonsDone === 0 && (
-                      <Badge variant="cyan" className="text-[9px] font-display tracking-tighter h-5">
+                      <Badge variant="cyan" className="text-2xs font-display tracking-tighter h-5">
                         START HERE
                       </Badge>
                     )}
@@ -226,7 +301,7 @@ export default function HomePage() {
 
           <Link href="/practice" className="block group">
             <Card className="border-l-4 border-l-accent hover:border-accent/60 transition-all hover:scale-[1.01] p-5">
-              <p className="font-display text-[10px] text-accent tracking-widest mb-1">PRACTICE</p>
+              <p className="font-sans text-sm font-medium text-accent mb-1">Practice</p>
               <p className="font-sans text-sm text-muted-foreground">
                 Quizzes and guided play to sharpen what the floors teach.
               </p>
@@ -236,7 +311,7 @@ export default function HomePage() {
 
         {/* Sidebar Column */}
         <div className="lg:col-span-4 space-y-4">
-          <h2 className="font-display text-[10px] text-info uppercase tracking-[0.3em] ml-1">
+          <h2 className="font-display text-2xs text-info uppercase tracking-[0.3em] ml-1">
             TILE OF THE DAY
           </h2>
           <Card className="flex flex-col items-center text-center p-6 bg-gradient-to-b from-elevated/40 to-transparent border-border/10">
@@ -249,7 +324,7 @@ export default function HomePage() {
             <p className="text-2xl text-highlight font-sans mb-3 ds-text-glow">
               {randomTile?.nameChinese ?? ''}
             </p>
-            <Badge variant="secondary" className="bg-surface/50 border-border/20 text-muted-foreground text-[10px] uppercase font-mono tracking-widest px-3 py-1">
+            <Badge variant="secondary" className="bg-surface/50 border-border/20 text-muted-foreground text-2xs uppercase tracking-widest px-3 py-1">
               {tileDescription}
             </Badge>
           </Card>
@@ -265,6 +340,16 @@ export default function HomePage() {
           </Card>
         </div>
       </div>
+
+      {/* Local-mode note — demoted from the old header's "LOCAL PROGRESS" badge */}
+      <p className="text-center">
+        <Link
+          href="/progress"
+          className="font-display text-2xs tracking-[0.2em] text-muted-foreground transition-colors hover:text-highlight"
+        >
+          LOCAL PROGRESS
+        </Link>
+      </p>
     </div>
   );
 }

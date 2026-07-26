@@ -164,7 +164,7 @@ From `/Users/justinelrod/Projects/Mahjong-copilot-/web`:
 ### Step 1: Confirm plan 025 landed
 
 ```bash
-grep -n "\-\-color-card:" web/app/globals.css
+grep -n -- '--color-card:' web/app/globals.css
 ```
 
 Expect `rgb(37 38 40)`. If it still reads `rgb(30 44 36)`, plan 025 has not

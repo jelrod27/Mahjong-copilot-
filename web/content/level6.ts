@@ -149,10 +149,10 @@ export const Level6: Level = {
       content: [
         "Sometimes you can't win. Don't lose instead.",
         "",
-        "DEALING IN = DISASTER",
-        "• You pay the full hand value",
-        "• Other players pay nothing",
-        "• You lose even more if it's a limit hand",
+        "DEALING IN = THE WORST SEAT AT THE TABLE",
+        "• You pay double the base — the other two each pay single",
+        "• So you carry the largest single share, not the whole hand",
+        "• On a limit hand that doubled share is brutal",
         "",
         "DEFENSIVE PRIORITIES:",
         "",
@@ -211,8 +211,9 @@ export const Level6: Level = {
         "• You have dangerous tiles and no safe ones",
         "",
         "THE MATH:",
-        "• Dealing into a hand: You pay 100%",
-        "• Someone else wins: You pay 25-33%",
+        "• You deal in: you pay double the base (the other two pay single each)",
+        "• Someone else deals in: you pay single — half what the dealer-in pays",
+        "• They self-draw: everyone pays double, so nobody is spared",
         "• If you're not close to winning: Why risk dealing in?",
         "",
         "PRO TIP: At 7+ tiles from winning, strongly consider folding if anyone is close. At 1-2 tiles, push if you can do it safely."
@@ -224,7 +225,7 @@ export const Level6: Level = {
           question: "You have a bad hand and an opponent has 3 exposed melds. What's the right play?",
           options: ["Push anyway — luck favors the bold", "Fold — break your hand and play safe", "Expose your own meld to scare them", "Discard the most dangerous tile"],
           correctAnswer: "Fold — break your hand and play safe",
-          explanation: "With a bad hand, you won't win anyway. Don't deal into their hand and pay everything. Survive, minimize loss."
+          explanation: "With a bad hand, you won't win anyway. Don't deal in and pay the doubled share. Survive, minimize loss."
         }
       ]
     },

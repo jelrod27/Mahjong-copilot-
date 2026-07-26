@@ -42,6 +42,11 @@ function extractThemeBlock(css: string): string {
     throw new Error('Could not find an @theme block in globals.css');
   }
   const openBrace = css.indexOf('{', start);
+  if (openBrace === -1) {
+    // Fail closed: without a brace we cannot bound the block, and slicing on
+    // would let a token defined OUTSIDE @theme satisfy the guard.
+    throw new Error('Could not find the opening brace for `@theme` in globals.css');
+  }
   let depth = 0;
   let i = openBrace;
   for (; i < css.length; i++) {

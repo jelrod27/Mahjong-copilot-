@@ -35,8 +35,8 @@ code says.
 
 `globals.css` also imports two **v4** stylesheets (`tw-animate-css`,
 `shadcn/tailwind.css`) that v3 cannot process, so they ship verbatim —
-**55 `@utility`, 17 `@property`, 2 `@theme` blocks inside an 872 KB
-app-global stylesheet** loaded on every route.
+**55 `@utility`, 17 `@property`, 2 `@theme` blocks** shipped verbatim inside
+the app-global stylesheet on every route.
 
 And tokens are defined twice — `tailwind.config.ts` hardcodes RGB triples while
 `globals.css :root` defines CSS variables — with the config never reading the
@@ -153,20 +153,48 @@ animations, and the `:root` token block. Note especially:
 
 **These are the crown jewels. Everything else is negotiable.**
 
-### Step 3: Run the official codemod
+### Step 3: Run the codemod — with a known workaround applied first
 
+⚠️ **REVISED after run 1.** A previous attempt ran the codemod unmodified and it
+crashed with `Error: @utility cannot be nested`. Diagnosed cause: the codemod
+rewrites `@import "shadcn/tailwind.css";` into
+`@import 'shadcn/tailwind.css' layer(base);`, but that package ships a
+top-level `@utility no-scrollbar` block (`node_modules/shadcn/dist/tailwind.css`).
+v4 forbids `@utility` inside a layer, so the compiler chokes on the codemod's
+own output. The run 1 executor correctly stopped and reverted.
+
+**Both files are already v4-native syntax** (`@theme inline`, `@custom-variant`,
+`@utility`) — they need no layer wrapper and work under v4 imported plainly.
+Advisor-verified: every class they provide (`no-scrollbar`, `data-open`,
+`data-closed`, `data-active`, `animate-in`, `fade-in-*`, `zoom-in-*`,
+`slide-in-from-*`) is used in exactly two files — `components/ui/sidebar.tsx`
+and `components/ui/tooltip.tsx` — and none of it compiles under v3 today.
+
+**3a.** Remove these two lines from the top of `web/app/globals.css` and keep
+them somewhere you can paste back verbatim:
+```css
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+```
+
+**3b.** Run the codemod:
 ```bash
 npx @tailwindcss/upgrade
 ```
 
-It will update `package.json`, rewrite `postcss.config.js`, migrate the config,
-and apply class renames. **Read its entire diff before continuing** and commit
-it as its own commit.
+**3c.** Restore both imports at the very top of `globals.css`, **plain, with no
+`layer(...)` suffix** — exactly as quoted in 3a.
 
-Report: what it changed, and anything it flagged or refused.
+**3d.** `npm run build`. It must succeed. If it now fails *because* of those two
+imports, that is a STOP condition — report the error rather than deleting them,
+since `sidebar.tsx` and `tooltip.tsx` depend on what they provide.
 
-If it fails outright, STOP and report rather than hand-migrating — a partial
-automated migration is worse than none.
+**Read the codemod's entire diff before continuing** and commit it as its own
+commit, separate from your hand edits. Report what it changed and anything it
+flagged or refused.
+
+If the codemod fails for any reason **other** than the `@utility` nesting issue
+described above, STOP and report rather than hand-migrating.
 
 ### Step 4: Fix the PostCSS config
 
@@ -231,7 +259,10 @@ done
 Each must now be **greater than 0**. If any is still 0, the migration has not
 achieved its purpose — investigate and report.
 
-Also report the new CSS file size against the 872 KB baseline from Step 1.
+Also report the new CSS file size against **your own Step 1 measurement**.
+(An earlier draft of this plan cited 872 KB; a later measurement on this
+branch found 734-751 KB depending on whether you sum all chunks or take the
+largest. Trust your own number, not either of those.)
 
 ### Step 8: Prove the design did not change
 
@@ -281,7 +312,7 @@ itself a STOP condition here.
 - [ ] `npm run build` succeeds
 - [ ] e2e (home, tile-scaling, play-game) pass
 - [ ] `outline-hidden`, `ring-3`, `bg-sidebar` all compile (> 0 occurrences)
-- [ ] New CSS size reported against the 872 KB baseline
+- [ ] New CSS size reported against your own Step 1 measurement
 - [ ] Computed-style diff for `/` and `/play/game` shown, all equivalent
 - [ ] 14 screenshots retaken and compared
 - [ ] Dead primitives deleted, each verified importer-free first
@@ -293,9 +324,11 @@ itself a STOP condition here.
 - Any board or landing-page surface changes appearance.
 - A previously-dead class still does not compile after migration.
 - A unit test fails and the cause is a visual change.
-- `tw-animate-css` / `shadcn/tailwind.css` still fail to compile under v4 —
-  report rather than deleting them, since `tooltip.tsx` and `GameToast.tsx`
-  reference their animation classes.
+- The codemod fails for any reason other than the `@utility` nesting issue
+  Step 3 works around.
+- After Step 3c, `tw-animate-css` / `shadcn/tailwind.css` still fail to compile
+  under v4 — report rather than deleting them, since `sidebar.tsx` and
+  `tooltip.tsx` depend on what they provide.
 
 ## Maintenance notes
 

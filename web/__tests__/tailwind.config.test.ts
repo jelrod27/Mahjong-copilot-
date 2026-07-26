@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import config from '../tailwind.config';
 
 // WCAG 2.x relative luminance / contrast ratio, per
 // https://www.w3.org/TR/WCAG21/#dfn-relative-luminance
@@ -20,9 +21,9 @@ function contrastRatio(a: [number, number, number], b: [number, number, number])
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-// Design tokens are authored as `rgb(r g b / <alpha-value>)` strings (see
-// tailwind.config.ts's withAlpha helper) so Tailwind's opacity modifiers keep
-// working. Pull the r/g/b triplet back out for luminance math.
+// Design tokens are authored as `rgb(r g b / <alpha-value>)` strings so
+// Tailwind's opacity modifiers keep working. Pull the r/g/b triplet back out
+// for luminance math.
 function parseRgb(token: string): [number, number, number] {
   const match = token.match(/rgb\((\d+)\s+(\d+)\s+(\d+)/);
   if (!match) {
@@ -31,10 +32,22 @@ function parseRgb(token: string): [number, number, number] {
   return [Number(match[1]), Number(match[2]), Number(match[3])];
 }
 
+// Since the Tailwind v4 migration (plan 022), tokens live in the @theme
+// block in globals.css rather than tailwind.config.ts — @theme is now the
+// single source of truth, so read the value straight from there instead of
+// duplicating it.
+function readThemeColor(css: string, name: string): string {
+  const match = css.match(new RegExp(`--color-${name}:\\s*([^;]+);`));
+  if (!match) {
+    throw new Error(`Could not find --color-${name} in globals.css @theme block`);
+  }
+  return match[1].trim();
+}
+
 describe('elevation ladder contrast (plan 025)', () => {
-  const colors = config.theme?.extend?.colors as Record<string, string>;
-  const background = parseRgb(colors.background);
-  const card = parseRgb(colors.card);
+  const css = readFileSync(join(__dirname, '../app/globals.css'), 'utf-8');
+  const background = parseRgb(readThemeColor(css, 'background'));
+  const card = parseRgb(readThemeColor(css, 'card'));
 
   it('gives card a real luminance step off background (>= 1.25:1)', () => {
     // This is the invariant plan 025 exists to establish: before this plan,

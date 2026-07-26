@@ -46,7 +46,7 @@ export default function FloorDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[65] flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm sm:items-center"
+      className="fixed inset-0 z-65 flex items-end justify-center bg-black/70 p-4 backdrop-blur-xs sm:items-center"
       role="dialog"
       aria-modal="true"
       aria-label={`${npc.name} — ${floorName}`}

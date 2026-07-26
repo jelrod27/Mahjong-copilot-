@@ -20,7 +20,7 @@ export default function ReferencePage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="bg-gradient-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
+      <div className="bg-linear-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
         <p className="font-display text-[10px] text-info tracking-[1.5px] mb-1">
           REFERENCE
         </p>
@@ -35,7 +35,7 @@ export default function ReferencePage() {
           value={searchQuery}
           onChange={event => setSearchQuery(event.target.value)}
           placeholder="Search tiles, scoring, hands, glossary..."
-          className="w-full rounded-lg border-2 border-border/30 bg-elevated px-3 py-3 font-sans text-sm text-foreground placeholder:text-muted-foreground focus:border-info focus:outline-none"
+          className="w-full rounded-lg border-2 border-border/30 bg-elevated px-3 py-3 font-sans text-sm text-foreground placeholder:text-muted-foreground focus:border-info focus:outline-hidden"
         />
       </div>
 

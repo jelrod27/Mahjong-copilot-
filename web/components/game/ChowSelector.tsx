@@ -55,7 +55,7 @@ export default function ChowSelector({ options, discardedTile, onSelect, onPass 
         <button
           type="button"
           data-testid="chow-pass-button"
-          className="ds-btn min-h-[44px] border-border/50 bg-background/50 px-6 py-2 font-sans text-sm font-semibold text-muted-foreground backdrop-blur-sm hover:text-foreground"
+          className="ds-btn min-h-[44px] border-border/50 bg-background/50 px-6 py-2 font-sans text-sm font-semibold text-muted-foreground backdrop-blur-xs hover:text-foreground"
           onClick={onPass}
         >
           Pass

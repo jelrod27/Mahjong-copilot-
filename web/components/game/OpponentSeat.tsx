@@ -217,7 +217,7 @@ function SpeechBubble({ line, side }: { line: string; side: 'left' | 'right' }) 
           className={`absolute top-3 ${
             side === 'right' ? '-left-1.5' : '-right-1.5'
           } w-3 h-3 bg-background border-l-2 border-b-2 border-info/60 ${
-            side === 'right' ? 'rotate-45' : '-rotate-[135deg]'
+            side === 'right' ? 'rotate-45' : 'rotate-[-135deg]'
           }`}
         />
       </div>

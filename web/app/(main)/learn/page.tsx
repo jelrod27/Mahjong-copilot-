@@ -47,7 +47,7 @@ export default function LearnPage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="bg-gradient-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
+      <div className="bg-linear-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
         <p className="font-display text-[10px] text-info tracking-[1.5px] mb-1">
           LEARN MAHJONG
         </p>

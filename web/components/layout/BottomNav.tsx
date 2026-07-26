@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/sheet';
 
 function navLinkClass(active: boolean) {
-  return `flex flex-col items-center justify-center px-1.5 py-1 min-w-[44px] min-h-[44px] transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/60 ${
+  return `flex flex-col items-center justify-center px-1.5 py-1 min-w-[44px] min-h-[44px] transition-colors rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-info/60 ${
     active ? 'text-info ds-text-glow' : 'text-muted-foreground hover:text-foreground'
   }`;
 }
@@ -37,7 +37,7 @@ export default function BottomNav() {
         className="fixed bottom-0 left-0 right-0 bg-elevated border-t border-border/30 z-50 lg:hidden"
         aria-label="Main navigation"
       >
-        <div className="flex justify-around items-center h-[4.25rem] max-w-lg mx-auto px-1 safe-area-pb">
+        <div className="flex justify-around items-center h-17 max-w-lg mx-auto px-1 safe-area-pb">
           {bottomNavPrimaryItems.map(({ href, label, icon: Icon }) => {
             const isActive = isRouteActive(href);
             return (
@@ -49,7 +49,7 @@ export default function BottomNav() {
               >
                 <Icon size={22} strokeWidth={isActive ? 2.5 : 1.5} aria-hidden />
                 <span
-                  className={`font-sans bottom-nav-label mt-0.5 leading-tight text-center max-w-[4.5rem] truncate ${
+                  className={`font-sans bottom-nav-label mt-0.5 leading-tight text-center max-w-18 truncate ${
                     isActive ? 'font-bold' : ''
                   }`}
                 >
@@ -102,7 +102,7 @@ export default function BottomNav() {
                   <Link
                     href={href}
                     onClick={() => setMoreOpen(false)}
-                    className={`flex items-center gap-3 rounded-md px-3 py-3 font-sans text-base transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/60 ${
+                    className={`flex items-center gap-3 rounded-md px-3 py-3 font-sans text-base transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-info/60 ${
                       isActive
                         ? 'bg-info/15 text-info'
                         : 'text-foreground hover:bg-background/80'

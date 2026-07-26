@@ -36,7 +36,7 @@ export default function TutorPanel({ advice }: TutorPanelProps) {
   return (
     <div className="animate-slide-up">
       <div className="relative overflow-hidden rounded-xl border border-border/30 game-hud-surface">
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-highlight/[0.06] via-transparent to-info/[0.06]" aria-hidden />
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-highlight/6 via-transparent to-info/6" aria-hidden />
         <div className="relative flex items-start gap-3 p-3 md:gap-4 md:p-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border/40 bg-surface/80 md:h-12 md:w-12">
             <GraduationCap className="h-5 w-5 text-highlight md:h-6 md:w-6" strokeWidth={1.75} aria-hidden />

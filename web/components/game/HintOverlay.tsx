@@ -36,7 +36,7 @@ export function computeHints(game: GameState, humanPlayerIndex: number): HintDat
 }
 
 const chip =
-  'fixed z-30 rounded-full border px-4 py-2 font-sans text-sm shadow-lg transition-all duration-fast ease-ds-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/50';
+  'fixed z-30 rounded-full border px-4 py-2 font-sans text-sm shadow-lg transition-all duration-fast ease-ds-out focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-info/50';
 
 export default function HintOverlay({ game, humanPlayerIndex, showHints, onToggle }: HintOverlayProps) {
   if (!showHints) {

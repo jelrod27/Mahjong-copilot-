@@ -335,7 +335,7 @@ export default function HandResultScreen({
 function WinnerSpotlight({ name, isHuman }: { name: string; isHuman: boolean }) {
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-[45] flex items-center justify-center px-4"
+      className="pointer-events-none fixed inset-0 z-45 flex items-center justify-center px-4"
       data-testid="winner-spotlight"
       aria-hidden
     >

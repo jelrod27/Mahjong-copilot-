@@ -123,7 +123,7 @@ export default function HomePage() {
           the warm felt underneath it. */}
       <section className="game-table-felt felt-bamboo-mat relative overflow-hidden rounded-lg p-3 sm:p-6 md:p-10">
         <div className="relative z-10 mx-auto flex max-w-3xl flex-col items-center gap-6">
-          <div className="w-full rounded-lg bg-black/40 px-5 py-6 text-center backdrop-blur-sm sm:px-8 sm:py-8">
+          <div className="w-full rounded-lg bg-black/40 px-5 py-6 text-center backdrop-blur-xs sm:px-8 sm:py-8">
             <p className="font-display text-caption uppercase tracking-[0.25em] text-highlight">
               Hong Kong rules · 4 players
             </p>
@@ -146,7 +146,7 @@ export default function HomePage() {
             ))}
           </div>
 
-          <div className="flex w-full flex-col items-center gap-3 rounded-lg bg-black/40 px-5 py-5 backdrop-blur-sm">
+          <div className="flex w-full flex-col items-center gap-3 rounded-lg bg-black/40 px-5 py-5 backdrop-blur-xs">
             <div className="flex flex-wrap items-center justify-center gap-3">
               <Link
                 href={primaryCtaHref}
@@ -314,7 +314,7 @@ export default function HomePage() {
           <h2 className="font-display text-2xs text-info uppercase tracking-[0.3em] ml-1">
             TILE OF THE DAY
           </h2>
-          <Card className="flex flex-col items-center text-center p-6 bg-gradient-to-b from-elevated/40 to-transparent border-border/10">
+          <Card className="flex flex-col items-center text-center p-6 bg-linear-to-b from-elevated/40 to-transparent border-border/10">
             <div className="mb-4 hover:rotate-3 transition-transform cursor-help">
               {randomTile && <MahjongTile tile={randomTile} width={80} height={112} />}
             </div>

@@ -35,7 +35,7 @@ export default function VoiceSubtitle() {
       aria-label={`${subtitle.speaker ? subtitle.speaker + ': ' : ''}${subtitle.english}`}
       key={subtitle.at}
     >
-      <div className="ds-panel px-3 py-1.5 bg-elevated/95 backdrop-blur-sm border-info/40 shadow-lg">
+      <div className="ds-panel px-3 py-1.5 bg-elevated/95 backdrop-blur-xs border-info/40 shadow-lg">
         <div className="flex flex-col items-center gap-0.5 text-center">
           {subtitle.speaker && (
             <span className="font-display text-[8px] text-muted-foreground tracking-widest uppercase">

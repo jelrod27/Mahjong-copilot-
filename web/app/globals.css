@@ -1,9 +1,126 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import 'tailwindcss';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-background: rgb(13 15 20);
+  --color-foreground: rgb(232 223 208);
+  --color-surface: rgb(30 31 34);
+  --color-elevated: rgb(61 62 61);
+  --color-muted: rgb(32 34 36);
+  --color-muted-foreground: rgb(168 155 140);
+  --color-card: rgb(37 38 40);
+  --color-card-foreground: rgb(232 223 208);
+  --color-popover: rgb(86 85 82);
+  --color-popover-foreground: rgb(232 223 208);
+  --color-border: rgb(255 248 225 / 0.14);
+  --color-input: rgb(60 72 66);
+  --color-ring: rgb(201 168 76);
+  --color-accent: rgb(201 168 76);
+  --color-accent-foreground: rgb(26 18 8);
+  --color-success: rgb(93 175 106);
+  --color-success-foreground: rgb(12 28 16);
+  --color-info: rgb(91 159 168);
+  --color-info-foreground: rgb(12 24 28);
+  --color-highlight: rgb(232 197 90);
+  --color-highlight-foreground: rgb(26 18 8);
+  --color-destructive: rgb(199 91 74);
+  --color-destructive-foreground: rgb(255 248 240);
+
+  --color-chart-1: rgb(201 168 76);
+  --color-chart-2: rgb(93 175 106);
+  --color-chart-3: rgb(78 173 160);
+  --color-chart-4: rgb(199 91 74);
+  --color-chart-5: rgb(168 155 140);
+
+  --color-mahjong-green: #2d5016;
+  --color-mahjong-red: #b71c1c;
+  --color-mahjong-gold: #c9a84c;
+  --color-mahjong-jade: #4eada0;
+  --color-mahjong-wood: #5c3d2e;
+  --color-mahjong-felt: #2e5938;
+
+  --color-tile-bg: #fff8e1;
+  --color-tile-border: #8b7355;
+
+  --color-suit-bamboo: #2e7d32;
+  --color-suit-character: #b71c1c;
+  --color-suit-dot: #1565c0;
+  --color-suit-honor: #5c4632;
+
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), Georgia, serif;
+  --font-heading: var(--font-display), Georgia, serif;
+
+  --text-2xs: 0.625rem;
+  --text-2xs--line-height: 0.875rem;
+  --text-caption: 0.6875rem;
+  --text-caption--line-height: 1rem;
+  --text-caption--letter-spacing: 0.02em;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.5rem;
+  --text-body-lg: 1.0625rem;
+  --text-body-lg--line-height: 1.625rem;
+  --text-title-sm: 1.125rem;
+  --text-title-sm--line-height: 1.5rem;
+  --text-title-sm--letter-spacing: -0.01em;
+  --text-title: 1.375rem;
+  --text-title--line-height: 1.75rem;
+  --text-title--letter-spacing: -0.02em;
+  --text-title-lg: 1.75rem;
+  --text-title-lg--line-height: 2.125rem;
+  --text-title-lg--letter-spacing: -0.02em;
+  --text-display: 2.25rem;
+  --text-display--line-height: 2.5rem;
+  --text-display--letter-spacing: -0.03em;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+
+  --shadow-ds-xs: 0 1px 2px rgb(0 0 0 / 0.22);
+  --shadow-ds-sm: 0 2px 8px rgb(0 0 0 / 0.18), 0 1px 2px rgb(0 0 0 / 0.12);
+  --shadow-ds-md: 0 8px 24px rgb(0 0 0 / 0.24), 0 2px 6px rgb(0 0 0 / 0.14);
+  --shadow-ds-lg: 0 16px 48px rgb(0 0 0 / 0.32), 0 4px 12px rgb(0 0 0 / 0.18);
+  --shadow-ds-inset: inset 0 1px 0 rgb(255 255 255 / 0.06);
+  --shadow-ds-ring-gold: 0 0 0 3px rgb(201 168 76 / 0.4);
+  --shadow-ds-ring-jade: 0 0 0 3px rgb(78 173 160 / 0.35);
+  --shadow-tile-rest: 1px 2px 0 0 #c4b896, 2px 3px 6px rgb(0 0 0 / 0.22);
+  --shadow-tile-selected:
+    inset 0 1px 3px rgb(0 0 0 / 0.12), 0 0 0 2px rgb(201 168 76 / 0.55);
+
+  --transition-duration-instant: 100ms;
+  --transition-duration-fast: 180ms;
+  --transition-duration-normal: 260ms;
+  --transition-duration-slow: 400ms;
+  --transition-duration-slower: 600ms;
+
+  --ease-ds-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-ds-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-ds-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
 
 /*
  * Motion guidelines (align with tailwind.config theme.extend):
@@ -17,868 +134,1143 @@
  * Respect prefers-reduced-motion — decorative loops are disabled below.
  */
 
-@layer components {
+@utility ds-panel {
   /* Primary chrome panels */
-  .ds-panel {
-    @apply rounded-lg border border-border/60 bg-elevated/80 backdrop-blur-md shadow-ds-sm;
-  }
+  @apply rounded-lg border border-border/60 bg-elevated/80 backdrop-blur-md shadow-ds-sm;
 
   /* On the game board a felt shows through, so panels must not impose their
      own hue — any non-green felt would clash. Match .game-hud-surface:
      neutral translucent black over blur. Off-board .ds-panel is unchanged. */
-  .game-board-scene .ds-panel {
+  .game-board-scene & {
     background: rgb(0 0 0 / 0.28);
     border-color: rgb(92 61 46 / 0.4);
   }
+}
 
-  .ds-card {
-    @apply rounded-lg border border-border/40 bg-card/90 p-4 text-card-foreground shadow-ds-xs;
+@utility game-board-scene {
+  /* On the game board a felt shows through, so panels must not impose their
+     own hue — any non-green felt would clash. Match .game-hud-surface:
+     neutral translucent black over blur. Off-board .ds-panel is unchanged. */
+  & .ds-panel {
+    background: rgb(0 0 0 / 0.28);
+    border-color: rgb(92 61 46 / 0.4);
   }
+}
 
-  .ds-card-elevated {
-    @apply rounded-lg border border-border/50 bg-elevated/95 p-4 text-foreground shadow-ds-md
+@utility ds-card {
+  @apply rounded-lg border border-border/40 bg-card/90 p-4 text-card-foreground shadow-ds-xs;
+}
+
+@utility ds-card-elevated {
+  @apply rounded-lg border border-border/50 bg-elevated/95 p-4 text-foreground shadow-ds-md
            transition-all duration-normal ease-ds-out;
-  }
 
-  .ds-card-elevated:hover {
+  &:hover {
     @apply border-border shadow-ds-md;
   }
+}
 
-  .ds-btn {
-    @apply inline-flex items-center justify-center rounded-md border border-border bg-elevated px-4 py-2
+@utility ds-btn {
+  @apply inline-flex items-center justify-center rounded-md border border-border bg-elevated px-4 py-2
            font-sans text-body font-medium text-foreground shadow-ds-xs transition-all duration-fast ease-ds-out
-           cursor-pointer select-none outline-none
+           cursor-pointer select-none outline-hidden
            focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background
            hover:bg-surface hover:border-border active:translate-y-px active:shadow-none disabled:cursor-not-allowed disabled:opacity-40;
-  }
+}
 
-  .ds-btn-accent {
-    @apply ds-btn border-transparent bg-accent text-accent-foreground shadow-ds-sm hover:bg-accent/90;
-  }
+@utility ds-btn-accent {
+  @apply ds-btn border-transparent bg-accent text-accent-foreground shadow-ds-sm hover:bg-accent/90;
+}
 
-  .ds-btn-success {
-    @apply ds-btn border-transparent bg-success text-success-foreground shadow-ds-sm hover:bg-success/90;
-  }
+@utility ds-btn-success {
+  @apply ds-btn border-transparent bg-success text-success-foreground shadow-ds-sm hover:bg-success/90;
+}
 
-  .ds-btn-highlight {
-    @apply ds-btn border-highlight/40 bg-highlight/15 text-highlight shadow-ds-sm hover:bg-highlight/25;
-  }
+@utility ds-btn-highlight {
+  @apply ds-btn border-highlight/40 bg-highlight/15 text-highlight shadow-ds-sm hover:bg-highlight/25;
+}
 
+@utility ds-btn-chip {
   /* Compact pill / secondary action (replaces chunky pixel offset buttons) */
-  .ds-btn-chip {
-    @apply relative overflow-hidden rounded-md border border-border/60 bg-surface/80 px-4 py-2
+  @apply relative overflow-hidden rounded-md border border-border/60 bg-surface/80 px-4 py-2
            font-sans text-caption font-semibold text-foreground
            transition-all duration-fast ease-ds-out
            hover:border-accent/40 hover:bg-accent/10 hover:shadow-ds-sm
            active:scale-[0.99] active:translate-y-px;
-  }
 
-  .ds-btn-chip::before {
-    content: "";
+  &::before {
+    content: '';
     @apply pointer-events-none absolute inset-0 bg-white/5 opacity-0 transition-opacity duration-fast;
   }
 
-  .ds-btn-chip:hover::before {
+  &:hover::before {
     @apply opacity-100;
   }
+}
 
-  .ds-input {
-    @apply w-full rounded-lg border border-border/60 bg-elevated p-3 font-sans text-body text-foreground
-           outline-none transition-colors duration-fast placeholder:text-muted-foreground
+@utility ds-input {
+  @apply w-full rounded-lg border border-border/60 bg-elevated p-3 font-sans text-body text-foreground
+           outline-hidden transition-colors duration-fast placeholder:text-muted-foreground
            focus:border-accent focus:shadow-ds-ring-gold;
-  }
+}
 
+@utility game-dock {
   /* Solo play — bottom dock + HUD surfaces (felt stays underneath).
      Plain CSS here: @apply with some opacity utilities failed under Next CSS pipeline. */
-  .game-dock {
-    position: relative;
-    border-radius: 1rem 1rem 0 0;
-    border-top: 1px solid rgb(201 168 76 / 0.22);
-    border-left: 1px solid rgb(92 61 46 / 0.35);
-    border-right: 1px solid rgb(92 61 46 / 0.35);
-    padding: 0.75rem 0.5rem 0.5rem;
-    box-shadow: 0 -12px 40px rgb(0 0 0 / 0.45);
-    backdrop-filter: blur(20px);
-    background: linear-gradient(
-      to bottom,
-      rgb(0 0 0 / 0.42) 0%,
-      rgb(0 0 0 / 0.72) 100%
-    );
-  }
+  position: relative;
+  border-radius: 1rem 1rem 0 0;
+  border-top: 1px solid rgb(201 168 76 / 0.22);
+  border-left: 1px solid rgb(92 61 46 / 0.35);
+  border-right: 1px solid rgb(92 61 46 / 0.35);
+  padding: 0.75rem 0.5rem 0.5rem;
+  box-shadow: 0 -12px 40px rgb(0 0 0 / 0.45);
+  backdrop-filter: blur(20px);
+  background: linear-gradient(
+    to bottom,
+    rgb(0 0 0 / 0.42) 0%,
+    rgb(0 0 0 / 0.72) 100%
+  );
 
   @media (min-width: 768px) {
-    .game-dock {
-      padding: 1.25rem 1.25rem 1rem;
-    }
+    padding: 1.25rem 1.25rem 1rem;
   }
+}
 
-  .game-hud-surface {
-    border-radius: 0.75rem;
-    border: 1px solid rgb(92 61 46 / 0.4);
-    background: rgb(0 0 0 / 0.28);
-    box-shadow: 0 8px 24px rgb(0 0 0 / 0.28), 0 2px 6px rgb(0 0 0 / 0.18);
-    backdrop-filter: blur(12px);
-  }
+@utility game-hud-surface {
+  border-radius: 0.75rem;
+  border: 1px solid rgb(92 61 46 / 0.4);
+  background: rgb(0 0 0 / 0.28);
+  box-shadow:
+    0 8px 24px rgb(0 0 0 / 0.28),
+    0 2px 6px rgb(0 0 0 / 0.18);
+  backdrop-filter: blur(12px);
+}
 
-  .game-phase-pill {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    border-radius: 1rem;
-    border: 1px solid rgb(255 255 255 / 0.12);
-    background: rgb(0 0 0 / 0.35);
-    padding: 0.5rem 1rem;
-    box-shadow: 0 2px 8px rgb(0 0 0 / 0.2), 0 1px 2px rgb(0 0 0 / 0.15);
-    backdrop-filter: blur(12px);
-  }
+@utility game-phase-pill {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  background: rgb(0 0 0 / 0.35);
+  padding: 0.5rem 1rem;
+  box-shadow:
+    0 2px 8px rgb(0 0 0 / 0.2),
+    0 1px 2px rgb(0 0 0 / 0.15);
+  backdrop-filter: blur(12px);
+}
 
+@utility game-results-overlay {
   /* Post-hand / match-over / practice modals — plain CSS (same rationale as .game-dock). */
-  .game-results-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 40;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.5rem;
-    background: rgb(6 10 14 / 0.9);
-    background-image: radial-gradient(
-      ellipse 92% 72% at 50% 36%,
-      rgb(18 42 32 / 0.45) 0%,
-      transparent 58%
-    );
-    backdrop-filter: blur(10px);
-  }
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background: rgb(6 10 14 / 0.9);
+  background-image: radial-gradient(
+    ellipse 92% 72% at 50% 36%,
+    rgb(18 42 32 / 0.45) 0%,
+    transparent 58%
+  );
+  backdrop-filter: blur(10px);
 
   @media (min-width: 768px) {
-    .game-results-overlay {
-      padding: 1rem;
-    }
+    padding: 1rem;
   }
+}
 
-  .game-results-sheet {
-    position: relative;
-    z-index: 50;
-    width: 100%;
-    max-width: 32rem;
-    max-height: 90vh;
-    overflow-y: auto;
-    border-radius: 1rem;
-    border: 1px solid rgb(255 255 255 / 0.11);
-    background: linear-gradient(
-      168deg,
-      rgb(34 40 54 / 0.97) 0%,
-      rgb(12 16 24 / 0.99) 100%
-    );
-    box-shadow:
-      0 28px 72px rgb(0 0 0 / 0.58),
-      0 0 0 1px rgb(0 0 0 / 0.35);
-    backdrop-filter: blur(22px);
-    padding: 1rem 1rem 1.25rem;
-  }
+@utility game-results-sheet {
+  position: relative;
+  z-index: 50;
+  width: 100%;
+  max-width: 32rem;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.11);
+  background: linear-gradient(
+    168deg,
+    rgb(34 40 54 / 0.97) 0%,
+    rgb(12 16 24 / 0.99) 100%
+  );
+  box-shadow:
+    0 28px 72px rgb(0 0 0 / 0.58),
+    0 0 0 1px rgb(0 0 0 / 0.35);
+  backdrop-filter: blur(22px);
+  padding: 1rem 1rem 1.25rem;
 
   @media (min-width: 768px) {
-    .game-results-sheet {
-      padding: 1.5rem 1.75rem 1.5rem;
-    }
+    padding: 1.5rem 1.75rem 1.5rem;
   }
+}
+
+@utility ds-text-glow {
+  text-shadow: 0 0 14px currentColor;
+  opacity: 1;
+}
+
+@utility ds-text-glow-strong {
+  text-shadow:
+    0 0 8px currentColor,
+    0 0 22px currentColor;
+}
+
+@utility bottom-nav-label {
+  font-size: 11px;
+
+  html.comfortable-text & {
+    font-size: 13px;
+  }
+}
+
+@utility home-micro-track {
+  html.comfortable-text & {
+    font-size: 11px;
+  }
+}
+
+@utility safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 @layer utilities {
-  .ds-text-glow {
-    text-shadow: 0 0 14px currentColor;
-    opacity: 1;
+  /* Tile animations */
+  @keyframes pulse-gold {
+    0%,
+    100% {
+      box-shadow: 0 0 4px #f59e0b;
+    }
+    50% {
+      box-shadow:
+        0 0 12px #f59e0b,
+        0 0 20px rgb(245 158 11 / 0.38);
+    }
   }
 
-  .ds-text-glow-strong {
-    text-shadow: 0 0 8px currentColor, 0 0 22px currentColor;
+  .animate-pulse-gold {
+    animation: pulse-gold 1.5s ease-in-out infinite;
   }
 
-  .bottom-nav-label {
-    font-size: 11px;
+  @keyframes blink-cursor {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
   }
 
-  html.comfortable-text .bottom-nav-label {
-    font-size: 13px;
+  .animate-blink {
+    animation: blink-cursor 1s step-end infinite;
   }
 
-  html.comfortable-text .home-micro-track {
-    font-size: 11px;
+  .animate-pulse-subtle {
+    animation: pulse-subtle 1.5s ease-in-out infinite;
   }
 
-  .safe-area-pb {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+  @keyframes pulse-subtle {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.85;
+      transform: scale(1.02);
+    }
   }
-}
 
-/* Tile animations */
-@keyframes pulse-gold {
-  0%, 100% { box-shadow: 0 0 4px #f59e0b; }
-  50% { box-shadow: 0 0 12px #f59e0b, 0 0 20px rgb(245 158 11 / 0.38); }
-}
-
-.animate-pulse-gold {
-  animation: pulse-gold 1.5s ease-in-out infinite;
-}
-
-@keyframes blink-cursor {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
-.animate-blink {
-  animation: blink-cursor 1s step-end infinite;
-}
-
-.animate-pulse-subtle {
-  animation: pulse-subtle 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse-subtle {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.85; transform: scale(1.02); }
-}
-
-/* Tile action animations */
-@keyframes tile-draw {
-  0% { opacity: 0; transform: translateY(-12px) scale(0.9); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes tile-discard {
-  0% { opacity: 1; transform: scale(1); }
-  50% { transform: scale(0.85); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-@keyframes tile-claim {
-  0% { box-shadow: 0 0 0 transparent; }
-  30% { box-shadow: 0 0 14px #4eada0, 0 0 24px rgb(78 173 160 / 0.28); }
-  100% { box-shadow: 0 0 0 transparent; }
-}
-
-@keyframes tile-win {
-  0%, 100% { box-shadow: 0 0 4px #c9a84c; transform: scale(1); }
-  50% { box-shadow: 0 0 16px #e8c55a, 0 0 28px rgb(201 168 76 / 0.32); transform: scale(1.04); }
-}
-
-@keyframes slide-up {
-  0% { opacity: 0; transform: translateY(20px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes type-in {
-  0% { width: 0; }
-  100% { width: 100%; }
-}
-
-.animate-tile-draw {
-  animation: tile-draw 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.animate-tile-discard {
-  animation: tile-discard 0.25s cubic-bezier(0.65, 0, 0.35, 1);
-}
-
-.animate-tile-claim {
-  animation: tile-claim 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.animate-tile-win {
-  animation: tile-win 1.2s ease-in-out infinite;
-}
-
-.animate-slide-up {
-  animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes confetti-fall {
-  0% {
-    transform: translateY(-10vh) translateX(0) rotate(0deg);
-    opacity: 1;
+  /* Tile action animations */
+  @keyframes tile-draw {
+    0% {
+      opacity: 0;
+      transform: translateY(-12px) scale(0.9);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
   }
-  100% {
-    transform: translateY(110vh) translateX(var(--confetti-drift, 0)) rotate(var(--confetti-rotation, 360deg));
-    opacity: 0;
+
+  @keyframes tile-discard {
+    0% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(0.85);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
-}
 
-.animate-confetti-fall {
-  animation-name: confetti-fall;
-  animation-timing-function: linear;
-  animation-fill-mode: forwards;
-}
-
-@keyframes fan-row-in {
-  0% { opacity: 0; transform: translateX(12px); }
-  100% { opacity: 1; transform: translateX(0); }
-}
-
-.animate-fan-row-in {
-  opacity: 0;
-  animation: fan-row-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hand-flip-tile {
-    transition: none !important;
+  @keyframes tile-claim {
+    0% {
+      box-shadow: 0 0 0 transparent;
+    }
+    30% {
+      box-shadow:
+        0 0 14px #4eada0,
+        0 0 24px rgb(78 173 160 / 0.28);
+    }
+    100% {
+      box-shadow: 0 0 0 transparent;
+    }
   }
-  .animate-tile-arrive,
-  .animate-tile-depart,
-  .animate-tile-claim-sweep,
-  .animate-tile-discard-lift,
-  .animate-confetti-fall,
-  .animate-fan-row-in,
-  .animate-bubble-pop,
-  .animate-portrait-react,
-  .animate-ai-thinking-halo,
-  .animate-select-pulse,
-  .animate-winner-spotlight,
-  .animate-score-punch,
-  .animate-screen-flash,
-  .animate-screen-shake,
-  .danger-vignette::after,
-  .late-wall-heartbeat,
-  .crt-overlay,
-  .boot-overlay {
-    animation: none !important;
+
+  @keyframes tile-win {
+    0%,
+    100% {
+      box-shadow: 0 0 4px #c9a84c;
+      transform: scale(1);
+    }
+    50% {
+      box-shadow:
+        0 0 16px #e8c55a,
+        0 0 28px rgb(201 168 76 / 0.32);
+      transform: scale(1.04);
+    }
   }
+
+  @keyframes slide-up {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes type-in {
+    0% {
+      width: 0;
+    }
+    100% {
+      width: 100%;
+    }
+  }
+
+  .animate-tile-draw {
+    animation: tile-draw 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animate-tile-discard {
+    animation: tile-discard 0.25s cubic-bezier(0.65, 0, 0.35, 1);
+  }
+
+  .animate-tile-claim {
+    animation: tile-claim 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animate-tile-win {
+    animation: tile-win 1.2s ease-in-out infinite;
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes confetti-fall {
+    0% {
+      transform: translateY(-10vh) translateX(0) rotate(0deg);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(110vh) translateX(var(--confetti-drift, 0))
+        rotate(var(--confetti-rotation, 360deg));
+      opacity: 0;
+    }
+  }
+
+  .animate-confetti-fall {
+    animation-name: confetti-fall;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+  }
+
+  @keyframes fan-row-in {
+    0% {
+      opacity: 0;
+      transform: translateX(12px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
   .animate-fan-row-in {
-    opacity: 1;
+    opacity: 0;
+    animation: fan-row-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
-  .boot-overlay {
-    display: none !important;
+
+  @media (prefers-reduced-motion: reduce) {
+    .hand-flip-tile {
+      transition: none !important;
+    }
+    .animate-tile-arrive,
+    .animate-tile-depart,
+    .animate-tile-claim-sweep,
+    .animate-tile-discard-lift,
+    .animate-confetti-fall,
+    .animate-fan-row-in,
+    .animate-bubble-pop,
+    .animate-portrait-react,
+    .animate-ai-thinking-halo,
+    .animate-select-pulse,
+    .animate-winner-spotlight,
+    .animate-score-punch,
+    .animate-screen-flash,
+    .animate-screen-shake,
+    .danger-vignette::after,
+    .late-wall-heartbeat,
+    .crt-overlay,
+    .boot-overlay {
+      animation: none !important;
+    }
+    .animate-fan-row-in {
+      opacity: 1;
+    }
+    .boot-overlay {
+      display: none !important;
+    }
   }
-}
 
-/* === Spatial unity: the one-table surface and seat plaques === */
+  /* === Spatial unity: the one-table surface and seat plaques === */
 
-/* The single playing surface: everything that happens at the table —
+  /* The single playing surface: everything that happens at the table —
    opponents, discard sea, guidance — lives inside this one panel. */
-.game-table-surface {
-  border-radius: 1.25rem;
-  border: 1px solid rgb(201 168 76 / 0.18);
-  background:
-    radial-gradient(ellipse 90% 80% at 50% 38%, rgb(255 244 200 / 0.045) 0%, transparent 60%),
-    rgb(0 0 0 / 0.16);
-  box-shadow:
-    inset 0 2px 18px rgb(0 0 0 / 0.35),
-    inset 0 0 0 1px rgb(0 0 0 / 0.18);
-}
+  .game-table-surface {
+    border-radius: 1.25rem;
+    border: 1px solid rgb(201 168 76 / 0.18);
+    background:
+      radial-gradient(
+        ellipse 90% 80% at 50% 38%,
+        rgb(255 244 200 / 0.045) 0%,
+        transparent 60%
+      ),
+      rgb(0 0 0 / 0.16);
+    box-shadow:
+      inset 0 2px 18px rgb(0 0 0 / 0.35),
+      inset 0 0 0 1px rgb(0 0 0 / 0.18);
+  }
 
-/* Opponent rim plaque: portrait + identity + public info, one compact card */
-.seat-plaque {
-  border-radius: 0.75rem;
-  border: 1px solid rgb(92 61 46 / 0.45);
-  background: linear-gradient(168deg, rgb(34 44 38 / 0.92) 0%, rgb(16 20 18 / 0.9) 100%);
-  box-shadow: 0 4px 14px rgb(0 0 0 / 0.3);
-  padding: 0.375rem 0.625rem;
-  backdrop-filter: blur(8px);
-  max-width: 100%;
-}
+  /* Opponent rim plaque: portrait + identity + public info, one compact card */
+  .seat-plaque {
+    border-radius: 0.75rem;
+    border: 1px solid rgb(92 61 46 / 0.45);
+    background: linear-gradient(
+      168deg,
+      rgb(34 44 38 / 0.92) 0%,
+      rgb(16 20 18 / 0.9) 100%
+    );
+    box-shadow: 0 4px 14px rgb(0 0 0 / 0.3);
+    padding: 0.375rem 0.625rem;
+    backdrop-filter: blur(8px);
+    max-width: 100%;
+  }
 
-/* Soft lamplight behind plaque portraits so dark palettes stay legible */
-.seat-plaque-portrait {
-  border-radius: 9999px;
-  background: radial-gradient(circle, rgb(255 240 200 / 0.14) 0%, rgb(255 240 200 / 0.04) 55%, transparent 75%);
-  box-shadow: inset 0 0 0 1px rgb(201 168 76 / 0.22);
-}
+  /* Soft lamplight behind plaque portraits so dark palettes stay legible */
+  .seat-plaque-portrait {
+    border-radius: 9999px;
+    background: radial-gradient(
+      circle,
+      rgb(255 240 200 / 0.14) 0%,
+      rgb(255 240 200 / 0.04) 55%,
+      transparent 75%
+    );
+    box-shadow: inset 0 0 0 1px rgb(201 168 76 / 0.22);
+  }
 
-/* Tiny face-down tile pips standing in for the old 13-tile strips */
-.seat-plaque-pip {
-  display: inline-block;
-  width: 7px;
-  height: 10px;
-  border-radius: 2px;
-  background: repeating-linear-gradient(45deg, #2a4538, #2a4538 2px, #1a2b1e 2px, #1a2b1e 4px);
-  border: 1px solid rgb(92 61 46 / 0.5);
-}
+  /* Tiny face-down tile pips standing in for the old 13-tile strips */
+  .seat-plaque-pip {
+    display: inline-block;
+    width: 7px;
+    height: 10px;
+    border-radius: 2px;
+    background: repeating-linear-gradient(
+      45deg,
+      #2a4538,
+      #2a4538 2px,
+      #1a2b1e 2px,
+      #1a2b1e 4px
+    );
+    border: 1px solid rgb(92 61 46 / 0.5);
+  }
 
-/* === Game feel: tension, escalation, retro identity === */
+  /* === Game feel: tension, escalation, retro identity === */
 
-/* Tile flight clones (cross-container travel) live in a fixed overlay. */
-.tile-flight-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  pointer-events: none;
-  overflow: hidden;
-}
+  /* Tile flight clones (cross-container travel) live in a fixed overlay. */
+  .tile-flight-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    overflow: hidden;
+  }
 
-.tile-flight-clone {
-  position: absolute;
-  top: 0;
-  left: 0;
-  will-change: transform;
-  filter: drop-shadow(0 6px 8px rgb(0 0 0 / 0.45));
-}
+  .tile-flight-clone {
+    position: absolute;
+    top: 0;
+    left: 0;
+    will-change: transform;
+    filter: drop-shadow(0 6px 8px rgb(0 0 0 / 0.45));
+  }
 
-/* Late-wall danger: a breathing crimson vignette over the table. */
-@keyframes danger-pulse {
-  0%, 100% { opacity: 0.25; }
-  50% { opacity: 0.7; }
-}
+  /* Late-wall danger: a breathing crimson vignette over the table. */
+  @keyframes danger-pulse {
+    0%,
+    100% {
+      opacity: 0.25;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
 
-.danger-vignette::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  pointer-events: none;
-  background: radial-gradient(ellipse at center, transparent 55%, rgb(140 30 20 / 0.38) 100%);
-  animation: danger-pulse 2.2s ease-in-out infinite;
-}
+  .danger-vignette::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 55%,
+      rgb(140 30 20 / 0.38) 100%
+    );
+    animation: danger-pulse 2.2s ease-in-out infinite;
+  }
 
-/* Heartbeat pacing on the wall counter when the wall runs low. */
-@keyframes heartbeat {
-  0%, 100% { transform: scale(1); }
-  12% { transform: scale(1.14); }
-  24% { transform: scale(1); }
-  36% { transform: scale(1.1); }
-  48% { transform: scale(1); }
-}
+  /* Heartbeat pacing on the wall counter when the wall runs low. */
+  @keyframes heartbeat {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    12% {
+      transform: scale(1.14);
+    }
+    24% {
+      transform: scale(1);
+    }
+    36% {
+      transform: scale(1.1);
+    }
+    48% {
+      transform: scale(1);
+    }
+  }
 
-.late-wall-heartbeat {
-  animation: heartbeat 1.6s ease-in-out infinite;
-  color: var(--destructive, #c75b4a) !important;
-}
+  .late-wall-heartbeat {
+    animation: heartbeat 1.6s ease-in-out infinite;
+    color: var(--destructive, #c75b4a) !important;
+  }
 
-/* Win escalation: white flash + table shake for monster hands. */
-@keyframes screen-flash {
-  0% { opacity: 0.85; }
-  100% { opacity: 0; }
-}
+  /* Win escalation: white flash + table shake for monster hands. */
+  @keyframes screen-flash {
+    0% {
+      opacity: 0.85;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
 
-.animate-screen-flash {
-  position: fixed;
-  inset: 0;
-  z-index: 55;
-  pointer-events: none;
-  background: radial-gradient(ellipse at center, rgb(255 244 200 / 0.95) 0%, rgb(255 220 120 / 0.5) 60%, transparent 100%);
-  animation: screen-flash 0.7s ease-out forwards;
-}
+  .animate-screen-flash {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse at center,
+      rgb(255 244 200 / 0.95) 0%,
+      rgb(255 220 120 / 0.5) 60%,
+      transparent 100%
+    );
+    animation: screen-flash 0.7s ease-out forwards;
+  }
 
-@keyframes screen-shake {
-  0%, 100% { transform: translate(0, 0); }
-  15% { transform: translate(-6px, 3px); }
-  30% { transform: translate(5px, -4px); }
-  45% { transform: translate(-4px, -2px); }
-  60% { transform: translate(4px, 3px); }
-  75% { transform: translate(-2px, 1px); }
-  90% { transform: translate(1px, -1px); }
-}
+  @keyframes screen-shake {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+    15% {
+      transform: translate(-6px, 3px);
+    }
+    30% {
+      transform: translate(5px, -4px);
+    }
+    45% {
+      transform: translate(-4px, -2px);
+    }
+    60% {
+      transform: translate(4px, 3px);
+    }
+    75% {
+      transform: translate(-2px, 1px);
+    }
+    90% {
+      transform: translate(1px, -1px);
+    }
+  }
 
-.animate-screen-shake {
-  animation: screen-shake 0.55s ease-out;
-}
+  .animate-screen-shake {
+    animation: screen-shake 0.55s ease-out;
+  }
 
-/* FLIP hand-sort transition (transform applied inline by PlayerHand). */
-.hand-flip-tile {
-  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.3, 1);
-}
+  /* FLIP hand-sort transition (transform applied inline by PlayerHand). */
+  .hand-flip-tile {
+    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
 
-/* CRT scanline overlay — pure cosmetics, toggled in settings. */
-@keyframes crt-flicker {
-  0%, 100% { opacity: 0.92; }
-  50% { opacity: 1; }
-}
+  /* CRT scanline overlay — pure cosmetics, toggled in settings. */
+  @keyframes crt-flicker {
+    0%,
+    100% {
+      opacity: 0.92;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
 
-.crt-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 40;
-  pointer-events: none;
-  background:
-    repeating-linear-gradient(
+  .crt-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+    pointer-events: none;
+    background: repeating-linear-gradient(
       to bottom,
       rgb(0 0 0 / 0.16) 0px,
       rgb(0 0 0 / 0.16) 1px,
       transparent 1px,
       transparent 3px
     );
-  mix-blend-mode: multiply;
-  animation: crt-flicker 0.12s steps(2) infinite;
-}
+    mix-blend-mode: multiply;
+    animation: crt-flicker 0.12s steps(2) infinite;
+  }
 
-.crt-overlay::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at center, transparent 60%, rgb(0 0 0 / 0.32) 100%);
-}
+  .crt-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 60%,
+      rgb(0 0 0 / 0.32) 100%
+    );
+  }
 
-/* Boot sequence: CRT power-on sweep, then the logo glows in. */
-@keyframes boot-sweep {
-  0% { transform: scaleY(0.004); opacity: 1; }
-  35% { transform: scaleY(0.004); opacity: 1; }
-  55% { transform: scaleY(1); opacity: 1; }
-  100% { transform: scaleY(1); opacity: 0; }
-}
+  /* Boot sequence: CRT power-on sweep, then the logo glows in. */
+  @keyframes boot-sweep {
+    0% {
+      transform: scaleY(0.004);
+      opacity: 1;
+    }
+    35% {
+      transform: scaleY(0.004);
+      opacity: 1;
+    }
+    55% {
+      transform: scaleY(1);
+      opacity: 1;
+    }
+    100% {
+      transform: scaleY(1);
+      opacity: 0;
+    }
+  }
 
-@keyframes boot-logo-in {
-  0%, 45% { opacity: 0; transform: scale(0.92); filter: brightness(2.5); }
-  65% { opacity: 1; transform: scale(1.02); filter: brightness(1.6); }
-  100% { opacity: 1; transform: scale(1); filter: brightness(1); }
-}
+  @keyframes boot-logo-in {
+    0%,
+    45% {
+      opacity: 0;
+      transform: scale(0.92);
+      filter: brightness(2.5);
+    }
+    65% {
+      opacity: 1;
+      transform: scale(1.02);
+      filter: brightness(1.6);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+      filter: brightness(1);
+    }
+  }
 
-.boot-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 70;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #050807;
-}
+  .boot-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #050807;
+  }
 
-.boot-overlay .boot-screen {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, #0d1411 0%, #111c16 50%, #0d1411 100%);
-  transform-origin: center;
-  animation: boot-sweep 1.5s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
-}
+  .boot-overlay .boot-screen {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, #0d1411 0%, #111c16 50%, #0d1411 100%);
+    transform-origin: center;
+    animation: boot-sweep 1.5s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+  }
 
-.boot-overlay .boot-logo {
-  position: relative;
-  z-index: 1;
-  animation: boot-logo-in 1.5s ease-out forwards;
-}
+  .boot-overlay .boot-logo {
+    position: relative;
+    z-index: 1;
+    animation: boot-logo-in 1.5s ease-out forwards;
+  }
 
-@keyframes portrait-react {
-  0% { transform: scale(1) rotate(0deg); }
-  20% { transform: scale(1.08) rotate(-3deg); }
-  40% { transform: scale(0.96) rotate(2deg); }
-  60% { transform: scale(1.04) rotate(-1deg); }
-  100% { transform: scale(1) rotate(0deg); }
-}
+  @keyframes portrait-react {
+    0% {
+      transform: scale(1) rotate(0deg);
+    }
+    20% {
+      transform: scale(1.08) rotate(-3deg);
+    }
+    40% {
+      transform: scale(0.96) rotate(2deg);
+    }
+    60% {
+      transform: scale(1.04) rotate(-1deg);
+    }
+    100% {
+      transform: scale(1) rotate(0deg);
+    }
+  }
 
-.animate-portrait-react {
-  animation: portrait-react 0.55s cubic-bezier(0.16, 1, 0.3, 1);
-}
+  .animate-portrait-react {
+    animation: portrait-react 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  }
 
-@keyframes ai-thinking-halo {
-  0%, 100% { box-shadow: 0 0 0 0 rgb(245 158 11 / 0), 0 0 18px rgb(56 189 248 / 0.25); }
-  50% { box-shadow: 0 0 0 6px rgb(245 158 11 / 0.12), 0 0 28px rgb(56 189 248 / 0.45); }
-}
+  @keyframes ai-thinking-halo {
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 0 rgb(245 158 11 / 0),
+        0 0 18px rgb(56 189 248 / 0.25);
+    }
+    50% {
+      box-shadow:
+        0 0 0 6px rgb(245 158 11 / 0.12),
+        0 0 28px rgb(56 189 248 / 0.45);
+    }
+  }
 
-.animate-ai-thinking-halo {
-  animation: ai-thinking-halo 2s ease-in-out infinite;
-  border-radius: 9999px;
-}
+  .animate-ai-thinking-halo {
+    animation: ai-thinking-halo 2s ease-in-out infinite;
+    border-radius: 9999px;
+  }
 
-@keyframes select-pulse {
-  0%, 100% { box-shadow: 0 0 8px rgb(56 189 248 / 0.5), 0 4px 8px rgb(0 0 0 / 0.4); }
-  50% { box-shadow: 0 0 16px rgb(56 189 248 / 0.85), 0 4px 12px rgb(0 0 0 / 0.4); }
-}
+  @keyframes select-pulse {
+    0%,
+    100% {
+      box-shadow:
+        0 0 8px rgb(56 189 248 / 0.5),
+        0 4px 8px rgb(0 0 0 / 0.4);
+    }
+    50% {
+      box-shadow:
+        0 0 16px rgb(56 189 248 / 0.85),
+        0 4px 12px rgb(0 0 0 / 0.4);
+    }
+  }
 
-.animate-select-pulse {
-  animation: select-pulse 1.4s ease-in-out infinite;
-}
+  .animate-select-pulse {
+    animation: select-pulse 1.4s ease-in-out infinite;
+  }
 
-@keyframes winner-spotlight {
-  0% { opacity: 0; transform: scale(0.7); }
-  20% { opacity: 1; transform: scale(1); }
-  80% { opacity: 1; transform: scale(1.04); }
-  100% { opacity: 0; transform: scale(1.08); }
-}
+  @keyframes winner-spotlight {
+    0% {
+      opacity: 0;
+      transform: scale(0.7);
+    }
+    20% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    80% {
+      opacity: 1;
+      transform: scale(1.04);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.08);
+    }
+  }
 
-.animate-winner-spotlight {
-  animation: winner-spotlight 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
+  .animate-winner-spotlight {
+    animation: winner-spotlight 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
 
-@keyframes score-punch {
-  0% { transform: scale(1); }
-  40% { transform: scale(1.18); filter: drop-shadow(0 0 8px currentColor); }
-  100% { transform: scale(1); filter: drop-shadow(0 0 0 transparent); }
-}
+  @keyframes score-punch {
+    0% {
+      transform: scale(1);
+    }
+    40% {
+      transform: scale(1.18);
+      filter: drop-shadow(0 0 8px currentColor);
+    }
+    100% {
+      transform: scale(1);
+      filter: drop-shadow(0 0 0 transparent);
+    }
+  }
 
-.animate-score-punch {
-  animation: score-punch 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
+  .animate-score-punch {
+    animation: score-punch 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
 
-@keyframes bubble-pop {
-  0% { opacity: 0; transform: scale(0.6) translateY(-4px); }
-  20% { opacity: 1; transform: scale(1.05) translateY(0); }
-  30% { transform: scale(1); }
-  85% { opacity: 1; }
-  100% { opacity: 0; transform: scale(0.95); }
-}
+  @keyframes bubble-pop {
+    0% {
+      opacity: 0;
+      transform: scale(0.6) translateY(-4px);
+    }
+    20% {
+      opacity: 1;
+      transform: scale(1.05) translateY(0);
+    }
+    30% {
+      transform: scale(1);
+    }
+    85% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+  }
 
-.animate-bubble-pop {
-  animation: bubble-pop 2.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
+  .animate-bubble-pop {
+    animation: bubble-pop 2.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
 
-/* Shared table frame: fibre-noise weave (::before) + wood rail (::after).
+  /* Shared table frame: fibre-noise weave (::before) + wood rail (::after).
    Both are automatic for every .felt-* class — a new felt only needs to
    supply a `background`. Do not re-add per-felt stripe textures. A felt may
    override the rail's outermost accent line (first box-shadow layer) for
    character, as tournament-red and casino-black do below, but should keep
    the shared wood body + drop-shadow layers underneath it. */
-.game-table-felt {
-  position: relative;
-}
-
-.game-table-felt::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.3;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-.game-table-felt::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: 14px;
-  box-shadow:
-    inset 0 0 0 1px rgb(92 61 46 / 0.55),
-    inset 0 0 0 6px rgb(46 30 22 / 0.5),
-    inset 0 6px 18px rgb(0 0 0 / 0.35);
-}
-
-.felt-classic-green {
-  background:
-    radial-gradient(ellipse 120% 100% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.22) 100%),
-    radial-gradient(ellipse at center, #1d3b30 0%, #162c24 55%, #0e1d18 100%);
-}
-
-.felt-tournament-red {
-  background:
-    radial-gradient(ellipse 120% 100% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.22) 100%),
-    radial-gradient(ellipse at center, #6b1f24 0%, #4a1518 55%, #2a0c0e 100%);
-}
-
-.felt-tournament-red.game-table-felt::after {
-  box-shadow:
-    inset 0 0 0 1px rgb(201 168 76 / 0.55),
-    inset 0 0 0 6px rgb(46 30 22 / 0.5),
-    inset 0 6px 18px rgb(0 0 0 / 0.35);
-}
-
-.felt-casino-black {
-  background:
-    radial-gradient(ellipse 120% 100% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.22) 100%),
-    radial-gradient(ellipse at center, #1a1320 0%, #0d0813 60%, #050308 100%);
-}
-
-.felt-casino-black.game-table-felt::after {
-  box-shadow:
-    inset 0 0 0 1px rgb(56 189 248 / 0.45),
-    inset 0 0 0 6px rgb(46 30 22 / 0.5),
-    inset 0 6px 18px rgb(0 0 0 / 0.35);
-}
-
-.felt-bamboo-mat {
-  background:
-    radial-gradient(ellipse 120% 100% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.22) 100%),
-    radial-gradient(ellipse at center, #9c7a44 0%, #7e5f30 55%, #574020 100%);
-}
-
-@keyframes active-seat-glow {
-  0%, 100% { box-shadow: 0 0 12px rgb(245 158 11 / 0.3); }
-  50% { box-shadow: 0 0 24px rgb(245 158 11 / 0.55); }
-}
-
-.animate-active-seat {
-  animation: active-seat-glow 2.4s ease-in-out infinite;
-}
-
-@keyframes tile-arrive {
-  0% {
-    opacity: 0;
-    transform: scale(0.42) translate(-28px, -32px) rotate(-14deg);
-    filter: blur(1px);
+  .game-table-felt {
+    position: relative;
   }
-  45% {
-    opacity: 1;
-    transform: scale(1.05) translate(2px, 3px) rotate(3deg);
-    filter: blur(0);
+
+  .game-table-felt::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.3;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
-  72% {
-    transform: scale(0.98) translate(-1px, 0) rotate(-1deg);
+
+  .game-table-felt::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: 14px;
+    box-shadow:
+      inset 0 0 0 1px rgb(92 61 46 / 0.55),
+      inset 0 0 0 6px rgb(46 30 22 / 0.5),
+      inset 0 6px 18px rgb(0 0 0 / 0.35);
   }
-  100% {
-    transform: scale(1) translate(0, 0) rotate(0);
+
+  .felt-classic-green {
+    background:
+      radial-gradient(
+        ellipse 120% 100% at 50% 45%,
+        transparent 55%,
+        rgba(0, 0, 0, 0.22) 100%
+      ),
+      radial-gradient(ellipse at center, #1d3b30 0%, #162c24 55%, #0e1d18 100%);
   }
-}
 
-.animate-tile-arrive {
-  animation: tile-arrive 0.38s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-@keyframes tile-depart {
-  0% {
-    opacity: 1;
-    transform: scale(1) translate(0, 0);
+  .felt-tournament-red {
+    background:
+      radial-gradient(
+        ellipse 120% 100% at 50% 45%,
+        transparent 55%,
+        rgba(0, 0, 0, 0.22) 100%
+      ),
+      radial-gradient(ellipse at center, #6b1f24 0%, #4a1518 55%, #2a0c0e 100%);
   }
-  100% {
-    opacity: 0;
-    transform: scale(0.35) translate(12px, -28px) rotate(8deg);
+
+  .felt-tournament-red.game-table-felt::after {
+    box-shadow:
+      inset 0 0 0 1px rgb(201 168 76 / 0.55),
+      inset 0 0 0 6px rgb(46 30 22 / 0.5),
+      inset 0 6px 18px rgb(0 0 0 / 0.35);
   }
-}
 
-.animate-tile-depart {
-  animation: tile-depart 0.32s cubic-bezier(0.55, 0, 0.85, 0.36) forwards;
-}
-
-@keyframes tile-claim-sweep {
-  0% {
-    opacity: 0;
-    transform: translate(-22px, -16px) scale(0.55) rotate(-10deg);
-    filter: brightness(1.15);
+  .felt-casino-black {
+    background:
+      radial-gradient(
+        ellipse 120% 100% at 50% 45%,
+        transparent 55%,
+        rgba(0, 0, 0, 0.22) 100%
+      ),
+      radial-gradient(ellipse at center, #1a1320 0%, #0d0813 60%, #050308 100%);
   }
-  35% {
-    opacity: 1;
+
+  .felt-casino-black.game-table-felt::after {
+    box-shadow:
+      inset 0 0 0 1px rgb(56 189 248 / 0.45),
+      inset 0 0 0 6px rgb(46 30 22 / 0.5),
+      inset 0 6px 18px rgb(0 0 0 / 0.35);
   }
-  100% {
-    opacity: 1;
-    transform: translate(0, 0) scale(1) rotate(0);
-    filter: brightness(1);
+
+  .felt-bamboo-mat {
+    background:
+      radial-gradient(
+        ellipse 120% 100% at 50% 45%,
+        transparent 55%,
+        rgba(0, 0, 0, 0.22) 100%
+      ),
+      radial-gradient(ellipse at center, #9c7a44 0%, #7e5f30 55%, #574020 100%);
   }
-}
 
-.animate-tile-claim-sweep {
-  animation: tile-claim-sweep 0.42s cubic-bezier(0.22, 1, 0.36, 1);
-}
+  @keyframes active-seat-glow {
+    0%,
+    100% {
+      box-shadow: 0 0 12px rgb(245 158 11 / 0.3);
+    }
+    50% {
+      box-shadow: 0 0 24px rgb(245 158 11 / 0.55);
+    }
+  }
 
-@keyframes tile-discard-lift {
-  0% { transform: translateY(0) scale(1); }
-  35% { transform: translateY(-6px) scale(1.04); }
-  100% { transform: translateY(0) scale(1); }
-}
+  .animate-active-seat {
+    animation: active-seat-glow 2.4s ease-in-out infinite;
+  }
 
-.animate-tile-discard-lift {
-  animation: tile-discard-lift 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-}
+  @keyframes tile-arrive {
+    0% {
+      opacity: 0;
+      transform: scale(0.42) translate(-28px, -32px) rotate(-14deg);
+      filter: blur(1px);
+    }
+    45% {
+      opacity: 1;
+      transform: scale(1.05) translate(2px, 3px) rotate(3deg);
+      filter: blur(0);
+    }
+    72% {
+      transform: scale(0.98) translate(-1px, 0) rotate(-1deg);
+    }
+    100% {
+      transform: scale(1) translate(0, 0) rotate(0);
+    }
+  }
 
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+  .animate-tile-arrive {
+    animation: tile-arrive 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+  }
 
-.animate-fade-in {
-  animation: fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
+  @keyframes tile-depart {
+    0% {
+      opacity: 1;
+      transform: scale(1) translate(0, 0);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(0.35) translate(12px, -28px) rotate(8deg);
+    }
+  }
 
-.glass-panel {
-  @apply rounded-xl border border-white/10 bg-white/5 backdrop-blur-lg;
-}
+  .animate-tile-depart {
+    animation: tile-depart 0.32s cubic-bezier(0.55, 0, 0.85, 0.36) forwards;
+  }
 
-/* Fallback tile scale outside the game board (practice, cosmetics, results). */
-:root {
-  --tile-base-w: clamp(26px, 4vmin, 52px);
-}
+  @keyframes tile-claim-sweep {
+    0% {
+      opacity: 0;
+      transform: translate(-22px, -16px) scale(0.55) rotate(-10deg);
+      filter: brightness(1.15);
+    }
+    35% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 1;
+      transform: translate(0, 0) scale(1) rotate(0);
+      filter: brightness(1);
+    }
+  }
 
-/* Centered play area + fluid tiles from container size (width + height). */
-.game-board-scene {
-  container-type: size;
-  container-name: game-board;
-  /* cqh can collapse when the flex chain resolves the scene to its minimum
+  .animate-tile-claim-sweep {
+    animation: tile-claim-sweep 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes tile-discard-lift {
+    0% {
+      transform: translateY(0) scale(1);
+    }
+    35% {
+      transform: translateY(-6px) scale(1.04);
+    }
+    100% {
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .animate-tile-discard-lift {
+    animation: tile-discard-lift 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .glass-panel {
+    @apply rounded-xl border border-white/10 bg-white/5 backdrop-blur-lg;
+  }
+
+  /* Fallback tile scale outside the game board (practice, cosmetics, results). */
+  :root {
+    --tile-base-w: clamp(26px, 4vmin, 52px);
+  }
+
+  /* Centered play area + fluid tiles from container size (width + height). */
+  .game-board-scene {
+    container-type: size;
+    container-name: game-board;
+    /* cqh can collapse when the flex chain resolves the scene to its minimum
      content height on compressed viewports. A viewport-derived floor via vw
      keeps tile width stable for the same viewport width, without changing the
      normal cqw/cqh sweet spot. */
-  --tile-base-w: clamp(26px, min(5.5cqw, max(4.8cqh, 2.7vw)), 60px);
-}
+    --tile-base-w: clamp(26px, min(5.5cqw, max(4.8cqh, 2.7vw)), 60px);
+  }
 
-/* Below `sm` the hand wraps to two rows (PlayerHand.tsx uses
+  /* Below `sm` the hand wraps to two rows (PlayerHand.tsx uses
    `flex-wrap sm:flex-nowrap`), so its tiles no longer have to fit 14-across
    and can be comfortably larger. This breakpoint MUST match that one: at
    640-767px the row is still nowrap, and larger tiles there would overflow a
    board-root that has `overflow-hidden` and no scroll fallback. Scoped to the
    hand only — the discard pool and opponent seats keep their board-level size. */
-@media (max-width: 639px) {
-  .game-hand-row {
-    --tile-base-w: clamp(30px, min(11cqw, max(7cqh, 3.6vmin)), 52px);
-  }
-}
-
-/* Phone / narrow: favor slightly smaller tiles and more vertical room for the dock. */
-@media (max-width: 767px) {
-  .game-board-scene {
-    --tile-base-w: clamp(22px, min(8.5cqw, max(7cqh, 3.6vmin)), 46px);
+  @media (max-width: 639px) {
+    .game-hand-row {
+      --tile-base-w: clamp(30px, min(11cqw, max(7cqh, 3.6vmin)), 52px);
+    }
   }
 
-  .game-board-scene .tile-size-lg {
+  /* Phone / narrow: favor slightly smaller tiles and more vertical room for the dock. */
+  @media (max-width: 767px) {
+    .game-board-scene {
+      --tile-base-w: clamp(22px, min(8.5cqw, max(7cqh, 3.6vmin)), 46px);
+    }
+
+    .game-board-scene .tile-size-lg {
+      --tile-scale: 1;
+    }
+
+    .game-dock {
+      padding-top: 0.5rem;
+      padding-left: max(0.5rem, env(safe-area-inset-left));
+      padding-right: max(0.5rem, env(safe-area-inset-right));
+    }
+  }
+
+  .tile-scale-root {
+    --tile-w: calc(var(--tile-base-w) * var(--tile-scale, 1));
+    --tile-h: calc(var(--tile-w) * 1.5);
+    width: var(--tile-w);
+    height: var(--tile-h);
+    flex-shrink: 0;
+  }
+
+  .tile-size-xs {
+    --tile-scale: 0.72;
+  }
+  .tile-size-sm {
+    --tile-scale: 0.88;
+  }
+  .tile-size-md {
     --tile-scale: 1;
   }
-
-  .game-dock {
-    padding-top: 0.5rem;
-    padding-left: max(0.5rem, env(safe-area-inset-left));
-    padding-right: max(0.5rem, env(safe-area-inset-right));
+  .tile-size-lg {
+    --tile-scale: 1.14;
   }
-}
 
-.tile-scale-root {
-  --tile-w: calc(var(--tile-base-w) * var(--tile-scale, 1));
-  --tile-h: calc(var(--tile-w) * 1.5);
-  width: var(--tile-w);
-  height: var(--tile-h);
-  flex-shrink: 0;
-}
+  .mahjong-tile-face {
+    position: relative;
+    background: linear-gradient(155deg, #fffef5 0%, #fff8e1 42%, #f3e8c8 100%);
+    border: 1px solid rgb(212 201 168 / 0.85);
+    border-radius: 5px;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.65),
+      inset 0 -2px 4px rgb(0 0 0 / 0.06),
+      1px 2px 0 0 #c4b896,
+      2px 4px 8px rgb(0 0 0 / 0.2);
+    transition:
+      transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.2s ease;
+  }
 
-.tile-size-xs { --tile-scale: 0.72; }
-.tile-size-sm { --tile-scale: 0.88; }
-.tile-size-md { --tile-scale: 1; }
-.tile-size-lg { --tile-scale: 1.14; }
+  .mahjong-tile-face::after {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      135deg,
+      rgb(255 255 255 / 0.42) 0%,
+      transparent 38%,
+      transparent 62%,
+      rgb(0 0 0 / 0.04) 100%
+    );
+  }
 
-.mahjong-tile-face {
-  position: relative;
-  background: linear-gradient(155deg, #fffef5 0%, #fff8e1 42%, #f3e8c8 100%);
-  border: 1px solid rgb(212 201 168 / 0.85);
-  border-radius: 5px;
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.65),
-    inset 0 -2px 4px rgb(0 0 0 / 0.06),
-    1px 2px 0 0 #c4b896,
-    2px 4px 8px rgb(0 0 0 / 0.2);
-  transition:
-    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 0.2s ease;
-}
+  .mahjong-tile-face.is-selected {
+    border-color: rgb(201 168 76 / 0.9);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.5),
+      0 0 0 2px rgb(201 168 76 / 0.5),
+      0 6px 14px rgb(201 168 76 / 0.28);
+    transform: translateY(-2px);
+  }
 
-.mahjong-tile-face::after {
-  content: '';
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    135deg,
-    rgb(255 255 255 / 0.42) 0%,
-    transparent 38%,
-    transparent 62%,
-    rgb(0 0 0 / 0.04) 100%
-  );
-}
+  .mahjong-tile-face.is-suggested {
+    border-color: rgb(232 197 90 / 0.8);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.45),
+      0 0 0 1px rgb(232 197 90 / 0.35),
+      0 0 12px rgb(201 168 76 / 0.32);
+  }
 
-.mahjong-tile-face.is-selected {
-  border-color: rgb(201 168 76 / 0.9);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.5),
-    0 0 0 2px rgb(201 168 76 / 0.5),
-    0 6px 14px rgb(201 168 76 / 0.28);
-  transform: translateY(-2px);
-}
-
-.mahjong-tile-face.is-suggested {
-  border-color: rgb(232 197 90 / 0.8);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.45),
-    0 0 0 1px rgb(232 197 90 / 0.35),
-    0 0 12px rgb(201 168 76 / 0.32);
-}
-
-.mahjong-tile-symbol {
-  font-family: var(--font-display), Georgia, serif;
-  font-weight: 700;
-  line-height: 1;
+  .mahjong-tile-symbol {
+    font-family: var(--font-display), Georgia, serif;
+    font-weight: 700;
+    line-height: 1;
+  }
 }
 
 @layer base {
@@ -911,6 +1303,13 @@
     --chart-4: #c75b4a;
     --chart-5: #a89b8c;
     --radius: 0.625rem;
+    /* --sidebar* tokens below are not wired into @theme (no --color-sidebar*
+       mapping), so bg-sidebar/text-sidebar-foreground/etc. do not resolve to
+       any generated utility — this predates the v4 migration (plan 022) and
+       is not a regression from it. Wiring them is a design decision
+       deferred to the primitives extraction work (roadmap 023): #141c18 is
+       the darkest of the old chrome-green palette that plan 025 deliberately
+       neutralised, so mapping it in now would reintroduce green chrome. */
     --sidebar: #141c18;
     --sidebar-foreground: #e8dfd0;
     --sidebar-primary: #c9a84c;

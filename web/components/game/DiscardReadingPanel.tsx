@@ -54,7 +54,7 @@ export default function DiscardReadingPanel({ game, humanPlayerId, compact = fal
     <button
       type="button"
       onClick={() => setExpanded(v => !v)}
-      className="w-full flex items-center justify-between gap-2 px-2 py-1 hover:bg-background/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/50 rounded-sm"
+      className="w-full flex items-center justify-between gap-2 px-2 py-1 hover:bg-background/40 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-info/50 rounded-sm"
       aria-expanded={expanded}
       aria-label={expanded ? 'Collapse discard reading' : 'Expand discard reading'}
     >

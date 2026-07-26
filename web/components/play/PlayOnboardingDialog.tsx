@@ -38,7 +38,7 @@ export default function PlayOnboardingDialog({ onDone }: PlayOnboardingDialogPro
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-end justify-center bg-background/80 p-4 backdrop-blur-sm sm:items-center"
+      className="fixed inset-0 z-70 flex items-end justify-center bg-background/80 p-4 backdrop-blur-xs sm:items-center"
       role="presentation"
     >
       <div

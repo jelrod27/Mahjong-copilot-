@@ -156,8 +156,11 @@ export const Level6: Level = {
         "",
         "DEFENSIVE PRIORITIES:",
         "",
-        "1. Someone is one tile from winning (Riichi/tenpai)",
-        "• DISCARD SAFE TILES ONLY",
+        "1. Signs an opponent may be in tenpai (one tile from winning):",
+        "• 3 or more exposed melds — they need very little to finish",
+        "• They've stopped discarding tiles from one suit entirely",
+        "• The wall is getting low and they're still discarding calmly",
+        "• DISCARD SAFE TILES ONLY once you spot these signs",
         "• Break up your hand if needed",
         "• Living to fight another round > winning this one",
         "",
@@ -178,10 +181,10 @@ export const Level6: Level = {
         {
           id: "q6-4-1",
           type: "multiple-choice",
-          question: "An opponent called Riichi (one tile from winning). You have a potentially dangerous tile. What do you do?",
-          options: ["Discard it — maybe they don't need it", "Keep it and hope for better", "Break your hand to discard a safer tile", "Call Riichi too and race"],
+          question: "An opponent has 3 exposed melds and you have a potentially dangerous tile. What do you do?",
+          options: ["Discard it — maybe they don't need it", "Keep it and hope for better", "Break your hand to discard a safer tile", "Expose your own meld to race them"],
           correctAnswer: "Break your hand to discard a safer tile",
-          explanation: "When someone is in tenpai (ready to win), dealing in costs you everything. Break your hand, play safe, survive to next round."
+          explanation: "3+ exposed melds is a strong signal they're close to winning (tenpai). Dealing in costs you everything. Break your hand, play safe, survive to next round."
         }
       ]
     },
@@ -201,7 +204,8 @@ export const Level6: Level = {
         "• You have safe discards available",
         "",
         "🔴 FOLD (play safe) when:",
-        "• Someone called Riichi/declared ready",
+        "• An opponent shows signs of tenpai (3+ exposed melds, or a suit",
+        "  they've stopped touching entirely)",
         "• Your hand is far from complete",
         "• Your hand isn't valuable (not worth risk)",
         "• You have dangerous tiles and no safe ones",
@@ -217,8 +221,8 @@ export const Level6: Level = {
         {
           id: "q6-5-1",
           type: "multiple-choice",
-          question: "You have a bad hand and someone called Riichi. What's the right play?",
-          options: ["Push anyway — luck favors the bold", "Fold — break your hand and play safe", "Call Riichi too to scare them", "Discard the most dangerous tile"],
+          question: "You have a bad hand and an opponent has 3 exposed melds. What's the right play?",
+          options: ["Push anyway — luck favors the bold", "Fold — break your hand and play safe", "Expose your own meld to scare them", "Discard the most dangerous tile"],
           correctAnswer: "Fold — break your hand and play safe",
           explanation: "With a bad hand, you won't win anyway. Don't deal into their hand and pay everything. Survive, minimize loss."
         }

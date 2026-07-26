@@ -26,14 +26,17 @@ export const Level4: Level = {
         "• Formula: Payment = 8 × 2^(number of fans)",
         "",
         "Example:",
-        "• 0 fan = 8 points (chicken hand — the minimum)",
+        "• 0 fan = 8 points (a 'chicken hand' — the lowest possible score)",
         "• 1 fan = 16 points",
         "• 2 fan = 32 points",
         "• 3 fan = 64 points",
         "",
+        "Most tables also require a MINIMUM of 3 fan to declare a win at all.",
+        "A 0-fan chicken hand can't actually be called — 3 fan is the real floor.",
+        "",
         "The doubling adds up FAST. A 7-fan hand is worth 1,024 points!",
         "",
-        "There's a cap at 10 fan — called a LIMIT HAND — worth 256 points maximum.",
+        "There's a cap at 10 fan — called a LIMIT HAND — worth 8,192 points maximum.",
         "Any hand with 10+ fans pays the limit."
       ],
       quiz: [
@@ -57,9 +60,9 @@ export const Level4: Level = {
           id: "q4-1-3",
           type: "multiple-choice",
           question: "What happens when a hand reaches 10 or more fans?",
-          options: ["It keeps doubling", "It's capped at 256 points", "The game ends immediately", "You get bonus tiles"],
-          correctAnswer: "It's capped at 256 points",
-          explanation: "10+ fans = limit hand = maximum payment of 256 points. No matter how many extra fans you stack up."
+          options: ["It keeps doubling", "It's capped at 8,192 points", "The game ends immediately", "You get bonus tiles"],
+          correctAnswer: "It's capped at 8,192 points",
+          explanation: "10+ fans = limit hand = maximum payment of 8,192 points. No matter how many extra fans you stack up."
         }
       ]
     },
@@ -250,58 +253,54 @@ export const Level4: Level = {
       title: "Payment Calculation",
       subtitle: "Who pays whom and how much",
       content: [
-        "In Hong Kong Mahjong, payment depends on HOW you won.",
+        "In Hong Kong Mahjong, every hand has a BASE payment (8 x 2^fan,",
+        "capped at the limit). But nobody pays exactly the base — it gets",
+        "doubled for at least one player, depending on HOW you won.",
         "",
         "WIN BY DISCARD:",
-        "When you win by claiming someone's discarded tile,",
-        "only that ONE player pays you the full amount.",
-        "The other two players pay nothing.",
+        "The discarder pays DOUBLE the base amount.",
+        "The other two players each pay the base amount once.",
+        "Total collected: 4x the base (2x + 1x + 1x).",
         "",
         "WIN BY SELF-DRAW:",
-        "When you draw the winning tile yourself,",
-        "ALL THREE other players pay you.",
-        "Each pays the full calculated amount.",
+        "ALL THREE other players pay you, and each pays DOUBLE the base.",
+        "Total collected: 6x the base (2x + 2x + 2x).",
         "",
-        "This means self-drawn wins are worth 3x the total payout!",
+        "So a self-drawn win collects 1.5x as much as a discard win overall.",
         "",
-        "PAYMENT TABLE (per paying player):",
+        "BASE PAYMENT TABLE (before the doubling above):",
         "• 0 fan: 8 pts (Chicken Hand)",
         "• 1 fan: 16 pts",
         "• 2 fan: 32 pts",
         "• 3 fan: 64 pts",
         "• 4 fan: 128 pts",
-        "• 5 fan: 256 pts (limit!)",
-        "• 10+ fan: 256 pts (limit cap)",
-        "",
-        "Wait, the cap kicks in at 5 fan in the payment table!",
-        "That's because 8 x 2^5 = 256, which equals the limit.",
-        "Some house rules set the cap higher — but in our system,",
-        "limit hands max at 256 per paying player."
+        "• 5 fan: 256 pts",
+        "• 10+ fan: 8,192 pts (limit cap)"
       ],
       quiz: [
         {
           id: "q4-6-1",
           type: "multiple-choice",
           question: "You win by discard with 3 fan. How many total points do you receive?",
-          options: ["64 points (from one player)", "128 points (from two players)", "192 points (from three players)", "256 points (limit)"],
-          correctAnswer: "64 points (from one player)",
-          explanation: "Win by discard = only the discarder pays. 8 x 2^3 = 64 points from one player."
+          options: ["64 points (from one player)", "192 points (64 each, from three players)", "256 points (128 from the discarder + 64 + 64 from the others)", "384 points (128 from all three)"],
+          correctAnswer: "256 points (128 from the discarder + 64 + 64 from the others)",
+          explanation: "Base = 8 x 2^3 = 64. Win by discard: the discarder pays double (128), the other two each pay the base (64). Total: 128 + 64 + 64 = 256."
         },
         {
           id: "q4-6-2",
           type: "multiple-choice",
           question: "You self-draw with 2 fan. How many total points do you receive?",
-          options: ["32 points", "64 points", "96 points", "128 points"],
-          correctAnswer: "96 points",
-          explanation: "Self-draw = all 3 opponents pay. Each pays 8 x 2^2 = 32 points. Total: 32 x 3 = 96 points!"
+          options: ["32 points", "96 points", "128 points", "192 points"],
+          correctAnswer: "192 points",
+          explanation: "Base = 8 x 2^2 = 32. Self-draw: all 3 opponents pay double the base (64 each). Total: 64 x 3 = 192."
         },
         {
           id: "q4-6-3",
           type: "multiple-choice",
-          question: "Why are self-drawn wins more valuable?",
-          options: ["They give bonus fans", "All 3 opponents pay", "The base points increase", "You get extra tiles"],
-          correctAnswer: "All 3 opponents pay",
-          explanation: "Self-draw means 3 payers instead of 1. Plus you get the 1 fan self-draw bonus!"
+          question: "Why are self-drawn wins more valuable than discard wins (all else equal)?",
+          options: ["They give bonus fans", "All 3 opponents pay double, not just the discarder", "The base points increase", "You get extra tiles"],
+          correctAnswer: "All 3 opponents pay double, not just the discarder",
+          explanation: "Both win types have 3 payers. On a discard win only the discarder pays double (the other two pay the base). On a self-draw, all 3 pay double. Plus you get the +1 Self-Drawn fan!"
         }
       ]
     },
@@ -323,7 +322,7 @@ export const Level4: Level = {
         "• Mixed One Suit: +3 fan",
         "• Seven Pairs: +4 fan",
         "• Pure One Suit: +7 fan",
-        "• Flower tiles: +1 fan per flower",
+        "• Flower/season matching your seat wind: +1 fan each (others score 0)",
         "",
         "EXAMPLE HAND:",
         "Pung of Red Dragons, Chow of 2-3-4 Bamboo,",
@@ -331,7 +330,8 @@ export const Level4: Level = {
         "Won by discard. Concealed. No flowers.",
         "",
         "Count: Red Dragon (1) + Concealed (1) + No Flowers (1) = 3 fan",
-        "Payment: 8 x 2^3 = 64 points from the discarder.",
+        "Payment: base = 8 x 2^3 = 64. Win by discard: the discarder pays",
+        "double (128), the other two each pay the base (64) — 256 total.",
         "",
         "Now try the quiz!"
       ],
@@ -339,10 +339,10 @@ export const Level4: Level = {
         {
           id: "q4-7-1",
           type: "multiple-choice",
-          question: "Hand: 4 pungs of various tiles + pair. Self-drawn. 1 flower tile. Seat wind pung included. How many fans?",
+          question: "Hand: 4 pungs of various tiles + pair. Self-drawn. 1 flower tile matching their seat wind. Seat wind pung included. How many fans?",
           options: ["3 fan", "5 fan", "6 fan", "7 fan"],
           correctAnswer: "6 fan",
-          explanation: "All Pungs (3) + Self-drawn (1) + Seat Wind (1) + Flower (1) = 6 fan."
+          explanation: "All Pungs (3) + Self-drawn (1) + Seat Wind (1) + Seat Flower (1) = 6 fan."
         },
         {
           id: "q4-7-2",
@@ -358,7 +358,7 @@ export const Level4: Level = {
           question: "Hand: All tiles are Dots, no honor tiles. Self-drawn, concealed, no flowers. How many fans?",
           options: ["7 fan", "9 fan", "10 fan (limit!)", "11 fan"],
           correctAnswer: "10 fan (limit!)",
-          explanation: "Pure One Suit (7) + Self-drawn (1) + Concealed (1) + No Flowers (1) = 10 fan = LIMIT HAND! 256 points from each opponent!"
+          explanation: "Pure One Suit (7) + Self-drawn (1) + Concealed (1) + No Flowers (1) = 10 fan = LIMIT HAND! The capped base (8,192) still gets doubled for a self-draw, so each opponent pays 16,384!"
         }
       ]
     },
@@ -373,12 +373,13 @@ export const Level4: Level = {
         "",
         "1. Fans are multipliers: Payment = 8 x 2^fan",
         "2. Fans stack — combine multiple scoring elements for big payouts",
-        "3. Self-drawn wins pay 3x (all opponents pay)",
-        "4. Limit hands cap at 256 points per payer",
+        "3. Self-drawn wins pay 6x the base (1.5x a discard win's 4x total)",
+        "4. Limit hands cap the base at 8,192 points",
+        "5. Most tables require 3+ fan to declare a win at all",
         "",
         "FAN CHEAT SHEET:",
         "• +1: Self-drawn, Concealed, Dragon pung, Seat wind, Prevailing wind, No flowers",
-        "• +1 per flower: Flower/season tiles",
+        "• +1 each: Flower/season tiles matching your seat wind (others score 0)",
         "• +3: All Pungs, Mixed One Suit",
         "• +4: Seven Pairs",
         "• +7: Pure One Suit",
@@ -387,7 +388,9 @@ export const Level4: Level = {
         "STRATEGY INSIGHT:",
         "Don't just aim for a winning hand — aim for a VALUABLE one.",
         "Sometimes waiting one extra turn for a concealed self-draw",
-        "can triple your payout. Risk vs reward is the heart of mahjong.",
+        "can multiply your payout several times over (2 extra fan quadruples",
+        "the base, and self-draw collects 1.5x what a discard win would).",
+        "Risk vs reward is the heart of mahjong.",
         "",
         "Next up: Advanced Hands & Limit Hands!"
       ],
@@ -395,18 +398,18 @@ export const Level4: Level = {
         {
           id: "q4-8-1",
           type: "multiple-choice",
-          question: "What's the maximum payment per payer for a limit hand?",
-          options: ["128 points", "256 points", "512 points", "1024 points"],
-          correctAnswer: "256 points",
-          explanation: "Limit hands (10+ fan) are capped at 256 points per paying player."
+          question: "What's the base payment cap for a limit hand (10+ fan)?",
+          options: ["128 points", "256 points", "512 points", "8,192 points"],
+          correctAnswer: "8,192 points",
+          explanation: "Limit hands (10+ fan) cap the base payment at 8,192. Actual payments then get doubled for the discarder, or for all three opponents on a self-draw — same as any other hand."
         },
         {
           id: "q4-8-2",
           type: "multiple-choice",
           question: "Which strategy tip did we learn about scoring?",
-          options: ["Always go for chicken hands", "Expose melds early for safety", "Waiting for concealed self-draw can triple your payout", "Flowers are the most important fan"],
-          correctAnswer: "Waiting for concealed self-draw can triple your payout",
-          explanation: "Concealed (+1) + Self-drawn (+1) = 2 extra fan, AND all 3 opponents pay. Risk vs reward!"
+          options: ["Always go for chicken hands", "Expose melds early for safety", "Waiting for a concealed self-draw multiplies your payout", "Flowers are the most important fan"],
+          correctAnswer: "Waiting for a concealed self-draw multiplies your payout",
+          explanation: "Concealed (+1) + Self-drawn (+1) = 2 extra fan (4x the base), and self-draw collects 1.5x what a discard win would. Risk vs reward!"
         }
       ]
     }

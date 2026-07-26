@@ -50,9 +50,16 @@
   --color-suit-dot: #1565c0;
   --color-suit-honor: #5c4632;
 
-  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-display), Georgia, serif;
-  --font-heading: var(--font-display), Georgia, serif;
+  /* Do NOT set these to `var(--font-sans)` / `var(--font-display)` — that is
+     self-referential: Tailwind v4's @theme emits these same custom property
+     names, so the value would point back at itself, resolve to nothing, and
+     silently fall back to the browser default (this shipped broken once
+     already). next/font in layout.tsx exposes the actual font stacks under
+     the distinct names --font-noto-sans / --font-noto-serif; reference those
+     instead. */
+  --font-sans: var(--font-noto-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-noto-serif), Georgia, serif;
+  --font-heading: var(--font-noto-serif), Georgia, serif;
 
   --text-2xs: 0.625rem;
   --text-2xs--line-height: 0.875rem;

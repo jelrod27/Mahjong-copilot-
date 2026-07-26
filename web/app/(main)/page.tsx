@@ -61,6 +61,12 @@ export default function HomePage() {
   // played yet) and only update once mounted on the client.
   const [hasSaved, setHasSaved] = useState(false);
   const [gamesPlayed, setGamesPlayed] = useState(0);
+  // The primary CTA label depends on hasSaved/gamesPlayed, which only become
+  // accurate after the effect below runs. Without this flag a returning
+  // player briefly sees "Play your first hand" before it swaps to "Resume
+  // your match" once localStorage is read. `mounted` gates the label on a
+  // neutral placeholder for that one frame instead.
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const tiles = getAllTiles();
@@ -70,6 +76,7 @@ export default function HomePage() {
     setDaily(getDailyState());
     setHasSaved(hasSavedGame());
     setGamesPlayed(loadStats().gamesPlayed);
+    setMounted(true);
     const up = consumeRankUp();
     if (up) {
       setRankUp(up);
@@ -95,11 +102,13 @@ export default function HomePage() {
         ? `${randomTile.dragon} dragon`
         : 'Bonus tile';
 
-  const primaryCtaLabel = hasSaved
-    ? 'Resume your match'
-    : gamesPlayed === 0 && lessonsDone === 0
-      ? 'Play your first hand'
-      : 'Play a hand';
+  const primaryCtaLabel = !mounted
+    ? 'Play'
+    : hasSaved
+      ? 'Resume your match'
+      : gamesPlayed === 0 && lessonsDone === 0
+        ? 'Play your first hand'
+        : 'Play a hand';
   const primaryCtaHref = hasSaved ? '/play/game' : '/play';
 
   return (

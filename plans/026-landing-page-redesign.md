@@ -1,10 +1,9 @@
-# Plan 026: Turn `/` from a dashboard into a landing page
+# Plan 026: Rebuild `/` as a landing page — Direction A, "The Table"
 
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving on. If
 > anything in "STOP conditions" occurs, stop and report — do not improvise.
-> This plan has **taste judgement** in it; Step 5 asks you to look at what you
-> built and say honestly whether it works.
+> Step 6 asks you to judge what you built and say honestly whether it works.
 >
 > **Drift check (run first)**: `git diff --stat b6b570a..HEAD -- "web/app/(main)/page.tsx"`
 
@@ -12,211 +11,211 @@
 
 - **Priority**: P1
 - **Effort**: M
-- **Risk**: MED — this is the product's first impression; getting it wrong is
-  visible to everyone.
-- **Depends on**: **plan 025 (elevation ladder)** — hard dependency. Building
-  this on the current tokens ships a redesigned page that is still flat green.
-- **Soft-depends on**: plan 023 (primitives). If `PageHeader`/`Card` exist,
-  use them. If not, do NOT create a parallel set here — see Scope.
+- **Risk**: MED — the product's first impression.
+- **Depends on**: plan 025 (elevation ladder) — **DONE and merged.**
+- **Direction**: **A, "The Table"** — chosen by the maintainer from a two-option
+  study. Direction B ("The Curriculum") was rejected for now; see "Why A".
 - **Category**: direction (product)
-- **Planned at**: commit `b6b570a`, 2026-07-25
+- **Planned at**: commit `b6b570a` + plan 025, 2026-07-25
 
 ## Why this matters
 
-`/` is a **logged-in dashboard**, not a landing page. Its first viewport is a
-greeting, the wordmark, a rank pill, and two small text links, followed by
-seven cards of near-identical visual weight. Someone arriving cold at
-16bitmahjong.co learns nothing about what the product is or why they should
-care.
+`/` is a logged-in dashboard, not a landing page. Its first viewport is a
+greeting, the wordmark, a rank pill and two small text links, followed by seven
+cards of near-identical weight. Someone arriving cold learns nothing about what
+the product is.
 
-**The pitch already exists** — it is just on the wrong page.
-`web/app/play/page.tsx:66-68`:
+The pitch already exists — on the wrong page. `web/app/play/page.tsx:66-68`:
 
 > "Learn and play real HK table mahjong — not tile-matching solitaire. Solo vs
 > AI with coach hints and hand review after each hand."
 
-That is a genuinely good positioning sentence: it names the category, kills the
-most likely misconception (mahjong solitaire), and lists the differentiators. It
-is stranded on a secondary route.
+Verified hierarchy inversion: the `<h1>` at `web/app/(main)/page.tsx:90` is
+`text-xl md:text-2xl` (20px on mobile) while the Tile-of-the-Day Chinese name at
+`:249` is `text-2xl` (24px). The decoration is larger than the title.
 
-**Hierarchy is currently inverted.** Verified: the `<h1>` at
-`web/app/(main)/page.tsx:90` is `text-xl md:text-2xl` (20px on mobile), while
-the Tile-of-the-Day Chinese name at `:249` is `text-2xl` (24px) — the decorative
-element is larger than the page title.
+## Why A
 
-## Current state
+The solo game is the finished, polished part of this product — plans 012–019
+just landed on it. The curriculum currently teaches scoring rules the engine
+contradicts (see `plans/ROADMAP-round-3.md` P0). Leading with the game is the
+honest position while that is true.
 
-### The hero region — `web/app/(main)/page.tsx:85-128`
-
-```tsx
-{/* Header: who you are */}
-<div className="relative overflow-hidden p-6 rounded-lg bg-elevated/30 border border-border/10 backdrop-blur-sm shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)]">
-  <div className="flex justify-between items-start mb-3">
-    <div>
-      <p className="text-xs text-muted-foreground font-mono uppercase tracking-[0.2em] mb-1">{greeting}</p>
-      <h1 className="font-display text-xl md:text-2xl text-highlight text-glow-highlight">
-        16 BIT MAHJONG
-      </h1>
-    </div>
-    <Link href="/progress" ...>LOCAL PROGRESS</Link>
-  </div>
-  {rank && (<div className="mb-4 inline-flex ...">{rank.name.toUpperCase()}</div>)}
-  <div className="flex flex-wrap gap-2">
-    <Link href="/parlour" className="... px-4 py-2.5 font-display text-xs text-highlight ...">
-      {floorsLit === 0 ? 'Enter the Jade Parlour' : `Climb to ${nextFloor?.name ?? 'the top'}`}
-    </Link>
-    <Link href="/play" className="... px-4 py-2.5 font-display text-xs text-success ...">
-      Free play
-    </Link>
-  </div>
-</div>
-```
-
-Note both CTAs are `text-xs` and visually lighter than the cards below them.
-
-The file is **270 lines** total and renders, in order: rank-up banner, this
-header, Parlour card, Daily Hand card, "KEEP LEARNING" (Lessons + Practice),
-"TILE OF THE DAY", and a footer note.
-
-### `font-mono` is not configured
-
-`web/app/(main)/page.tsx:89` and `:252` use `font-mono`, but
-`web/tailwind.config.ts:68-72` defines only `sans`, `display`, and `heading`.
-So `font-mono` falls through to Tailwind's default stack — a **third** typeface,
-system-dependent, on the landing page.
+The visual consequence: **the hero is the felt.** The landing page reuses the
+same bamboo mat, wood rail and cream tiles the board renders, so the page and
+the product it sells look like one thing.
 
 ## What to build
 
-A first viewport that answers "what is this, and what do I do next" without
-scrolling, at both 375px and 1280px.
+### The hero — first viewport, no scrolling, at 375px and 1280px
 
-**Required elements, in priority order:**
+Approved copy from the direction study. Use it as written unless something
+reads wrong in situ, and say so if you change it.
 
-1. **The product name**, at genuine display size (`text-display` / `text-title-lg`
-   from the configured scale — see Step 4).
-2. **The positioning sentence**, moved from `play/page.tsx:66-68`. Reword only
-   for context, keep the "not tile-matching solitaire" clause — it is the single
-   most useful phrase on the page.
-3. **One dominant primary CTA**, `ds-btn-accent` at large size. Its label is
-   state-dependent:
-   - no lessons completed and no games played → **"Start Lesson 1"**
-   - lessons in progress → **"Continue: {lesson title}"**
-   - a saved game exists (`hasSavedGame()` from `web/lib/matchStorage.ts`) →
-     **"Resume your match"**
-   - otherwise → **"Play a hand"**
-4. **One secondary action**, visually lighter — the complement of whichever
-   primary was chosen.
-5. **One piece of hero art.** Use a real tile fan rendered with `RetroTile`.
-   The tile face (`web/app/globals.css:841-893`) is the best-looking asset in
-   the repo and currently appears nowhere above the fold. A mahjong product
-   whose landing page shows no mahjong is a missed layup.
+- **Eyebrow**: `Hong Kong rules · 4 players`
+- **Headline**: `Real table mahjong. Not the tile-matching one.`
+- **Pitch**: `Learn Hong Kong mahjong properly, then play a full hand against
+  three AI opponents — with coach hints while you play and a review of every
+  decision after.` (emphasise "coach hints while you play")
+- **A real 8-tile hand**, rendered with `RetroTile`
+- **Primary CTA** — state-dependent label, `data-testid="home-primary-cta"`:
+  - saved game exists (`hasSavedGame()`) → **"Resume your match"**
+  - else, zero games played and zero lessons done → **"Play your first hand"**
+  - else → **"Play a hand"**
+- **Secondary**: `Start from the basics` → `/learn` (ghost/outline on the felt)
+- **Sub-line**: `No account. Nothing to install. Your progress stays on this device.`
 
-**Everything currently on the page moves below that fold**, in this order:
-resume/continue row, Parlour, Daily Hand, Lessons + Practice, Tile of the Day.
-Rank moves into the continue row or the header, not the hero.
+### Immediately below — three cards
 
-### Constraints
+| eyebrow | title | body |
+|---|---|---|
+| While you play | Coach hints | Every tile marked keep, neutral or safe to discard — with the reason. |
+| After the hand | Hand review | What you played well, and the discard that cost you. |
+| When you're ready | The Jade Parlour | Nine floors, nine rivals, each one teaching a different skill. |
 
-- **Do not add a second nav.** The sidebar and bottom nav already exist.
-- **Do not invent a marketing page.** No testimonials, no feature grid, no
-  fake social proof. This is a real product page for a real small product.
-- **Keep it honest.** The app is local-first with no accounts; do not imply
-  otherwise. The existing "LOCAL MODE" note should survive somewhere.
-- **First-run vs returning must both work.** A returning player with a saved
-  match should not have to scroll past a pitch they have already accepted —
-  which is why the primary CTA is state-dependent.
+The Parlour card links to `/parlour`.
+
+### Then the existing content, demoted
+
+In order: resume/continue row (if any), Daily Hand, Lessons + Practice, Tile of
+the Day, the local-mode note. Rank moves into the continue row or a compact
+header chip — **not** the hero.
+
+## Reuse — do not rebuild these
+
+**The felt is already a component.** `web/app/globals.css:618-643` defines
+`.game-table-felt` with the fibre-noise `::before` and wood-rail `::after`;
+`:676` defines `.felt-bamboo-mat`. Compose the hero as:
+
+```html
+<section class="game-table-felt felt-bamboo-mat">
+```
+
+and you inherit the exact texture, vignette and rail the board uses. **Do not
+hand-author a new gradient.** If the rail's `border-radius: 14px` is wrong for a
+full-bleed hero, override only that property locally.
+
+**Tiles**: use `RetroTile` from `web/components/game/RetroTile.tsx`. It works
+outside the board — `app/(main)/cosmetics/page.tsx` and
+`app/(main)/practice/TileQuiz.tsx` already do this. Sizing comes from
+`--tile-base-w`; the base value at `globals.css:774` applies outside
+`.game-board-scene`. **Verify the tiles actually render at a sensible size in
+the hero and report the measured width** — if they collapse, set
+`--tile-base-w` locally on the hero rather than editing the global.
+
+Build the hand from `TileFactory` (`web/models/Tile.ts`) so the tiles are real
+`Tile` objects, not fixtures. A pleasant, legible hand: 4/5/6 dot, 7/8 bamboo,
+3/3 character, East wind.
+
+## Current state
+
+`web/app/(main)/page.tsx` is 270 lines. The hero region to replace is
+`:85-128`. It already reads `lessonsDone`, `floorsLit`, `nextFloor`, `rank`, and
+uses a post-mount hydration guard for localStorage-derived state (see the
+`useEffect` around `:32-43`) — **follow that pattern or you will get a hydration
+mismatch.**
+
+`font-mono` is used at `:89` and `:252` but `fontFamily` in
+`web/tailwind.config.ts:68-72` defines only `sans`, `display`, `heading`. It
+falls through to a system stack — a third typeface on the landing page.
 
 ## Commands you will need
 
 From `/Users/justinelrod/Projects/Mahjong-copilot-/web`:
 
-| Purpose   | Command                                  | Expected |
-|-----------|------------------------------------------|----------|
-| Typecheck | `npm run typecheck`                      | exit 0   |
-| Lint      | `npm run lint`                           | exit 0   |
-| Unit test | `npm test`                               | all pass |
-| E2E       | `npm run test:e2e -- home.spec.ts`       | all pass |
+| Purpose   | Command                             | Expected |
+|-----------|-------------------------------------|----------|
+| Typecheck | `npm run typecheck`                 | exit 0   |
+| Lint      | `npm run lint`                      | exit 0   |
+| Unit test | `npm test`                          | all pass |
+| E2E       | `npm run test:e2e -- home.spec.ts`  | all pass |
 
 ## Scope
 
 **In scope**:
 - `web/app/(main)/page.tsx`
-- `web/app/play/page.tsx` — **only** to remove the positioning sentence if you
-  move rather than copy it. Everything else on that page stays.
-- `web/tailwind.config.ts` — **only** to add a `mono` key to `fontFamily` if
-  you keep any `font-mono` usage. Prefer deleting the usage.
-- `web/e2e/home.spec.ts` — update assertions for the new structure.
+- `web/app/play/page.tsx` — **only** to remove the pitch sentence if you move
+  rather than copy it. Nothing else on that page changes.
+- `web/app/globals.css` — **only** if the hero needs a local felt override
+  (e.g. squaring the rail's corners). Do not touch any `.felt-*` colour.
+- `web/tailwind.config.ts` — **only** to add a `mono` key if you keep
+  `font-mono`. Deleting the usage is preferred.
+- `web/e2e/home.spec.ts`
 
 **Out of scope** (do NOT touch):
-- The token values. Plan 025 owns those; if the palette still looks wrong,
-  that is a STOP condition, not something to patch here.
-- `web/components/ui/*` — those have an unresolved Tailwind-version problem
-  (plan 022).
+- Token values — plan 025 owns those and it is merged. If the palette looks
+  wrong, that is a STOP condition, not something to patch here.
+- `web/components/game/RetroTile.tsx` — consume it, don't modify it.
+- `web/components/ui/*` — unresolved Tailwind-version problem (roadmap P1).
 - Any other page under `(main)`.
-- **Do not create new shared components in this plan.** If `PageHeader`/`Card`
-  primitives exist from plan 023, use them. If they do not, write the landing
-  page markup locally and leave a `TODO(023)` comment where a primitive belongs.
-  Creating a second parallel primitive set is the exact problem the DX audit
-  flagged.
+- **Do not create shared components.** No `PageHeader`, no `Card` primitive.
+  Write the markup locally and leave `TODO(023)` where a primitive belongs —
+  a second parallel primitive set is the exact problem the DX audit found.
 
 ## Git workflow
 
 - Branch: `feature/landing-page`
-- Conventional commits, e.g. `feat(home): rebuild the landing page around a real hero`
+- Conventional commits, e.g. `feat(home): rebuild the landing page around the table`
 - Do NOT push or open a PR.
 
 ## Steps
 
-### Step 1: Confirm the dependency landed
+### Step 1: Confirm plan 025 landed
 
 ```bash
-grep -n "card:" web/tailwind.config.ts
+grep -n "card: withAlpha" web/tailwind.config.ts
 ```
 
-If `card` is still `withAlpha(30, 44, 36)`, plan 025 has not landed. **STOP** —
-building on the flat palette wastes the work.
+Expect `withAlpha(37, 38, 40)`. If it still reads `withAlpha(30, 44, 36)`, plan
+025 has not landed — **STOP**.
 
-### Step 2: Build the hero
+### Step 2: Build the hero on the real felt
 
-Replace `web/app/(main)/page.tsx:85-128` with the hero described above. Keep
-the rank-up banner above it (it is a transient celebration and correctly sits
-at the top when present).
+Replace `web/app/(main)/page.tsx:85-128`. Compose the felt via
+`.game-table-felt.felt-bamboo-mat` as described in Reuse.
 
-Compute the CTA state from data already in the file — it already reads
-`lessonsDone`, `floorsLit`, `nextFloor`, and `rank`. Add `hasSavedGame()` from
-`web/lib/matchStorage.ts`; note the file already uses a post-mount hydration
-guard for localStorage-derived state (see the existing `useEffect` pattern
-around `:32-43`) — follow it, or you will get a hydration mismatch.
+Keep the rank-up banner above the hero — it is a transient celebration and
+correctly sits at the very top when present.
+
+Text on felt must be cream-on-warm, not the page's `foreground` on dark. The
+board already solves this; match it. Contrast target ≥ 4.5:1 — **measure it and
+report the number.**
 
 **Verify**: `npm run typecheck` → exit 0.
 
-### Step 3: Reorder everything below the fold
+### Step 3: Wire the state-dependent CTA
 
-Move the existing sections into the order given above. This is mostly moving
-JSX blocks, not rewriting them.
+Import `hasSavedGame` from `web/lib/matchStorage.ts`. Resolve the label per the
+table above, behind the file's existing post-mount hydration guard.
 
-While you are here, reduce the eyebrow noise: the page currently has six
-small-caps overlines competing at similar weight. Keep at most two.
+Give the primary `data-testid="home-primary-cta"` and a minimum 48px touch
+target.
+
+**Verify**: `npm run typecheck` → exit 0.
+
+### Step 4: Three cards, then demote the rest
+
+Add the three cards, then reorder the existing sections. This is mostly moving
+JSX blocks.
+
+Reduce eyebrow noise while you are here — the page currently has six small-caps
+overlines competing at similar weight. Keep at most two below the hero.
 
 **Verify**: `npm run lint` → exit 0.
 
-### Step 4: Use the configured type scale
+### Step 5: Use the configured type scale
 
 `web/tailwind.config.ts:73-82` defines `2xs / caption / body / body-lg /
-title-sm / title / title-lg / display` with tuned line-heights and tracking.
-**It currently has zero usages in any TSX file.**
+title-sm / title / title-lg / display`. **It has zero usages in any TSX file.**
 
-On this page, use it: `display` or `title-lg` for the product name, `body-lg`
-for the pitch, `caption` for eyebrows. Do not introduce any `text-[Npx]`
-arbitrary value.
+Use it here: `display` or `title-lg` for the headline, `body-lg` for the pitch,
+`caption` for eyebrows. Introduce no `text-[Npx]` arbitrary values.
 
-Delete the two `font-mono` usages (`:89`, `:252`) or add a `mono` key to the
-config. Deleting is preferred — a third typeface on the landing page is not
-earning its place.
+Delete both `font-mono` usages, or add `mono` to the config. Deleting preferred.
 
-**Verify**: `grep -n "text-\[" "web/app/(main)/page.tsx"` → no matches.
+**Verify**: `grep -n 'text-\[' "web/app/(main)/page.tsx"` → no matches.
 
-### Step 5: Look at it, and be honest
+### Step 6: Look at it, and be honest
 
 **Worktree dev-server note**: `preview_start({name})` reads `.claude/launch.json`
 from the MAIN REPO ROOT and serves stale code from a worktree. Start your own:
@@ -228,69 +227,77 @@ Screenshot `/` at **1280×800** and **375×812**, in three states:
 2. **Mid-progress** — some lessons done, no saved game
 3. **Saved game** — start a match, leave it, return to `/`
 
-For each, answer in your report:
+Report, per state:
 - Without scrolling, does the page say what the product is?
-- Is there exactly one obvious next action, and is it the right one for that
-  state?
-- Does anything below the fold compete with the hero for attention?
-- Is the tile art legible and appealing at 375px, or is it decoration that
-  crowds the CTA?
+- Is there exactly one obvious next action, and is it right for that state?
+- Do the tiles read as inviting, or as clutter crowding the CTA at 375px?
+- Does the felt hero sit comfortably against the dark page below it, or is the
+  seam ugly?
 
-**If the answer to any of these is no, say so plainly rather than shipping it.**
-A landing page that is merely different from the old one is not the goal.
+**If any answer is no, say so plainly rather than shipping it.** A landing page
+that is merely different from the old one is not the goal.
 
-### Step 6: Update the e2e spec
+Also walk `/` → `/play/game` → back and confirm the felt continuity actually
+reads as one product.
 
-Read `web/e2e/home.spec.ts` first. It asserts against the current structure and
-will break. Update it to assert the new contract:
-- the positioning sentence is present
-- exactly one element matching the primary-CTA testid exists
-- the primary CTA's label reflects the state (test at least the first-run case)
+### Step 7: Update the e2e spec
 
-Add `data-testid="home-primary-cta"` to the primary action.
+Read `web/e2e/home.spec.ts` first; it asserts the current structure and will
+break. Update it to assert:
+- the pitch sentence is present
+- exactly one `home-primary-cta` exists
+- the first-run label is "Play your first hand"
 
 **Verify**: `npm run test:e2e -- home.spec.ts` → passes.
 
 ## Test plan
 
-- **Updated**: `web/e2e/home.spec.ts` per Step 6.
-- **New e2e case**: first-run state shows "Start Lesson 1"; after seeding a
-  completed lesson in localStorage, it shows a Continue label. This is the one
-  piece of real logic in the plan and it is worth pinning.
-- **No new unit tests** — this is presentational; asserting JSX structure in
-  jsdom would pin the markup to itself and break on every future tweak.
-- `npm test` must stay green.
+- **Updated**: `web/e2e/home.spec.ts`.
+- **New e2e case**: first-run shows "Play your first hand"; after seeding a
+  saved game in localStorage it shows "Resume your match". That state logic is
+  the only real logic in this plan and is worth pinning.
+- **No new unit tests** — asserting JSX structure in jsdom pins markup to itself
+  and breaks on every tweak.
+- `npm test` must stay green (610 tests as of plan 025).
 
 ## Done criteria
 
 - [ ] `npm run typecheck` exits 0
 - [ ] `npm run lint` exits 0
-- [ ] `npm test` exits 0
+- [ ] `npm test` exits 0, no newly failing tests
 - [ ] `npm run test:e2e -- home.spec.ts` passes including the new state case
-- [ ] `grep -n "text-\[" "web/app/(main)/page.tsx"` → no matches
-- [ ] `grep -n "font-mono" "web/app/(main)/page.tsx"` → no matches, or `mono`
-      added to the config
-- [ ] Six screenshots (2 viewports × 3 states) with the Step 5 questions
-      answered honestly
+- [ ] `grep -n 'text-\[' "web/app/(main)/page.tsx"` → no matches
+- [ ] `grep -n 'font-mono' "web/app/(main)/page.tsx"` → no matches, or `mono`
+      added to config
+- [ ] Hero reuses `.game-table-felt.felt-bamboo-mat`; no new gradient authored
+- [ ] Measured cream-on-felt text contrast reported, ≥ 4.5:1
+- [ ] Measured hero tile width reported
+- [ ] Six screenshots (2 viewports × 3 states) with Step 6 answered honestly
 - [ ] `git diff --name-only` shows only in-scope files
 
 ## STOP conditions
 
 - Plan 025 has not landed (Step 1).
-- The positioning sentence has been changed on `play/page.tsx` by someone else
-  since this plan was written — re-read it rather than using the excerpt above.
-- You find yourself creating a shared component. Leave a `TODO(023)` instead.
+- The pitch sentence on `play/page.tsx` differs from the excerpt above —
+  re-read it rather than trusting this plan's copy.
+- You find yourself creating a shared component. Leave a `TODO(023)`.
 - The hero cannot fit above the fold at 375×812 without shrinking the CTA below
   a 48px touch target — report the measurement rather than compromising the tap
   area.
+- Tiles render below 28px wide in the hero and setting `--tile-base-w` locally
+  does not fix it — report rather than editing the global sizing.
 
 ## Maintenance notes
 
 - **What a reviewer should scrutinise**: the returning-player path. It is easy
   to build a beautiful first-run page that makes a daily player scroll past a
-  pitch every single visit.
-- **What interacts with this**: `web/e2e/home.spec.ts`, and `play/page.tsx` if
-  the sentence moved.
-- **Deliberately deferred**: the remaining `(main)` pages still use the old
-  layouts. This plan fixes the first impression only; a broader reskin is a
-  separate piece of work that should follow the primitives landing (plan 023).
+  pitch every visit.
+- **What interacts with this**: `web/e2e/home.spec.ts`; `play/page.tsx` if the
+  sentence moved; `.felt-*` rules if anyone retunes the board felt later — the
+  landing hero will follow it automatically, which is intended.
+- **Deliberately deferred**: the other `(main)` pages keep their layouts. This
+  plan fixes the first impression only. The broader reskin should follow the
+  primitives landing (roadmap item 023).
+- **Direction B** ("The Curriculum" — lead with the six-level path) remains the
+  better long-term position once the curriculum's scoring errors are fixed.
+  Revisit after roadmap P0.

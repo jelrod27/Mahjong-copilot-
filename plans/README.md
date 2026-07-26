@@ -42,8 +42,8 @@ audits after PR #94 merged (`b6b570a`).
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 025 | [Elevation ladder + glow fix](025-elevation-ladder-and-glow-fix.md) | P1 | S | — | TODO |
-| 026 | [Landing page redesign](026-landing-page-redesign.md) | P1 | M | **025** | TODO |
+| 025 | [Elevation ladder + glow fix](025-elevation-ladder-and-glow-fix.md) | P1 | S | — | **DONE** |
+| 026 | [Landing page redesign — Direction A, "The Table"](026-landing-page-redesign.md) | P1 | M | 025 (done) | TODO |
 
 Not yet written, in recommended order: `020` content truthfulness (derive
 scoring from the engine), `021` missing gameplay curriculum, `022` Tailwind

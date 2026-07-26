@@ -81,11 +81,11 @@ const SCORING_QUESTIONS: ScoringQuestion[] = [
     explanation: 'Seat Wind (1) + Prevailing Wind (1) + Self-drawn (1) + Concealed (1) + No Flowers (1) = 5 fan.',
   },
   {
-    description: 'Basic hand won by discard. 1 flower tile matching their seat wind. No other bonuses. Not concealed.',
+    description: 'Basic hand with a seat-matching flower. No other bonuses. Not concealed.',
     details: ['Seat Flower: +1'],
     options: ['0 fan', '1 fan', '2 fan', '3 fan'],
     answer: '1 fan',
-    explanation: 'Only the seat-matching flower (1). Total: 1 fan -> 16 base points. On a discard win the discarder pays double (32) and the other two each pay the base (16) — 64 points total.',
+    explanation: 'The seat-matching flower gives 1 fan. This scores 16 base points, but cannot be declared at the default 3-fan table minimum.',
   },
 ];
 

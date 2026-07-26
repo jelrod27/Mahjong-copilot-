@@ -184,7 +184,7 @@ export const Level6: Level = {
           question: "An opponent has 3 exposed melds and you have a potentially dangerous tile. What do you do?",
           options: ["Discard it — maybe they don't need it", "Keep it and hope for better", "Break your hand to discard a safer tile", "Expose your own meld to race them"],
           correctAnswer: "Break your hand to discard a safer tile",
-          explanation: "3+ exposed melds is a strong signal they're close to winning (tenpai). Dealing in costs you everything. Break your hand, play safe, survive to next round."
+          explanation: "3+ exposed melds is a strong signal they're close to winning (tenpai). Dealing in makes you the highest individual payer — you pay 2x the base while the other two opponents each pay 1x. Break your hand, play safe, survive to next round."
         }
       ]
     },

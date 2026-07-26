@@ -32,12 +32,35 @@ function parseRgb(token: string): [number, number, number] {
   return [Number(match[1]), Number(match[2]), Number(match[3])];
 }
 
+// Isolates the `@theme { ... }` block by brace-depth counting (the block
+// itself has no nested rules today, but this stays correct if it ever grows
+// one) so a duplicate --color-* declaration outside @theme can't satisfy the
+// lookup below and mask a broken source-of-truth contract.
+function extractThemeBlock(css: string): string {
+  const start = css.indexOf('@theme');
+  if (start === -1) {
+    throw new Error('Could not find an @theme block in globals.css');
+  }
+  const openBrace = css.indexOf('{', start);
+  let depth = 0;
+  let i = openBrace;
+  for (; i < css.length; i++) {
+    if (css[i] === '{') depth++;
+    else if (css[i] === '}') {
+      depth--;
+      if (depth === 0) break;
+    }
+  }
+  return css.slice(openBrace + 1, i);
+}
+
 // Since the Tailwind v4 migration (plan 022), tokens live in the @theme
 // block in globals.css rather than tailwind.config.ts — @theme is now the
 // single source of truth, so read the value straight from there instead of
 // duplicating it.
 function readThemeColor(css: string, name: string): string {
-  const match = css.match(new RegExp(`--color-${name}:\\s*([^;]+);`));
+  const themeBlock = extractThemeBlock(css);
+  const match = themeBlock.match(new RegExp(`--color-${name}:\\s*([^;]+);`));
   if (!match) {
     throw new Error(`Could not find --color-${name} in globals.css @theme block`);
   }
@@ -45,7 +68,7 @@ function readThemeColor(css: string, name: string): string {
 }
 
 describe('elevation ladder contrast (plan 025)', () => {
-  const css = readFileSync(join(__dirname, '../app/globals.css'), 'utf-8');
+  const css = readFileSync(join(__dirname, '../globals.css'), 'utf-8');
   const background = parseRgb(readThemeColor(css, 'background'));
   const card = parseRgb(readThemeColor(css, 'card'));
 

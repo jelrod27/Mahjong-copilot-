@@ -115,9 +115,10 @@ uses a post-mount hydration guard for localStorage-derived state (see the
 `useEffect` around `:32-43`) — **follow that pattern or you will get a hydration
 mismatch.**
 
-`font-mono` is used at `:89` and `:252` but `fontFamily` in
-`web/tailwind.config.ts:68-72` defines only `sans`, `display`, `heading`. It
-falls through to a system stack — a third typeface on the landing page.
+`font-mono` is used at `:89` and `:252` but the `@theme` block in
+`web/app/globals.css` defines only `--font-sans`, `--font-display`,
+`--font-heading`. It falls through to a system stack — a third typeface on the
+landing page.
 
 ## Commands you will need
 
@@ -138,8 +139,8 @@ From `/Users/justinelrod/Projects/Mahjong-copilot-/web`:
   rather than copy it. Nothing else on that page changes.
 - `web/app/globals.css` — **only** if the hero needs a local felt override
   (e.g. squaring the rail's corners). Do not touch any `.felt-*` colour.
-- `web/tailwind.config.ts` — **only** to add a `mono` key if you keep
-  `font-mono`. Deleting the usage is preferred.
+- `web/app/globals.css` — **only** to add a `--font-mono` token to the `@theme`
+  block if you keep `font-mono`. Deleting the usage is preferred.
 - `web/e2e/home.spec.ts`
 
 **Out of scope** (do NOT touch):
@@ -163,11 +164,11 @@ From `/Users/justinelrod/Projects/Mahjong-copilot-/web`:
 ### Step 1: Confirm plan 025 landed
 
 ```bash
-grep -n "card: withAlpha" web/tailwind.config.ts
+grep -n "\-\-color-card:" web/app/globals.css
 ```
 
-Expect `withAlpha(37, 38, 40)`. If it still reads `withAlpha(30, 44, 36)`, plan
-025 has not landed — **STOP**.
+Expect `rgb(37 38 40)`. If it still reads `rgb(30 44 36)`, plan 025 has not
+landed — **STOP**.
 
 ### Step 2: Build the hero on the real felt
 
@@ -199,19 +200,25 @@ Add the three cards, then reorder the existing sections. This is mostly moving
 JSX blocks.
 
 Reduce eyebrow noise while you are here — the page currently has six small-caps
-overlines competing at similar weight. Keep at most two below the hero.
+overlines competing at similar weight. **The three pillar cards above are
+exempt** — each one's eyebrow (`While you play` / `After the hand` / `When
+you're ready`) is part of the required card content and does not count toward
+this cap. The cap applies only to the demoted content below the pillar cards:
+keep at most two eyebrows there.
 
 **Verify**: `npm run lint` → exit 0.
 
 ### Step 5: Use the configured type scale
 
-`web/tailwind.config.ts:73-82` defines `2xs / caption / body / body-lg /
-title-sm / title / title-lg / display`. **It has zero usages in any TSX file.**
+The `@theme` block in `web/app/globals.css` defines `2xs / caption / body /
+body-lg / title-sm / title / title-lg / display`. **It has zero usages in any
+TSX file.**
 
 Use it here: `display` or `title-lg` for the headline, `body-lg` for the pitch,
 `caption` for eyebrows. Introduce no `text-[Npx]` arbitrary values.
 
-Delete both `font-mono` usages, or add `mono` to the config. Deleting preferred.
+Delete both `font-mono` usages, or add a `--font-mono` token to the `@theme`
+block. Deleting preferred.
 
 **Verify**: `grep -n 'text-\[' "web/app/(main)/page.tsx"` → no matches.
 
@@ -267,8 +274,8 @@ break. Update it to assert:
 - [ ] `npm test` exits 0, no newly failing tests
 - [ ] `npm run test:e2e -- home.spec.ts` passes including the new state case
 - [ ] `grep -n 'text-\[' "web/app/(main)/page.tsx"` → no matches
-- [ ] `grep -n 'font-mono' "web/app/(main)/page.tsx"` → no matches, or `mono`
-      added to config
+- [ ] `grep -n 'font-mono' "web/app/(main)/page.tsx"` → no matches, or
+      `--font-mono` added to the `@theme` block
 - [ ] Hero reuses `.game-table-felt.felt-bamboo-mat`; no new gradient authored
 - [ ] Measured cream-on-felt text contrast reported, ≥ 4.5:1
 - [ ] Measured hero tile width reported

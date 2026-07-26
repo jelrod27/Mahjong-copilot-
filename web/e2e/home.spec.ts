@@ -11,7 +11,7 @@ test.describe('Home', () => {
     ).toBeVisible();
     await expect(page.getByText(/coach hints while you play/i)).toBeVisible();
     await expect(page.getByRole('link', { name: /local progress/i })).toBeVisible();
-    await expect(page.locator('a[href="/learn"]').filter({ hasText: /lessons across/i })).toBeVisible();
+    await expect(page.getByRole('main').getByRole('link', { name: /lessons across/i })).toBeVisible();
 
     await expect(page.getByTestId('home-primary-cta')).toHaveCount(1);
   });

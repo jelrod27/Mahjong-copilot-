@@ -1,10 +1,19 @@
 # Plan 025: Give the app an elevation ladder, and stop the glows emitting colours that aren't in the palette
 
+> **Historical plan, already executed.** This plan was written and run
+> **before** plan 022 (Tailwind v4 migration) deleted `web/tailwind.config.ts`
+> and moved every token into the `@theme` block in `web/app/globals.css`. The
+> target values below are already live in `@theme` today — this document is
+> kept as the record of *why* those values were chosen, not as a to-do list.
+> File:line references that originally pointed at `tailwind.config.ts` have
+> been updated in place to point at the `@theme` block instead, so this plan
+> stays accurate if anyone needs to re-derive or re-verify the ladder.
+
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving on. If
 > anything in "STOP conditions" occurs, stop and report — do not improvise.
 >
-> **Drift check (run first)**: `git diff --stat b6b570a..HEAD -- web/tailwind.config.ts web/app/globals.css`
+> **Drift check (run first)**: `git diff --stat b6b570a..HEAD -- web/app/globals.css` (`@theme` block)
 
 ## Status
 
@@ -117,7 +126,9 @@ From `/Users/justinelrod/Projects/Mahjong-copilot-/web`:
 ## Scope
 
 **In scope**:
-- `web/tailwind.config.ts` — the neutral chrome tokens only
+- `web/app/globals.css` — the `@theme` block's neutral chrome tokens only
+  (post-migration home of what this plan originally called
+  `web/tailwind.config.ts`)
 - `web/app/globals.css` — the five glow utilities, and the `:root` var block at
   ~899-953 which must be kept in sync (see STOP conditions)
 
@@ -140,8 +151,9 @@ From `/Users/justinelrod/Projects/Mahjong-copilot-/web`:
 
 ### Step 1: Retune the neutral chrome tokens
 
-In `web/tailwind.config.ts`, replace the neutral values with the table above.
-Keep the `withAlpha` helper and the `<alpha-value>` pattern — many call sites
+In the `@theme` block in `web/app/globals.css` (originally `web/tailwind.config.ts`,
+before plan 022 moved it), replace the neutral values with the table above.
+Keep the `<alpha-value>`-compatible pattern — many call sites
 use `bg-card/90` style opacity modifiers and will break without it.
 
 Leave `foreground`, `muted-foreground`, and every semantic colour untouched.
@@ -213,9 +225,9 @@ the board no longer feels like entering a different product.
 git diff --stat
 ```
 
-Must show only `tailwind.config.ts` and `globals.css`. Inside `globals.css`,
-the diff must not touch any `.felt-*`, `.game-dock`, `.game-hud-surface`, or
-`.game-board-scene` rule.
+Must show only `globals.css` (post-migration; originally `tailwind.config.ts`
+and `globals.css`). Inside `globals.css`, the diff must not touch any
+`.felt-*`, `.game-dock`, `.game-hud-surface`, or `.game-board-scene` rule.
 
 Screenshot `/play/game` and compare against the pre-change screenshot. The board
 should be **pixel-identical** apart from any panel that inherits `ds-panel`
@@ -243,7 +255,8 @@ just pin the stylesheet to itself. The real test is Steps 4 and 5.
 - [ ] `npm test` exits 0 with the new contrast guard passing
 - [ ] `npm run build` succeeds
 - [ ] No literal indigo/sky/amber remains in the glow utilities
-- [ ] `git diff --stat` shows exactly two files
+- [ ] `git diff --stat` shows exactly one file (`globals.css`; originally two
+      before plan 022 removed `tailwind.config.ts`)
 - [ ] `/play/game` is visually unchanged
 - [ ] Nine screens screenshotted at two viewports, with the measured
       `foreground`-on-`card` contrast reported

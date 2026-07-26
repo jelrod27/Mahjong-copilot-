@@ -182,7 +182,7 @@ export default function ActionBar({
         {!canDeclareWin && winShortfall && (
           <div
             data-testid="win-short-notice"
-            className="mx-auto max-w-[22rem] rounded-lg border border-highlight/40 bg-highlight/10 px-3 py-2 text-center"
+            className="mx-auto max-w-88 rounded-lg border border-highlight/40 bg-highlight/10 px-3 py-2 text-center"
           >
             <p className="font-display text-xs font-semibold text-highlight">
               Complete hand — but only {winShortfall.currentFaan} faan
@@ -265,7 +265,7 @@ export default function ActionBar({
           <button
             type="button"
             data-testid="claim-best-button"
-            className={`min-h-[52px] flex-1 rounded-xl border-2 px-6 py-3 font-display text-sm font-semibold transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 sm:flex-none sm:px-10 ${
+            className={`min-h-[52px] flex-1 rounded-xl border-2 px-6 py-3 font-display text-sm font-semibold transition-transform active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/50 sm:flex-none sm:px-10 ${
               best?.claimType === 'win'
                 ? 'ds-btn-success border-success/40 shadow-ds-md'
                 : 'border-accent/45 bg-accent/15 text-highlight shadow-ds-sm hover:bg-accent/25'
@@ -277,7 +277,7 @@ export default function ActionBar({
           <button
             type="button"
             data-testid="claim-pass-button"
-            className={`min-h-[52px] rounded-xl border border-border/50 bg-background/40 px-6 py-3 font-sans text-sm font-semibold text-muted-foreground backdrop-blur-sm transition-colors hover:border-border hover:text-foreground sm:px-8 ${
+            className={`min-h-[52px] rounded-xl border border-border/50 bg-background/40 px-6 py-3 font-sans text-sm font-semibold text-muted-foreground backdrop-blur-xs transition-colors hover:border-border hover:text-foreground sm:px-8 ${
               shakingButton === 'pass' ? 'animate-screen-shake' : ''
             }`}
             onClick={() => handleActionResult('pass', onPass())}

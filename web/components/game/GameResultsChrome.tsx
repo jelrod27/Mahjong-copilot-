@@ -31,7 +31,7 @@ type SectionLabelProps = { children: string };
 export function GameResultsSectionLabel({ children }: SectionLabelProps) {
   return (
     <div className="mb-2 flex items-center gap-2">
-      <span className="h-px max-w-[2rem] flex-1 bg-border/50" aria-hidden />
+      <span className="h-px max-w-8 flex-1 bg-border/50" aria-hidden />
       <span className="shrink-0 font-display text-[9px] font-semibold uppercase tracking-[0.22em] text-muted-foreground md:text-[10px]">
         {children}
       </span>

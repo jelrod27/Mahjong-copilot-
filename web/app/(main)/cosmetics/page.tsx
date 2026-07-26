@@ -53,7 +53,7 @@ export default function CosmeticsPage() {
 
   return (
     <div className="min-h-screen pb-12">
-      <div className="bg-gradient-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
+      <div className="bg-linear-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
         <p className="font-display text-[10px] text-info tracking-[1.5px] mb-1">COSMETICS</p>
         <h1 className="font-display text-lg text-foreground mb-2">Style the table.</h1>
         <p className="text-base text-foreground/80 font-sans">

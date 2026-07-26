@@ -54,7 +54,7 @@ function IconToggle({
       onClick={onClick}
       aria-pressed={pressed}
       aria-label={label}
-      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors duration-fast ease-ds-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/50 ${
+      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors duration-fast ease-ds-out focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-info/50 ${
         pressed
           ? 'border-info/50 bg-info/15 text-info'
           : 'border-border/40 bg-background/30 text-muted-foreground hover:border-info/35 hover:text-info'
@@ -136,7 +136,7 @@ export default function GameHUD({
             type="button"
             onClick={toggleSound}
             aria-label={soundOn ? 'Mute game sounds' : 'Unmute game sounds'}
-            className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/50 ${
+            className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors duration-fast focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-info/50 ${
               soundOn
                 ? 'border-border/40 bg-background/30 text-muted-foreground hover:border-info/35 hover:text-info'
                 : 'border-info/40 bg-info/10 text-info'
@@ -152,7 +152,7 @@ export default function GameHUD({
             type="button"
             onClick={leaveToMenu}
             aria-label="Leave game and return to play menu"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border/40 bg-background/30 text-muted-foreground transition-colors hover:border-info/35 hover:text-info focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/50"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border/40 bg-background/30 text-muted-foreground transition-colors hover:border-info/35 hover:text-info focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-info/50"
           >
             <LogOut className="size-3.5" strokeWidth={2} aria-hidden />
           </button>
@@ -182,7 +182,7 @@ export default function GameHUD({
             type="button"
             onClick={toggleSound}
             aria-label={soundOn ? 'Mute game sounds' : 'Unmute game sounds'}
-            className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/50 ${
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border transition-colors duration-fast focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-info/50 ${
               soundOn
                 ? 'border-border/40 bg-background/30 text-muted-foreground hover:border-info/35 hover:text-info'
                 : 'border-info/40 bg-info/10 text-info'
@@ -198,7 +198,7 @@ export default function GameHUD({
             type="button"
             onClick={leaveToMenu}
             aria-label="Leave game and return to play menu"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border/40 bg-background/30 text-muted-foreground transition-colors hover:border-info/35 hover:text-info focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/50"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border/40 bg-background/30 text-muted-foreground transition-colors hover:border-info/35 hover:text-info focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-info/50"
           >
             <LogOut className="size-4" strokeWidth={2} aria-hidden />
           </button>
@@ -247,7 +247,7 @@ export default function GameHUD({
               }`}
             >
               {active ? (
-                <span className="w-1.5 shrink-0 rounded-full bg-info shadow-[0_0_8px_rgb(56_189_248_/_0.6)]" aria-hidden />
+                <span className="w-1.5 shrink-0 rounded-full bg-info shadow-[0_0_8px_rgb(56_189_248/0.6)]" aria-hidden />
               ) : (
                 <span className="w-1.5 shrink-0" aria-hidden />
               )}

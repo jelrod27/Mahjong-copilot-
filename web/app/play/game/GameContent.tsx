@@ -201,10 +201,10 @@ export default function GameContent() {
       )}
       {isTrainingTable && (
         <div
-          className="pointer-events-none fixed left-0 right-0 top-0 z-[55] flex justify-center px-3 pt-[max(0.5rem,env(safe-area-inset-top))]"
+          className="pointer-events-none fixed left-0 right-0 top-0 z-55 flex justify-center px-3 pt-[max(0.5rem,env(safe-area-inset-top))]"
           aria-hidden
         >
-          <span className="rounded-full border border-accent/40 bg-surface/90 px-3 py-1 font-sans text-[10px] text-accent backdrop-blur-sm">
+          <span className="rounded-full border border-accent/40 bg-surface/90 px-3 py-1 font-sans text-[10px] text-accent backdrop-blur-xs">
             Training table — relaxed rules, longer claim window
           </span>
         </div>

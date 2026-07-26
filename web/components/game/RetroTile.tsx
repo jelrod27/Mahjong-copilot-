@@ -90,7 +90,7 @@ function RetroTile({
           background: 'repeating-linear-gradient(45deg, #2a4538, #2a4538 3px, #1a2b1e 3px, #1a2b1e 6px)',
         }}
       >
-        <span className="text-muted-foreground text-[length:30%] min-w-[1em]" aria-hidden>?</span>
+        <span className="text-muted-foreground text-[30%] min-w-[1em]" aria-hidden>?</span>
       </div>
     );
     return onClick ? (

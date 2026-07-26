@@ -56,7 +56,7 @@ export default function HandReplayScrubber({ gameState }: HandReplayScrubberProp
       <button
         type="button"
         onClick={() => setExpanded(v => !v)}
-        className="mb-2 flex w-full items-center justify-between gap-2 rounded-lg border border-border/25 bg-surface/30 px-2 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/50"
+        className="mb-2 flex w-full items-center justify-between gap-2 rounded-lg border border-border/25 bg-surface/30 px-2 py-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-info/50"
         aria-expanded={expanded}
         aria-controls="hand-replay-body"
       >

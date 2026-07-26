@@ -1,3 +1,5 @@
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 @import 'tailwindcss';
 
 @custom-variant dark (&:is(.dark *));
@@ -321,16 +323,6 @@
 
   html.comfortable-text & {
     font-size: 13px;
-  }
-}
-
-@utility comfortable-text {
-  &html .bottom-nav-label {
-    font-size: 13px;
-  }
-
-  &html .home-micro-track {
-    font-size: 11px;
   }
 }
 

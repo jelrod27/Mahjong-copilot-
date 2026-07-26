@@ -44,7 +44,10 @@ test.describe('Beginner smoke — offline solo path', () => {
     // 1. Home page loads (no Supabase env required)
     await page.goto('/');
     await expect(
-      page.getByRole('main').getByRole('heading', { name: /16 BIT MAHJONG/i }),
+      // The landing page rebuild (plan 026) made the hero the page's h1 and
+      // moved the wordmark into the sidebar header, outside <main>. Assert on
+      // the level-1 heading structurally so this survives copy changes.
+      page.getByRole('main').getByRole('heading', { level: 1 }),
     ).toBeVisible();
 
     // 2. Navigate to Play (URL-driven; nav widget varies between desktop

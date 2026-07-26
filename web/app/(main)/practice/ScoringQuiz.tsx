@@ -25,11 +25,11 @@ const SCORING_QUESTIONS: ScoringQuestion[] = [
     explanation: 'Dragon Pung (1) + Concealed (1) + No Flowers (1) = 3 fan.',
   },
   {
-    description: 'All Pungs hand. Self-drawn. 1 flower tile. Seat wind pung included.',
-    details: ['All Pungs: +3', 'Self-drawn: +1', 'Seat Wind: +1', 'Flower: +1'],
+    description: 'All Pungs hand. Self-drawn. 1 flower tile matching their seat wind. Seat wind pung included.',
+    details: ['All Pungs: +3', 'Self-drawn: +1', 'Seat Wind: +1', 'Seat Flower: +1'],
     options: ['4 fan', '5 fan', '6 fan', '7 fan'],
     answer: '6 fan',
-    explanation: 'All Pungs (3) + Self-drawn (1) + Seat Wind (1) + Flower (1) = 6 fan.',
+    explanation: 'All Pungs (3) + Self-drawn (1) + Seat Wind (1) + Seat Flower (1) = 6 fan.',
   },
   {
     description: 'Chicken hand. Won by discard. No special patterns. No flowers.',
@@ -46,11 +46,11 @@ const SCORING_QUESTIONS: ScoringQuestion[] = [
     explanation: 'Pure One Suit (7) + Self-drawn (1) + Concealed (1) + No Flowers (1) = 10 fan = Limit hand!',
   },
   {
-    description: 'Mixed One Suit hand (all Characters + Green Dragon pung). Won by discard. Not concealed. 2 flowers.',
-    details: ['Mixed One Suit: +3', 'Dragon Pung: +1', 'Flowers: +2'],
+    description: 'Mixed One Suit hand (all Characters + Green Dragon pung). Won by discard. Not concealed. Holds the flower AND season matching their seat wind.',
+    details: ['Mixed One Suit: +3', 'Dragon Pung: +1', 'Seat Flower: +1', 'Seat Season: +1'],
     options: ['4 fan', '5 fan', '6 fan', '7 fan'],
     answer: '6 fan',
-    explanation: 'Mixed One Suit (3) + Green Dragon (1) + 2 Flowers (2) = 6 fan.',
+    explanation: 'Mixed One Suit (3) + Green Dragon (1) + matching flower (1) + matching season (1) = 6 fan.',
   },
   {
     description: 'Seven Pairs hand. Self-drawn. No flowers.',
@@ -67,25 +67,25 @@ const SCORING_QUESTIONS: ScoringQuestion[] = [
     explanation: 'Red Dragon (1) + White Dragon (1) + No Flowers (1) = 3 fan.',
   },
   {
-    description: 'All Pungs hand with prevailing wind pung (East round). Won by self-draw. 3 flowers.',
-    details: ['All Pungs: +3', 'Prevailing Wind: +1', 'Self-drawn: +1', 'Flowers: +3'],
+    description: 'All Pungs hand with prevailing wind pung (East round). Won by self-draw. Holds a complete set of all 4 flowers, plus the season matching their seat.',
+    details: ['All Pungs: +3', 'Prevailing Wind: +1', 'Self-drawn: +1', 'All Four Flowers: +2', 'Seat Season: +1'],
     options: ['6 fan', '7 fan', '8 fan', '9 fan'],
     answer: '8 fan',
-    explanation: 'All Pungs (3) + Prevailing Wind (1) + Self-drawn (1) + 3 Flowers (3) = 8 fan.',
+    explanation: 'All Pungs (3) + Prevailing Wind (1) + Self-drawn (1) + All Four Flowers (2) + Seat Season (1) = 8 fan.',
   },
   {
     description: 'Mixed hand. Self-drawn. Concealed. Seat wind AND prevailing wind pung (same wind). No flowers.',
     details: ['Seat Wind: +1', 'Prevailing Wind: +1', 'Self-drawn: +1', 'Concealed: +1', 'No Flowers: +1'],
     options: ['3 fan', '4 fan', '5 fan', '6 fan'],
     answer: '5 fan',
-    explanation: 'Seat Wind (1) + Prevailing Wind (1) + Self-drawn (1) + Concealed (1) + No Flowers (1) = 5 fan = Limit payment!',
+    explanation: 'Seat Wind (1) + Prevailing Wind (1) + Self-drawn (1) + Concealed (1) + No Flowers (1) = 5 fan.',
   },
   {
-    description: 'Basic hand won by discard. 1 flower tile. No other bonuses. Not concealed.',
-    details: ['Flower: +1'],
+    description: 'Basic hand with a seat-matching flower. No other bonuses. Not concealed.',
+    details: ['Seat Flower: +1'],
     options: ['0 fan', '1 fan', '2 fan', '3 fan'],
     answer: '1 fan',
-    explanation: 'Only 1 Flower (1). Total: 1 fan. Payment: 16 points from the discarder.',
+    explanation: 'The seat-matching flower gives 1 fan. This scores 16 base points, but cannot be declared at the default 3-fan table minimum.',
   },
 ];
 

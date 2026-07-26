@@ -43,7 +43,7 @@ export default function LevelPage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="bg-gradient-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
+      <div className="bg-linear-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
         <button
           onClick={() => router.push('/learn')}
           className="text-sm text-info font-sans mb-3 hover:ds-text-glow transition-all"

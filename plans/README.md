@@ -35,6 +35,32 @@ session in a real browser at desktop (1280×800) and mobile (375×812).
 | 018 | [Mobile hand wraps to two rows](018-mobile-hand-wraps-to-two-rows.md) | P1 | S | — | **DONE** — approved after 1 revision |
 | 019 | [Felt-agnostic board chrome](019-felt-agnostic-board-chrome.md) | P1 | S | 015 | **DONE** — closes F1 |
 
+### Round 3 — landing page, content, DX, multiplayer
+
+Roadmap: [ROADMAP-round-3.md](ROADMAP-round-3.md). Written from four parallel
+audits after PR #94 merged (`b6b570a`).
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 020 | [Scoring content truthfulness](020-scoring-content-truthfulness.md) | **P0** | M | — | **DONE** |
+| 022 | [Tailwind v4 migration](022-tailwind-v4-migration.md) | P1 | M | 025, 026 | **DONE** |
+| 025 | [Elevation ladder + glow fix](025-elevation-ladder-and-glow-fix.md) | P1 | S | — | **DONE** |
+| 026 | [Landing page redesign — Direction A, "The Table"](026-landing-page-redesign.md) | P1 | M | 025 (done) | **DONE** |
+
+Not yet written, in recommended order: `021` missing gameplay curriculum, `023` primitive extraction, `024` e2e on PRs, `027` replay + verified Daily Hand
+leaderboard.
+
+**Headline findings behind these** (all advisor-verified):
+- The curriculum contradicts `engine/scoring.ts` on payment distribution
+  (teaches 1×, engine pays 4×) and the limit cap (teaches 256, engine 8192 —
+  and contradicts itself two lines apart).
+- Adjacent chrome surfaces sit between 1.04:1 and 1.32:1 contrast. There is no
+  elevation system, only a tint — that, not the hue, is the "ugly green".
+- `components/ui/*` uses Tailwind v4 classes against a v3.4.19 runtime;
+  `outline-hidden`, `ring-3` and `bg-sidebar` compile to nothing.
+- Tokens are defined in both `tailwind.config.ts` and `globals.css :root` and
+  do not read from each other — editing `--accent` does nothing to `bg-accent`.
+
 ### Execution record — round 2 (2026-07-25)
 
 Executed via dispatched subagents in isolated worktrees; each diff reviewed by

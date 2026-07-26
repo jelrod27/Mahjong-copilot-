@@ -28,7 +28,7 @@ export default function GlossaryModal({ term, open, onOpenChange }: GlossaryModa
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-[rgb(6_10_14/0.88)] backdrop-blur-[10px] transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0" />
         <Dialog.Popup
           data-testid="glossary-modal"
-          className="game-results-sheet fixed left-1/2 top-1/2 z-[60] w-[min(92vw,420px)] max-h-[min(90vh,520px)] -translate-x-1/2 -translate-y-1/2 shadow-2xl transition duration-150 data-ending-style:opacity-0 data-ending-style:scale-95 data-starting-style:opacity-0 data-starting-style:scale-95"
+          className="game-results-sheet fixed left-1/2 top-1/2 z-60 w-[min(92vw,420px)] max-h-[min(90vh,520px)] -translate-x-1/2 -translate-y-1/2 shadow-2xl transition duration-150 data-ending-style:opacity-0 data-ending-style:scale-95 data-starting-style:opacity-0 data-starting-style:scale-95"
         >
           {entry ? (
             <>
@@ -51,13 +51,13 @@ export default function GlossaryModal({ term, open, onOpenChange }: GlossaryModa
               <div className="mt-4 flex items-center justify-between gap-2">
                 <Link
                   href="/reference"
-                  className="rounded-sm font-display text-[10px] text-info transition-colors hover:text-highlight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/60"
+                  className="rounded-sm font-display text-[10px] text-info transition-colors hover:text-highlight focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-info/60"
                   onClick={() => onOpenChange(false)}
                 >
                   Open in Reference
                 </Link>
                 <Dialog.Close
-                  className="ds-btn px-3 py-1 font-display text-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/60"
+                  className="ds-btn px-3 py-1 font-display text-[10px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-info/60"
                   aria-label="Close glossary"
                 >
                   Close

@@ -9,14 +9,14 @@ import { cn } from "@/lib/utils";
 const notoSans = Noto_Sans_SC({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
-  variable: "--font-sans",
+  variable: "--font-noto-sans",
   display: "swap",
 });
 
 const notoSerif = Noto_Serif_SC({
   subsets: ["latin"],
   weight: ["500", "600", "700"],
-  variable: "--font-display",
+  variable: "--font-noto-serif",
   display: "swap",
 });
 

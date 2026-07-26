@@ -89,7 +89,7 @@ export const MahjongTile: React.FC<MahjongTileProps> = ({
       }}
     >
       {/* Shine effect */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-linear-to-tr from-transparent via-white/10 to-transparent pointer-events-none" />
       <span className="ds-text-glow-strong" style={{ fontSize: width * 0.4 }}>🀄</span>
     </div>
   ) : (
@@ -111,7 +111,7 @@ export const MahjongTile: React.FC<MahjongTileProps> = ({
       <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ backgroundColor: tileEdgeColor }} />
       
       {/* Gloss overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/5 pointer-events-none" />
+      <div className="absolute inset-0 bg-linear-to-br from-white/20 via-transparent to-black/5 pointer-events-none" />
 
       {/* Suit color indicator (refined) */}
       <div className="h-1.5 w-full opacity-80" style={{ backgroundColor: suitColor }} />
@@ -119,7 +119,7 @@ export const MahjongTile: React.FC<MahjongTileProps> = ({
       {/* Tile content */}
       <div className="flex flex-1 flex-col items-center justify-center p-1.5 z-10">
         <span
-          className="font-bold leading-none drop-shadow-sm"
+          className="font-bold leading-none drop-shadow-xs"
           style={{ 
             fontSize: width * 0.38, 
             color: suitColor,

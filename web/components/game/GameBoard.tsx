@@ -189,7 +189,7 @@ export default function GameBoard({
       <TileFlightLayer gameState={gameState} humanPlayerId={humanPlayerId} />
       {crtEffect && <div className="crt-overlay" aria-hidden />}
       <div
-        className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_85%_55%_at_50%_42%,transparent_0%,rgb(0_0_0_/_0.18)_78%,rgb(0_0_0_/_0.42)_100%)]"
+        className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_85%_55%_at_50%_42%,transparent_0%,rgb(0_0_0/0.18)_78%,rgb(0_0_0/0.42)_100%)]"
         aria-hidden
       />
 
@@ -311,7 +311,7 @@ export default function GameBoard({
               </div>
 
               {tutorAdvice && (
-                <div className="w-full max-w-[min(100%,20rem)] max-h-[5.5rem] overflow-y-auto md:max-w-xl" style={{ flex: '0 0 auto' }}>
+                <div className="w-full max-w-[min(100%,20rem)] max-h-22 overflow-y-auto md:max-w-xl" style={{ flex: '0 0 auto' }}>
                   <TutorPanel advice={tutorAdvice} />
                 </div>
               )}

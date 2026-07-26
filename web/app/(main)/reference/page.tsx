@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { GLOSSARY, type GlossaryEntry } from '@/content/glossary';
+import { FAN_TABLE, LIMIT_HANDS, LIMIT_FAN, MAX_PAYMENT, paymentForFan } from '@/content/scoringReference';
 
 type TabKey = 'tiles' | 'scoring' | 'hands' | 'glossary';
 
@@ -20,7 +21,7 @@ export default function ReferencePage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="bg-gradient-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
+      <div className="bg-linear-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
         <p className="font-display text-[10px] text-info tracking-[1.5px] mb-1">
           REFERENCE
         </p>
@@ -35,7 +36,7 @@ export default function ReferencePage() {
           value={searchQuery}
           onChange={event => setSearchQuery(event.target.value)}
           placeholder="Search tiles, scoring, hands, glossary..."
-          className="w-full rounded-lg border-2 border-border/30 bg-elevated px-3 py-3 font-sans text-sm text-foreground placeholder:text-muted-foreground focus:border-info focus:outline-none"
+          className="w-full rounded-lg border-2 border-border/30 bg-elevated px-3 py-3 font-sans text-sm text-foreground placeholder:text-muted-foreground focus:border-info focus:outline-hidden"
         />
       </div>
 
@@ -212,35 +213,13 @@ function TilesTab() {
    Scoring Tab
    ───────────────────────────────────────── */
 
-interface FanEntry {
-  name: string;
-  fan: string;
-  description: string;
-}
-
-const FAN_TABLE: FanEntry[] = [
-  { name: 'Chicken Hand', fan: '0', description: 'A winning hand with no scoring elements.' },
-  { name: 'Self-Drawn Win', fan: '1', description: 'Win by drawing the tile yourself, not from a discard.' },
-  { name: 'Concealed Hand', fan: '1', description: 'Win without exposing any melds (no claims from discards).' },
-  { name: 'No Flowers', fan: '1', description: 'Win without having drawn any flower or season tiles.' },
-  { name: 'Dragon Pung', fan: '1 each', description: 'A pung (or kong) of any dragon tile (Red, Green, or White).' },
-  { name: 'Seat Wind Pung', fan: '1', description: 'A pung of your assigned seat wind.' },
-  { name: 'Prevailing Wind Pung', fan: '1', description: 'A pung of the round\'s prevailing wind.' },
-  { name: 'Flower/Season', fan: '1 each', description: 'Each flower or season tile drawn adds 1 fan.' },
-  { name: 'All Chows', fan: '1', description: 'All 4 melds are chows (sequences), no pungs.' },
-  { name: 'All Pungs', fan: '3', description: 'All 4 melds are pungs or kongs, no chows.' },
-  { name: 'Mixed One Suit', fan: '3', description: 'All tiles from one numbered suit plus honor tiles.' },
-  { name: 'Seven Pairs', fan: '4', description: 'Hand of 7 distinct pairs instead of 4 melds + 1 pair.' },
-  { name: 'Pure One Suit', fan: '7', description: 'All tiles from a single numbered suit, no honors.' },
-];
-
 const PAYMENT_TABLE = [
-  { fan: '0', payment: '8', label: 'Chicken Hand' },
-  { fan: '1', payment: '16', label: '' },
-  { fan: '2', payment: '32', label: '' },
-  { fan: '3', payment: '64', label: 'All Pungs / Mixed' },
-  { fan: '4', payment: '128', label: 'Seven Pairs' },
-  { fan: '5+', payment: '256', label: 'Limit (cap)' },
+  { fan: '0', payment: paymentForFan(0).toLocaleString(), label: 'Chicken Hand' },
+  { fan: '1', payment: paymentForFan(1).toLocaleString(), label: '' },
+  { fan: '2', payment: paymentForFan(2).toLocaleString(), label: '' },
+  { fan: '3', payment: paymentForFan(3).toLocaleString(), label: 'All Pungs / Mixed' },
+  { fan: '4', payment: paymentForFan(4).toLocaleString(), label: 'Seven Pairs' },
+  { fan: `${LIMIT_FAN}+`, payment: MAX_PAYMENT.toLocaleString(), label: 'Limit (cap)' },
 ];
 
 function ScoringTab() {
@@ -253,7 +232,7 @@ function ScoringTab() {
           Payment = 8 x 2<sup>fan</sup>
         </p>
         <p className="text-sm font-sans text-muted-foreground mt-1">
-          Capped at 256 points per payer (limit hand).
+          Capped at {MAX_PAYMENT.toLocaleString()} points (limit hand) before the win-method multiplier below.
         </p>
       </div>
 
@@ -277,7 +256,7 @@ function ScoringTab() {
 
       {/* Payment Table */}
       <div>
-        <h3 className="font-display text-xs text-info mb-3">PAYMENT TABLE (PER PAYER)</h3>
+        <h3 className="font-display text-xs text-info mb-3">BASE PAYMENT TABLE</h3>
         <div className="ds-card overflow-hidden">
           <table className="w-full text-sm font-sans">
             <thead>
@@ -299,7 +278,7 @@ function ScoringTab() {
           </table>
         </div>
         <p className="text-xs font-sans text-muted-foreground mt-2">
-          Win by discard: 1 player pays. Self-draw: all 3 opponents pay.
+          Win by discard: the discarder pays double, the other two pay the base. Self-draw: all 3 opponents pay double.
         </p>
       </div>
     </div>
@@ -310,71 +289,13 @@ function ScoringTab() {
    Hands Tab
    ───────────────────────────────────────── */
 
-interface LimitHand {
-  name: string;
-  chinese: string;
-  description: string;
-  example: string;
-}
-
-const LIMIT_HANDS: LimitHand[] = [
-  {
-    name: 'Thirteen Orphans',
-    chinese: '十三幺',
-    description: 'One of each terminal (1 and 9 of each suit), one of each wind, one of each dragon, plus a pair of any of those 13 types.',
-    example: '1D 9D 1B 9B 1C 9C E S W N Red Grn Wht + pair',
-  },
-  {
-    name: 'Nine Gates',
-    chinese: '九蓮寶燈',
-    description: 'In a single suit: 1-1-1-2-3-4-5-6-7-8-9-9-9 plus any tile of that suit. Any of the 9 tiles completes the hand.',
-    example: '1-1-1-2-3-4-5-6-7-8-9-9-9 + any (one suit)',
-  },
-  {
-    name: 'Big Three Dragons',
-    chinese: '大三元',
-    description: 'Pungs (or kongs) of all three dragons: Red, Green, and White. The remaining set and pair can be anything.',
-    example: 'Red x3 + Grn x3 + Wht x3 + any set + pair',
-  },
-  {
-    name: 'Big Four Winds',
-    chinese: '大四喜',
-    description: 'Pungs (or kongs) of all four winds: East, South, West, and North. The pair can be anything.',
-    example: 'E x3 + S x3 + W x3 + N x3 + any pair',
-  },
-  {
-    name: 'All Honors',
-    chinese: '字一色',
-    description: 'Every tile in the hand is an honor tile (winds and/or dragons). No suit tiles at all.',
-    example: '4 honor pungs/kongs + honor pair',
-  },
-  {
-    name: 'All Terminals',
-    chinese: '清老頭',
-    description: 'Every tile is a 1 or 9 (terminal). No middle numbers, no honors.',
-    example: '1D x3 + 9D x3 + 1B x3 + 9C x3 + 9B pair',
-  },
-  {
-    name: 'Four Concealed Pungs',
-    chinese: '四暗刻',
-    description: 'Four pungs all self-drawn (none claimed from discards). The pair may be completed from a discard.',
-    example: '4 self-drawn pungs + pair',
-  },
-  {
-    name: 'All Kongs',
-    chinese: '十八羅漢',
-    description: 'Four kongs plus a pair. Extremely rare since it requires 18 tiles.',
-    example: '4 kongs (16 tiles) + pair (2 tiles)',
-  },
-];
-
 function HandsTab() {
   return (
     <div className="space-y-4">
       <div className="ds-card p-4 border-l-4 border-accent">
         <p className="font-display text-[10px] text-accent tracking-wider mb-1">LIMIT HANDS</p>
         <p className="text-sm font-sans text-muted-foreground">
-          Worth maximum points (256 per payer). These are 10+ fan or special patterns.
+          Worth maximum points ({MAX_PAYMENT.toLocaleString()} base). These are {LIMIT_FAN}+ fan or special patterns.
         </p>
       </div>
 

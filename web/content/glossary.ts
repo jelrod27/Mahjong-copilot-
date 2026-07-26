@@ -36,7 +36,7 @@ export const GLOSSARY: GlossaryEntry[] = [
   { term: 'Terminal', chinese: '老頭牌', definition: 'Tiles numbered 1 or 9 in any suit. The "ends" of each suit.' },
   { term: 'Honor', chinese: '字牌', definition: 'Wind tiles (East/South/West/North) and Dragon tiles (Red/Green/White).', aliases: ['Honor Tile'] },
   { term: 'Bonus Tile', chinese: '花牌', definition: 'Flower and Season tiles. Set aside when drawn, replaced from the wall.', aliases: ['Flower', 'Season'] },
-  { term: 'Limit Hand', chinese: '滿貫', definition: 'A hand worth maximum points (10+ fan, or a special pattern). Pays 256 per payer.' },
+  { term: 'Limit Hand', chinese: '滿貫', definition: 'A hand worth maximum points (10+ fan, or a special pattern). Pays a capped limit amount instead of continuing to double.' },
   { term: 'Chicken Hand', chinese: '雞糊', definition: 'A winning hand with 0 fan. The minimum payout of 8 points.' },
   { term: 'Exhaustive Draw', chinese: '流局', definition: 'The round ends with no winner when all wall tiles have been drawn.' },
   { term: 'Wind', chinese: '風', definition: 'East, South, West, or North. Each player gets a seat wind; the round has a prevailing wind. Pungs of seat or prevailing wind score fan.' },

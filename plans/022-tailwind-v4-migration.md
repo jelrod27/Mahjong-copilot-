@@ -59,7 +59,7 @@ codemod. This is a small migration for this codebase.
 
 ## Commands you will need
 
-From `/Users/justinelrod/Projects/Mahjong-copilot-/web`:
+From the repository's `web/` directory (`cd web`):
 
 | Purpose   | Command                                | Expected |
 |-----------|----------------------------------------|----------|
@@ -67,7 +67,7 @@ From `/Users/justinelrod/Projects/Mahjong-copilot-/web`:
 | Codemod   | `npx @tailwindcss/upgrade`             | see Step 3 |
 | Typecheck | `npm run typecheck`                    | exit 0   |
 | Lint      | `npm run lint`                         | exit 0   |
-| Unit test | `npm test`                             | 610 pass |
+| Unit test | `npm test`                             | all pass, report the observed count |
 | Build     | `npm run build`                        | succeeds |
 | E2E       | `npm run test:e2e -- home.spec.ts tile-scaling.spec.ts play-game.spec.ts` | pass |
 
@@ -119,7 +119,8 @@ Then record computed styles as machine-checkable ground truth:
   const pick = s => { const e=document.querySelector(s); if(!e) return null;
     const c=getComputedStyle(e);
     return {bg:c.backgroundColor,bgImg:c.backgroundImage.slice(0,90),
-            color:c.color,border:c.borderColor,bw:c.borderWidth,radius:c.borderRadius}; };
+            color:c.color,border:c.borderColor,bw:c.borderWidth,radius:c.borderRadius,
+            fontFamily:c.fontFamily}; };
   return {
     body: pick('body'),
     card: pick('.ds-card'),
@@ -130,9 +131,19 @@ Then record computed styles as machine-checkable ground truth:
     hud: pick('.game-hud-surface'),
     felt: pick('.game-table-felt'),
     tile: pick('.mahjong-tile-face'),
+    heading: pick('h1'),
   };
 })()
 ```
+
+**`fontFamily` is not optional.** An earlier run of this exact probe omitted it,
+checked only colours/borders/radii, and reported "byte-identical" — while the
+migration had actually made `--font-sans` and `--font-display` self-referential
+(`@theme { --font-sans: var(--font-sans), ... }` collides with the identically-named
+custom property `next/font` sets on `<html>`), so every font on the site silently
+fell back to the browser default serif. A probe that doesn't check the one thing
+that broke is not a baseline. Confirm `fontFamily` is a real font name (e.g.
+contains "Noto Sans SC" / "Noto Serif SC"), not just present in the JSON.
 
 Run it on `/` and on `/play/game`. **Save both JSON blobs into your report.**
 Step 8 diffs against them.
@@ -218,6 +229,16 @@ as the engine swap makes any regression impossible to attribute.
 If the codemod already converted the config to `@theme`, that is acceptable —
 but then you must be especially rigorous in Step 8, and say so in your report.
 
+**Actual outcome (recorded after execution):** the `@config` path was not
+used. `@tailwindcss/postcss` (the plugin this migration adopts) does not load
+a `.ts` config through `@config` — only a transpiled `.js` config is
+supported — so `@config` was never a real option for this codebase's
+TypeScript config. The codemod inlined every token from `tailwind.config.ts`
+into the `@theme` block in `globals.css` and `web/tailwind.config.ts` was
+deleted outright. There is no config file left to decide a strategy for; the
+"if already converted" hedge above did in fact happen, and it happened for a
+structural reason (the `.ts`/`@config` incompatibility), not by choice.
+
 Either way, the two v4 stylesheet imports at the top of `globals.css` should
 now compile properly rather than passing through. Confirm that.
 
@@ -291,7 +312,8 @@ npm run typecheck && npm run lint && npm test && npm run build
 npm run test:e2e -- home.spec.ts tile-scaling.spec.ts play-game.spec.ts
 ```
 
-All must pass. **610 unit tests** as of plan 026. If a test fails, report it —
+All must pass — report the observed unit test count rather than gating on a
+fixed number, since the suite grows across plans. If a test fails, report it —
 do not edit tests to accommodate a visual change, because a visual change is
 itself a STOP condition here.
 
@@ -308,7 +330,7 @@ itself a STOP condition here.
 
 - [ ] `npm run typecheck` exits 0
 - [ ] `npm run lint` exits 0
-- [ ] `npm test` → 610 pass, none edited to accommodate
+- [ ] `npm test` → all pass (report the observed count), none edited to accommodate
 - [ ] `npm run build` succeeds
 - [ ] e2e (home, tile-scaling, play-game) pass
 - [ ] `outline-hidden`, `ring-3`, `bg-sidebar` all compile (> 0 occurrences)
@@ -334,8 +356,10 @@ itself a STOP condition here.
 
 - **What a reviewer should scrutinise**: Step 8's computed-style diff. Every
   other check can pass while the design has quietly shifted.
-- **Deliberately deferred**: porting `tailwind.config.ts` to `@theme`. Do that
-  as a follow-up once v4 is proven stable — it is the change that finally makes
-  `--accent` and `bg-accent` the same thing.
+- **Not deferred after all**: porting `tailwind.config.ts` to `@theme` was
+  planned as a follow-up (see Step 5), but the codemod did it as part of this
+  same change — `@config` was never viable here since `@tailwindcss/postcss`
+  does not load a `.ts` config through it. `tailwind.config.ts` is gone;
+  `--accent` and `bg-accent` already resolve to the same `@theme` token.
 - **This unblocks**: primitive extraction (roadmap 023), and any reskin of
   `/learn`, `/practice`, `/reference`.

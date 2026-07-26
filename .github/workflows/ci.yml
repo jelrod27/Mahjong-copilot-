@@ -85,6 +85,25 @@ jobs:
       - name: End-to-end tests (local dev server)
         run: npm run test:e2e
 
+      # One-time bootstrap for visual snapshots. Playwright baselines are
+      # per-platform; only darwin ones are committed, so visual.spec.ts skips
+      # on Linux. This regenerates the Linux set and uploads it — download the
+      # artifact, commit web/e2e/visual.spec.ts-snapshots/, and the visual
+      # tests start running here automatically. Never fails the build.
+      - name: Generate Linux visual baselines (bootstrap artifact)
+        if: always()
+        continue-on-error: true
+        run: npm run test:e2e -- visual.spec.ts --update-snapshots || true
+
+      - name: Upload visual baselines
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-snapshots
+          path: web/e2e/visual.spec.ts-snapshots/
+          if-no-files-found: ignore
+
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4

@@ -1,11 +1,31 @@
 import { test, expect, type Page } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
+
+/**
+ * Playwright snapshots are per-platform: a baseline generated on macOS is
+ * `-chromium-darwin.png`, CI on ubuntu looks for `-chromium-linux.png`. Only
+ * darwin baselines are committed today, so on CI these would fail on a missing
+ * file and turn every PR red — the opposite of this suite's purpose.
+ *
+ * Skip (loudly) when the current platform has no baseline. To enable on CI:
+ *   1. run `npm run test:e2e -- visual.spec.ts --update-snapshots` on Linux
+ *      (or download the `playwright-snapshots` artifact from a CI run)
+ *   2. commit the resulting `*-chromium-linux.png` files
+ * These then run automatically — no code change needed.
+ */
+const SNAPSHOT_PLATFORM = process.platform === 'darwin' ? 'darwin' : 'linux';
+const HAS_BASELINES = fs.existsSync(
+  path.join(__dirname, 'visual.spec.ts-snapshots', `landing-desktop-chromium-${SNAPSHOT_PLATFORM}.png`),
+);
+
 
 /**
  * Visual regression snapshots (plan 024).
  *
  * Why this file exists: the Tailwind v4 migration (plan 022) shipped with
- * every font in the app silently falling back to Times — Inter and Plus
- * Jakarta Sans never loaded. Lint passed, typecheck passed, unit tests
+ * every font in the app silently falling back to Times — Noto Sans SC and
+ * Noto Serif SC never loaded. Lint passed, typecheck passed, unit tests
  * passed, `npm run build` passed, and a computed-style diff between
  * before/after reported "byte-identical" because it compared colors and
  * radii but never checked `fontFamily`. Only a human reviewer looking at the
@@ -39,6 +59,13 @@ async function waitForFonts(page: Page) {
 }
 
 test.describe('Visual regression', () => {
+  test.skip(
+    !HAS_BASELINES,
+    `No ${SNAPSHOT_PLATFORM} snapshot baselines committed. Generate them on this platform with ` +
+      `\`npm run test:e2e -- visual.spec.ts --update-snapshots\` and commit ` +
+      `web/e2e/visual.spec.ts-snapshots/.`,
+  );
+
   for (const [name, viewport] of Object.entries(VIEWPORTS)) {
     test(`landing page — ${name}`, async ({ page }) => {
       await page.setViewportSize(viewport);

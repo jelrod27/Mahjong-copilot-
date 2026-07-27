@@ -39,11 +39,20 @@ export default function ReferencePage() {
         />
       </PageHeader>
 
-      {/* Tab Bar */}
-      <div className="flex border-b border-border/20 bg-elevated sticky top-0 z-10">
+      {/* Tab Bar — the active tab was conveyed by colour and a bottom border
+          only, so assistive tech saw four identical buttons. */}
+      <div
+        role="tablist"
+        aria-label="Reference sections"
+        className="flex border-b border-border/20 bg-elevated sticky top-0 z-10"
+      >
         {tabs.map(tab => (
           <button
             key={tab.key}
+            role="tab"
+            id={`reference-tab-${tab.key}`}
+            aria-selected={activeTab === tab.key}
+            aria-controls="reference-tabpanel"
             onClick={() => setActiveTab(tab.key)}
             className={`flex-1 py-3 text-sm font-sans transition-colors ${
               activeTab === tab.key
@@ -57,7 +66,12 @@ export default function ReferencePage() {
       </div>
 
       {/* Tab Content */}
-      <div className="p-4">
+      <div
+        id="reference-tabpanel"
+        role="tabpanel"
+        aria-labelledby={`reference-tab-${activeTab}`}
+        className="p-4"
+      >
         {searchQuery.trim() ? (
           <SearchResults query={searchQuery} results={searchResults} />
         ) : (

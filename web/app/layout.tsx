@@ -36,6 +36,11 @@ export const metadata: Metadata = {
   applicationName: SITE_NAME,
   alternates: { canonical: '/' },
   openGraph: {
+    // Defaults, so a route that never sets its own openGraph still renders a
+    // complete social card rather than a title-less one.
+    title: `${SITE_NAME} — Learn and Play Hong Kong Mahjong`,
+    description:
+      'Learn Hong Kong Mahjong from scratch — tiles, sets, scoring, and how a hand actually runs — then play a full game solo against AI.',
     siteName: SITE_NAME,
     type: 'website',
     locale: 'en_US',

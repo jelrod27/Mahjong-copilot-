@@ -73,12 +73,18 @@ export default function ProgressPage() {
     ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100)
     : 0;
 
-  const avgPlacement = stats.gamesPlayed > 0
+  // Average over games that actually recorded a placement, not over
+  // gamesPlayed. A match that increments gamesPlayed without contributing a
+  // placement (abandoned, or finished without a ranking) would otherwise widen
+  // the denominator and make the average read better than reality.
+  const placementTotal = stats.placementCounts.reduce((sum, n) => sum + n, 0);
+
+  const avgPlacement = placementTotal > 0
     ? (
         (stats.placementCounts[0] * 1 +
          stats.placementCounts[1] * 2 +
          stats.placementCounts[2] * 3 +
-         stats.placementCounts[3] * 4) / stats.gamesPlayed
+         stats.placementCounts[3] * 4) / placementTotal
       ).toFixed(1)
     : '-';
 

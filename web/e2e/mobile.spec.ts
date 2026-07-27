@@ -70,7 +70,7 @@ test.describe('Mobile viewport tests', () => {
 
     // All 4 tabs should be visible and tappable
     for (const tab of ['Tiles', 'Scoring', 'Hands', 'Glossary']) {
-      const tabBtn = page.getByRole('button', { name: tab });
+      const tabBtn = page.getByRole('tab', { name: tab });
       await expect(tabBtn).toBeVisible();
       await tabBtn.click();
     }

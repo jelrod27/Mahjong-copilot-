@@ -38,8 +38,10 @@ test.describe('Reference page', () => {
     await page.goto('/reference');
     await expect(page.getByRole('heading', { name: 'Quick Reference' })).toBeVisible();
 
+    // role is 'tab', not 'button': the tab bar carries real tablist semantics
+    // so assistive tech can tell which section is active.
     for (const tab of ['Tiles', 'Scoring', 'Hands', 'Glossary']) {
-      await expect(page.getByRole('button', { name: tab })).toBeVisible();
+      await expect(page.getByRole('tab', { name: tab })).toBeVisible();
     }
   });
 
@@ -52,7 +54,7 @@ test.describe('Reference page', () => {
 
   test('Scoring tab shows fan table', async ({ page }) => {
     await page.goto('/reference');
-    await page.getByRole('button', { name: 'Scoring' }).click();
+    await page.getByRole('tab', { name: 'Scoring' }).click();
 
     await expect(page.getByText('PAYMENT FORMULA')).toBeVisible();
     await expect(page.getByText('FAN TABLE')).toBeVisible();
@@ -64,7 +66,7 @@ test.describe('Reference page', () => {
 
   test('Hands tab shows limit hands', async ({ page }) => {
     await page.goto('/reference');
-    await page.getByRole('button', { name: 'Hands' }).click();
+    await page.getByRole('tab', { name: 'Hands' }).click();
 
     await expect(page.getByText('LIMIT HANDS')).toBeVisible();
     await expect(page.getByText('Thirteen Orphans')).toBeVisible();
@@ -73,7 +75,7 @@ test.describe('Reference page', () => {
 
   test('Glossary tab shows mahjong terms', async ({ page }) => {
     await page.goto('/reference');
-    await page.getByRole('button', { name: 'Glossary' }).click();
+    await page.getByRole('tab', { name: 'Glossary' }).click();
 
     await expect(page.getByText(/\d+ terms/)).toBeVisible();
     // Exact-match to avoid matching the word "chow" inside other entries'

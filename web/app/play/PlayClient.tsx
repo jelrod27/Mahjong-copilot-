@@ -48,11 +48,15 @@ export default function PlayPage() {
     <div className="flex flex-col items-center p-3 md:p-4">
       {/* Title */}
       <div className="text-center mb-4 md:mb-8">
-        <h1 className="font-display text-base md:text-xl text-accent ds-text-glow-strong mb-1 md:mb-2">
-          HONG KONG
-        </h1>
-        <h1 className="font-display text-xl md:text-2xl text-highlight ds-text-glow-strong mb-2 md:mb-4">
-          MAHJONG
+        {/* One title, two visual lines. Two <h1>s gave screen readers two
+            competing document titles and muddied the heading outline. */}
+        <h1 className="font-display ds-text-glow-strong mb-2 md:mb-4">
+          <span className="block text-base md:text-xl text-accent mb-1 md:mb-2">
+            HONG KONG
+          </span>
+          <span className="block text-xl md:text-2xl text-highlight">
+            MAHJONG
+          </span>
         </h1>
         <div className="font-sans text-muted-foreground text-sm md:text-lg">
           ╔════════════════════╗

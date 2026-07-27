@@ -8,9 +8,13 @@ test.describe('Learn page', () => {
     await expect(page.getByText('YOUR PATH')).toBeVisible();
 
     const levelCards = page.getByTestId('learn-level-card');
-    await expect(levelCards).toHaveCount(6, { timeout: 10_000 });
-    await expect(levelCards.first()).toContainText('Know Your Tiles');
-    await expect(page.getByText(/Locked — complete/)).toHaveCount(5);
+    // Derived, not hardcoded: this asserted exactly 6 and broke when Level 7
+    // shipped, which told us nothing about whether the page works. The real
+    // invariant is that a fresh profile has every level but the first locked.
+    await expect(levelCards.first()).toContainText('Know Your Tiles', { timeout: 10_000 });
+    const levelCount = await levelCards.count();
+    expect(levelCount).toBeGreaterThanOrEqual(7);
+    await expect(page.getByText(/Locked — complete/)).toHaveCount(levelCount - 1);
   });
 
   test('clicking first level expands to show lessons', async ({ page }) => {

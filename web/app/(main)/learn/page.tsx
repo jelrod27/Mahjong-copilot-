@@ -6,17 +6,14 @@ import { AllLevels } from '@/content';
 import useCompletedLessons from '@/hooks/useCompletedLessons';
 
 /**
- * Top-level path visualization. Pulled from level data — order and titles
- * mirror what each level teaches so this stays in sync if levels are renamed.
+ * Top-level path visualization, derived from level data so it cannot drift.
+ *
+ * This was previously a hardcoded literal whose last step was "Full Game" — a
+ * level that has never existed. The comment above it claimed it was "pulled
+ * from level data", which made the drift invisible to anyone who read it and
+ * believed it. Deriving it for real is the only way that comment becomes true.
  */
-const PATH_STEPS: string[] = [
-  'Tiles',
-  'Sets',
-  'Winning Hands',
-  'Scoring',
-  'Strategy',
-  'Full Game',
-];
+const PATH_STEPS: string[] = AllLevels.map(level => level.title);
 
 
 export default function LearnPage() {
@@ -53,7 +50,7 @@ export default function LearnPage() {
         </p>
         <h1 className="font-display text-lg text-foreground mb-2">Hong Kong Mahjong</h1>
         <p className="text-base text-foreground/80 font-sans mb-4">
-          Master the game from tiles to strategy across 6 levels.
+          Master the game from tiles to strategy across {AllLevels.length} levels.
         </p>
 
         {/* Overall Progress */}

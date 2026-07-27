@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import { AllLevels } from '@/content';
 import useCompletedLessons from '@/hooks/useCompletedLessons';
+import { Meter } from '@/components/ui/meter';
 
 /**
  * Top-level path visualization, derived from level data so it cannot drift.
@@ -55,12 +56,7 @@ export default function LearnPage() {
 
         {/* Overall Progress */}
         <div className="mt-2">
-          <div className="h-2 bg-elevated rounded-full overflow-hidden">
-            <div
-              className="h-full bg-highlight rounded-full transition-all duration-500"
-              style={{ width: `${overallProgress}%` }}
-            />
-          </div>
+          <Meter value={overallProgress} size="md" tone="highlight" label="Overall progress" />
           <p className="mt-2 text-sm text-foreground/80 font-sans">
             {totalCompleted}/{totalLessons} lessons completed
           </p>
@@ -189,14 +185,12 @@ function LevelCard({
         {/* Progress bar */}
         {unlocked && (
           <div className="flex items-center gap-2">
-            <div className="flex-1 h-1.5 bg-elevated rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  isComplete ? 'bg-success' : 'bg-info'
-                }`}
-                style={{ width: `${progress.percent}%` }}
-              />
-            </div>
+            <Meter
+              className="flex-1"
+              value={progress.percent}
+              tone={isComplete ? 'success' : 'info'}
+              label={`${level.title} progress`}
+            />
             <span className="text-xs text-muted-foreground font-sans shrink-0">
               {progress.completed}/{progress.total}
             </span>

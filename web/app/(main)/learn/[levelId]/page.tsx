@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getLevelById } from '@/content';
 import useCompletedLessons from '@/hooks/useCompletedLessons';
+import { Meter } from '@/components/ui/meter';
 
 
 export default function LevelPage() {
@@ -58,12 +59,7 @@ export default function LevelPage() {
 
         {/* Progress Bar */}
         <div className="mt-2">
-          <div className="h-2 bg-elevated rounded-full overflow-hidden">
-            <div
-              className="h-full bg-highlight rounded-full transition-all duration-500"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+          <Meter value={progress} size="md" tone="highlight" label="Level progress" />
           <p className="mt-2 text-sm text-foreground/80 font-sans">
             {completedInLevel}/{level.lessons.length} lessons
           </p>

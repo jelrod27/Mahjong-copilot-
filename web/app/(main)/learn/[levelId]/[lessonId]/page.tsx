@@ -9,6 +9,7 @@ import { MahjongTile } from '@/components/MahjongTile';
 import { SetBuilder } from '@/components/SetBuilder';
 import { getTileById, Tile } from '@/models/Tile';
 import useCompletedLessons from '@/hooks/useCompletedLessons';
+import { Meter } from '@/components/ui/meter';
 
 
 export default function LessonPage() {
@@ -172,12 +173,13 @@ export default function LessonPage() {
                   >
                     {completedInLevelAfter} of {totalInLevel} lessons in {level?.title}
                   </p>
-                  <div className="mt-1.5 h-1.5 bg-elevated rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-highlight rounded-full transition-all duration-500"
-                      style={{ width: `${(completedInLevelAfter / totalInLevel) * 100}%` }}
-                    />
-                  </div>
+                  <Meter
+                    className="mt-1.5"
+                    value={completedInLevelAfter}
+                    max={totalInLevel}
+                    tone="highlight"
+                    label="Level progress"
+                  />
                 </div>
               )}
 
@@ -307,12 +309,12 @@ export default function LessonPage() {
             <p className="text-sm text-muted-foreground font-sans mb-2">
               Question {quizIndex + 1} of {lesson.quiz?.length}
             </p>
-            <div className="h-1.5 bg-elevated rounded-full">
-              <div
-                className="h-full bg-info rounded-full transition-all"
-                style={{ width: `${((quizIndex + 1) / (lesson.quiz?.length || 1)) * 100}%` }}
-              />
-            </div>
+            <Meter
+              value={quizIndex + 1}
+              max={lesson.quiz?.length || 1}
+              tone="info"
+              label="Quiz progress"
+            />
           </div>
 
           {/* Question */}

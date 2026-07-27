@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useAppDispatch } from '@/store/hooks';
 import { quizCompleted } from '@/store/actions/progressActions';
+import { Meter } from '@/components/ui/meter';
 
 /* ─────────────────────────────────────────
    Question data
@@ -189,12 +190,12 @@ export default function HandRecognition({ onBack }: { onBack: () => void }) {
             Question {index + 1} of {QUESTIONS_PER_ROUND}
           </span>
         </div>
-        <div className="h-1.5 bg-elevated rounded-full">
-          <div
-            className="h-full bg-success rounded-full transition-all"
-            style={{ width: `${((index + 1) / QUESTIONS_PER_ROUND) * 100}%` }}
-          />
-        </div>
+        <Meter
+          value={index + 1}
+          max={QUESTIONS_PER_ROUND}
+          tone="success"
+          label="Quiz progress"
+        />
       </div>
 
       {/* Question */}

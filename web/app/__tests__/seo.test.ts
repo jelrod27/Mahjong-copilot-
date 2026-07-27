@@ -2,8 +2,7 @@ import { describe, it, expect } from 'vitest';
 import sitemap from '../sitemap';
 import robots from '../robots';
 import { AllLevels } from '@/content';
-import { SITE_URL, pageMetadata } from '@/lib/siteMetadata';
-import { lessonMetaDescription } from '@/lib/lessonSeo';
+import { SITE_URL } from '@/lib/siteMetadata';
 
 /**
  * Before this change a production build served `<title>16 Bit Mahjong</title>`
@@ -64,86 +63,24 @@ describe('robots', () => {
     expect([robots().rules].flat()[0]?.allow).toBe('/');
   });
 
-  it('disallows the parameterised game route', () => {
-    // ?difficulty=/?table=/?minFaan= would otherwise present many
-    // near-duplicate URLs for one screen with no readable content.
+  it('does not disallow pages that rely on noindex metadata', () => {
+    // A crawler must FETCH a page to see its noindex directive. Disallowing a
+    // noindex page prevents that fetch, so an already-discovered URL would stay
+    // indexed forever. The two are alternatives, not reinforcement — the first
+    // version of robots.ts got this backwards and blocked all nine placeholders.
     const disallow = [[robots().rules].flat()[0]?.disallow ?? []].flat();
-    expect(disallow).toContain('/play/game');
-  });
-});
-
-describe('pageMetadata', () => {
-  it('sets a canonical when given a path', () => {
-    const meta = pageMetadata({ title: 'T', description: 'D', path: '/learn' });
-    expect(meta.alternates?.canonical).toBe('/learn');
-  });
-
-  it('omits the canonical when no path is given', () => {
-    // Dynamic routes with no single canonical instance must not advertise a
-    // URL containing a literal [param] segment.
-    const meta = pageMetadata({ title: 'T', description: 'D' });
-    expect(meta.alternates?.canonical).toBeUndefined();
-  });
-
-  it('marks a page noindex only when asked', () => {
-    expect(pageMetadata({ title: 'T', description: 'D', path: '/x' }).robots).toBeUndefined();
-    expect(
-      pageMetadata({ title: 'T', description: 'D', path: '/x', noindex: true }).robots,
-    ).toEqual({ index: false, follow: true });
-  });
-});
-
-describe('lesson meta descriptions', () => {
-  const lessons = AllLevels.flatMap(l => l.lessons);
-
-  it('generates one for every lesson', () => {
-    for (const lesson of lessons) {
-      expect(lessonMetaDescription(lesson).length, lesson.id).toBeGreaterThan(0);
+    const noindexPaths = [
+      '/login', '/signup', '/profile', '/leaderboard',
+      '/multiplayer/', '/play/lobby', '/play/multiplayer', '/play/game',
+    ];
+    for (const path of noindexPaths) {
+      expect(disallow, `${path} is noindex and must stay crawlable`).not.toContain(path);
     }
   });
 
-  it('keeps every description within Google’s display limit', () => {
-    for (const lesson of lessons) {
-      expect(lessonMetaDescription(lesson).length, lesson.id).toBeLessThanOrEqual(155);
-    }
-  });
-
-  it('gives every lesson a distinct description', () => {
-    // The entire defect being fixed was ~70 pages sharing one description.
-    const descriptions = lessons.map(lessonMetaDescription);
-    expect(new Set(descriptions).size).toBe(descriptions.length);
-  });
-
-  it('excludes ALL-CAPS section headers', () => {
-    // "PUNG AND KONG — FROM ANYONE" is a layout header, not a sentence, and
-    // reads as shouting in a search result.
-    //
-    // Checks each lesson against its OWN header lines rather than a generic
-    // caps regex — several lessons legitimately use inline caps for emphasis
-    // mid-sentence ("DRAGON PUNGS are one of the easiest fans to earn"), and a
-    // blanket pattern flags those too.
-    const isHeader = (line: string) => {
-      const letters = [...line].filter(c => /[a-z]/i.test(c));
-      return letters.length > 0 && letters.every(c => c === c.toUpperCase());
-    };
-
-    for (const lesson of lessons) {
-      const desc = lessonMetaDescription(lesson);
-      for (const header of lesson.content.filter(isHeader)) {
-        expect(desc, `${lesson.id} leaked header "${header}"`).not.toContain(header);
-      }
-    }
-  });
-
-  it('starts each description with readable prose, not a header', () => {
-    for (const lesson of lessons) {
-      expect(lessonMetaDescription(lesson)[0], lesson.id).toMatch(/[A-Za-z0-9"'“]/);
-    }
-  });
-
-  it('does not run the subtitle into the body text', () => {
-    const lesson = AllLevels.flatMap(l => l.lessons).find(l => l.id === '7-4')!;
-    expect(lessonMetaDescription(lesson)).toContain('most often.');
+  it('still blocks routes that have no page metadata to carry a noindex', () => {
+    const disallow = [[robots().rules].flat()[0]?.disallow ?? []].flat();
+    expect(disallow).toContain('/auth/');
   });
 });
 

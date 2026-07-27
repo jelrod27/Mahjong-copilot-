@@ -15,12 +15,22 @@ import type { Metadata } from 'next';
  * previews get their own canonical rather than pointing at production —
  * otherwise every preview would claim to be the live site.
  */
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
+const RAW_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
   ?? (process.env.VERCEL_ENV === 'production'
     ? 'https://16bitmahjong.co'
     : process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
       : 'https://16bitmahjong.co');
+
+/**
+ * Normalised once, here, because every consumer concatenates onto it: a
+ * trailing slash from an env var would produce `//learn` in the sitemap and a
+ * malformed metadataBase, and a scheme-less host (which is how Vercel exposes
+ * VERCEL_URL) is not a valid absolute URL at all.
+ */
+export const SITE_URL = (
+  /^https?:\/\//.test(RAW_SITE_URL) ? RAW_SITE_URL : `https://${RAW_SITE_URL}`
+).replace(/\/+$/, '');
 
 export const SITE_NAME = '16 Bit Mahjong';
 

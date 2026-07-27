@@ -2,33 +2,24 @@ import type { MetadataRoute } from 'next';
 import { SITE_URL } from '@/lib/siteMetadata';
 
 /**
- * Deferred and stateful routes are disallowed here as well as being `noindex`.
+ * Deliberately does NOT disallow the deferred routes.
  *
- * The two do different jobs: `noindex` keeps a page out of the index but still
- * spends crawl budget, while a Disallow stops the fetch. Both are set because
- * these routes are numerous relative to the real content — nine placeholders
- * against 56 lessons.
+ * They carry `robots: { index: false }` page metadata, and a crawler has to
+ * FETCH a page to see that directive. Disallowing them would prevent the fetch,
+ * so any URL already discovered through a link would stay in the index
+ * indefinitely with no way to drop out — the opposite of the intent. Disallow
+ * and noindex are alternatives here, not reinforcement; the first shipped
+ * version of this file got that backwards.
  *
- * `/play/game` is excluded because it takes query parameters
- * (?difficulty=, ?table=, ?minFaan=) that would otherwise present many
- * near-duplicate URLs for a single screen with no readable content.
+ * `/auth/` is the exception: it is a callback route with no page metadata to
+ * carry a noindex, so blocking the fetch is the only lever available.
  */
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: [
-        '/login',
-        '/signup',
-        '/profile',
-        '/leaderboard',
-        '/multiplayer/',
-        '/play/lobby',
-        '/play/multiplayer',
-        '/play/game',
-        '/auth/',
-      ],
+      disallow: ['/auth/'],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
     host: SITE_URL,

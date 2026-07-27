@@ -6,6 +6,7 @@ export * from './level3';
 export * from './level4';
 export * from './level5';
 export * from './level6';
+export * from './level7';
 // All levels exported
 
 
@@ -15,7 +16,8 @@ import { Level3 } from './level3';
 import { Level4 } from './level4';
 import { Level5 } from './level5';
 import { Level6 } from './level6';
+import { Level7 } from './level7';
 
-export const AllLevels = [Level1, Level2, Level3, Level4, Level5, Level6];
+export const AllLevels = [Level1, Level2, Level3, Level4, Level5, Level6, Level7];
 
 export const getLevelById = (id: number) => AllLevels.find(l => l.id === id);

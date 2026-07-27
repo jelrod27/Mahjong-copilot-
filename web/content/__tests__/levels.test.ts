@@ -2,13 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { AllLevels, getLevelById } from '../index';
 
 describe('Content Levels', () => {
-  it('should have all 6 levels', () => {
-    expect(AllLevels).toHaveLength(6);
+  it('should expose every level defined in the index', () => {
+    expect(AllLevels.length).toBeGreaterThanOrEqual(7);
   });
 
-  it('should have levels with sequential IDs 1-6', () => {
+  it('should number levels sequentially from 1 with no gaps', () => {
+    // Derived rather than hardcoded: this previously asserted exactly
+    // [1..6] and broke when Level 7 was added, which told us nothing
+    // useful. What matters is that ids are gapless and start at 1.
     const ids = AllLevels.map(l => l.id);
-    expect(ids).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(ids).toEqual(AllLevels.map((_, i) => i + 1));
   });
 
   it('should include Level 4 (Scoring Fundamentals)', () => {

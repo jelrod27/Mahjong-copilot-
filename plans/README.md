@@ -44,8 +44,8 @@ audits after PR #94 merged (`b6b570a`).
 |------|-------|----------|--------|------------|--------|
 | 020 | [Scoring content truthfulness](020-scoring-content-truthfulness.md) | **P0** | M | — | **DONE** |
 | 022 | [Tailwind v4 migration](022-tailwind-v4-migration.md) | P1 | M | 025, 026 | **DONE** |
-| 021 | [Gameplay curriculum — Level 7](021-gameplay-curriculum.md) | **P0** | L | 020 (done) | TODO |
-| 023 | [Shared primitives](023-shared-primitives.md) | P1 | M | 022 (done) | TODO |
+| 021 | [Gameplay curriculum — Level 7](021-gameplay-curriculum.md) | **P0** | L | 020 (done) | **DONE** |
+| 023 | [Shared primitives](023-shared-primitives.md) | P1 | M | 022 (done) | **DONE (partial — see notes)** |
 | 024 | [E2E on PRs + visual snapshots](024-e2e-on-prs.md) | P1 | S | — | **DONE** |
 | 025 | [Elevation ladder + glow fix](025-elevation-ladder-and-glow-fix.md) | P1 | S | — | **DONE** |
 | 026 | [Landing page redesign — Direction A, "The Table"](026-landing-page-redesign.md) | P1 | M | 025 (done) | **DONE** |
@@ -429,3 +429,57 @@ NOT audited: the legacy React Native shell (`/src`, `/android`, `/ios` — froze
 CLAUDE.md), Supabase edge functions (none in repo), deep e2e spec quality review.
 Existing tracker `SECURITY_REMEDIATION.md` was treated as authoritative for
 already-known items; one stale entry found (seedable RNG — see plan 010).
+
+
+### Execution record — 021 and 023 (2026-07-27)
+
+Executed directly in the main working tree rather than via dispatched
+subagents: three prior background dispatches for these two plans died with
+session restarts and left zero work behind.
+
+**021 — DONE.** Level 7, eight lessons. Two places the engine contradicted the
+plan, resolved in the engine's favour and recorded in the lessons:
+
+- The plan said "East stays dealer on a win". `matchManager` computes
+  `dealerStays = dealerWon || isDraw` — the dealer also keeps the deal on a
+  drawn hand. Lesson 7-7 teaches both halves.
+- The plan never mentioned the noten penalty at wall exhaustion. It is real
+  (`NOTEN_PENALTY_PER_NOTEN`), so 7-2 teaches it, importing the constant
+  rather than retyping it.
+
+A formatting defect got through the whole test suite: lessons were written
+hard-wrapped at ~70 columns, but each `content[]` entry renders as its own
+paragraph, so sentences were split mid-clause. Nothing asserts line shape;
+it was caught by looking at the page in a browser.
+
+**023 — PARTIAL.** Four of six primitives are migrated end to end
+(`PageHeader` ×5, `Meter` ×11, `Modal` ×1, plus `SectionLabel`). Deviations
+from the plan, all deliberate:
+
+- **`SectionLabel` is not the promotion the plan asked for.** The plan said to
+  promote `GameResultsSectionLabel`, but that is a *rail* — centred small caps
+  between two hairlines — and the page eyebrow is a plain left-aligned
+  overline. Promoting the rail would have restyled every page header. They
+  stay separate components.
+- **Two of the three named Modal call sites were not migrated.**
+  `DailyResultDialog` has no close affordance at all and `FloorDialog` only has
+  navigation actions, so Escape has nothing to map to; migrating would mean
+  inventing dismissal, which the plan's own STOP condition says to report
+  rather than do. Only the lesson-completion overlay had real close semantics.
+- **`EmptyState` and `LoadingState` exist but have no call sites yet.** The
+  audit's "4 loading states / 3 empty states" did not survive verification —
+  the greps find no such duplication in `app/`. Writing them was cheap;
+  claiming they collapsed duplication would not have been true.
+- Audit counts were wrong again: progress bars are 11 in-scope (not 9), the
+  `text-[10px]` eyebrow is 39 (not 48), and `TODO(023)` markers do not exist
+  anywhere — plan 026 never left them, so that done-criterion passes trivially.
+
+**Normalisation record for `Meter`** (the honest part of a "no visual change"
+refactor): motion was normalised from three treatments to one, so five sites
+go 500ms → 400ms and three go from Tailwind's bare 150ms default to 400ms with
+easing. Track height and track colour were NOT normalised — both are exposed as
+props, because `h-1.5`/`h-2` and `bg-surface`/`bg-elevated` are deliberate
+differences and collapsing either would visibly change half the call sites.
+
+Still open: `app/(main)/progress/page.tsx` keeps its own bar — it is a stacked
+multi-segment distribution, not a drifted `Meter`.

@@ -88,7 +88,7 @@ test.describe('Beginner smoke — offline solo path', () => {
 
     // 8. Reference is reachable from the same session
     await page.goto('/reference');
-    await expect(page.getByText('Quick Reference')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Quick Reference' })).toBeVisible();
     await expect(page.getByText('TILE COUNT')).toBeVisible();
 
     // No silent crashes on the beginner path.

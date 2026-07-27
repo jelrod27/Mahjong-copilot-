@@ -3,8 +3,8 @@ import { test, expect } from '@playwright/test';
 test.describe('Learn page', () => {
   test('shows learning path and level cards', async ({ page }) => {
     await page.goto('/learn');
-    await expect(page.getByText('LEARN MAHJONG')).toBeVisible();
-    await expect(page.getByText('Hong Kong Mahjong')).toBeVisible();
+    await expect(page.getByText('LEARN MAHJONG', { exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Hong Kong Mahjong' })).toBeVisible();
     await expect(page.getByText('YOUR PATH')).toBeVisible();
 
     const levelCards = page.getByTestId('learn-level-card');
@@ -36,7 +36,7 @@ test.describe('Learn page', () => {
 test.describe('Reference page', () => {
   test('shows all 4 tabs', async ({ page }) => {
     await page.goto('/reference');
-    await expect(page.getByText('Quick Reference')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Quick Reference' })).toBeVisible();
 
     for (const tab of ['Tiles', 'Scoring', 'Hands', 'Glossary']) {
       await expect(page.getByRole('button', { name: tab })).toBeVisible();

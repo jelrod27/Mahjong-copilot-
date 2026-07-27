@@ -152,6 +152,22 @@ describe('Level 7 engine agreement', () => {
     expect(allText()).toContain(String(NOTEN_PENALTY_PER_NOTEN));
   });
 
+  it.each([['7-1'], ['7-8']])(
+    'keeps the minimum-fan caveat wherever %s describes winning',
+    id => {
+      // turnManager returns null from a win attempt when !meetsMinFaan, so a
+      // lesson that presents four-sets-plus-a-pair as an automatic win teaches
+      // an illegal declaration. This shipped once already: the caveat was added
+      // to 7-1's opening paragraph but three other win passages kept the
+      // unconditional wording. Both win-describing lessons are pinned.
+      expect(lessonText(id)).toMatch(/minimum fan|meets the minimum|worth enough fan/);
+    },
+  );
+
+  it('never presents a completed shape as an automatic win', () => {
+    expect(allText()).not.toMatch(/14 is a winning hand|complete 14, and win/);
+  });
+
   it('never states affirmatively that chow can be claimed from any player', () => {
     // Guards the single most common wrong statement about this rule.
     //

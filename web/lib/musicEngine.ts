@@ -128,6 +128,8 @@ class MusicEngine {
   private sampleRequestId = 0;
   /** Sustained tension drone layered over the ambient bed. Null when silent. */
   private tensionNodes: { gain: GainNode; oscs: OscillatorNode[] } | null = null;
+  /** True while a bed fetch/decode is in flight, before `bufferSource` exists. */
+  private samplePending = false;
 
   private getContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -242,6 +244,7 @@ class MusicEngine {
       this.bufferSource = null;
     }
     this.sampleTrackId = null;
+    this.samplePending = false;
     this.stopTensionLayer();
   }
 
@@ -293,7 +296,13 @@ class MusicEngine {
 
   /** Start (or resume from cache) a looping buffer for `trackId`. */
   private playSample(trackId: string, url: string, ctx: AudioContext) {
-    if (this.sampleTrackId === trackId && this.bufferSource) return; // already looping
+    // Idempotent on a PENDING request too, not just a live source. On a cold
+    // cache the fetch/decode is still in flight and `bufferSource` is null, so
+    // a guard on that alone lets a second synchronous play() fall through to
+    // stop() — which tears down the tension drone and builds a second one,
+    // overlapping the first during its fade-out. GameContent re-fires play()
+    // on several state changes, so this is the ordinary path, not a corner.
+    if (this.sampleTrackId === trackId && (this.bufferSource || this.samplePending)) return;
     this.stop();
     this.sampleTrackId = trackId;
     // Track the specific request, not just the track id: play('parlour') →
@@ -307,6 +316,7 @@ class MusicEngine {
       return;
     }
 
+    this.samplePending = true;
     fetch(url)
       .then((res) => res.arrayBuffer())
       .then((data) => ctx.decodeAudioData(data))
@@ -316,12 +326,16 @@ class MusicEngine {
         // started (or stop() may have been called) while this fetch/decode
         // was in flight — bail rather than starting a loop nobody asked for.
         if (this.sampleRequestId !== requestId) return;
+        this.samplePending = false;
         this.startBufferSource(buffer, trackId, requestId, ctx);
       })
       .catch(() => {
         // Fail soft: background audio must never throw or surface an
         // unhandled rejection. The game stays playable without ambience.
-        if (this.sampleRequestId === requestId) this.sampleTrackId = null;
+        if (this.sampleRequestId === requestId) {
+          this.samplePending = false;
+          this.sampleTrackId = null;
+        }
       });
   }
 

@@ -96,6 +96,10 @@ beforeEach(() => {
 afterEach(() => {
   musicEngine.stop();
   globalThis.setInterval = realSetInterval;
+  // Assigned directly rather than via vi.stubGlobal, so restoreAllMocks does
+  // not clear it — without this the fake leaks into every later test file.
+  // @ts-expect-error - removing the test double restores jsdom's absence
+  delete globalThis.AudioContext;
   delete SAMPLE_ASSETS.parlour;
   delete SAMPLE_ASSETS.danger;
   vi.restoreAllMocks();
@@ -117,8 +121,17 @@ describe('musicEngine with no licensed bed registered', () => {
 });
 
 describe('musicEngine with an ambient bed registered', () => {
+  // A UNIQUE URL PER TEST IS LOAD-BEARING. musicEngine is a module singleton
+  // and its decoded-buffer cache is keyed by URL, so a shared path would leave
+  // the buffer warm from the previous test. The first play() would then resolve
+  // synchronously from cache and mask the cold-start path — which is the only
+  // path a real player hits, and where the drone-stacking bug actually lived.
+  let bedUrl = '';
+  let bedCounter = 0;
+
   beforeEach(() => {
-    SAMPLE_ASSETS.parlour = '/audio/parlour-room-tone.mp3';
+    bedUrl = `/audio/parlour-room-tone-${++bedCounter}.mp3`;
+    SAMPLE_ASSETS.parlour = bedUrl;
   });
 
   it('does not start the note sequencer for danger', () => {
@@ -143,9 +156,23 @@ describe('musicEngine with an ambient bed registered', () => {
     expect(musicEngine.isPlaying('parlour')).toBe(true);
   });
 
-  it('does not stack a second drone when danger repeats', () => {
+  it('does not stack a second drone when danger repeats on a cold cache', () => {
     // GameContent re-fires play() on several state changes; the layer must be
-    // idempotent or the drones pile up and the mix creeps louder.
+    // idempotent or the drones pile up and overlap during the fade-out.
+    // Cold cache is the case that matters: the bed fetch is still in flight,
+    // so a guard on `bufferSource` alone would let the second call through.
+    musicEngine.play('danger');
+    musicEngine.play('danger');
+    expect(droneOscs()).toHaveLength(2);
+  });
+
+  it('does not stack a second drone when danger repeats on a warm cache', async () => {
+    musicEngine.play('danger');
+    await Promise.resolve();
+    await Promise.resolve();
+    musicEngine.stop();
+    createdOscs = [];
+
     musicEngine.play('danger');
     musicEngine.play('danger');
     expect(droneOscs()).toHaveLength(2);

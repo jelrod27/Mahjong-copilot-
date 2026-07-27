@@ -65,9 +65,10 @@ export function Meter({
   className,
   label,
 }: MeterProps) {
-  // Guard degenerate inputs before dividing. A zero or negative bound would
-  // yield Infinity, and NaN slips through Math.min/Math.max untouched — either
-  // way the bar renders style="width: NaN%" and emits invalid ARIA values.
+  // Guard degenerate inputs before dividing. max = 0 makes the calculation
+  // 0/0 = NaN; a negative max is not necessarily non-finite but describes an
+  // invalid ARIA range; and NaN slips through Math.min/Math.max untouched.
+  // All three would reach the DOM as a non-finite width and bad ARIA values.
   const safeMax = Number.isFinite(max) && max > 0 ? max : 100;
   const safeValue = Number.isFinite(value) ? value : 0;
   const clamped = Math.min(Math.max(safeValue, 0), safeMax);

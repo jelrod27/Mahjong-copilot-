@@ -189,18 +189,28 @@ Add Level 7 to `web/content/index.ts` (`AllLevels` and the re-export).
 from level data… so this stays in sync if levels are renamed" — which is false;
 it is a hardcoded literal.
 
-Derive it from `AllLevels` so it cannot drift again, or if the labels need to
-stay terse, add a short `pathLabel` to each level and map over that. Either
-way the comment must stop being a lie.
+Derive it from `AllLevels` so it cannot drift again. **Do not add a
+`pathLabel` field to each level** — that would mean editing Levels 1-6, which
+this plan's Scope explicitly forbids. If the derived labels read too long,
+shorten them at the render site, not in the level data. Either way the comment
+must stop being a lie.
 
 **Verify**: `/learn` shows a path whose last step matches the real last level.
 
 ### Step 6: Test it
 
-Add `web/content/__tests__/level7.test.ts` asserting:
-- eight lessons, ids `7-1` … `7-8`
+Add `web/content/__tests__/level7.test.ts`. Shape checks alone would let eight
+arbitrary lessons pass, so assert the **contract**, not just the structure:
+
+- eight lessons, ids exactly `7-1` … `7-8`, in order
+- **the navigation chain**: `7-1`→`7-2`, `7-2`→`7-3`, … `7-7`→`7-8`, and only
+  `7-8` may have `nextLessonId: null`. "Points at something that exists" does
+  not prevent a broken Next button that jumps to the wrong lesson.
+- **the required topics are present** — the three rules this plan exists to
+  teach must be findable by content, not just by lesson count:
+  chow-from-the-left, claim priority, and skipped players. Assert against
+  lesson titles or content text so the implementation cannot quietly omit them.
 - every lesson has non-empty `content`, `keyTakeaways`, and a quiz
-- every `nextLessonId` points at a lesson that exists (the last may be null)
 - Level 7 is present in `AllLevels`
 
 Match the conventions in existing `content/__tests__` files. One behaviour per

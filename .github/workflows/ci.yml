@@ -93,6 +93,11 @@ jobs:
       - name: Generate Linux visual baselines (bootstrap artifact)
         if: always()
         continue-on-error: true
+        # UPDATE_SNAPSHOTS=1 is required, not decorative: visual.spec.ts skips
+        # when the platform has no baseline, and a skipped test writes no
+        # snapshot — so the flag alone would produce an empty artifact.
+        env:
+          UPDATE_SNAPSHOTS: '1'
         run: npm run test:e2e -- visual.spec.ts --update-snapshots || true
 
       - name: Upload visual baselines

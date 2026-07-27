@@ -9,16 +9,35 @@ import path from 'node:path';
  * file and turn every PR red — the opposite of this suite's purpose.
  *
  * Skip (loudly) when the current platform has no baseline. To enable on CI:
- *   1. run `npm run test:e2e -- visual.spec.ts --update-snapshots` on Linux
- *      (or download the `playwright-snapshots` artifact from a CI run)
+ *   1. on Linux, run
+ *        UPDATE_SNAPSHOTS=1 npm run test:e2e -- visual.spec.ts --update-snapshots
+ *      (or download the `playwright-snapshots` artifact from any CI run, which
+ *      runs exactly that command)
  *   2. commit the resulting `*-chromium-linux.png` files
  * These then run automatically — no code change needed.
+ *
+ * `UPDATE_SNAPSHOTS=1` is load-bearing, not belt-and-braces — see below.
  */
 const SNAPSHOT_PLATFORM = process.platform === 'darwin' ? 'darwin' : 'linux';
 const HAS_BASELINES = fs.existsSync(
   path.join(__dirname, 'visual.spec.ts-snapshots', `landing-desktop-chromium-${SNAPSHOT_PLATFORM}.png`),
 );
 
+/**
+ * A skipped test does not run, and a test that does not run generates no
+ * snapshot — so `--update-snapshots` alone cannot bootstrap a platform whose
+ * baselines are missing. Without this, the CI bootstrap step below silently
+ * produces an empty artifact. Detect update mode and run anyway.
+ *
+ * Must be an env var, not `process.argv`: Playwright evaluates spec files in
+ * worker processes whose argv does not carry the CLI flags. Verified — an
+ * argv check reported 4 skipped and wrote 0 baselines; the env var writes 4.
+ * So bootstrap with `UPDATE_SNAPSHOTS=1 ... --update-snapshots` (both: the env
+ * var un-skips, the flag tells Playwright to write).
+ */
+const UPDATING_SNAPSHOTS = process.env.UPDATE_SNAPSHOTS === '1';
+
+const SHOULD_RUN = HAS_BASELINES || UPDATING_SNAPSHOTS;
 
 /**
  * Visual regression snapshots (plan 024).
@@ -60,7 +79,7 @@ async function waitForFonts(page: Page) {
 
 test.describe('Visual regression', () => {
   test.skip(
-    !HAS_BASELINES,
+    !SHOULD_RUN,
     `No ${SNAPSHOT_PLATFORM} snapshot baselines committed. Generate them on this platform with ` +
       `\`npm run test:e2e -- visual.spec.ts --update-snapshots\` and commit ` +
       `web/e2e/visual.spec.ts-snapshots/.`,

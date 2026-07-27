@@ -81,7 +81,12 @@ From the repo's `web/` directory unless stated:
 **Out of scope** (do NOT touch):
 - Any application code. If a spec fails, that is a finding to report, not a
   reason to edit the app.
-- The existing specs' assertions.
+- Existing spec assertions — **with one exception**: an assertion that encodes a
+  contract the app has since legitimately changed may be corrected, because
+  enabling the suite on PRs is impossible while it is red. This ran twice in
+  practice (`beginner-smoke.spec.ts`'s landing heading, `tile-scaling.spec.ts`'s
+  desktop/mobile ratio). Report each such fix with evidence that the app, not
+  the assertion, is the current truth.
 - `e2e-preview.yml`.
 
 ## Git workflow

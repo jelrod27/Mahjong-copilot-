@@ -53,9 +53,18 @@ Six primitives, in `web/components/ui/`. Ranked by call sites collapsed:
    than writing a new one.
 4. **`EmptyState`** — `{ icon?, title, body?, action? }`.
 5. **`LoadingState`** — `{ label? }`.
-6. **`Modal`** — wrapping Base-UI `Dialog`, which is already a dependency and
-   already proven in `components/game/GlossaryModal.tsx`. This fixes Escape and
-   focus-trapping everywhere in one move.
+6. **`Modal`** — wrapping Base-UI `Dialog`, already a dependency and already
+   proven in `components/game/GlossaryModal.tsx`.
+
+   **In-scope Modal call sites — exactly these three:**
+   `components/daily/DailyResultDialog.tsx`, `components/parlour/FloorDialog.tsx`,
+   and the inline overlay in `app/(main)/learn/[levelId]/[lessonId]/page.tsx`.
+   `components/play/PlayOnboardingDialog.tsx` already has a focus trap and lives
+   under a path this plan does not otherwise touch — leave it, and say so.
+   Anything under `components/game/` is out of scope regardless.
+
+   So this fixes Escape across the **in-scope** dialogs, not literally
+   everywhere. Do not claim otherwise in your report.
 
 **Not in this plan**: a unified `Card`. Three card systems is real debt, but
 collapsing 68 call sites is its own change with its own risk. Note it and move
@@ -63,10 +72,13 @@ on.
 
 ## Rules
 
-- **Zero visual change.** Each primitive must reproduce what it replaces
-  exactly. Where copies have drifted (progress-bar heights, transition
-  durations), pick the most common variant, use it everywhere, and **list every
-  deviation you normalised** in your report so a reviewer can spot-check.
+- **No *unapproved* visual change.** "Zero visual change" and "pick one of
+  three drifted heights" cannot both be literally true, so the rule is:
+  the only permitted differences are **deliberate normalisations**, and each
+  one requires (a) the before values, (b) the value you chose, (c) why. Anything
+  else is a STOP condition. A reviewer will read that list as the honest part
+  of the report — an empty list on a refactor that touches 9 drifted progress
+  bars is not credible.
 - **Migrate call sites in this plan.** A primitive nobody imports is worse than
   none — that is exactly how `ui/progress.tsx` ended up with zero importers.
 - **Do not touch `components/game/`** except to promote `GameResultsSectionLabel`.
@@ -175,13 +187,14 @@ normalised in Step 3 — in which case name it explicitly and show before/after.
 
 Also confirm no page lost its `<main>` landmark (plan 017 fixed those; this
 plan must not undo it):
+
 ```js
 document.querySelectorAll('main').length  // must be exactly 1 per page
 ```
 
 ### Step 6: Full verification
 
-```
+```sh
 npm run typecheck && npm run lint && npm test && npm run build
 npm run test:e2e
 ```

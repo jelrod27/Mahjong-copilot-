@@ -1,9 +1,12 @@
+import { pageMetadata } from '@/lib/siteMetadata';
 import DeferredFeaturePage from '@/components/DeferredFeaturePage';
 
-export const metadata = {
+export const metadata = pageMetadata({
   title: 'Leaderboard — deferred',
   description: 'Leaderboards are deferred until online play returns. Solo progress is tracked locally.',
-};
+  path: '/leaderboard',
+  noindex: true,
+});
 
 export default function LeaderboardPage() {
   return (

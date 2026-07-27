@@ -66,11 +66,11 @@ test.describe('Mobile viewport tests', () => {
 
   test('reference page tabs work on mobile', async ({ page }) => {
     await page.goto('/reference');
-    await expect(page.getByText('Quick Reference')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Quick Reference' })).toBeVisible();
 
     // All 4 tabs should be visible and tappable
     for (const tab of ['Tiles', 'Scoring', 'Hands', 'Glossary']) {
-      const tabBtn = page.getByRole('button', { name: tab });
+      const tabBtn = page.getByRole('tab', { name: tab });
       await expect(tabBtn).toBeVisible();
       await tabBtn.click();
     }
@@ -81,7 +81,7 @@ test.describe('Mobile viewport tests', () => {
 
   test('progress page layout does not overflow on mobile', async ({ page }) => {
     await page.goto('/progress');
-    await expect(page.getByText('YOUR PROGRESS')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'YOUR PROGRESS' })).toBeVisible();
 
     // Check that the page body does not exceed viewport width (no horizontal scroll)
     const bodyWidth = await page.evaluate(() => document.body.scrollWidth);

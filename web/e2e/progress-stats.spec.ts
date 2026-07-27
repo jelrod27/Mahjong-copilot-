@@ -13,7 +13,7 @@ test.describe('Progress tracking', () => {
     await page.evaluate(() => localStorage.removeItem('16bit-mahjong-stats'));
     await page.reload();
 
-    await expect(page.getByText('YOUR PROGRESS')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'YOUR PROGRESS' })).toBeVisible();
     await expect(page.getByText('NO GAMES YET')).toBeVisible();
     await expect(
       page.getByText('Play your first game to start tracking stats!'),
@@ -51,7 +51,7 @@ test.describe('Progress tracking', () => {
     await page.reload();
 
     // Stats should now be visible instead of "NO GAMES YET"
-    await expect(page.getByText('YOUR PROGRESS')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'YOUR PROGRESS' })).toBeVisible();
     await expect(page.getByText('NO GAMES YET')).not.toBeVisible();
 
     // Core stat cards

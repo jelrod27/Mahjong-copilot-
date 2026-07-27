@@ -1,4 +1,11 @@
+import { pageMetadata } from '@/lib/siteMetadata';
 import DeferredFeaturePage from '@/components/DeferredFeaturePage';
+
+export const metadata = pageMetadata({
+  title: 'Paused feature',
+  description: 'This feature is paused while solo play, learning, and reference ship first.',
+  noindex: true,
+});
 
 export default function MultiplayerGamePage() {
   return (

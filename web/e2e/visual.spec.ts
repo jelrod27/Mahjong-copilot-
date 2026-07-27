@@ -100,7 +100,7 @@ test.describe('Visual regression', () => {
       await page.setViewportSize(viewport);
       await page.addInitScript(() => window.localStorage.clear());
       await page.goto('/learn');
-      await expect(page.getByText('Hong Kong Mahjong')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Hong Kong Mahjong' })).toBeVisible();
       await waitForFonts(page);
 
       await expect(page).toHaveScreenshot(`learn-${name}.png`, { maxDiffPixelRatio: 0.02 });

@@ -1,9 +1,12 @@
+import { pageMetadata } from '@/lib/siteMetadata';
 import DeferredFeaturePage from '@/components/DeferredFeaturePage';
 
-export const metadata = {
+export const metadata = pageMetadata({
   title: 'Profile — deferred',
   description: 'Profiles are deferred until accounts return. Your progress is stored locally on this device.',
-};
+  path: '/profile',
+  noindex: true,
+});
 
 export default function ProfilePage() {
   return (

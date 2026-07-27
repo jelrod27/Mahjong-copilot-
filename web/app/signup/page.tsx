@@ -1,9 +1,12 @@
+import { pageMetadata } from '@/lib/siteMetadata';
 import DeferredFeaturePage from '@/components/DeferredFeaturePage';
 
-export const metadata = {
+export const metadata = pageMetadata({
   title: 'Sign up — paused',
   description: 'Account creation is paused while solo play, learning, and reference ship first. No account is required to play.',
-};
+  path: '/signup',
+  noindex: true,
+});
 
 export default function SignupPage() {
   return (

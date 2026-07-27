@@ -44,11 +44,14 @@ audits after PR #94 merged (`b6b570a`).
 |------|-------|----------|--------|------------|--------|
 | 020 | [Scoring content truthfulness](020-scoring-content-truthfulness.md) | **P0** | M | — | **DONE** |
 | 022 | [Tailwind v4 migration](022-tailwind-v4-migration.md) | P1 | M | 025, 026 | **DONE** |
+| 021 | [Gameplay curriculum — Level 7](021-gameplay-curriculum.md) | **P0** | L | 020 (done) | TODO |
+| 023 | [Shared primitives](023-shared-primitives.md) | P1 | M | 022 (done) | TODO |
+| 024 | [E2E on PRs + visual snapshots](024-e2e-on-prs.md) | P1 | S | — | **DONE** |
 | 025 | [Elevation ladder + glow fix](025-elevation-ladder-and-glow-fix.md) | P1 | S | — | **DONE** |
 | 026 | [Landing page redesign — Direction A, "The Table"](026-landing-page-redesign.md) | P1 | M | 025 (done) | **DONE** |
 
-Not yet written, in recommended order: `021` missing gameplay curriculum, `023` primitive extraction, `024` e2e on PRs, `027` replay + verified Daily Hand
-leaderboard.
+Not yet written: `027` replay + verified Daily Hand leaderboard (the
+multiplayer hedge — see ROADMAP-round-3.md).
 
 **Headline findings behind these** (all advisor-verified):
 - The curriculum contradicts `engine/scoring.ts` on payment distribution

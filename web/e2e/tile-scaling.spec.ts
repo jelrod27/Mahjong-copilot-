@@ -30,7 +30,7 @@ async function loadGameWithViewport(page: Page, viewport: { width: number; heigh
 }
 
 test.describe('Tile scaling across viewports', () => {
-  test('human-hand tile width scales with viewport and stays stable at the same width', async ({ page }) => {
+  test('human-hand tile width scales with viewport, holds its floor on mobile, and never overflows', async ({ page }) => {
     const widths: Record<ViewportName, number> = {
       iphoneSE: 0,
       iphoneXR: 0,
@@ -67,12 +67,24 @@ test.describe('Tile scaling across viewports', () => {
     }
 
     // Tile width should grow meaningfully from the smallest mobile viewport to desktop.
-    // Use a loose floor now; tighten after the CSS fix lands.
-    const desktopToMobileRatio = widths.desktop / widths.iphoneSE;
+    // The 1.4x floor this used to assert predates plan 018, which deliberately
+    // raised the mobile tile floor (clamp 30-52px, up from 22-46px) so the
+    // wrapped two-row hand stays readable. That intentionally compressed the
+    // desktop:mobile ratio to roughly 1.3x. Asserting a fixed ratio also made
+    // this test flaky, because --tile-base-w derives partly from `7cqh` and the
+    // board's container height varies with game state.
+    //
+    // What actually matters is the behaviour: tiles grow with viewport, and
+    // mobile tiles never fall below the readable floor plan 018 established.
     expect(
-      desktopToMobileRatio,
-      `Expected desktop tile width (${widths.desktop}px) to be > 1.4x iPhone SE tile width (${widths.iphoneSE}px), but ratio was ${desktopToMobileRatio.toFixed(2)}x`
-    ).toBeGreaterThan(1.4);
+      widths.desktop,
+      `Expected desktop tile width (${widths.desktop}px) to exceed iPhone SE tile width (${widths.iphoneSE}px)`
+    ).toBeGreaterThan(widths.iphoneSE);
+
+    expect(
+      widths.iphoneSE,
+      `Expected iPhone SE tile width (${widths.iphoneSE}px) to stay at or above the 30px floor set by plan 018`
+    ).toBeGreaterThanOrEqual(30);
 
     // Same width with less vertical space should not shrink tiles by more than 5%.
     // This is the exact regression reported: compressed laptop height causes tiles to scale down.

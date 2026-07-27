@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { GameMode } from '@/models/MatchState';
-import { hasSavedGame } from '@/lib/matchStorage';
+import { canResume as hasResumableGame } from '@/lib/matchStorage';
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 type MinFaan = 0 | 1 | 3;
@@ -24,7 +24,10 @@ export default function PlayPage() {
   const [canResume, setCanResume] = useState(false);
 
   useEffect(() => {
-    setCanResume(hasSavedGame());
+    // hasSavedGame() only checks that a blob exists; canResume() also rejects
+    // a match whose phase is 'finished'. Using the weaker one showed "Resume
+    // saved game" after a completed match and routed to a dead game.
+    setCanResume(hasResumableGame());
   }, []);
 
   const handleStart = () => {

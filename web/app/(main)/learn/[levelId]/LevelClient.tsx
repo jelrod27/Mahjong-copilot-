@@ -34,7 +34,12 @@ export default function LevelPage() {
     );
   }
 
-  const completedInLevel = completedLessons.filter(id => id.startsWith(`${levelId}-`)).length;
+  // Count lessons this level actually contains, rather than trusting the
+  // `${levelId}-` id convention: ids for renamed or removed lessons persist in
+  // localStorage, which inflated the count, could push the meter past 100%, and
+  // made the `=== level.lessons.length` gate miss so "Level Complete!" never
+  // rendered. LearnClient already counts by membership.
+  const completedInLevel = level.lessons.filter(l => completedLessons.includes(l.id)).length;
   const progress = (completedInLevel / level.lessons.length) * 100;
 
   const isLessonUnlocked = (index: number) => {

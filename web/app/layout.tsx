@@ -5,7 +5,9 @@ import "./globals.css";
 import StoreProvider from "@/store/provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { SITE_NAME, SITE_URL, TITLE_SUFFIX } from "@/lib/siteMetadata";
+import { OG_IMAGE, SITE_NAME, SITE_URL, TITLE_SUFFIX } from "@/lib/siteMetadata";
+import { JsonLd } from "@/components/JsonLd";
+import { organizationJsonLd, webSiteJsonLd } from "@/lib/structuredData";
 
 const notoSans = Noto_Sans_SC({
   subsets: ["latin"],
@@ -44,6 +46,7 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     type: 'website',
     locale: 'en_US',
+    images: [OG_IMAGE],
   },
 };
 
@@ -61,6 +64,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn(notoSans.variable, notoSerif.variable)}>
       <body className="min-h-screen bg-background text-foreground font-sans antialiased">
+        {/* Site entity, emitted once. Page-level graphs reference it by @id
+            rather than repeating the publisher on every route. */}
+        <JsonLd data={[organizationJsonLd(), webSiteJsonLd()]} />
         <StoreProvider>
           <TooltipProvider>
             {children}

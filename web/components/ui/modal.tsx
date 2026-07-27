@@ -4,55 +4,66 @@ import { Dialog } from '@base-ui/react/dialog';
 import { cn } from '@/lib/utils';
 
 /**
- * Centred modal dialog.
+ * Behaviour-only modal wrapper.
  *
  * Wraps `@base-ui/react/dialog` — already a dependency, already proven in
  * `components/game/GlossaryModal.tsx` — so focus trapping and Escape-to-close
- * come for free. The hand-rolled overlays this replaces handled neither: all
- * three in-scope call sites had zero Escape handling before this.
+ * come for free. Every hand-rolled overlay this replaces had neither: all
+ * three in-scope call sites rendered a bare `<div role="dialog">`, so Escape
+ * did nothing and Tab walked straight out of the dialog into the page behind.
  *
- * SCOPE — this fixes keyboard behaviour for the three dialogs plan 023 names
- * (`DailyResultDialog`, `FloorDialog`, and the inline `learn` lesson overlay),
- * not every dialog in the app. `components/game/**` is out of scope, and
+ * DELIBERATELY NOT A STYLED CARD. The three call sites have genuinely
+ * different surfaces (two are bottom-sheet-on-mobile with `ds-card-elevated`,
+ * one is an always-centred `ds-card` with a highlight border) and collapsing
+ * them into one look would be a redesign, which plan 023 forbids. So this owns
+ * layering and keyboard behaviour only; the caller passes the same layout
+ * classes and the same inner markup it had before.
+ *
+ * SCOPE — fixes keyboard behaviour for the three dialogs plan 023 names, not
+ * every dialog in the app. `components/game/**` is out of scope, and
  * `PlayOnboardingDialog` already has its own focus trap and is left alone.
  */
 
 export interface ModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Accessible name for the dialog. */
-  title?: React.ReactNode;
-  children: React.ReactNode;
-  /** Extra classes on the popup surface. */
+  /**
+   * Classes for the full-screen flex container holding the dialog surface.
+   * Mirrors the single overlay `div` these call sites used, so their existing
+   * alignment (`items-end … sm:items-center`, etc.) carries over verbatim.
+   */
   className?: string;
+  /** Accessible name, when no visible title element provides one. */
+  ariaLabel?: string;
+  /** Id of the element naming the dialog. Use instead of `ariaLabel`. */
+  ariaLabelledBy?: string;
+  /** Id of the element describing the dialog. */
+  ariaDescribedBy?: string;
+  children: React.ReactNode;
   'data-testid'?: string;
 }
 
 export function Modal({
   open,
   onOpenChange,
-  title,
-  children,
   className,
+  ariaLabel,
+  ariaLabelledBy,
+  ariaDescribedBy,
+  children,
   'data-testid': testId,
 }: ModalProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 bg-[rgb(6_10_14/0.88)] backdrop-blur-[10px] transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0" />
+        <Dialog.Backdrop className="fixed inset-0 z-65 bg-black/70 backdrop-blur-xs transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0" />
         <Dialog.Popup
           data-testid={testId}
-          className={cn(
-            'ds-card-elevated fixed left-1/2 top-1/2 z-60 w-[min(92vw,420px)] max-h-[min(90vh,560px)] overflow-y-auto -translate-x-1/2 -translate-y-1/2 p-5 shadow-2xl',
-            'transition duration-150 data-ending-style:opacity-0 data-ending-style:scale-95 data-starting-style:opacity-0 data-starting-style:scale-95',
-            className,
-          )}
+          aria-label={ariaLabel}
+          aria-labelledby={ariaLabelledBy}
+          aria-describedby={ariaDescribedBy}
+          className={cn('fixed inset-0 z-65 flex justify-center p-4', className)}
         >
-          {title && (
-            <Dialog.Title className="font-display text-base text-foreground mb-3">
-              {title}
-            </Dialog.Title>
-          )}
           {children}
         </Dialog.Popup>
       </Dialog.Portal>

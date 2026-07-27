@@ -10,6 +10,7 @@ import { SetBuilder } from '@/components/SetBuilder';
 import { getTileById, Tile } from '@/models/Tile';
 import useCompletedLessons from '@/hooks/useCompletedLessons';
 import { Meter } from '@/components/ui/meter';
+import { Modal } from '@/components/ui/modal';
 
 
 export default function LessonPage() {
@@ -126,12 +127,12 @@ export default function LessonPage() {
         };
 
         return (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="lesson-complete-title"
-            aria-describedby="lesson-complete-summary"
-            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          <Modal
+            open
+            onOpenChange={next => { if (!next) setShowCompletionModal(false); }}
+            ariaLabelledBy="lesson-complete-title"
+            ariaDescribedBy="lesson-complete-summary"
+            className="items-center"
             data-testid="lesson-completion-modal"
           >
             <div className="ds-card p-6 max-w-sm w-full max-h-[90vh] overflow-y-auto border-2 border-highlight rounded-xl animate-slide-up">
@@ -207,7 +208,7 @@ export default function LessonPage() {
                 </button>
               </div>
             </div>
-          </div>
+          </Modal>
         );
       })()}
 

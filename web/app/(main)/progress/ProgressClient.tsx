@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { TrendingUp } from 'lucide-react';
 import { loadStats, GameStats, QuizMode } from '@/lib/gameStats';
 import { getAchievements, Achievement } from '@/lib/achievements';
@@ -129,12 +130,12 @@ export default function ProgressPage() {
           <p className="font-sans text-sm text-muted-foreground">
             Play your first game to start tracking stats!
           </p>
-          <a
+          <Link
             href="/play"
             className="inline-block mt-4 ds-btn-success font-display text-xs"
           >
             [ PLAY NOW ]
-          </a>
+          </Link>
         </div>
       ) : (
         <div className="space-y-4">

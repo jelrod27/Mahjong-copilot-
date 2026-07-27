@@ -26,7 +26,7 @@ export default function ParlourPage() {
   const litFloors = cleared;
   const gamGreeting = cleared === 0
     ? 'The Parlour only sleeps. Wake it up. One floor at a time.'
-    : cleared >= 9
+    : cleared >= PARLOUR_FLOORS.length
       ? 'Told you. It only sleeps.'
       : `Floor ${cleared} is lit. ${9 - cleared} to go, kid.`;
 
@@ -41,13 +41,13 @@ export default function ParlourPage() {
         <Meter
           className="mt-3"
           value={litFloors}
-          max={9}
+          max={PARLOUR_FLOORS.length}
           tone="highlight"
           track="surface"
           label="Floors lit"
         />
         <p className="mt-1 font-sans text-[11px] text-muted-foreground">
-          {litFloors}/9 floors lit
+          {litFloors}/{PARLOUR_FLOORS.length} floors lit
         </p>
       </div>
 
@@ -66,7 +66,7 @@ export default function ParlourPage() {
           const unlocked = progress ? isFloorUnlocked(floor.floor, progress) : floor.floor === 1;
           const beaten = floor.floor <= cleared;
           const rival = NPCS[floor.rival];
-          const isJadeRoom = floor.floor === 9;
+          const isJadeRoom = floor.floor === PARLOUR_FLOORS.length;
 
           return (
             <div

@@ -238,8 +238,11 @@ export default function LessonPage() {
             {lesson.content.map((paragraph, index) => (
               <p
                 key={index}
-                className={`text-lg leading-8 text-foreground font-sans mb-4
-                  ${paragraph === '' ? 'mb-1' : ''}
+                // One margin class, not two: `mb-4 mb-1` left the outcome to
+                // stylesheet order, so the tighter spacing for blank lines
+                // silently never applied.
+                className={`text-lg leading-8 text-foreground font-sans
+                  ${paragraph === '' ? 'mb-1' : 'mb-4'}
                   ${paragraph.startsWith('•') ? 'pl-4' : ''}
                   ${paragraph.startsWith('⚠️') ? 'bg-surface/50 border-l-2 border-highlight p-3 rounded-lg' : ''}
                   ${paragraph.startsWith('🎉') ? 'text-xl text-highlight' : ''}

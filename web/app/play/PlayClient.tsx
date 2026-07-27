@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { GameMode } from '@/models/MatchState';
-import { canResume as hasResumableGame } from '@/lib/matchStorage';
+import { canResume as hasResumableGame, clearSavedGame } from '@/lib/matchStorage';
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 type MinFaan = 0 | 1 | 3;
@@ -31,7 +31,7 @@ export default function PlayPage() {
   }, []);
 
   const handleStart = () => {
-    localStorage.removeItem('mahjong_match_in_progress');
+    clearSavedGame();
     router.push(`/play/game?difficulty=${difficulty}&mode=${mode}&minFaan=${minFaan}`);
   };
 
@@ -40,7 +40,7 @@ export default function PlayPage() {
   };
 
   const handleTrainingTable = () => {
-    localStorage.removeItem('mahjong_match_in_progress');
+    clearSavedGame();
     router.push('/play/game?table=training&mode=quick&difficulty=easy&minFaan=0');
   };
 

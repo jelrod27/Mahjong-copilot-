@@ -1,14 +1,15 @@
 import { ImageResponse } from 'next/og';
 import { AllLevels } from '@/content';
+import { TOKENS } from '@/lib/designTokens';
 
 /**
  * Social card, generated at build time rather than checked in as a binary.
  *
- * Colours are the literal token values from globals.css (background,
- * highlight, info, muted-foreground). They cannot be read from CSS here —
- * Satori resolves no custom properties — so they are duplicated with the
- * source named, and the values are stable enough that this is a better trade
- * than shipping a PNG nobody can edit.
+ * Colours come from lib/designTokens.ts, which mirrors the `@theme` block in
+ * globals.css. Satori does resolve CSS variables declared inside its own
+ * render tree; what it cannot do is read the app's external stylesheet, so the
+ * values have to arrive as literals. A test parses globals.css and asserts the
+ * mirror matches, so the duplication cannot drift.
  *
  * Deliberately no external fonts: the CSP blocks nothing at build time, but
  * fetching a font here would add a network dependency to every build for a
@@ -36,11 +37,11 @@ export default function OpenGraphImage() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'rgb(13, 15, 20)',
+          background: TOKENS.background,
           fontFamily: 'Georgia, serif',
         }}
       >
-        <div style={{ display: 'flex', fontSize: 44, letterSpacing: 10, color: 'rgb(212, 175, 55)' }}>
+        <div style={{ display: 'flex', fontSize: 44, letterSpacing: 10, color: TOKENS.highlight }}>
           16 BIT
         </div>
         <div
@@ -48,7 +49,7 @@ export default function OpenGraphImage() {
             display: 'flex',
             fontSize: 104,
             letterSpacing: 6,
-            color: 'rgb(240, 232, 210)',
+            color: TOKENS.foreground,
             marginTop: 8,
           }}
         >
@@ -59,7 +60,7 @@ export default function OpenGraphImage() {
             display: 'flex',
             marginTop: 34,
             fontSize: 30,
-            color: 'rgb(126, 168, 178)',
+            color: TOKENS.info,
           }}
         >
           Learn and play Hong Kong Mahjong
@@ -69,7 +70,7 @@ export default function OpenGraphImage() {
             display: 'flex',
             marginTop: 46,
             fontSize: 22,
-            color: 'rgb(150, 150, 150)',
+            color: TOKENS.mutedForeground,
             letterSpacing: 2,
           }}
         >

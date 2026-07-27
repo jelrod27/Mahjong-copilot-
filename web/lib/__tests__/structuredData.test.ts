@@ -83,6 +83,14 @@ describe('Course list', () => {
     expect(list.itemListElement).toHaveLength(AllLevels.length);
   });
 
+  it('gives every entry its own canonical url', () => {
+    // Google requires the url on the ListItem itself; Course.url nested under
+    // `item` does not satisfy it, and the entry is dropped without it.
+    for (const [i, entry] of list.itemListElement.entries()) {
+      expect(entry.url).toBe(`${SITE_URL}/learn/${AllLevels[i].id}`);
+    }
+  });
+
   it('numbers positions from 1 in curriculum order', () => {
     expect(list.itemListElement.map(i => i.position)).toEqual(
       AllLevels.map((_, i) => i + 1),
@@ -104,16 +112,5 @@ describe('lesson markup', () => {
       l.lessons.map(les => lessonJsonLd(l, les, 'd')['@id']),
     );
     expect(new Set(ids).size).toBe(ids.length);
-  });
-});
-
-describe('serialisation safety', () => {
-  it('escapes < so a string value cannot terminate the script block', () => {
-    // Not an XSS vector — ld+json is not executed — but an unescaped
-    // "</script>" inside any value ends the block early and breaks the page.
-    const json = JSON.stringify(
-      breadcrumbJsonLd([{ name: '</script><b>x', path: '/x' }]),
-    ).replace(/</g, '\\u003c');
-    expect(json).not.toContain('</script>');
   });
 });

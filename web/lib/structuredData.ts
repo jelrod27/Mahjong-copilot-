@@ -116,6 +116,10 @@ export function courseListJsonLd() {
     itemListElement: AllLevels.map((level, i) => ({
       '@type': 'ListItem',
       position: i + 1,
+      // Google requires each ListItem to expose its own canonical `url`.
+      // Course.url nested under `item` does not satisfy that property, and
+      // without it the carousel entry is dropped.
+      url: url(`/learn/${level.id}`),
       item: courseJsonLd(level),
     })),
   };

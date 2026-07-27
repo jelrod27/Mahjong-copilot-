@@ -9,6 +9,8 @@ import { MahjongTile } from '@/components/MahjongTile';
 import { SetBuilder } from '@/components/SetBuilder';
 import { getTileById, Tile } from '@/models/Tile';
 import useCompletedLessons from '@/hooks/useCompletedLessons';
+import { Meter } from '@/components/ui/meter';
+import { Modal } from '@/components/ui/modal';
 
 
 export default function LessonPage() {
@@ -125,12 +127,12 @@ export default function LessonPage() {
         };
 
         return (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="lesson-complete-title"
-            aria-describedby="lesson-complete-summary"
-            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          <Modal
+            open
+            onOpenChange={next => { if (!next) setShowCompletionModal(false); }}
+            ariaLabelledBy="lesson-complete-title"
+            ariaDescribedBy="lesson-complete-summary"
+            className="items-center"
             data-testid="lesson-completion-modal"
           >
             <div className="ds-card p-6 max-w-sm w-full max-h-[90vh] overflow-y-auto border-2 border-highlight rounded-xl animate-slide-up">
@@ -172,12 +174,13 @@ export default function LessonPage() {
                   >
                     {completedInLevelAfter} of {totalInLevel} lessons in {level?.title}
                   </p>
-                  <div className="mt-1.5 h-1.5 bg-elevated rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-highlight rounded-full transition-all duration-500"
-                      style={{ width: `${(completedInLevelAfter / totalInLevel) * 100}%` }}
-                    />
-                  </div>
+                  <Meter
+                    className="mt-1.5"
+                    value={completedInLevelAfter}
+                    max={totalInLevel}
+                    tone="highlight"
+                    label="Level progress"
+                  />
                 </div>
               )}
 
@@ -205,7 +208,7 @@ export default function LessonPage() {
                 </button>
               </div>
             </div>
-          </div>
+          </Modal>
         );
       })()}
 
@@ -307,12 +310,12 @@ export default function LessonPage() {
             <p className="text-sm text-muted-foreground font-sans mb-2">
               Question {quizIndex + 1} of {lesson.quiz?.length}
             </p>
-            <div className="h-1.5 bg-elevated rounded-full">
-              <div
-                className="h-full bg-info rounded-full transition-all"
-                style={{ width: `${((quizIndex + 1) / (lesson.quiz?.length || 1)) * 100}%` }}
-              />
-            </div>
+            <Meter
+              value={quizIndex + 1}
+              max={lesson.quiz?.length || 1}
+              tone="info"
+              label="Quiz progress"
+            />
           </div>
 
           {/* Question */}

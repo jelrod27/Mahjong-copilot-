@@ -81,7 +81,14 @@ const CHANNEL_CONFIG: Record<Channel, { type: OscillatorType; gain: number }> = 
 
 const LOOKAHEAD_MS = 25;
 const SCHEDULE_AHEAD_S = 0.12;
-const MUSIC_GAIN = 0.14; // mixed well under the tile clack (see audio spec)
+const MUSIC_GAIN = 0.14;
+
+/**
+ * Tension drone level, relative to the music bus. Deliberately low: it has to
+ * sit under the ambient bed and never compete with the tile clack, which is
+ * the sound that always has to read first (docs/design/audio.md).
+ */
+const TENSION_GAIN = 0.05;
 
 /* ── Sample-based playback ───────────────────────────────────────────────
    Buffer-backed alternative to the oscillator scheduler below, added
@@ -91,8 +98,14 @@ const MUSIC_GAIN = 0.14; // mixed well under the tile clack (see audio spec)
    today. Buffers are fetched and decoded lazily (on first play, never
    during page load) and cached per URL so repeat plays cost nothing. */
 
-/** Track id → licensed asset URL. Empty until a real asset is approved and added. */
-const SAMPLE_ASSETS: Partial<Record<'parlour' | 'danger', string>> = {};
+/**
+ * Track id → licensed asset URL. Empty until a real asset is approved.
+ *
+ * Exported because this is the configuration seam: registering a bed here is
+ * the entire activation step, and the tests populate it to exercise the
+ * ambient-bed path that is otherwise unreachable while it is empty.
+ */
+export const SAMPLE_ASSETS: Partial<Record<'parlour' | 'danger', string>> = {};
 
 class MusicEngine {
   private ctx: AudioContext | null = null;
@@ -113,6 +126,10 @@ class MusicEngine {
   private sampleTrackId: string | null = null;
   /** Monotonic id for the newest sample request, so stale fetches can be discarded. */
   private sampleRequestId = 0;
+  /** Sustained tension drone layered over the ambient bed. Null when silent. */
+  private tensionNodes: { gain: GainNode; oscs: OscillatorNode[] } | null = null;
+  /** True while a bed fetch/decode is in flight, before `bufferSource` exists. */
+  private samplePending = false;
 
   private getContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -153,6 +170,23 @@ class MusicEngine {
     if (!this.enabled) return;
     const ctx = this.getContext();
     if (!ctx || !this.musicGain) return;
+
+    // Ambient-bed mode (Direction A, docs/design/audio.md): once a licensed
+    // room tone is registered for `parlour`, that bed is the game's continuous
+    // sound. Tension is then a LAYER over it, not a replacement track — the
+    // operator's decision was to keep the oscillator for danger rather than
+    // license a second bed, and swapping the bed out for a bare drone at
+    // wall-low would sound worse than what shipped before.
+    //
+    // While SAMPLE_ASSETS is empty this whole branch is unreachable and the
+    // oscillator path below runs exactly as it always has.
+    const bedUrl = SAMPLE_ASSETS.parlour;
+    if (bedUrl) {
+      this.playSample('parlour', bedUrl, ctx);
+      if (trackId === 'danger') this.startTensionLayer(ctx);
+      else this.stopTensionLayer();
+      return;
+    }
 
     const sampleUrl = SAMPLE_ASSETS[trackId];
     if (sampleUrl) {
@@ -210,11 +244,65 @@ class MusicEngine {
       this.bufferSource = null;
     }
     this.sampleTrackId = null;
+    this.samplePending = false;
+    this.stopTensionLayer();
+  }
+
+  /**
+   * Low sustained drone layered over the ambient bed to signal a low wall.
+   *
+   * Two detuned sine partials a fifth apart, faded in over 1.2s. Deliberately
+   * not a melody: it has to sit under room tone without competing with the
+   * tile clack, which is the sound that always has to read first.
+   */
+  private startTensionLayer(ctx: AudioContext) {
+    if (this.tensionNodes || !this.musicGain) return;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(TENSION_GAIN, ctx.currentTime + 1.2);
+    gain.connect(this.musicGain);
+
+    // A2 and its fifth. The 0.5Hz offset on the upper partial produces a slow
+    // beating that reads as unease without any rhythmic element.
+    const oscs = [midiToFreq(A2), midiToFreq(A2 + 7) + 0.5].map(freq => {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      osc.connect(gain);
+      osc.start();
+      return osc;
+    });
+
+    this.tensionNodes = { gain, oscs };
+  }
+
+  /** Fade the drone out and release its nodes. Safe to call when not running. */
+  private stopTensionLayer() {
+    const nodes = this.tensionNodes;
+    if (!nodes) return;
+    this.tensionNodes = null;
+
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    nodes.gain.gain.cancelScheduledValues(now);
+    nodes.gain.gain.setValueAtTime(nodes.gain.gain.value, now);
+    nodes.gain.gain.linearRampToValueAtTime(0, now + 0.6);
+    for (const osc of nodes.oscs) {
+      try { osc.stop(now + 0.7); } catch { /* already stopped */ }
+    }
   }
 
   /** Start (or resume from cache) a looping buffer for `trackId`. */
   private playSample(trackId: string, url: string, ctx: AudioContext) {
-    if (this.sampleTrackId === trackId && this.bufferSource) return; // already looping
+    // Idempotent on a PENDING request too, not just a live source. On a cold
+    // cache the fetch/decode is still in flight and `bufferSource` is null, so
+    // a guard on that alone lets a second synchronous play() fall through to
+    // stop() — which tears down the tension drone and builds a second one,
+    // overlapping the first during its fade-out. GameContent re-fires play()
+    // on several state changes, so this is the ordinary path, not a corner.
+    if (this.sampleTrackId === trackId && (this.bufferSource || this.samplePending)) return;
     this.stop();
     this.sampleTrackId = trackId;
     // Track the specific request, not just the track id: play('parlour') →
@@ -228,6 +316,7 @@ class MusicEngine {
       return;
     }
 
+    this.samplePending = true;
     fetch(url)
       .then((res) => res.arrayBuffer())
       .then((data) => ctx.decodeAudioData(data))
@@ -237,12 +326,16 @@ class MusicEngine {
         // started (or stop() may have been called) while this fetch/decode
         // was in flight — bail rather than starting a loop nobody asked for.
         if (this.sampleRequestId !== requestId) return;
+        this.samplePending = false;
         this.startBufferSource(buffer, trackId, requestId, ctx);
       })
       .catch(() => {
         // Fail soft: background audio must never throw or surface an
         // unhandled rejection. The game stays playable without ambience.
-        if (this.sampleRequestId === requestId) this.sampleTrackId = null;
+        if (this.sampleRequestId === requestId) {
+          this.samplePending = false;
+          this.sampleTrackId = null;
+        }
       });
   }
 

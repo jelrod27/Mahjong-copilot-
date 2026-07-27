@@ -125,3 +125,11 @@ out/
 
 # Lock files — only ignore root RN lockfile (web/ lockfile is committed for CI/Vercel)
 /package-lock.json
+
+# Local agent/editor tooling — machine-specific, not project config.
+# (Accidentally committed in #94; untracked in the follow-up.)
+.claude/
+.agents/
+.cursor/
+CURSOR.md
+skills-lock.json

@@ -13,6 +13,7 @@ import { NPCS } from '@/content/npcs';
 import {
   PARLOUR_FLOORS, getParlourProgress, isFloorUnlocked, ParlourProgress,
 } from '@/lib/parlour';
+import { Meter } from '@/components/ui/meter';
 
 export default function ParlourPage() {
   // Progress lives in localStorage; read after mount to avoid SSR mismatch.
@@ -37,12 +38,14 @@ export default function ParlourPage() {
         <p className="mt-1 font-sans text-sm text-muted-foreground">
           Nine floors gone quiet. Win each floor&apos;s table to light the house back up.
         </p>
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface">
-          <div
-            className="h-full rounded-full bg-highlight transition-all duration-slow ease-ds-out"
-            style={{ width: `${(litFloors / 9) * 100}%` }}
-          />
-        </div>
+        <Meter
+          className="mt-3"
+          value={litFloors}
+          max={9}
+          tone="highlight"
+          track="surface"
+          label="Floors lit"
+        />
         <p className="mt-1 font-sans text-[11px] text-muted-foreground">
           {litFloors}/9 floors lit
         </p>

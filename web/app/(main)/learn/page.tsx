@@ -4,19 +4,18 @@
 import Link from 'next/link';
 import { AllLevels } from '@/content';
 import useCompletedLessons from '@/hooks/useCompletedLessons';
+import { Meter } from '@/components/ui/meter';
+import { PageHeader } from '@/components/ui/page-header';
 
 /**
- * Top-level path visualization. Pulled from level data — order and titles
- * mirror what each level teaches so this stays in sync if levels are renamed.
+ * Top-level path visualization, derived from level data so it cannot drift.
+ *
+ * This was previously a hardcoded literal whose last step was "Full Game" — a
+ * level that has never existed. The comment above it claimed it was "pulled
+ * from level data", which made the drift invisible to anyone who read it and
+ * believed it. Deriving it for real is the only way that comment becomes true.
  */
-const PATH_STEPS: string[] = [
-  'Tiles',
-  'Sets',
-  'Winning Hands',
-  'Scoring',
-  'Strategy',
-  'Full Game',
-];
+const PATH_STEPS: string[] = AllLevels.map(level => level.title);
 
 
 export default function LearnPage() {
@@ -47,28 +46,21 @@ export default function LearnPage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="bg-linear-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
-        <p className="font-display text-[10px] text-info tracking-[1.5px] mb-1">
-          LEARN MAHJONG
-        </p>
-        <h1 className="font-display text-lg text-foreground mb-2">Hong Kong Mahjong</h1>
-        <p className="text-base text-foreground/80 font-sans mb-4">
-          Master the game from tiles to strategy across 6 levels.
-        </p>
+      <PageHeader
+        eyebrow="LEARN MAHJONG"
+        title="Hong Kong Mahjong"
+        description={`Master the game from tiles to strategy across ${AllLevels.length} levels.`}
+        descriptionSpacing
+      >
 
         {/* Overall Progress */}
         <div className="mt-2">
-          <div className="h-2 bg-elevated rounded-full overflow-hidden">
-            <div
-              className="h-full bg-highlight rounded-full transition-all duration-500"
-              style={{ width: `${overallProgress}%` }}
-            />
-          </div>
+          <Meter value={overallProgress} size="md" tone="highlight" label="Overall progress" />
           <p className="mt-2 text-sm text-foreground/80 font-sans">
             {totalCompleted}/{totalLessons} lessons completed
           </p>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Level Grid */}
       <div className="p-4 space-y-3">
@@ -192,14 +184,12 @@ function LevelCard({
         {/* Progress bar */}
         {unlocked && (
           <div className="flex items-center gap-2">
-            <div className="flex-1 h-1.5 bg-elevated rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  isComplete ? 'bg-success' : 'bg-info'
-                }`}
-                style={{ width: `${progress.percent}%` }}
-              />
-            </div>
+            <Meter
+              className="flex-1"
+              value={progress.percent}
+              tone={isComplete ? 'success' : 'info'}
+              label={`${level.title} progress`}
+            />
             <span className="text-xs text-muted-foreground font-sans shrink-0">
               {progress.completed}/{progress.total}
             </span>

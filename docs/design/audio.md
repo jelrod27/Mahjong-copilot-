@@ -92,3 +92,44 @@ from procedural placeholders to commissioned audio:
 Track wishlist for commissioning, in priority order: parlour theme (with
 per-wing stems), danger motif, Jade Room theme (Jin's floor deserves its
 own), win fanfare set (3 tiers), epilogue theme.
+
+
+## Decision: ambient bed + oscillator tension (2026-07-27)
+
+**Direction A — parlour room tone** is the chosen identity (plan 016). Two
+follow-on decisions, recorded here because the earlier asset shortlist was only
+ever discussed in conversation and was lost:
+
+1. **One licensed asset, not two.** A looping parlour room tone registered at
+   `SAMPLE_ASSETS.parlour` in `lib/musicEngine.ts`. The tile-clack SFX stay
+   procedural — `soundManager` already varies pitch and duration ±7% per play,
+   so sampling them buys little and would mean retiming the board.
+
+2. **Tension stays on the oscillator.** No second licensed bed for `danger`.
+   When the wall is low, a low sustained drone is **layered over** the ambient
+   bed rather than replacing it.
+
+The layering is not cosmetic. `play()` previously stopped whatever was playing
+before starting the new track, which is correct for two oscillator tracks but
+would have cut the ambience out entirely at wall-low, leaving a bare drone —
+worse than what shipped before. `play()` now treats a registered bed as the
+continuous sound and toggles the drone over it.
+
+While `SAMPLE_ASSETS` is empty this path is unreachable and the oscillator
+sequencer behaves exactly as it always has. Tests in
+`lib/__tests__/musicEngine.test.ts` cover both states.
+
+### Activating it
+
+Drop a licensed file in `web/public/audio/` and register it:
+
+```ts
+export const SAMPLE_ASSETS: Partial<Record<'parlour' | 'danger', string>> = {
+  parlour: '/audio/parlour-room-tone.mp3',
+};
+```
+
+Licence rule is unchanged and hard (plan 016): royalty-free or CC0, commercial
+use permitted, **no attribution requirement**. CC-BY, CC-BY-NC, or unclear
+terms are rejected — the app has no credits surface, so an attribution
+requirement cannot be satisfied. Asset acquisition is the operator's action.

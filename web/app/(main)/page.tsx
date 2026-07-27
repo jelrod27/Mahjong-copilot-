@@ -17,6 +17,7 @@ import { hasSavedGame } from '@/lib/matchStorage';
 import { loadStats } from '@/lib/gameStats';
 import soundManager from '@/lib/soundManager';
 import { Lightbulb, GraduationCap } from 'lucide-react';
+import { Meter } from '@/components/ui/meter';
 
 /**
  * A real 8-tile hand for the hero, sourced from TileFactory so these are
@@ -222,12 +223,14 @@ export default function HomePage() {
                 </div>
               </div>
               <p className="mt-1 truncate font-sans text-sm text-foreground">{gamLine}</p>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface">
-                <div
-                  className="h-full rounded-full bg-highlight transition-all duration-slow ease-ds-out"
-                  style={{ width: `${(floorsLit / 9) * 100}%` }}
-                />
-              </div>
+              <Meter
+                className="mt-2"
+                value={floorsLit}
+                max={9}
+                tone="highlight"
+                track="surface"
+                label="Floors lit"
+              />
             </div>
           </div>
         </Card>
@@ -297,12 +300,13 @@ export default function HomePage() {
                   <p className="text-base font-medium text-foreground font-sans">
                     {lessonsDone}/{totalLessons} lessons across {AllLevels.length} levels
                   </p>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface">
-                    <div
-                      className="h-full rounded-full bg-info transition-all duration-slow ease-ds-out"
-                      style={{ width: `${learnProgress}%` }}
-                    />
-                  </div>
+                  <Meter
+                    className="mt-2"
+                    value={learnProgress}
+                    tone="info"
+                    track="surface"
+                    label="Lessons completed"
+                  />
                 </div>
               </div>
             </Card>

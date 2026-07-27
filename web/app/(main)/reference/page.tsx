@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { GLOSSARY, type GlossaryEntry } from '@/content/glossary';
 import { FAN_TABLE, LIMIT_HANDS, LIMIT_FAN, MAX_PAYMENT, paymentForFan } from '@/content/scoringReference';
+import { PageHeader } from '@/components/ui/page-header';
 
 type TabKey = 'tiles' | 'scoring' | 'hands' | 'glossary';
 
@@ -21,14 +22,12 @@ export default function ReferencePage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="bg-linear-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
-        <p className="font-display text-[10px] text-info tracking-[1.5px] mb-1">
-          REFERENCE
-        </p>
-        <h1 className="font-display text-lg text-foreground mb-2">Quick Reference</h1>
-        <p className="text-base text-foreground/80 font-sans mb-4">
-          Everything you need at a glance.
-        </p>
+      <PageHeader
+        eyebrow="REFERENCE"
+        title="Quick Reference"
+        description="Everything you need at a glance."
+        descriptionSpacing
+      >
         <label className="sr-only" htmlFor="reference-search">Search reference</label>
         <input
           id="reference-search"
@@ -38,7 +37,7 @@ export default function ReferencePage() {
           placeholder="Search tiles, scoring, hands, glossary..."
           className="w-full rounded-lg border-2 border-border/30 bg-elevated px-3 py-3 font-sans text-sm text-foreground placeholder:text-muted-foreground focus:border-info focus:outline-hidden"
         />
-      </div>
+      </PageHeader>
 
       {/* Tab Bar */}
       <div className="flex border-b border-border/20 bg-elevated sticky top-0 z-10">

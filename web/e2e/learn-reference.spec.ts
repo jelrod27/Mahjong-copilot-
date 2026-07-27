@@ -14,7 +14,7 @@ test.describe('Learn page', () => {
     await expect(levelCards.first()).toContainText('Know Your Tiles', { timeout: 10_000 });
     const levelCount = await levelCards.count();
     expect(levelCount).toBeGreaterThanOrEqual(7);
-    await expect(page.getByText(/Locked — complete/)).toHaveCount(levelCount - 1);
+    await expect(levelCards.filter({ hasText: /Locked — complete/ })).toHaveCount(levelCount - 1);
   });
 
   test('clicking first level expands to show lessons', async ({ page }) => {

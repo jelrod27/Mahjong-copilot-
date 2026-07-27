@@ -65,10 +65,12 @@ export function Meter({
   className,
   label,
 }: MeterProps) {
-  // Guard the degenerate max before dividing: a zero or negative bound would
-  // otherwise yield NaN/Infinity and render a bar of style="width: NaN%".
-  const safeMax = max > 0 ? max : 100;
-  const clamped = Math.min(Math.max(value, 0), safeMax);
+  // Guard degenerate inputs before dividing. A zero or negative bound would
+  // yield Infinity, and NaN slips through Math.min/Math.max untouched — either
+  // way the bar renders style="width: NaN%" and emits invalid ARIA values.
+  const safeMax = Number.isFinite(max) && max > 0 ? max : 100;
+  const safeValue = Number.isFinite(value) ? value : 0;
+  const clamped = Math.min(Math.max(safeValue, 0), safeMax);
   const percent = (clamped / safeMax) * 100;
 
   return (

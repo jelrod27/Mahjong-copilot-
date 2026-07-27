@@ -112,10 +112,13 @@ describe('Level 7 required topics', () => {
   });
 
   it('teaches the full claim priority order', () => {
+    // Mentioning all four words proves nothing — a lesson could list them
+    // backwards and pass. Assert they appear in engine order (claiming.ts:
+    // win 4 > kong 3 > pung 2 > chow 1).
     const text = lessonText('7-5');
-    for (const claim of ['win', 'kong', 'pung', 'chow']) {
-      expect(text, `priority lesson must mention ${claim}`).toContain(claim);
-    }
+    const positions = ['win', 'kong', 'pung', 'chow'].map(c => text.indexOf(c));
+    expect(positions.every(i => i >= 0), 'all four claims must be named').toBe(true);
+    expect(text).toMatch(/win\s*>\s*kong\s*>\s*pung\s*>\s*chow/);
   });
 
   it('teaches the tie-break for equal-priority claims', () => {
@@ -135,7 +138,10 @@ describe('Level 7 required topics', () => {
   it('teaches that the dealer keeps the deal on a draw, not only on a win', () => {
     // The easy mistake is teaching "dealer stays on a win" alone. The engine
     // retains the dealer on a drawn hand too (matchManager: dealerWon || isDraw).
-    expect(lessonText('7-7')).toMatch(/draw/);
+    // A bare /draw/ match would pass on any incidental use of the word, so
+    // require the retention claim itself.
+    const text = lessonText('7-7');
+    expect(text).toMatch(/keeps the deal if the hand ends in a draw|retains the deal|dealer keeps the deal on a win and on a draw/);
   });
 });
 
@@ -154,7 +160,9 @@ describe('Level 7 engine agreement', () => {
     // order would barely survive" as motivation for the restriction — a bare
     // /chow from any/ substring check flags that and is useless.
     expect(allText()).not.toMatch(
-      /you can chow from any|chow can be (claimed|taken) from any|chow (?:it )?from any(?:one| player)(?:'s)? discard/,
+      /you can chow from any|chow can be (claimed|taken) from any|chow (?:it )?from any(?:one| player)(?:'s)? discard|chow is legal from any/,
     );
+    // And the positive form must survive: the restriction has to be stated.
+    expect(lessonText('7-4')).toMatch(/only chow from the player who plays immediately before you/);
   });
 });

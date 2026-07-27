@@ -33,6 +33,27 @@ describe('Meter', () => {
     expect(fillWidth(container)).toBe('0%');
   });
 
+  it('renders an empty bar when value is NaN', () => {
+    // NaN passes straight through Math.min/Math.max, so the clamp alone does
+    // not catch it — `0/undefined` arithmetic upstream would reach the DOM as
+    // style="width: NaN%".
+    const { container } = render(<Meter value={Number.NaN} max={10} />);
+    expect(fillWidth(container)).toBe('0%');
+  });
+
+  it('emits a valid aria-valuenow when value is NaN', () => {
+    render(<Meter value={Number.NaN} max={10} label="Progress" />);
+    expect(screen.getByRole('progressbar', { name: 'Progress' })).toHaveAttribute(
+      'aria-valuenow',
+      '0',
+    );
+  });
+
+  it('falls back to a percentage scale when max is not finite', () => {
+    const { container } = render(<Meter value={40} max={Number.NaN} />);
+    expect(fillWidth(container)).toBe('40%');
+  });
+
   it('exposes its progress to assistive technology', () => {
     render(<Meter value={3} max={8} label="Quiz progress" />);
     const bar = screen.getByRole('progressbar', { name: 'Quiz progress' });

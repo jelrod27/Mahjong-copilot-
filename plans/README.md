@@ -45,7 +45,7 @@ audits after PR #94 merged (`b6b570a`).
 | 020 | [Scoring content truthfulness](020-scoring-content-truthfulness.md) | **P0** | M | — | **DONE** |
 | 022 | [Tailwind v4 migration](022-tailwind-v4-migration.md) | P1 | M | 025, 026 | **DONE** |
 | 021 | [Gameplay curriculum — Level 7](021-gameplay-curriculum.md) | **P0** | L | 020 (done) | **DONE** |
-| 023 | [Shared primitives](023-shared-primitives.md) | P1 | M | 022 (done) | **DONE (partial — see notes)** |
+| 023 | [Shared primitives](023-shared-primitives.md) | P1 | M | 022 (done) | **IN PROGRESS** — 4 of 6 primitives migrated; see notes |
 | 024 | [E2E on PRs + visual snapshots](024-e2e-on-prs.md) | P1 | S | — | **DONE** |
 | 025 | [Elevation ladder + glow fix](025-elevation-ladder-and-glow-fix.md) | P1 | S | — | **DONE** |
 | 026 | [Landing page redesign — Direction A, "The Table"](026-landing-page-redesign.md) | P1 | M | 025 (done) | **DONE** |

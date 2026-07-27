@@ -46,7 +46,9 @@ export const Level7: Level = {
         "",
         "That's the whole loop. Draw to 14, discard to 13, pass it on.",
         "",
-        "The 14th tile is the interesting one. For a moment you are holding a complete hand — and if those 14 tiles happen to be four sets and a pair, you don't discard at all. You win.",
+        "The 14th tile is the interesting one. For a moment you are holding a complete hand — and if those 14 tiles form four sets and a pair, you may be able to win instead of discarding.",
+        "",
+        "\"May\" is doing real work there. This ruleset also enforces a MINIMUM FAAN: a hand has to be worth a certain amount to be declared at all. A complete shape that is worth too little cannot be won on, and you keep playing. Level 4 covers what earns fan.",
         "",
         "That is the only reason the count matters: 14 is a winning hand, 13 is a hand waiting for one.",
         "",
@@ -57,7 +59,7 @@ export const Level7: Level = {
       ],
       keyTakeaways: [
         "You hold 13 tiles; on your turn you draw to 14 and discard back to 13.",
-        "A winning hand is 14 tiles — you win instead of discarding.",
+        "A winning hand is 14 tiles — but it must also meet the minimum fan to be declared.",
         "Turns pass around the table in a fixed direction all game."
       ],
       quiz: [
@@ -72,7 +74,7 @@ export const Level7: Level = {
         {
           id: "7-1-q2",
           type: "multiple-choice",
-          question: "You draw your 14th tile and it completes four sets and a pair. What now?",
+          question: "You draw your 14th tile and it completes four sets and a pair worth enough fan to declare. What now?",
           options: [
             "Discard your worst tile, then declare on your next turn",
             "Declare the win — you do not discard",
@@ -80,7 +82,7 @@ export const Level7: Level = {
             "Draw one more tile to confirm"
           ],
           correctAnswer: "Declare the win — you do not discard",
-          explanation: "A winning hand is 14 tiles. The moment your draw completes it, the hand is over — discarding would break it back down to 13."
+          explanation: "A winning hand is 14 tiles. Once it is complete AND meets the minimum fan, the hand is over — discarding would break it back down to 13. A complete shape below the minimum cannot be declared, and play continues."
         }
       ],
       nextLessonId: "7-2"
@@ -105,7 +107,7 @@ export const Level7: Level = {
         "A portion at the end is set aside and never drawn in the normal way.",
         "It exists to pay out replacements — when you declare a kong, or reveal a flower or season, you take a replacement tile from there instead.",
         "",
-        "That is why a kong doesn't cost you a turn: you gave up a tile from the live wall, so you get one back from the dead wall.",
+        "That is why a kong doesn't cost you a turn. However the fourth tile arrived — drawn, claimed from a discard, or added to a pung you already had — committing it to a kong earns you a replacement draw from the dead wall, so you still get to discard.",
         "",
         "WHEN THE WALL RUNS OUT",
         "If the last live tile is drawn and nobody has won, the hand is a DRAW.",
@@ -166,8 +168,10 @@ export const Level7: Level = {
       content: [
         "So far a turn only uses tiles you draw yourself. Here is the rule that makes mahjong a game rather than four people playing solitaire:",
         "",
-        "ANY DISCARD IS FAIR GAME",
-        "When a player discards, that tile is briefly available to everyone else. If it completes a set for you, you can CLAIM it — take it out of the discard and use it immediately.",
+        "A DISCARD IS BRIEFLY UP FOR GRABS",
+        "When a player discards, that tile is briefly available. If it completes a set for you AND that particular claim is legal from that seat, you can CLAIM it — take it out of the discard and use it immediately.",
+        "",
+        "The seat matters, and lesson 7-4 is entirely about it: pung and kong are legal from any player, chow only from one. For now, the idea to hold onto is that discards are not dead tiles.",
         "",
         "You do not have to wait for your turn. That is the point.",
         "",
@@ -373,7 +377,7 @@ export const Level7: Level = {
         "WHY THIS MATTERS MORE THAN IT SOUNDS",
         "Every skipped turn is a tile you never drew. In a hand with an eight- turn budget, being skipped twice is a quarter of your remaining draws.",
         "",
-        "It also means the wall drains at an unpredictable rate. A hand with heavy claiming ends far sooner than a quiet one, because claims consume discards without consuming draws.",
+        "It also changes how fast the wall empties, in the direction most people guess wrong. A claim takes its tile from the discard, not from the wall, and the skipped players never draw either. So a hand full of claims burns through FEWER wall tiles than a quiet one — the wall lasts longer, while your own chances to draw shrink.",
         "",
         "TWO PRACTICAL CONSEQUENCES",
         "",

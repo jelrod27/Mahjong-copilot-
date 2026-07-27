@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { AllLevels, getLevelById } from '@/content';
 import { pageMetadata } from '@/lib/siteMetadata';
 import { lessonMetaDescription } from '@/lib/lessonSeo';
+import { JsonLd } from '@/components/JsonLd';
+import { breadcrumbJsonLd, lessonJsonLd } from '@/lib/structuredData';
 import LessonClient from './LessonClient';
 
 type Params = { levelId: string; lessonId: string };
@@ -49,6 +51,22 @@ export async function generateMetadata({
 export default async function Page({ params }: { params: Promise<Params> }) {
   const { levelId, lessonId } = await params;
   const level = getLevelById(Number(levelId));
-  if (!level?.lessons.some(l => l.id === lessonId)) notFound();
-  return <LessonClient />;
+  const lesson = level?.lessons.find(l => l.id === lessonId);
+  if (!level || !lesson) notFound();
+
+  return (
+    <>
+      <JsonLd
+        data={[
+          lessonJsonLd(level, lesson, lessonMetaDescription(lesson)),
+          breadcrumbJsonLd([
+            { name: 'Learn', path: '/learn' },
+            { name: level.title, path: `/learn/${level.id}` },
+            { name: lesson.title, path: `/learn/${level.id}/${lesson.id}` },
+          ]),
+        ]}
+      />
+      <LessonClient />
+    </>
+  );
 }

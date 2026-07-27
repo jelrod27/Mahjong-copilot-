@@ -20,6 +20,7 @@ import RetroTile from '@/components/game/RetroTile';
 import CharacterPortrait from '@/components/npc/CharacterPortrait';
 import { NPCS, NpcId } from '@/content/npcs';
 import { TileSuit, TileType } from '@/models/Tile';
+import { PageHeader } from '@/components/ui/page-header';
 
 /* ─────────────────────────────────────────
    Sample tiles for palette previews — three
@@ -53,13 +54,11 @@ export default function CosmeticsPage() {
 
   return (
     <div className="min-h-screen pb-12">
-      <div className="bg-linear-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
-        <p className="font-display text-[10px] text-info tracking-[1.5px] mb-1">COSMETICS</p>
-        <h1 className="font-display text-lg text-foreground mb-2">Style the table.</h1>
-        <p className="text-base text-foreground/80 font-sans">
-          Pick a tile palette, table felt, and opponent roster. All free, all stored locally.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="COSMETICS"
+        title="Style the table."
+        description="Pick a tile palette, table felt, and opponent roster. All free, all stored locally."
+      />
 
       {/* NPC roster */}
       <section className="px-4 pt-6">

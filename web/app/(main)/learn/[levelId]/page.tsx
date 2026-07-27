@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { getLevelById } from '@/content';
 import useCompletedLessons from '@/hooks/useCompletedLessons';
 import { Meter } from '@/components/ui/meter';
+import { PageHeader } from '@/components/ui/page-header';
 
 
 export default function LevelPage() {
@@ -44,18 +45,21 @@ export default function LevelPage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="bg-linear-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
-        <button
-          onClick={() => router.push('/learn')}
-          className="text-sm text-info font-sans mb-3 hover:ds-text-glow transition-all"
-        >
-          ‹ All Levels
-        </button>
-        <p className="font-display text-[10px] text-highlight tracking-[1.5px] mb-1">
-          LEVEL {level.id}
-        </p>
-        <h1 className="font-display text-lg text-foreground mb-2">{level.title}</h1>
-        <p className="text-base text-foreground/80 font-sans mb-4">{level.description}</p>
+      <PageHeader
+        eyebrow={`LEVEL ${level.id}`}
+        eyebrowTone="highlight"
+        title={level.title}
+        description={level.description}
+        descriptionSpacing
+        leading={
+          <button
+            onClick={() => router.push('/learn')}
+            className="text-sm text-info font-sans mb-3 hover:ds-text-glow transition-all"
+          >
+            ‹ All Levels
+          </button>
+        }
+      >
 
         {/* Progress Bar */}
         <div className="mt-2">
@@ -64,7 +68,7 @@ export default function LevelPage() {
             {completedInLevel}/{level.lessons.length} lessons
           </p>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Lessons List */}
       <div className="p-4">

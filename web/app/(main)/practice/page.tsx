@@ -11,6 +11,7 @@ import ScoringQuiz from './ScoringQuiz';
 import HandRecognition from './HandRecognition';
 import { loadStats, type GameStats, type QuizMode } from '@/lib/gameStats';
 import { deriveMastery, getRecommendedQuiz, masteryLabel } from '@/lib/mastery';
+import { PageHeader } from '@/components/ui/page-header';
 
 type Mode = 'menu' | 'tile-quiz' | 'scoring-quiz' | 'hand-recognition' | 'practice-game';
 
@@ -117,15 +118,11 @@ function PracticeMenu({ onSelect }: { onSelect: (mode: Mode) => void }) {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="bg-linear-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
-        <p className="font-display text-[10px] text-info tracking-[1.5px] mb-1">
-          PRACTICE
-        </p>
-        <h1 className="font-display text-lg text-foreground mb-2">Sharpen Your Skills</h1>
-        <p className="text-base text-foreground/80 font-sans">
-          Quizzes and guided play to reinforce what you&apos;ve learned.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="PRACTICE"
+        title="Sharpen Your Skills"
+        description="Quizzes and guided play to reinforce what you've learned."
+      />
 
       {/* Mode Cards */}
       <div className="p-4 space-y-3">

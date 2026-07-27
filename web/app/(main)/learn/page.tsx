@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { AllLevels } from '@/content';
 import useCompletedLessons from '@/hooks/useCompletedLessons';
 import { Meter } from '@/components/ui/meter';
+import { PageHeader } from '@/components/ui/page-header';
 
 /**
  * Top-level path visualization, derived from level data so it cannot drift.
@@ -45,14 +46,12 @@ export default function LearnPage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="bg-linear-to-b from-surface to-background px-6 pt-8 pb-6 rounded-b-2xl">
-        <p className="font-display text-[10px] text-info tracking-[1.5px] mb-1">
-          LEARN MAHJONG
-        </p>
-        <h1 className="font-display text-lg text-foreground mb-2">Hong Kong Mahjong</h1>
-        <p className="text-base text-foreground/80 font-sans mb-4">
-          Master the game from tiles to strategy across {AllLevels.length} levels.
-        </p>
+      <PageHeader
+        eyebrow="LEARN MAHJONG"
+        title="Hong Kong Mahjong"
+        description={`Master the game from tiles to strategy across ${AllLevels.length} levels.`}
+        descriptionSpacing
+      >
 
         {/* Overall Progress */}
         <div className="mt-2">
@@ -61,7 +60,7 @@ export default function LearnPage() {
             {totalCompleted}/{totalLessons} lessons completed
           </p>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Level Grid */}
       <div className="p-4 space-y-3">

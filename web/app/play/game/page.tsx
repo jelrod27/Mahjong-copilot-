@@ -1,18 +1,18 @@
-'use client';
+import { pageMetadata } from '@/lib/siteMetadata';
+import GameShell from './GameShell';
 
-import { Suspense } from 'react';
-import GameContent from './GameContent';
+/**
+ * noindex: this is the live game surface, not a page with readable content,
+ * and it is reached with query params (?difficulty=, ?table=, ?minFaan=) that
+ * would otherwise present Google with many near-duplicate URLs of one screen.
+ */
+export const metadata = pageMetadata({
+  title: 'Playing',
+  description: 'A game of Hong Kong Mahjong in progress.',
+  path: '/play/game',
+  noindex: true,
+});
 
-export default function GamePage() {
-  return (
-    <Suspense fallback={
-      <div className="flex h-dvh items-center justify-center bg-background">
-        <div className="font-display text-info ds-text-glow text-sm">
-          LOADING<span className="animate-blink">...</span>
-        </div>
-      </div>
-    }>
-      <GameContent />
-    </Suspense>
-  );
+export default function Page() {
+  return <GameShell />;
 }

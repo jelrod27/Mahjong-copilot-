@@ -5,6 +5,7 @@ import "./globals.css";
 import StoreProvider from "@/store/provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { SITE_NAME, SITE_URL, TITLE_SUFFIX } from "@/lib/siteMetadata";
 
 const notoSans = Noto_Sans_SC({
   subsets: ["latin"],
@@ -21,8 +22,24 @@ const notoSerif = Noto_Serif_SC({
 });
 
 export const metadata: Metadata = {
-  title: "16 Bit Mahjong",
-  description: "Learn and play Hong Kong Mahjong",
+  // metadataBase makes every route's relative `alternates.canonical` resolve
+  // to an absolute URL. Without it Next drops canonicals silently.
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} — Learn and Play Hong Kong Mahjong`,
+    // Pages set a bare title; the suffix is applied here so it stays
+    // consistent and no page has to remember it.
+    template: `%s${TITLE_SUFFIX}`,
+  },
+  description:
+    'Learn Hong Kong Mahjong from scratch — tiles, sets, scoring, and how a hand actually runs — then play a full game solo against AI. Free, no account, works offline.',
+  applicationName: SITE_NAME,
+  alternates: { canonical: '/' },
+  openGraph: {
+    siteName: SITE_NAME,
+    type: 'website',
+    locale: 'en_US',
+  },
 };
 
 export const viewport: Viewport = {

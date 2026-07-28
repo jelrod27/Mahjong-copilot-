@@ -1,4 +1,6 @@
 import { pageMetadata } from '@/lib/siteMetadata';
+import { JsonLd } from '@/components/JsonLd';
+import { breadcrumbJsonLd, courseListJsonLd } from '@/lib/structuredData';
 import LearnClient from './LearnClient';
 
 export const metadata = pageMetadata({
@@ -8,5 +10,15 @@ export const metadata = pageMetadata({
 });
 
 export default function Page() {
-  return <LearnClient />;
+  return (
+    <>
+      <JsonLd
+        data={[
+          courseListJsonLd(),
+          breadcrumbJsonLd([{ name: 'Learn', path: '/learn' }]),
+        ]}
+      />
+      <LearnClient />
+    </>
+  );
 }

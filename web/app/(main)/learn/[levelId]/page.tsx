@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { AllLevels, getLevelById } from '@/content';
 import { pageMetadata } from '@/lib/siteMetadata';
+import { JsonLd } from '@/components/JsonLd';
+import { breadcrumbJsonLd, courseJsonLd } from '@/lib/structuredData';
 import LevelClient from './LevelClient';
 
 type Params = { levelId: string };
@@ -42,6 +44,21 @@ export async function generateMetadata({
 
 export default async function Page({ params }: { params: Promise<Params> }) {
   const { levelId } = await params;
-  if (!getLevelById(Number(levelId))) notFound();
-  return <LevelClient />;
+  const level = getLevelById(Number(levelId));
+  if (!level) notFound();
+
+  return (
+    <>
+      <JsonLd
+        data={[
+          courseJsonLd(level),
+          breadcrumbJsonLd([
+            { name: 'Learn', path: '/learn' },
+            { name: level.title, path: `/learn/${level.id}` },
+          ]),
+        ]}
+      />
+      <LevelClient />
+    </>
+  );
 }

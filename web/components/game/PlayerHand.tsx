@@ -85,13 +85,20 @@ function PlayerHand({
               tutorLabel={tutorLabel ?? undefined}
               heatOverlay={heatOverlay}
             />
+            {/* KEEP is the majority state — printing it under every tile put a
+                wall of identical words across the hand and buried the two
+                labels worth reading. The tile's colour strip still carries
+                KEEP, and the tile's own aria-label carries all three.
+                The row is items-end, so the slot renders even when it has no
+                word: a non-breaking space holds exactly one line box open and
+                keeps every tile on the same baseline. */}
             {tutorLabel && (
               <div
                 className="mt-0.5 text-center font-sans text-muted-foreground"
                 style={{ fontSize: 'calc(var(--tile-w) * 0.2)' }}
                 aria-hidden="true"
               >
-                {tutorLabel}
+                {tutorLabel === 'KEEP' ? ' ' : tutorLabel}
               </div>
             )}
           </div>

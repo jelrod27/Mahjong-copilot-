@@ -8,6 +8,7 @@ import {
   SETTINGS_SET_LIVE_FAAN_METER,
   SETTINGS_SET_TILE_VOICE, SETTINGS_SET_CRT_EFFECT, SETTINGS_SET_MUSIC_ENABLED,
 } from '../../actions/settingsActions';
+import { DEFAULT_TABLE_FELT } from '@/lib/cosmetics';
 
 const initialState = {
   selectedVariant: 'Hong Kong Mahjong',
@@ -22,7 +23,9 @@ const initialState = {
   liveFaanMeter: true,
   tileVoice: 'off' as const,
   tilePalette: 'bone-wood' as const,
-  tableFelt: 'bamboo-mat' as const,
+  // Sourced from the constant the reducer itself defaults to; changing the
+  // shipped felt should not require editing this fixture.
+  tableFelt: DEFAULT_TABLE_FELT,
   npcRoster: 'default' as const,
   npcRosterMode: 'auto' as const,
   crtEffect: false,

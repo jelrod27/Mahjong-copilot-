@@ -126,11 +126,13 @@ export default function HomePage() {
       )}
 
       {/* Hero: the felt. Reuses the board's own texture, vignette and wood
-          rail (.game-table-felt + .felt-bamboo-mat) so the landing page and
-          the game itself read as one product. Text sits on the same
-          translucent-black scrim the board uses for its own HUD surfaces
-          (see .game-hud-surface) so cream text clears WCAG contrast against
-          the warm felt underneath it. */}
+          rail (.game-table-felt) so the landing page and the game itself read
+          as one product. The hero deliberately stays on bamboo-mat while the
+          board defaults to classic-green (see DEFAULT_TABLE_FELT): warm wood
+          at the entrance, jade at the table, so arriving at a game registers
+          as a change of room. Text sits on the same translucent-black scrim
+          the board uses for its own HUD surfaces (see .game-hud-surface) so
+          cream text clears WCAG contrast against the warm felt underneath. */}
       <section className="game-table-felt felt-bamboo-mat relative overflow-hidden rounded-lg p-3 sm:p-6 md:p-10">
         <div className="relative z-10 mx-auto flex max-w-3xl flex-col items-center gap-6">
           <div className="w-full rounded-lg bg-black/40 px-5 py-6 text-center backdrop-blur-xs sm:px-8 sm:py-8">

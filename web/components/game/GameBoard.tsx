@@ -406,7 +406,10 @@ export default function GameBoard({
           </div>
         </div>
 
-        {/* Beginner Assist legend */}
+        {/* Beginner Assist legend. Only Good and OK carry a printed label on
+            the tile itself — Keep is the majority state, so its colour has to
+            do the work alone. These three classes must stay in step with
+            TUTOR_COLORS in RetroTile; both sides resolve the same tokens. */}
         {tileClassifications && tileClassifications.size > 0 && (
           <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 px-1 text-center font-sans text-[9px] text-muted-foreground md:text-xs">
             <span>
@@ -414,11 +417,11 @@ export default function GameBoard({
             </span>
             <span className="text-border">·</span>
             <span>
-              <span className="font-semibold text-highlight">OK</span> neutral
+              <span className="font-semibold text-accent">OK</span> neutral
             </span>
             <span className="text-border">·</span>
             <span>
-              <span className="font-semibold text-accent">Keep</span> useful tile
+              <span className="font-semibold text-destructive">Keep</span> useful tile
             </span>
           </div>
         )}

@@ -154,7 +154,7 @@ export const TABLE_FELTS: Record<TableFeltId, TableFelt> = {
   },
 };
 
-export const DEFAULT_TABLE_FELT: TableFeltId = 'bamboo-mat';
+export const DEFAULT_TABLE_FELT: TableFeltId = 'classic-green';
 
 export function getTableFelt(id: TableFeltId | undefined | null): TableFelt {
   if (!id || !(id in TABLE_FELTS)) return TABLE_FELTS[DEFAULT_TABLE_FELT];

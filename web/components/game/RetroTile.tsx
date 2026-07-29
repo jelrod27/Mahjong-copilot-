@@ -54,10 +54,13 @@ function getSuitLabel(tile: Tile): string {
   return '';
 }
 
+// The tutor strip and the legend under the hand must name the same three
+// colours, or the strip becomes unreadable. Both sides point at these tokens
+// rather than at literals so they cannot drift apart.
 const TUTOR_COLORS: Record<string, string> = {
-  green: '#5DAF6A',
-  orange: '#C9A84C',
-  red: '#C75B4A',
+  green: 'var(--color-success)',
+  orange: 'var(--color-accent)',
+  red: 'var(--color-destructive)',
 };
 
 function RetroTile({

@@ -50,14 +50,14 @@ describe('TILE_PALETTES', () => {
 });
 
 describe('TABLE_FELTS', () => {
-  it('exposes 4 felts including the bamboo-mat default', () => {
+  it('exposes 4 felts including the classic-green default', () => {
     expect(Object.keys(TABLE_FELTS).sort()).toEqual([
       'bamboo-mat',
       'casino-black',
       'classic-green',
       'tournament-red',
     ]);
-    expect(DEFAULT_TABLE_FELT).toBe('bamboo-mat');
+    expect(DEFAULT_TABLE_FELT).toBe('classic-green');
   });
 
   it('every felt has a className that matches its id', () => {
@@ -91,10 +91,10 @@ describe('lookup helpers fall back to defaults on bad input', () => {
     expect(getTilePalette(null).id).toBe('bone-wood');
   });
 
-  it('getTableFelt returns bamboo-mat for unknown id', () => {
-    expect(getTableFelt('not-a-felt' as never).id).toBe('bamboo-mat');
-    expect(getTableFelt(undefined).id).toBe('bamboo-mat');
-    expect(getTableFelt(null).id).toBe('bamboo-mat');
+  it('getTableFelt returns classic-green for unknown id', () => {
+    expect(getTableFelt('not-a-felt' as never).id).toBe('classic-green');
+    expect(getTableFelt(undefined).id).toBe('classic-green');
+    expect(getTableFelt(null).id).toBe('classic-green');
   });
 
   it('getRoster returns default for unknown id', () => {

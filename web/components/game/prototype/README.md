@@ -19,6 +19,7 @@ open http://localhost:3000/play/game?difficulty=easy&variant=F
 | D | Three.js sea | WebGL discard sea only; shadows fall on the real CSS felt. |
 | E | Three.js table + hand | D + the human hand as upright 3D tiles, picked by raycast. |
 | F | Three.js full board | Whole table in WebGL: felt + rim, live wall, all four seats, melds, discards. DOM keeps HUD, action bar, NPC plaques. |
+| G | Three.js max | F + image-based lighting (RoomEnvironment/PMREM), UnrealBloom, a camera that fits the board to any viewport, and NPC plaques placed by projecting their 3D seat. Fixed camera. |
 
 ## Findings so far
 
@@ -42,13 +43,35 @@ open http://localhost:3000/play/game?difficulty=easy&variant=F
 - **No reflow in 3D.** A claim window opening reflowed the board and clipped the
   canvas, because the scene has fixed dimensions and no layout engine.
 
+### From variant G
+
+- **The camera is the layout engine.** With no flexbox in 3D, nothing reflows on
+  resize, so `fitCamera()` solves the bounding sphere against whichever of the
+  two FOVs is tighter. Verified: 390×844 and 1440×900 both fit with no page
+  overflow. This code has no 2D counterpart — CSS did it for free.
+- **IBL stacks on top of the direct lights.** Dropping RoomEnvironment in at the
+  old light levels blew every tile face to flat white. Ambient had to come down
+  0.85 → 0.18 and the key 2.7 → 1.35. Worth knowing before anyone assumes
+  "add an environment map" is a one-liner.
+- **Fitting the whole square table to a wide viewport makes the hand unreadable.**
+  Framing had to bias toward the foreground (pitch 50° → 39°, look target pushed
+  to z 2.4) so the hand dominates and the far rim crops — which is what real
+  mahjong games do.
+- **Projected DOM overlays need clamping.** Seat plaques placed by projecting
+  their 3D position fall off-screen on a phone; they are clamped back inside the
+  canvas. That clamp is the DOM-overlay tax the 2D rim layout never paid.
+
 ## Open — next session
 
-- NPC plaques are clipped at the canvas edges in F (Hana's portrait cut off at
-  the top, Mei/Yuki names truncated). They were positioned for the 2D layout;
-  a 3D board wants them re-placed against projected world coordinates.
-- No player attribution on the discard groups in D–F. `DiscardPool`'s
+- On a phone the NPC plaques cover a lot of the 3D table. They are legible and
+  on-screen, but the hybrid needs a compact plaque variant at that width.
+- No player attribution on the discard groups in D–G. `DiscardPool`'s
   "You / Yuki / Hana / Mei" headers have no 3D equivalent yet.
+- Bloom and IBL are on in G but subtle by design. Worth deciding whether they
+  earn their cost on a real GPU.
+- Operational: do not run two `next dev` servers at once. They share `.next` and
+  corrupt each other's chunks (symptom: 404s on `/_next/static/...` and a board
+  stuck on "Setting the table").
 - Real GPU performance unmeasured. Headless is SwiftShader software rendering,
   so the FPS numbers from `proto-check.mjs` are meaningless. Check on a real
   machine and a phone.

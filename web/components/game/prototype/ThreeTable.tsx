@@ -17,6 +17,11 @@
 
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { Tile, tileKey } from '@/models/Tile';
 import type { GameState, MeldInfo } from '@/models/GameState';
 import type { TilePalette } from '@/lib/cosmetics';
@@ -26,7 +31,10 @@ const TILE_W = 0.62;
 const TILE_H = 0.82;
 const TILE_D = 0.4;
 
-export type TableMode = 'sea' | 'full' | 'board';
+export type TableMode = 'sea' | 'full' | 'board' | 'max';
+
+/** Where each seat's DOM plaque should sit, in canvas pixels. */
+export type SeatAnchors = Record<string, { x: number; y: number }>;
 
 /** Rounded-rect tile body, extruded with a bevel so edges catch the light. */
 function makeTileGeometry(): THREE.ExtrudeGeometry {
@@ -145,6 +153,8 @@ interface ThreeTableProps {
   onTileSelect?: (tile: Tile) => void;
   selectedTileId?: string;
   className?: string;
+  /** Called on resize with each seat's projected screen position. */
+  onSeatAnchors?: (anchors: SeatAnchors) => void;
 }
 
 export default function ThreeTable(props: ThreeTableProps) {
@@ -158,7 +168,8 @@ export default function ThreeTable(props: ThreeTableProps) {
     const mount = mountRef.current;
     if (!mount) return;
     const initialMode = propsRef.current.mode;
-    const isBoard = initialMode === 'board';
+    const isMax = initialMode === 'max';
+    const isBoard = initialMode === 'board' || isMax;
     const isFull = initialMode === 'full';
 
     const scene = new THREE.Scene();
@@ -167,7 +178,7 @@ export default function ThreeTable(props: ThreeTableProps) {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = isBoard ? 1.05 : 1.15;
+    renderer.toneMappingExposure = isMax ? 0.92 : isBoard ? 1.05 : 1.15;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     mount.appendChild(renderer.domElement);
     Object.assign(renderer.domElement.style, { width: '100%', height: '100%', display: 'block' });
@@ -175,12 +186,12 @@ export default function ThreeTable(props: ThreeTableProps) {
     const camera = new THREE.PerspectiveCamera(isBoard ? 38 : isFull ? 42 : 38, 1, 0.1, 120);
     if (isBoard) camera.position.set(0, 11.5, 13.2);
     else camera.position.set(0, isFull ? 6.0 : 7.6, isFull ? 8.6 : 6.4);
-    const lookTarget = new THREE.Vector3(0, 0, isBoard ? 1.4 : isFull ? 2.1 : 0.2);
+    const lookTarget = new THREE.Vector3(0, 0, isMax ? 2.4 : isBoard ? 1.4 : isFull ? 2.1 : 0.2);
     camera.lookAt(lookTarget);
 
     // --- Lighting
-    scene.add(new THREE.AmbientLight(0x8899bb, isBoard ? 0.85 : 1.1));
-    const key = new THREE.DirectionalLight(0xfff1d6, isBoard ? 2.7 : 2.4);
+    scene.add(new THREE.AmbientLight(0x8899bb, isMax ? 0.18 : isBoard ? 0.85 : 1.1));
+    const key = new THREE.DirectionalLight(0xfff1d6, isMax ? 1.35 : isBoard ? 2.7 : 2.4);
     key.position.set(-5.5, 12, 6);
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
@@ -194,9 +205,35 @@ export default function ThreeTable(props: ThreeTableProps) {
     key.shadow.bias = -0.0009;
     key.shadow.radius = 3;
     scene.add(key);
-    const fill = new THREE.DirectionalLight(0x9fd0ff, 0.5);
+    const fill = new THREE.DirectionalLight(0x9fd0ff, isMax ? 0.18 : 0.5);
     fill.position.set(6, 5, -5);
     scene.add(fill);
+
+    // --- Variant G: image-based lighting + bloom.
+    // RoomEnvironment is generated in-engine, so there is no external HDR to
+    // fetch — it gives the clearcoat faces something real to reflect without
+    // adding a network asset or tripping the site's CSP.
+    let pmrem: THREE.PMREMGenerator | null = null;
+    let envRT: THREE.WebGLRenderTarget | null = null;
+    let composer: EffectComposer | null = null;
+    let bloomPass: UnrealBloomPass | null = null;
+    if (isMax) {
+      pmrem = new THREE.PMREMGenerator(renderer);
+      envRT = pmrem.fromScene(new RoomEnvironment(), 0.04);
+      scene.environment = envRT.texture;
+      scene.environmentIntensity = 0.3;
+
+      composer = new EffectComposer(renderer);
+      composer.addPass(new RenderPass(scene, camera));
+      bloomPass = new UnrealBloomPass(
+        new THREE.Vector2(1, 1),
+        0.12, // strength — a sheen on lit tile edges, not a glow filter
+        0.55, // radius
+        1.0, // threshold: only genuine highlights bloom
+      );
+      composer.addPass(bloomPass);
+      composer.addPass(new OutputPass());
+    }
 
     // --- Ground
     if (isBoard) {
@@ -299,6 +336,7 @@ export default function ThreeTable(props: ThreeTableProps) {
       const seen = new Set<string>();
       pickable.length = 0;
       const { game, palette: pal } = p;
+      const boardMode = p.mode === 'board' || p.mode === 'max';
       const players = game.players;
       const humanIndex = players.findIndex(pl => pl.id === p.humanPlayerId);
       const seatOf = (i: number) => (i - humanIndex + players.length) % players.length;
@@ -333,7 +371,7 @@ export default function ThreeTable(props: ThreeTableProps) {
 
       // --- Human hand: upright, facing the camera.
       const hand = players[humanIndex]?.hand ?? [];
-      const handZ = p.mode === 'board' ? 7.05 : 4.35;
+      const handZ = boardMode ? 7.05 : 4.35;
       hand.forEach((tile, n) => {
         const mesh = acquire(`h:${tile.id}`, tile, pal, seen);
         const isSel = tile.id === p.selectedTileId;
@@ -349,7 +387,7 @@ export default function ThreeTable(props: ThreeTableProps) {
         pickable.push(mesh);
       });
 
-      if (p.mode !== 'board') {
+      if (!boardMode) {
         for (const [id, mesh] of meshes) {
           if (!seen.has(id)) { tileGroup.remove(mesh); meshes.delete(id); }
         }
@@ -430,12 +468,70 @@ export default function ThreeTable(props: ThreeTableProps) {
     }
     renderer.domElement.addEventListener('click', onClick);
 
+    // --- Dynamic framing.
+    // The 3D board has no flexbox: nothing reflows when the viewport changes,
+    // so the camera has to do the layout. Fit the table's bounding sphere to
+    // whichever of the two FOVs is tighter, and the board fills any aspect
+    // ratio — wide desktop or tall phone — without cropping the hand.
+    const CONTENT_RADIUS = isMax ? 7.1 : 8.7;
+    const PITCH = THREE.MathUtils.degToRad(isMax ? 39 : 50);
+
+    function fitCamera(w: number, h: number) {
+      camera.aspect = w / h;
+      const vFov = THREE.MathUtils.degToRad(camera.fov);
+      const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+      const dist = Math.max(
+        CONTENT_RADIUS / Math.tan(vFov / 2),
+        CONTENT_RADIUS / Math.tan(hFov / 2),
+      );
+      camera.position.set(
+        0,
+        lookTarget.y + dist * Math.sin(PITCH),
+        lookTarget.z + dist * Math.cos(PITCH),
+      );
+      camera.lookAt(lookTarget);
+      camera.updateProjectionMatrix();
+    }
+
+    /** Project each seat's world position to canvas pixels for its DOM plaque. */
+    function emitSeatAnchors(w: number, h: number) {
+      const p = propsRef.current;
+      if (!p.onSeatAnchors) return;
+      const players = p.game.players;
+      const humanIndex = players.findIndex(pl => pl.id === p.humanPlayerId);
+      const anchors: SeatAnchors = {};
+      const v = new THREE.Vector3();
+      players.forEach((player, i) => {
+        const seat = (i - humanIndex + players.length) % players.length;
+        if (seat === 0) return;
+        const { x, z } = seatToWorld(0, 9.6, seat);
+        v.set(x, 1.1, z).project(camera);
+        // Clamp into the canvas: on a narrow viewport the side seats project
+        // past the edge, and a plaque half off-screen is worse than one nudged
+        // inward. This is the DOM-overlay tax that the 2D rim layout never paid.
+        const padX = Math.min(96, w * 0.26);
+        const padY = Math.min(44, h * 0.1);
+        anchors[player.id] = {
+          x: THREE.MathUtils.clamp(((v.x + 1) / 2) * w, padX, w - padX),
+          y: THREE.MathUtils.clamp(((1 - v.y) / 2) * h, padY, h - padY),
+        };
+      });
+      p.onSeatAnchors(anchors);
+    }
+
     function resize() {
       const w = mount!.clientWidth || 1;
       const h = mount!.clientHeight || 1;
       renderer.setSize(w, h, false);
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
+      if (isBoard) {
+        fitCamera(w, h);
+      } else {
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+      }
+      composer?.setSize(w, h);
+      bloomPass?.setSize(w, h);
+      emitSeatAnchors(w, h);
     }
     resize();
     const ro = new ResizeObserver(resize);
@@ -452,7 +548,8 @@ export default function ThreeTable(props: ThreeTableProps) {
           mesh.position.y += (target - mesh.position.y) * 0.18;
         }
       }
-      renderer.render(scene, camera);
+      if (composer) composer.render();
+      else renderer.render(scene, camera);
     }
     frame();
 
@@ -467,6 +564,9 @@ export default function ThreeTable(props: ThreeTableProps) {
         backMaterial.dispose();
         matCache.forEach(m => m.dispose());
         createdTextures.forEach(tex => tex.dispose());
+        composer?.dispose();
+        envRT?.dispose();
+        pmrem?.dispose();
         renderer.dispose();
         if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
       },
@@ -489,7 +589,7 @@ export default function ThreeTable(props: ThreeTableProps) {
       ref={mountRef}
       className={className ?? 'proto-three-mount'}
       style={
-        mode === 'board'
+        mode === 'board' || mode === 'max'
           ? undefined
           : { width: '100%', height: mode === 'full' ? 'clamp(300px, 52vh, 560px)' : 'clamp(230px, 40vh, 430px)' }
       }

@@ -33,7 +33,7 @@ import {
 import { Tile } from '@/models/Tile';
 import { tileArtSrc } from './tileArt';
 
-export type VariantKey = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+export type VariantKey = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G';
 
 export interface FaceRenderProps {
   tile: Tile;
@@ -52,7 +52,7 @@ export interface FaceVariant {
   /** null → RetroTile renders its own (current) markup. */
   renderFace: ((p: FaceRenderProps) => ReactNode) | null;
   /** When set, a WebGL scene replaces the sea ('sea'/'full') or the whole board ('board'). */
-  three?: 'sea' | 'full' | 'board';
+  three?: 'sea' | 'full' | 'board' | 'max';
 }
 
 function ArtFace({ tile, tutorStrip }: FaceRenderProps) {
@@ -99,9 +99,16 @@ export const VARIANTS: Record<VariantKey, FaceVariant> = {
     renderFace: ArtFace,
     three: 'board',
   },
+  G: {
+    key: 'G',
+    name: 'Three.js max',
+    faceClass: 'proto-art-face proto-carved',
+    renderFace: ArtFace,
+    three: 'max',
+  },
 };
 
-const ORDER: VariantKey[] = ['A', 'B', 'C', 'D', 'E', 'F'];
+const ORDER: VariantKey[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
 
 const VariantContext = createContext<FaceVariant>(VARIANTS.A);
 
@@ -266,7 +273,7 @@ function PrototypeStyles() {
       /* --- Variant E: the hand lives in the 3D scene, so hide the DOM row.
              Note what this costs: every per-tile <button> and aria-label goes
              with it, replaced by raycast picking on one opaque canvas. --- */
-      :is([data-proto-variant="E"], [data-proto-variant="F"]) .game-hand-row {
+      :is([data-proto-variant="E"], [data-proto-variant="F"], [data-proto-variant="G"]) .game-hand-row {
         display: none;
       }
       .proto-three-mount canvas {
@@ -283,16 +290,34 @@ function PrototypeStyles() {
       }
       /* The NPC seats stay — portrait, name, wind, turn cue and speech bubbles
          are the hybrid's whole point. Only the tile-shaped DOM goes. */
-      [data-proto-variant="F"] [data-proto-discard-sea],
-      [data-proto-variant="F"] [data-proto-tutor],
-      [data-proto-variant="F"] [data-seat-anchor] .proto-art-face {
+      :is([data-proto-variant="F"], [data-proto-variant="G"]) [data-proto-discard-sea],
+      :is([data-proto-variant="F"], [data-proto-variant="G"]) [data-proto-tutor],
+      :is([data-proto-variant="F"], [data-proto-variant="G"]) [data-seat-anchor] .proto-art-face {
         display: none;
       }
       /* Plaques sit over a lit 3D table, so give them something to sit on. */
-      [data-proto-variant="F"] [data-seat-anchor] {
+      :is([data-proto-variant="F"], [data-proto-variant="G"]) [data-seat-anchor] {
         pointer-events: auto;
         backdrop-filter: blur(3px);
         border-radius: 12px;
+      }
+
+      /* --- Variant G: seats are placed by projecting their 3D position, so the
+             DOM rim columns that clipped them in F are retired. --- */
+      [data-proto-variant="G"] [data-proto-rim-seat],
+      [data-proto-variant="G"] [data-proto-mobile-seats] {
+        display: none;
+      }
+      .proto-seat-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 3;
+        pointer-events: none;
+      }
+      .proto-seat-layer > * {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        pointer-events: auto;
       }
       /* Let clicks through the empty table wrappers to the canvas beneath. */
       [data-proto-variant="F"] .game-table-surface {
@@ -342,6 +367,22 @@ function PrototypeStyles() {
         background: #45454f;
       }
       .proto-switcher-dots button.is-on { background: #ffd166; }
+
+      /* On a phone the bottom-centre bar lands on top of the action bar and
+         the onboarding CTA. Tuck it into the corner instead. */
+      @media (max-width: 700px) {
+        .proto-switcher {
+          bottom: auto;
+          left: auto;
+          top: 6px;
+          right: 6px;
+          transform: none;
+          gap: 6px;
+          padding: 4px 7px;
+          font-size: 10px;
+        }
+        .proto-switcher-label { display: none; }
+      }
     `}</style>
   );
 }

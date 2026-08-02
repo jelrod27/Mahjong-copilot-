@@ -5,7 +5,7 @@
  * card (clipboard + native share where available).
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CharacterPortrait from '@/components/npc/CharacterPortrait';
 import { DailyState, buildShareText, gamStreakLine } from '@/lib/dailyHand';
@@ -13,7 +13,17 @@ import { DailyState, buildShareText, gamStreakLine } from '@/lib/dailyHand';
 export default function DailyResultDialog({ state }: { state: DailyState }) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const result = state.todayResult;
+
+  // The hand ending unmounts the action dock the player was just using, which
+  // drops focus to <body> — a keyboard player is left at the top of the
+  // document with no idea the hand is over. Move focus onto the dialog so the
+  // result is where focus deterministically lands when a hand ends.
+  useEffect(() => {
+    dialogRef.current?.focus();
+  }, []);
+
   if (!result) return null;
 
   const shareText = buildShareText(state);
@@ -44,6 +54,8 @@ export default function DailyResultDialog({ state }: { state: DailyState }) {
 
   return (
     <div
+      ref={dialogRef}
+      tabIndex={-1}
       className="fixed inset-0 z-65 flex items-end justify-center bg-black/70 p-4 backdrop-blur-xs sm:items-center"
       role="dialog"
       aria-modal="true"
@@ -75,9 +87,11 @@ export default function DailyResultDialog({ state }: { state: DailyState }) {
           >
             {copied ? 'Copied to clipboard' : 'Share result'}
           </button>
+          {/* Inherits ds-btn's text-foreground: muted-foreground on this
+              surface measured 3.93:1, under the 4.5:1 floor for 12px text. */}
           <button
             type="button"
-            className="ds-btn min-h-[44px] w-full font-sans text-xs text-muted-foreground"
+            className="ds-btn min-h-[44px] w-full font-sans text-xs"
             onClick={() => router.push('/')}
           >
             Back home

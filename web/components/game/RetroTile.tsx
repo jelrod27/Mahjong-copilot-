@@ -3,6 +3,7 @@
 import { memo } from 'react';
 import { Tile, TileType, TileSuit, WindTile, DragonTile } from '@/models/Tile';
 import { useTilePalette } from './TilePaletteContext';
+import { useTileFaceVariant } from './prototype/PrototypeVariant'; // PROTOTYPE — remove with the prototype directory
 import { TilePalette } from '@/lib/cosmetics';
 import type { TileHeatOverlay } from '@/engine/shantenHeat';
 
@@ -69,6 +70,7 @@ function RetroTile({
   tutorColor, tutorLabel, heatOverlay, paletteOverride,
 }: RetroTileProps) {
   const ctxPalette = useTilePalette();
+  const faceVariant = useTileFaceVariant(); // PROTOTYPE
   const palette = paletteOverride ?? ctxPalette;
   const suitColor = palette.suitColors[tile.suit] || '#5c4632';
   const faceStyle = palette.faceBg.startsWith('#')
@@ -108,6 +110,15 @@ function RetroTile({
     ) : backContent;
   }
 
+  // PROTOTYPE: the tutor strip is assist information, so every face variant
+  // keeps it. Extracted so the variants can place it themselves.
+  const tutorStrip = tutorColor ? (
+    <div
+      className="proto-tutor-strip h-[3px] w-full"
+      style={{ backgroundColor: TUTOR_COLORS[tutorColor] }}
+    />
+  ) : null;
+
   const tileContent = (
     <div
       className={`
@@ -118,19 +129,19 @@ function RetroTile({
         ${isLastDiscarded ? 'animate-pulse-gold' : ''}
         ${isNewlyDrawn ? 'animate-tile-draw' : ''}
         ${isSuggested && !isSelected ? 'animate-pulse-gold' : ''}
+        ${faceVariant.faceClass}
       `}
       style={{
         ...faceStyle,
         ...(heatOverlay ? { boxShadow: `inset 0 0 0 3px ${heatOverlay.color}` } : {}),
       }}
     >
+      {faceVariant.renderFace ? (
+        faceVariant.renderFace({ tile, size, suitColor, stripeHeight, tutorColor, tutorStrip })
+      ) : (
+        <>
       <div style={{ height: stripeHeight, width: '100%', backgroundColor: suitColor }} />
-      {tutorColor && (
-        <div
-          className="h-[3px] w-full"
-          style={{ backgroundColor: TUTOR_COLORS[tutorColor] }}
-        />
-      )}
+      {tutorStrip}
 
       <div className="flex flex-1 flex-col items-center justify-center px-0.5">
         <span
@@ -148,6 +159,8 @@ function RetroTile({
           </span>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 

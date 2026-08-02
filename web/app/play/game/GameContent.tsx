@@ -10,6 +10,7 @@ import MatchOverScreen from '@/components/game/MatchOverScreen';
 import VoiceSubtitle from '@/components/game/VoiceSubtitle';
 import PlayOnboardingDialog from '@/components/play/PlayOnboardingDialog';
 import { TilePaletteProvider } from '@/components/game/TilePaletteContext';
+import { PrototypeVariantProvider } from '@/components/game/prototype/PrototypeVariant'; // PROTOTYPE
 import { GameMode } from '@/models/MatchState';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setActiveMatchRoster } from '@/store/actions/settingsActions';
@@ -194,6 +195,7 @@ export default function GameContent() {
   return (
     <GameErrorBoundary>
       <TilePaletteProvider>
+      <PrototypeVariantProvider>
       <BootOverlay />
       <VoiceSubtitle />
       {showOnboarding && (
@@ -314,6 +316,7 @@ export default function GameContent() {
           onBackToMenu={() => router.push(floorDef ? '/parlour' : '/play')}
         />
       )}
+      </PrototypeVariantProvider>
       </TilePaletteProvider>
     </GameErrorBoundary>
   );

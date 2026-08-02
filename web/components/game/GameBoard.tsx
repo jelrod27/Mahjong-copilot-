@@ -26,6 +26,10 @@ import { TutorAdvice } from '@/engine/types';
 import { TenpaiStatus, WinShortfall } from './useGameController';
 import { FaanProjection } from '@/engine/faanProjection';
 import type { TileHeatOverlay } from '@/engine/shantenHeat';
+// PROTOTYPE — remove with the prototype directory
+import { useTileFaceVariant } from './prototype/PrototypeVariant';
+import { useTilePalette } from './TilePaletteContext';
+import ThreeTable from './prototype/ThreeTable';
 
 interface GameBoardProps {
   gameState: GameState;
@@ -76,6 +80,8 @@ export default function GameBoard({
   const humanIndex = gameState.players.findIndex(p => p.id === humanPlayerId);
   const humanPlayer = gameState.players[humanIndex];
   const isHumanTurn = gameState.currentPlayerIndex === humanIndex;
+  const protoVariant = useTileFaceVariant(); // PROTOTYPE
+  const protoPalette = useTilePalette(); // PROTOTYPE
 
   // Toast system — track last discard for event messages
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -252,6 +258,19 @@ export default function GameBoard({
           Desktop replaces the old three-column scatter (HUD card, vertical
           tile strips, floating pool) with rim plaques around a shared felt. */}
       <div className="relative z-10 flex min-h-0 flex-1 px-1 pb-1 md:px-3 md:pb-2">
+        {/* PROTOTYPE: variant F puts the whole table in one WebGL layer, sized
+            to the table region so the hand isn't hidden behind the dock. */}
+        {protoVariant.three === 'board' && (
+          <ThreeTable
+            game={gameState}
+            humanPlayerId={humanPlayerId}
+            palette={protoPalette}
+            mode="board"
+            onTileSelect={onTileSelect}
+            selectedTileId={selectedTileId}
+            className="proto-three-board"
+          />
+        )}
         <div className="game-table-surface relative flex min-h-0 w-full flex-col">
           {/* Top rim: opposite seat (desktop only) */}
           <div className="hidden md:flex justify-center pt-2" style={{ flex: '0 0 auto' }}>
@@ -300,18 +319,34 @@ export default function GameBoard({
                 </div>
               </div>
 
-              <div className="flex min-h-0 w-full max-w-[min(100%,22rem)] flex-col justify-center overflow-y-auto md:max-w-2xl">
-                <DiscardPool
-                  discards={gameState.discardPile}
-                  lastDiscardedTile={gameState.lastDiscardedTile}
-                  claimHighlight={showClaimHighlight}
-                  playerDiscards={gameState.playerDiscards}
-                  playerNames={playerNames}
-                />
+              <div
+                className="flex min-h-0 w-full max-w-[min(100%,22rem)] flex-col justify-center overflow-y-auto md:max-w-2xl"
+                data-proto-discard-sea /* PROTOTYPE — variant C tilt target */
+              >
+                {/* PROTOTYPE: variants D/E render the sea in WebGL; F renders
+                    the whole board and mounts full-bleed further up. */}
+                {protoVariant.three && protoVariant.three !== 'board' ? (
+                  <ThreeTable
+                    game={gameState}
+                    humanPlayerId={humanPlayerId}
+                    palette={protoPalette}
+                    mode={protoVariant.three}
+                    onTileSelect={onTileSelect}
+                    selectedTileId={selectedTileId}
+                  />
+                ) : protoVariant.three === 'board' ? null : (
+                  <DiscardPool
+                    discards={gameState.discardPile}
+                    lastDiscardedTile={gameState.lastDiscardedTile}
+                    claimHighlight={showClaimHighlight}
+                    playerDiscards={gameState.playerDiscards}
+                    playerNames={playerNames}
+                  />
+                )}
               </div>
 
               {tutorAdvice && (
-                <div className="w-full max-w-[min(100%,20rem)] max-h-22 overflow-y-auto md:max-w-xl" style={{ flex: '0 0 auto' }}>
+                <div className="w-full max-w-[min(100%,20rem)] max-h-22 overflow-y-auto md:max-w-xl" style={{ flex: '0 0 auto' }} data-proto-tutor /* PROTOTYPE */>
                   <TutorPanel advice={tutorAdvice} />
                 </div>
               )}

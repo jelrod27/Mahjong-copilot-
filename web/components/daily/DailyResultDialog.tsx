@@ -22,7 +22,7 @@ export default function DailyResultDialog({ state }: { state: DailyState }) {
   // result is where focus deterministically lands when a hand ends.
   useEffect(() => {
     dialogRef.current?.focus();
-  }, []);
+  }, [result]);
 
   if (!result) return null;
 

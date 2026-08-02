@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /**
  * Shared fixture + keyboard driver for the Daily Hand accessibility baseline
@@ -92,9 +92,23 @@ export async function readFocus(page: Page): Promise<FocusInfo | null> {
   return page.evaluate(focusProbe);
 }
 
-export function describeFocus(f: FocusInfo | null): string {
+function describeFocus(f: FocusInfo | null): string {
   if (!f) return '<no focus / document body>';
   return `${f.tag}${f.testid ? `[${f.testid}]` : ''} "${f.label}"`;
+}
+
+/** Asserts focus is on, or inside, `target`. */
+export async function expectFocusWithin(
+  page: Page,
+  target: Locator,
+  message: string,
+): Promise<void> {
+  await expect
+    .poll(
+      () => target.evaluate((el) => el === document.activeElement || el.contains(document.activeElement)),
+      { message },
+    )
+    .toBe(true);
 }
 
 /**
@@ -123,15 +137,20 @@ export async function expectVisibleFocusIndicator(page: Page, what: string): Pro
  */
 export async function openDailyHand(
   page: Page,
-  opts: { date?: Date; gameSpeed?: 'relaxed' | 'normal' | 'fast' } = {},
+  opts: {
+    /** Settings → tile guidance. Decides which state family tiles announce. */
+    displayMode?: 'tutor' | 'shantenHeat' | 'off';
+  } = {},
 ): Promise<void> {
-  const { date = DAILY_FIXTURE_DATE, gameSpeed = 'fast' } = opts;
+  const { displayMode = 'tutor' } = opts;
+  const gameSpeed = 'fast';
 
-  await page.addInitScript((speed) => {
+  await page.addInitScript(({ speed, mode }) => {
     // `game_speed` is an existing player-facing preference (Settings → Game
     // speed). Choosing the fastest AI pacing keeps a full hand inside a sane
     // CI budget without touching a single game rule.
     localStorage.setItem('game_speed', speed);
+    localStorage.setItem('display_mode', mode);
 
     const counter = { pointer: 0, lastType: '' };
     (window as unknown as { __pointerEvents: typeof counter }).__pointerEvents = counter;
@@ -147,9 +166,9 @@ export async function openDailyHand(
         { capture: true },
       );
     }
-  }, gameSpeed);
+  }, { speed: gameSpeed, mode: displayMode });
 
-  await page.clock.install({ time: date });
+  await page.clock.install({ time: DAILY_FIXTURE_DATE });
   await page.clock.resume();
 
   await page.goto('/play/game?daily=1');
@@ -244,10 +263,19 @@ export interface PlayLog {
   chowWindows: number;
   /** Identity labels of every tile the run selected, in order. */
   selectedTiles: string[];
-  /** Controls the run actually operated (each had its focus ring asserted). */
-  operated: string[];
   finished: boolean;
 }
+
+/**
+ * The control this run presses to resolve each kind of claim window. Passing
+ * is the only option that always exists — `claim-best-button` is offered only
+ * when the human can actually take the discard — so the driver always passes
+ * and the hand plays on either way.
+ */
+const CLAIM_RESOLUTION: Record<'claim' | 'chow', string> = {
+  claim: 'claim-pass-button',
+  chow: 'chow-pass-button',
+};
 
 /**
  * Selects a tile and discards it, using only Tab / Shift+Tab / Enter.
@@ -271,19 +299,14 @@ async function discardOneTileByKeyboard(page: Page, log: PlayLog): Promise<void>
   await expectVisibleFocusIndicator(page, `hand tile "${tile.target.label}"`);
   await page.keyboard.press('Enter');
   log.selectedTiles.push(tile.target.label);
-  log.operated.push(tile.target.label);
 
   const discardButton = page.getByTestId('discard-tile-button');
   await expect(discardButton, 'selecting a tile must arm the Discard button').toBeEnabled();
 
-  const discard = await tabUntil(
-    page,
-    'the Discard button',
-    (f) => f.testid === 'discard-tile-button',
-    { shift: true },
-  );
+  await tabUntil(page, 'the Discard button', (f) => f.testid === 'discard-tile-button', {
+    shift: true,
+  });
   await expectVisibleFocusIndicator(page, 'the Discard button');
-  log.operated.push(discard.target.label);
 
   for (let attempt = 1; attempt <= 4; attempt++) {
     await page.keyboard.press('Enter');
@@ -313,15 +336,14 @@ async function discardOneTileByKeyboard(page: Page, log: PlayLog): Promise<void>
  */
 export async function playDailyHandWithKeyboard(
   page: Page,
-  opts: { maxTurns?: number; onClaim?: 'pass' | 'take' } = {},
+  opts: { maxTurns?: number } = {},
 ): Promise<PlayLog> {
-  const { maxTurns = 120, onClaim = 'pass' } = opts;
+  const { maxTurns = 120 } = opts;
   const log: PlayLog = {
     discards: 0,
     claimWindows: 0,
     chowWindows: 0,
     selectedTiles: [],
-    operated: [],
     finished: false,
   };
 
@@ -334,24 +356,22 @@ export async function playDailyHandWithKeyboard(
     }
 
     if (phase === 'claim' || phase === 'chow') {
-      const testid =
-        phase === 'chow' ? 'chow-pass-button' : onClaim === 'take' ? 'claim-best-button' : 'claim-pass-button';
+      const testid = CLAIM_RESOLUTION[phase];
       if (phase === 'chow') log.chowWindows += 1;
       else log.claimWindows += 1;
 
-      const claim = await tabUntil(page, `the ${testid}`, (f) => f.testid === testid);
+      await tabUntil(page, `the ${testid}`, (f) => f.testid === testid);
       await expectVisibleFocusIndicator(page, `the ${testid}`);
-      log.operated.push(claim.target.label);
       await page.keyboard.press('Enter');
+
       // The claim window is time-boxed; wait for the board to leave it so the
-      // next iteration classifies a fresh phase rather than the stale one.
-      await page
-        .waitForFunction(
-          (id) => !document.querySelector(`[data-testid="${id}"]`),
-          testid,
-          { timeout: 15_000 },
-        )
-        .catch(() => undefined);
+      // next iteration classifies a fresh phase rather than the stale one. A
+      // window that never closes is a real stall, so let it throw.
+      await page.waitForFunction(
+        (id) => !document.querySelector(`[data-testid="${id}"]`),
+        testid,
+        { timeout: 15_000 },
+      );
       continue;
     }
 

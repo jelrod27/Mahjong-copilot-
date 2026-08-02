@@ -58,18 +58,28 @@ Order of the nine non-tile stops:
 ### Discrepancy with issue #114
 
 Issue #114 states "23 board tab stops, **13** of them tiles". The 23 total
-reproduces exactly. The tile count does not: the measured value is **14**.
+reproduces exactly. The tile count does not, and the two numbers cannot both be
+true at once — at **no instant** does this board offer 23 tab stops of which 13
+are tiles.
 
-Both numbers are real, they just describe different moments:
+What is actually measurable:
+
+| Moment | Tiles in hand | Tile **tab stops** | Board tab stops |
+| --- | --- | --- | --- |
+| Opening discard turn | 14 | **14** | **23** |
+| Between turns (opponents playing, claim windows) | 13 | **0** | — |
 
 - The human is always dealer in hand 1, so at the opening discard turn the hand
-  holds **14** tiles — 13 concealed plus the drawn 14th — and every one is its
-  own `<button>` tab stop. 23 total = 9 non-tile stops + 14 tiles.
-- Between turns (after discarding, during opponents' turns and claim windows)
-  the concealed hand is **13** tiles.
+  holds 14 tiles — 13 concealed plus the drawn 14th — and every one is its own
+  `<button>` tab stop. 23 = 9 non-tile stops + 14 tiles.
+- Between turns the concealed hand is 13 tiles, but `PlayerHand` renders them
+  `disabled` outside the discard turn. **Disabled buttons are not focusable**,
+  so those 13 tiles contribute *zero* tab stops.
 
-13 tiles and 23 stops cannot both hold at the same instant, so the specs assert
-each against the phase where it is true.
+So **13 is a hand size, never a tab-stop count.** The specs assert it as what it
+is: 13 tiles present, all disabled, all still announcing their identity, and
+zero of them focusable. Pinning "13 tile tab stops" would have meant asserting
+something that has never been true of this board.
 
 ### What moves these numbers
 
@@ -82,6 +92,36 @@ each against the phase where it is true.
   button. This is why the fixture date is pinned rather than using "today".
 - Kong / Mahjong buttons appear conditionally on the discard turn and would add
   stops on seeds that allow them.
+
+## Tile states: what the board actually announces
+
+Every tile is a real `<button>` whose `aria-label` is built in `RetroTile.tsx`
+as `Mahjong tile: <name>. <states>.` The states the current UI can emit:
+
+| State | Announced as | When |
+| --- | --- | --- |
+| Selected | `selected` | tile is the chosen discard |
+| Suggested | `suggested discard` | the tutor's recommended discard |
+| Beginner Assist grade | `Beginner Assist: GOOD \| OK \| KEEP` | display mode `tutor` (default) |
+| Shanten heat | `Shanten heat: tenpai after discard \| close to winning \| far from winning \| all discards equal` | display mode `shantenHeat`; this is distance-from-winning, **not** a danger reading |
+| Disabled | native `disabled` attribute | not the player's discard turn |
+
+All five are asserted.
+
+### States named in #114 that do not exist yet
+
+Issue #114 asks for "**dangerous**" and "**unavailable**" tile states to be
+announced. Neither has any representation in the current DOM board:
+
+- `tileDangerScore()` (`engine/tutor.ts`) exists, but it is only an input to
+  *ranking* the suggested discard — no per-tile danger reading reaches the DOM
+  or the aria-label.
+- There is no "unavailable" tile concept at all. The nearest thing is the
+  native `disabled` state, which is covered above.
+
+These are not silently skipped: there is nothing in the current board to pin,
+so pinning them would mean inventing the feature, which this ticket explicitly
+is not for. They belong with the accessibility work in #119.
 
 ## Axe scanning
 
@@ -118,14 +158,29 @@ suppressed; all three are narrow and behaviour-preserving for mouse and touch.
    `DailyResultDialog.tsx` now focuses the dialog on open, so focus lands
    somewhere deterministic and documented.
 
-## Known limitation, not fixed here
+## Known limitations, not fixed here
 
-The Daily result dialog moves focus in but does **not** trap it, so Tab can
-still reach the board behind an `aria-modal` dialog. Axe does not flag this and
-fixing it means adding focus-trap machinery to a hand-rolled dialog, which is
-outside a testing-and-baseline ticket. The glossary modal, built on
-`@base-ui/react/dialog`, does trap and restore focus correctly and is covered
-by a spec. Follow-up belongs with the accessibility work in #119.
+All belong with the accessibility work in **#119**; each would mean building
+new behaviour, which a testing-and-baseline ticket is not for.
+
+1. **The result dialog does not trap focus.** It now receives focus on open,
+   but Tab can still reach the board behind an `aria-modal` dialog. Axe does
+   not flag this. The glossary modal, built on `@base-ui/react/dialog`, does
+   trap and restore focus correctly and is covered by a spec.
+2. **The result dialog has no dismiss affordance.** There is no close button
+   and no Escape handler; "dismissing" it means activating **Back home**, which
+   navigates to `/`. The keyboard spec drives exactly that and asserts the
+   navigation, so #114's "through to dismissing the daily result dialog" is
+   satisfied by the only route the dialog offers — but Escape-to-close does not
+   exist to be asserted.
+3. **`dangerous` and `unavailable` tile states do not exist** (see above).
+
+### A note on the two scroll regions
+
+Fixing `scrollable-region-focusable` strictly needs only `tabIndex={0}`. The
+`role="group"` + `aria-label` go one step further on purpose: a focus stop with
+no accessible name announces as nothing, and the tab-order spec asserts every
+stop is identifiable. Naming them costs nothing and keeps that guarantee true.
 
 ## Pre-existing behaviour worth knowing
 

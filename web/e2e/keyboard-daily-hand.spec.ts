@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 import {
+  expectFocusWithin,
+  expectVisibleFocusIndicator,
   openDailyHand,
   playDailyHandWithKeyboard,
   pointerEventCount,
@@ -65,14 +67,13 @@ test.describe('Daily Hand — keyboard only', () => {
     // Focus is already on the dialog when the hand ends, so Tab walks its own
     // controls rather than the board behind it.
     const dialog = page.getByTestId('daily-result-dialog');
-    await expect
-      .poll(() => dialog.evaluate((d) => d === document.activeElement || d.contains(document.activeElement)))
-      .toBe(true);
+    await expectFocusWithin(page, dialog, 'the hand ending should put focus on the result dialog');
 
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
     const focused = await readFocus(page);
     expect(focused?.label, 'the second stop inside the dialog is Back home').toBe('Back home');
+    await expectVisibleFocusIndicator(page, 'the Back home button');
 
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/\/$|\/\?/);

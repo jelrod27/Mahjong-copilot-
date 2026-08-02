@@ -4,6 +4,7 @@ import {
   BOARD_TAB_STOPS,
   CONCEALED_HAND_TILES,
   OPENING_HAND_TILE_STOPS,
+  expectFocusWithin,
   expectVisibleFocusIndicator,
   openDailyHand,
   playDailyHandWithKeyboard,
@@ -48,11 +49,16 @@ async function expectNoSeriousViolations(page: Page, phase: string) {
   expect(failing, `axe found serious/critical violations at the "${phase}" phase:\n${detail}`).toEqual([]);
 }
 
+/**
+ * The four phases the ticket requires are split across two tests rather than
+ * four. The phases are stages of one stateful hand — you cannot reach a claim
+ * window without playing to it — so each test covers the phases it can reach
+ * from a single deal. Splitting further would mean replaying the whole hand
+ * per phase; keeping all four in one test would let a failure at the deal hide
+ * the claim and result coverage entirely.
+ */
 test.describe('Daily Hand — automated accessibility scanning', () => {
-  test('has no serious violations at deal, discard turn, claim window or hand result', async ({
-    page,
-  }) => {
-    test.setTimeout(300_000);
+  test('has no serious violations at the initial deal or the discard turn', async ({ page }) => {
     await openDailyHand(page);
 
     // Phase 1 — initial deal. Flowers for all four players are revealed and
@@ -66,6 +72,11 @@ test.describe('Daily Hand — automated accessibility scanning', () => {
     await expect(page.getByTestId('discard-tile-button')).toBeEnabled();
     expect(tile.target.label).toMatch(/^Mahjong tile: /);
     await expectNoSeriousViolations(page, 'player discard turn');
+  });
+
+  test('has no serious violations at a claim window or the hand result', async ({ page }) => {
+    test.setTimeout(300_000);
+    await openDailyHand(page);
 
     // Phase 3 — a claim window. Play on with the keyboard until an opponent's
     // discard opens one; the pinned seed reaches this reliably.
@@ -82,8 +93,7 @@ test.describe('Daily Hand — automated accessibility scanning', () => {
     }
     expect(scannedClaim, 'the pinned Daily Hand seed should open a claim window').toBe(true);
 
-    // Phase 4 — the hand result. Finish the hand from wherever the claim scan
-    // left off.
+    // Phase 4 — the hand result. Finish the hand from where the claim left off.
     const log = await playDailyHandWithKeyboard(page);
     expect(log.finished, 'the Daily Hand should reach its result dialog').toBe(true);
     await expect(page.getByTestId('daily-result-dialog')).toBeVisible();
@@ -154,7 +164,32 @@ test.describe('Daily Hand — player hand semantics', () => {
     expect(selected).toBe(`Mahjong tile: ${tileName}. selected, Beginner Assist: GOOD.`);
   });
 
-  test('tiles are disabled — and stay identifiable — when it is not the discard turn', async ({
+  test('shanten-heat mode announces each tile\'s distance from winning', async ({ page }) => {
+    // The board's other tile-guidance mode (Settings → tile guidance). It
+    // replaces the Beginner Assist grade with how far discarding each tile
+    // would leave the hand from a win. This is the second and last tile-state
+    // family the current board exposes — it is *not* a danger reading, and
+    // #114's "dangerous" and "unavailable" states have no representation at
+    // all (see README-a11y-baseline.md).
+    await openDailyHand(page, { displayMode: 'shantenHeat' });
+
+    const labels = await page
+      .locator('[data-testid="human-hand-tile"] button')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('aria-label') ?? ''));
+
+    expect(labels.length).toBe(OPENING_HAND_TILE_STOPS);
+    for (const label of labels) {
+      expect(label).toMatch(/^Mahjong tile: \S/);
+      expect(
+        label,
+        'in shanten-heat mode each tile announces its heat reading',
+      ).toMatch(
+        /Shanten heat: (tenpai after discard|close to winning|far from winning|all discards equal)/,
+      );
+    }
+  });
+
+  test('the 13-tile concealed hand stays readable but takes no tab stop between turns', async ({
     page,
   }) => {
     await openDailyHand(page);
@@ -181,6 +216,14 @@ test.describe('Daily Hand — player hand semantics', () => {
       // Disabled must not mean anonymous — the hand is still readable.
       expect(s.label).toMatch(/^Mahjong tile: /);
     }
+
+    // Because they are disabled, these 13 tiles contribute *zero* tab stops.
+    // This is why issue #114's "23 board tab stops, 13 of them tiles" cannot
+    // hold at any single instant: 13 is a hand size, never a tab-stop count.
+    const focusableTiles = await tiles.evaluateAll(
+      (els) => els.filter((el) => !(el as HTMLButtonElement).disabled).length,
+    );
+    expect(focusableTiles, 'a disabled hand offers no tab stops').toBe(0);
   });
 });
 
@@ -200,11 +243,7 @@ test.describe('Daily Hand — focus behaviour', () => {
     await expect(modal).toBeVisible();
 
     // Focus moves into the dialog rather than being left behind it.
-    await expect
-      .poll(() => modal.evaluate((m) => m.contains(document.activeElement)), {
-        message: 'focus should move inside the glossary dialog',
-      })
-      .toBe(true);
+    await expectFocusWithin(page, modal, 'focus should move inside the glossary dialog');
 
     await page.keyboard.press('Escape');
     await expect(modal).toBeHidden();
@@ -229,21 +268,23 @@ test.describe('Daily Hand — focus behaviour', () => {
 
     // Deterministic and documented: the end of a hand puts focus on the
     // result dialog, not back at the top of the document.
-    await expect
-      .poll(
-        async () =>
-          dialog.evaluate((d) => d === document.activeElement || d.contains(document.activeElement)),
-        { message: 'focus should land on the Daily result dialog when the hand ends' },
-      )
-      .toBe(true);
+    await expectFocusWithin(
+      page,
+      dialog,
+      'focus should land on the Daily result dialog when the hand ends',
+    );
 
-    // Both of the dialog's actions are reachable from there by keyboard.
+    // Both of the dialog's actions are reachable from there by keyboard, and
+    // each shows where focus is when it gets there.
     const share = await tabUntil(page, 'the Share result button', (f) =>
       /Share result|Copied to clipboard/.test(f.label),
     );
     expect(share.target.tag).toBe('BUTTON');
+    await expectVisibleFocusIndicator(page, 'the Share result button');
+
     const home = await tabUntil(page, 'the Back home button', (f) => f.label === 'Back home');
     expect(home.target.tag).toBe('BUTTON');
+    await expectVisibleFocusIndicator(page, 'the Back home button');
   });
 });
 

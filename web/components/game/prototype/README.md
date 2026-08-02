@@ -101,6 +101,31 @@ other moment and you will wrongly conclude it is broken.
   each tile's foot. Unlit matters — a lit material shades the colour, which is
   exactly what breaks a colour-coded assist (and the Okabe-Ito palette).
 
+### Sharpness — two real bugs, not a taste problem
+
+1. **Post-processing silently disabled antialiasing.** `WebGLRenderer`'s
+   `antialias: true` applies to the DEFAULT framebuffer only. `new
+   EffectComposer(renderer)` allocates its own render target with `samples: 0`,
+   so the moment variant G turned on bloom, every edge in the scene stopped
+   being antialiased. Fixed by passing an explicitly multisampled
+   `WebGLRenderTarget({ samples: 4 })`. This is the single biggest cause of the
+   "pixelated" look and it is invisible in code review.
+2. **The art was downscaled with one bilinear tap.** Source PNGs are 1200x1680
+   drawn into a much smaller canvas; `ctx.drawImage` does that in a single pass
+   and aliases hard. Now resampled via
+   `createImageBitmap(bmp, { resizeQuality: 'high' })`.
+
+Also raised: face textures 384x512 -> 640x854, anisotropy 8 -> GPU max, bevel
+segments 3 -> 5, curve segments 10 -> 18, and the max-mode shadow map
+2048 -> 4096 with radius 3 -> 1.6 (2048 over a 26-unit frustum was ~79
+texels/unit, which mushed every contact edge).
+
+**Texture memory is now the top risk.** 640x854 RGBA is 2.08 MB per face, 2.77
+with mipmaps — about **94 MB** for the ~34 distinct tile types in a typical
+hand. Fine on desktop, dangerous on a phone. The real fix is one KTX2/BasisU
+compressed atlas instead of 34 separate canvas textures, which is an asset
+pipeline, not a tweak. Do not ship the current approach to mobile.
+
 ## Open — next session
 
 - On a phone the NPC plaques cover a lot of the 3D table. They are legible and

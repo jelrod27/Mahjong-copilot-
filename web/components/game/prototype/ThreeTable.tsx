@@ -57,8 +57,8 @@ function makeTileGeometry(): THREE.ExtrudeGeometry {
     bevelEnabled: true,
     bevelThickness: 0.035,
     bevelSize: 0.03,
-    bevelSegments: 3,
-    curveSegments: 10,
+    bevelSegments: 5,
+    curveSegments: 18,
   });
   geo.center();
 
@@ -80,8 +80,8 @@ function makeTileGeometry(): THREE.ExtrudeGeometry {
 }
 
 function baseFaceCanvas(palette: TilePalette) {
-  const W = 384;
-  const H = 512;
+  const W = 640;
+  const H = 854;
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -97,10 +97,16 @@ function baseFaceCanvas(palette: TilePalette) {
   return { canvas, ctx, W, H };
 }
 
+let maxAnisotropy = 8;
+export function setMaxAnisotropy(value: number) { maxAnisotropy = value; }
+
 function finishTexture(canvas: HTMLCanvasElement): THREE.CanvasTexture {
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
+  tex.anisotropy = maxAnisotropy;
+  tex.generateMipmaps = true;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.magFilter = THREE.LinearFilter;
   return tex;
 }
 
@@ -110,13 +116,24 @@ async function makeFaceTexture(tile: Tile, palette: TilePalette): Promise<THREE.
   if (src) {
     try {
       const blob = await (await fetch(src)).blob();
-      const bmp = await createImageBitmap(blob);
-      const pad = W * 0.1;
-      const scale = Math.min((W - pad * 2) / bmp.width, (H - pad * 2) / bmp.height);
-      const dw = bmp.width * scale;
-      const dh = bmp.height * scale;
-      ctx.drawImage(bmp, (W - dw) / 2, (H - dh) / 2, dw, dh);
-      bmp.close();
+      const full = await createImageBitmap(blob);
+      const pad = W * 0.09;
+      const scale = Math.min((W - pad * 2) / full.width, (H - pad * 2) / full.height);
+      const dw = Math.round(full.width * scale);
+      const dh = Math.round(full.height * scale);
+
+      // The source art is 1200x1680; drawing it straight into this canvas is a
+      // ~3x downscale, and canvas drawImage does that with a single bilinear
+      // tap — which aliases badly and is what made the faces look crunchy.
+      // Resampling through createImageBitmap gets a proper filtered downscale.
+      const fitted = await createImageBitmap(full, {
+        resizeWidth: dw,
+        resizeHeight: dh,
+        resizeQuality: 'high',
+      });
+      ctx.drawImage(fitted, Math.round((W - dw) / 2), Math.round((H - dh) / 2));
+      full.close();
+      fitted.close();
     } catch {
       /* prototype: a face that fails to rasterise just stays blank */
     }
@@ -126,8 +143,8 @@ async function makeFaceTexture(tile: Tile, palette: TilePalette): Promise<THREE.
 
 /** Mirrors RetroTile's diagonal back pattern. */
 function makeBackTexture(): THREE.CanvasTexture {
-  const W = 384;
-  const H = 512;
+  const W = 640;
+  const H = 854;
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -196,6 +213,7 @@ export default function ThreeTable(props: ThreeTableProps) {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = isMax ? 0.92 : isBoard ? 1.05 : 1.15;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    setMaxAnisotropy(renderer.capabilities.getMaxAnisotropy());
     mount.appendChild(renderer.domElement);
     Object.assign(renderer.domElement.style, { width: '100%', height: '100%', display: 'block' });
 
@@ -210,7 +228,7 @@ export default function ThreeTable(props: ThreeTableProps) {
     const key = new THREE.DirectionalLight(0xfff1d6, isMax ? 1.35 : isBoard ? 2.7 : 2.4);
     key.position.set(-5.5, 12, 6);
     key.castShadow = true;
-    key.shadow.mapSize.set(2048, 2048);
+    key.shadow.mapSize.set(isMax ? 4096 : 2048, isMax ? 4096 : 2048);
     key.shadow.camera.near = 1;
     key.shadow.camera.far = 40;
     const ext = isBoard ? 13 : 8;
@@ -219,7 +237,7 @@ export default function ThreeTable(props: ThreeTableProps) {
     key.shadow.camera.top = ext;
     key.shadow.camera.bottom = -ext;
     key.shadow.bias = -0.0009;
-    key.shadow.radius = 3;
+    key.shadow.radius = isMax ? 1.6 : 3;
     scene.add(key);
     const fill = new THREE.DirectionalLight(0x9fd0ff, isMax ? 0.18 : 0.5);
     fill.position.set(6, 5, -5);
@@ -232,6 +250,7 @@ export default function ThreeTable(props: ThreeTableProps) {
     let pmrem: THREE.PMREMGenerator | null = null;
     let envRT: THREE.WebGLRenderTarget | null = null;
     let composer: EffectComposer | null = null;
+    let composerTarget: THREE.WebGLRenderTarget | null = null;
     let bloomPass: UnrealBloomPass | null = null;
     if (isMax) {
       pmrem = new THREE.PMREMGenerator(renderer);
@@ -239,7 +258,17 @@ export default function ThreeTable(props: ThreeTableProps) {
       scene.environment = envRT.texture;
       scene.environmentIntensity = 0.3;
 
-      composer = new EffectComposer(renderer);
+      // The renderer's `antialias: true` applies to the DEFAULT framebuffer
+      // only. Rendering through a composer swaps that for a render target, and
+      // EffectComposer's default target has samples: 0 — so every edge in the
+      // scene went unantialiased the moment post-processing was switched on.
+      // An explicitly multisampled target puts MSAA back.
+      const drawSize = renderer.getDrawingBufferSize(new THREE.Vector2());
+      composerTarget = new THREE.WebGLRenderTarget(drawSize.width, drawSize.height, {
+        type: THREE.HalfFloatType,
+        samples: 4,
+      });
+      composer = new EffectComposer(renderer, composerTarget);
       composer.addPass(new RenderPass(scene, camera));
       bloomPass = new UnrealBloomPass(
         new THREE.Vector2(1, 1),
@@ -588,6 +617,7 @@ export default function ThreeTable(props: ThreeTableProps) {
       }
       composer?.setSize(w, h);
       bloomPass?.setSize(w, h);
+      composerTarget?.setSize(Math.floor(w * renderer.getPixelRatio()), Math.floor(h * renderer.getPixelRatio()));
       emitSeatAnchors(w, h);
       invalidate();
     }
@@ -650,6 +680,7 @@ export default function ThreeTable(props: ThreeTableProps) {
         matCache.forEach(m => m.dispose());
         createdTextures.forEach(tex => tex.dispose());
         composer?.dispose();
+        composerTarget?.dispose();
         envRT?.dispose();
         pmrem?.dispose();
         renderer.dispose();

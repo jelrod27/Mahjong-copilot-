@@ -126,6 +126,38 @@ hand. Fine on desktop, dangerous on a phone. The real fix is one KTX2/BasisU
 compressed atlas instead of 34 separate canvas textures, which is an asset
 pipeline, not a tweak. Do not ship the current approach to mobile.
 
+### Discard blocks overlapped at the corners
+
+Each seat's discards laid out as 6 columns starting at z=1.35, but the block's
+own half-width is ~2.02 — so a block reached further sideways than its start
+distance and crossed into the block rotated 90° from it. Late in a hand the two
+piles merged and you could no longer read what had been played.
+
+The invariant: **a discard block's start distance must exceed its own
+half-width.** Now 7 columns (half-width 2.36) starting at 2.5, which also means
+fewer rows. Everything outboard shifted to make room for four full rows:
+melds 4.6 → 5.95, wall 5.7 → 6.75, hands 7.05 → 7.6, felt 17.2 → 18.6.
+Verified with 36 discards on the table: four clean blocks, nothing merged.
+
+### NPCs in the scene
+
+Characters are now drawn in 3D at their seats, not as DOM cards floating over
+the board. `portraitTexture.ts` renders the existing `CharacterPortrait` rig
+through `renderToStaticMarkup` and rasterises it to a texture, so the 566-line
+character rig stays the single source of truth — this only turns it into pixels.
+Emotion follows the turn (`thinking` when it's theirs, `idle` otherwise).
+
+Two deliberate choices:
+- **Unlit material.** These are flat stylised 2D characters; shading them with
+  the table's key light makes them read as cardboard standees.
+- **Text stays in DOM.** Name, wind, score and turn cue remain a plaque anchored
+  to the character's feet, because DOM text stays sharper than any texture and
+  keeps the screen-reader content that a canvas cannot carry.
+
+SVG rasterisation needs the `<img>` + `onload` + double-rAF path, not
+`createImageBitmap` — Chrome rejects SVG blobs there, and an SVG can report
+loaded before it has painted (the same race that made honour tiles black).
+
 ## Open — next session
 
 - On a phone the NPC plaques cover a lot of the 3D table. They are legible and

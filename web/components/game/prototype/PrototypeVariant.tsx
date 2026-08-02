@@ -308,6 +308,11 @@ function PrototypeStyles() {
         backdrop-filter: blur(4px);
         border-radius: 10px;
       }
+      /* G draws the characters in the scene, so the plaque keeps only the text
+         — name, wind, score, turn cue — where DOM stays sharper than a texture. */
+      [data-proto-variant="G"] [data-seat-anchor] [data-testid^="portrait-"] {
+        display: none;
+      }
       /* Plaques sit over a lit 3D table, so give them something to sit on. */
       :is([data-proto-variant="F"], [data-proto-variant="G"]) [data-seat-anchor] {
         pointer-events: auto;
@@ -329,7 +334,9 @@ function PrototypeStyles() {
       }
       .proto-seat-layer > * {
         position: absolute;
-        transform: translate(-50%, -50%);
+        /* Hangs BELOW its anchor: the anchor is the character's feet, so the
+           plaque reads as their nameplate rather than covering their face. */
+        transform: translate(-50%, 0);
         pointer-events: auto;
       }
       /* Let clicks through the empty table wrappers to the canvas beneath. */

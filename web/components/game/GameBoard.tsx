@@ -274,6 +274,11 @@ export default function GameBoard({
             onSeatAnchors={protoVariant.three === 'max' ? setProtoSeatAnchors : undefined}
             tutorColors={tileClassifications}
             suggestedTileId={suggestedTileId}
+            npcSeats={protoVariant.three === 'max' ? {
+              [leftPlayer.id]: NPC_BY_POSITION.left,
+              [topPlayer.id]: NPC_BY_POSITION.top,
+              [rightPlayer.id]: NPC_BY_POSITION.right,
+            } : undefined}
           />
         )}
         {/* PROTOTYPE: seats follow their 3D position instead of the DOM rim,

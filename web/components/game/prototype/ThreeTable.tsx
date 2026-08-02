@@ -26,6 +26,8 @@ import { Tile, tileKey } from '@/models/Tile';
 import type { GameState, MeldInfo } from '@/models/GameState';
 import type { TilePalette } from '@/lib/cosmetics';
 import { tileArtSrc } from './tileArt';
+import { renderPortraitCanvas } from './portraitTexture';
+import type { NpcId, NpcEmotion } from '@/content/npcs';
 
 const TILE_W = 0.62;
 const TILE_H = 0.82;
@@ -172,6 +174,8 @@ interface ThreeTableProps {
   className?: string;
   /** Called on resize with each seat's projected screen position. */
   onSeatAnchors?: (anchors: SeatAnchors) => void;
+  /** Which character sits at each seat, so they can be drawn IN the scene. */
+  npcSeats?: Record<string, NpcId>;
   /** Beginner Assist: per-tile discard advice. Easy mode's whole point. */
   tutorColors?: Map<string, 'green' | 'orange' | 'red'>;
   suggestedTileId?: string;
@@ -285,7 +289,7 @@ export default function ThreeTable(props: ThreeTableProps) {
       // A real table: felt top plus a wooden rim, so the 3D board stands on
       // its own instead of borrowing the CSS felt.
       const felt = new THREE.Mesh(
-        new THREE.BoxGeometry(17.2, 0.5, 17.2),
+        new THREE.BoxGeometry(18.6, 0.5, 18.6),
         new THREE.MeshStandardMaterial({ color: 0x1d5140, roughness: 0.98, metalness: 0 }),
       );
       felt.position.y = -TILE_D / 2 - 0.25;
@@ -293,7 +297,7 @@ export default function ThreeTable(props: ThreeTableProps) {
       scene.add(felt);
 
       const rim = new THREE.Mesh(
-        new THREE.BoxGeometry(18.8, 0.62, 18.8),
+        new THREE.BoxGeometry(20.2, 0.62, 20.2),
         new THREE.MeshStandardMaterial({ color: 0x4a2f1d, roughness: 0.62, metalness: 0.05 }),
       );
       rim.position.y = -TILE_D / 2 - 0.42;
@@ -354,6 +358,44 @@ export default function ThreeTable(props: ThreeTableProps) {
 
     const tileGroup = new THREE.Group();
     scene.add(tileGroup);
+
+    // --- NPCs, in the scene rather than floating above it.
+    // Unlit: these are flat stylised 2D characters, and shading them with the
+    // table's key light makes them read as cardboard. The scene's job here is
+    // placement and occlusion, not relighting the art.
+    const portraits = new Map<string, THREE.Mesh>();
+    const portraitGeometry = new THREE.PlaneGeometry(3.1, 3.72);
+    function ensurePortrait(playerId: string, npcId: NpcId, emotion: NpcEmotion, seat: number) {
+      const key = `${playerId}:${npcId}:${emotion}`;
+      const existing = portraits.get(playerId);
+      if (existing && existing.userData.key === key) return;
+      if (existing) {
+        tileGroup.remove(existing);
+        (existing.material as THREE.MeshBasicMaterial).map?.dispose();
+        (existing.material as THREE.Material).dispose();
+        portraits.delete(playerId);
+      }
+      const mesh = new THREE.Mesh(
+        portraitGeometry,
+        new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0 }),
+      );
+      mesh.userData.key = key;
+      mesh.renderOrder = 2;
+      const { x, z } = seatToWorld(0, 9.15, seat);
+      mesh.position.set(x, 2.05, z);
+      tileGroup.add(mesh);
+      portraits.set(playerId, mesh);
+      renderPortraitCanvas(npcId, emotion, 512).then(canvas => {
+        const tex = finishTexture(canvas);
+        createdTextures.push(tex);
+        const mat = mesh.material as THREE.MeshBasicMaterial;
+        mat.map = tex;
+        mat.opacity = 1;
+        mat.needsUpdate = true;
+        mesh.lookAt(camera.position.x, mesh.position.y, camera.position.z);
+        invalidate();
+      });
+    }
     const meshes = new Map<string, THREE.Mesh>();
     const pickable: THREE.Mesh[] = [];
     const bars = new Map<string, THREE.Mesh>();
@@ -402,7 +444,12 @@ export default function ThreeTable(props: ThreeTableProps) {
       const players = game.players;
       const humanIndex = players.findIndex(pl => pl.id === p.humanPlayerId);
       const seatOf = (i: number) => (i - humanIndex + players.length) % players.length;
-      const cols = 6;
+      // Discard geometry. DISCARD_START must stay greater than the block's own
+      // half-width or adjacent seats' blocks intersect at the corners — that is
+      // the tile-overlap bug. 7 cols: half-width 2.36, start 2.5.
+      const cols = 7;
+      const DISCARD_START = 2.5;
+      const DISCARD_ROW = TILE_H * 1.1;
 
       // --- Discards: a block per seat, in front of that player.
       players.forEach((player, i) => {
@@ -410,7 +457,7 @@ export default function ThreeTable(props: ThreeTableProps) {
         const tiles = game.playerDiscards?.[player.id] ?? [];
         tiles.forEach((tile, n) => {
           const lx = ((n % cols) - (cols - 1) / 2) * TILE_W * 1.1;
-          const lz = 1.35 + Math.floor(n / cols) * TILE_H * 1.12;
+          const lz = DISCARD_START + Math.floor(n / cols) * DISCARD_ROW;
           const { x, z } = seatToWorld(lx, lz, seat);
           const mesh = acquire(`d:${tile.id}`, tile, pal, seen);
           if (mesh.userData.init !== true) {
@@ -435,7 +482,7 @@ export default function ThreeTable(props: ThreeTableProps) {
 
       // --- Human hand: upright, facing the camera.
       const hand = players[humanIndex]?.hand ?? [];
-      const handZ = boardMode ? 7.05 : 4.35;
+      const handZ = boardMode ? 7.6 : 4.35;
       hand.forEach((tile, n) => {
         const mesh = acquire(`h:${tile.id}`, tile, pal, seen);
         const isSel = tile.id === p.selectedTileId;
@@ -485,7 +532,7 @@ export default function ThreeTable(props: ThreeTableProps) {
         const count = player.hand.length;
         for (let n = 0; n < count; n++) {
           const lx = (n - (count - 1) / 2) * TILE_W * 1.06;
-          const { x, z } = seatToWorld(lx, 7.05, seat);
+          const { x, z } = seatToWorld(lx, 7.6, seat);
           const mesh = acquire(`o:${player.id}:${n}`, null, pal, seen);
           mesh.userData.init = true;
           mesh.rotation.set(-0.16, -seat * (Math.PI / 2), 0, 'YXZ');
@@ -494,13 +541,27 @@ export default function ThreeTable(props: ThreeTableProps) {
         }
       });
 
+      // --- NPC characters at their seats.
+      if (p.npcSeats) {
+        players.forEach((player, i) => {
+          const seat = seatOf(i);
+          if (seat === 0) return;
+          const npcId = p.npcSeats?.[player.id];
+          if (!npcId) return;
+          const isTheirTurn = game.currentPlayerIndex === i;
+          ensurePortrait(player.id, npcId, isTheirTurn ? 'thinking' : 'idle', seat);
+          const mesh = portraits.get(player.id);
+          if (mesh) mesh.lookAt(camera.position.x, mesh.position.y, camera.position.z);
+        });
+      }
+
       // --- Exposed melds: face-up, just inside each player's hand.
       players.forEach((player, i) => {
         const seat = seatOf(i);
         player.melds.forEach((meld: MeldInfo, mi) => {
           meld.tiles.forEach((tile, ti) => {
             const lx = -3.4 + mi * (TILE_W * 3.4) + ti * TILE_W * 1.04;
-            const { x, z } = seatToWorld(lx, 4.6, seat);
+            const { x, z } = seatToWorld(lx, 5.95, seat);
             const mesh = acquire(`m:${player.id}:${mi}:${ti}`, tile, pal, seen);
             mesh.userData.init = true;
             mesh.rotation.set(-Math.PI / 2, 0, -seat * (Math.PI / 2));
@@ -518,7 +579,7 @@ export default function ThreeTable(props: ThreeTableProps) {
         for (let n = 0; n < perSide && placed < remaining; n++) {
           for (let level = 0; level < 2 && placed < remaining; level++) {
             const lx = (n - (perSide - 1) / 2) * TILE_W * 1.06;
-            const { x, z } = seatToWorld(lx, 5.7, side);
+            const { x, z } = seatToWorld(lx, 6.75, side);
             const mesh = acquire(`w:${side}:${n}:${level}`, null, pal, seen);
             mesh.userData.init = true;
             mesh.castShadow = false; // 100+ extra shadow casters for no visual gain
@@ -559,7 +620,7 @@ export default function ThreeTable(props: ThreeTableProps) {
     // so the camera has to do the layout. Fit the table's bounding sphere to
     // whichever of the two FOVs is tighter, and the board fills any aspect
     // ratio — wide desktop or tall phone — without cropping the hand.
-    const CONTENT_RADIUS = isMax ? 7.1 : 8.7;
+    const CONTENT_RADIUS = isMax ? 7.8 : 8.7;
     const PITCH = THREE.MathUtils.degToRad(isMax ? 39 : 50);
 
     function fitCamera(w: number, h: number) {
@@ -590,8 +651,8 @@ export default function ThreeTable(props: ThreeTableProps) {
       players.forEach((player, i) => {
         const seat = (i - humanIndex + players.length) % players.length;
         if (seat === 0) return;
-        const { x, z } = seatToWorld(0, 9.6, seat);
-        v.set(x, 1.1, z).project(camera);
+        const { x, z } = seatToWorld(0, 9.15, seat);
+        v.set(x, 0.16, z).project(camera);
         // Clamp into the canvas: on a narrow viewport the side seats project
         // past the edge, and a plaque half off-screen is worse than one nudged
         // inward. This is the DOM-overlay tax that the 2D rim layout never paid.
@@ -674,6 +735,8 @@ export default function ThreeTable(props: ThreeTableProps) {
         renderer.domElement.removeEventListener('click', onClick);
         geometry.dispose();
         barGeometry.dispose();
+        portraitGeometry.dispose();
+        portraits.forEach(m => { const mm = m.material as THREE.MeshBasicMaterial; mm.map?.dispose(); mm.dispose(); });
         bars.forEach(b => (b.material as THREE.Material).dispose());
         sideMaterial.dispose();
         backMaterial.dispose();

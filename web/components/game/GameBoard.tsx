@@ -272,6 +272,8 @@ export default function GameBoard({
             selectedTileId={selectedTileId}
             className="proto-three-board"
             onSeatAnchors={protoVariant.three === 'max' ? setProtoSeatAnchors : undefined}
+            tutorColors={tileClassifications}
+            suggestedTileId={suggestedTileId}
           />
         )}
         {/* PROTOTYPE: seats follow their 3D position instead of the DOM rim,

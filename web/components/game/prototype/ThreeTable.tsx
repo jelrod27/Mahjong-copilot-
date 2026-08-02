@@ -155,7 +155,23 @@ interface ThreeTableProps {
   className?: string;
   /** Called on resize with each seat's projected screen position. */
   onSeatAnchors?: (anchors: SeatAnchors) => void;
+  /** Beginner Assist: per-tile discard advice. Easy mode's whole point. */
+  tutorColors?: Map<string, 'green' | 'orange' | 'red'>;
+  suggestedTileId?: string;
 }
+
+/**
+ * Matches TUTOR_COLORS in RetroTile, which resolves these same design tokens
+ * (--color-success / --color-accent / --color-destructive in globals.css).
+ * Rendered unlit so the advice colour is exactly the token — a lit material
+ * would shade it, which is precisely what breaks a colour-coded assist.
+ */
+const TUTOR_HEX: Record<string, number> = {
+  green: 0x5daf6a,
+  orange: 0xc9a84c,
+  red: 0xc75b4a,
+  suggested: 0xffd166,
+};
 
 export default function ThreeTable(props: ThreeTableProps) {
   const { mode, className } = props;
@@ -297,6 +313,10 @@ export default function ThreeTable(props: ThreeTableProps) {
           createdTextures.push(tex);
           mat!.map = tex;
           mat!.needsUpdate = true;
+          // Faces arrive async. Under render-on-demand the frames budgeted for
+          // this layout are long spent by then, so the texture has to ask for
+          // its own redraw or the tile stays blank until the next move.
+          invalidate();
         });
       }
       return [mat, sideMaterial];
@@ -307,6 +327,18 @@ export default function ThreeTable(props: ThreeTableProps) {
     scene.add(tileGroup);
     const meshes = new Map<string, THREE.Mesh>();
     const pickable: THREE.Mesh[] = [];
+    const bars = new Map<string, THREE.Mesh>();
+    const seenBars = new Set<string>();
+    const barGeometry = new THREE.BoxGeometry(TILE_W * 0.82, 0.06, 0.14);
+
+    // Frames still owed to the compositor after a change (see the frame loop).
+    let dirty = 3;
+    const invalidate = () => { dirty = 2; };
+
+    /** Advice lozenges only exist for tiles the tutor spoke about this turn. */
+    function sweepBars() {
+      for (const [id, bar] of bars) bar.visible = seenBars.has(id);
+    }
 
     /** Rotate a seat-local (x,z) into world space. Seat 0 is nearest camera. */
     function seatToWorld(lx: number, lz: number, seat: number) {
@@ -335,6 +367,7 @@ export default function ThreeTable(props: ThreeTableProps) {
     function layout(p: ThreeTableProps) {
       const seen = new Set<string>();
       pickable.length = 0;
+      seenBars.clear();
       const { game, palette: pal } = p;
       const boardMode = p.mode === 'board' || p.mode === 'max';
       const players = game.players;
@@ -366,6 +399,8 @@ export default function ThreeTable(props: ThreeTableProps) {
         for (const [id, mesh] of meshes) {
           if (!seen.has(id)) { tileGroup.remove(mesh); meshes.delete(id); }
         }
+        sweepBars();
+        invalidate();
         return;
       }
 
@@ -375,22 +410,42 @@ export default function ThreeTable(props: ThreeTableProps) {
       hand.forEach((tile, n) => {
         const mesh = acquire(`h:${tile.id}`, tile, pal, seen);
         const isSel = tile.id === p.selectedTileId;
+        const isSuggested = tile.id === p.suggestedTileId;
+        const x = (n - (hand.length - 1) / 2) * TILE_W * 1.06;
         mesh.userData.tile = tile;
         mesh.userData.init = true;
         mesh.rotation.set(-0.34, 0, 0);
         mesh.position.set(
-          (n - (hand.length - 1) / 2) * TILE_W * 1.06,
-          (isSel ? 0.42 : 0.16) + TILE_H / 2 - 0.12,
+          x,
+          (isSel ? 0.42 : isSuggested ? 0.3 : 0.16) + TILE_H / 2 - 0.12,
           handZ,
         );
         mesh.userData.targetY = mesh.position.y;
         pickable.push(mesh);
+
+        // Beginner Assist strip. The DOM hand carried this as a coloured bar
+        // across the tile face; in 3D it becomes a lozenge at the tile's foot.
+        const advice = isSuggested ? 'suggested' : p.tutorColors?.get(tile.id);
+        if (advice) {
+          let bar = bars.get(tile.id);
+          if (!bar) {
+            bar = new THREE.Mesh(barGeometry, new THREE.MeshBasicMaterial());
+            tileGroup.add(bar);
+            bars.set(tile.id, bar);
+          }
+          (bar.material as THREE.MeshBasicMaterial).color.setHex(TUTOR_HEX[advice]);
+          bar.position.set(x, 0.03, handZ + 0.33);
+          bar.visible = true;
+          seenBars.add(tile.id);
+        }
       });
 
       if (!boardMode) {
         for (const [id, mesh] of meshes) {
           if (!seen.has(id)) { tileGroup.remove(mesh); meshes.delete(id); }
         }
+        sweepBars();
+        invalidate();
         return;
       }
 
@@ -449,6 +504,8 @@ export default function ThreeTable(props: ThreeTableProps) {
       for (const [id, mesh] of meshes) {
         if (!seen.has(id)) { tileGroup.remove(mesh); meshes.delete(id); }
       }
+      sweepBars();
+      invalidate();
     }
 
     layout(propsRef.current);
@@ -532,6 +589,7 @@ export default function ThreeTable(props: ThreeTableProps) {
       composer?.setSize(w, h);
       bloomPass?.setSize(w, h);
       emitSeatAnchors(w, h);
+      invalidate();
     }
     resize();
     const ro = new ResizeObserver(resize);
@@ -540,18 +598,43 @@ export default function ThreeTable(props: ThreeTableProps) {
     // Camera is fixed. An idle drift reads as drunk rather than cinematic, and
     // it fights the board's job of holding still while you read the discards.
     let raf = 0;
-    function frame() {
+    let lastTime = 0;
+
+    function frame(now: number) {
       raf = requestAnimationFrame(frame);
+      const dt = lastTime ? Math.min((now - lastTime) / 1000, 0.05) : 1 / 60;
+      lastTime = now;
+
+      // Exponential settle expressed per SECOND, not per frame. The old
+      // `+= delta * 0.18` converged 2.4x faster on a 144Hz screen than on 60Hz
+      // and stuttered whenever the frame interval wobbled — that was the jitter.
+      const k = 1 - Math.exp(-11 * dt);
+      let animating = false;
       for (const mesh of meshes.values()) {
         const target = (mesh.userData.targetY as number) ?? 0;
-        if (Math.abs(mesh.position.y - target) > 0.001) {
-          mesh.position.y += (target - mesh.position.y) * 0.18;
+        const delta = target - mesh.position.y;
+        if (Math.abs(delta) > 0.0015) {
+          mesh.position.y += delta * k;
+          animating = true;
+        } else if (mesh.position.y !== target) {
+          mesh.position.y = target;
+          animating = true;
         }
       }
-      if (composer) composer.render();
-      else renderer.render(scene, camera);
+
+      // Render on demand. The board is static between moves, so redrawing a
+      // shadow-mapped, bloomed scene 60x a second bought nothing and kept the
+      // GPU hot — which is what made the frame pacing uneven in the first place.
+      const w = window as unknown as Record<string, number>;
+      w.__protoTicks = (w.__protoTicks ?? 0) + 1;
+      if (animating || dirty > 0) {
+        if (dirty > 0) dirty--;
+        if (composer) composer.render();
+        else renderer.render(scene, camera);
+        w.__protoRenders = (w.__protoRenders ?? 0) + 1;
+      }
     }
-    frame();
+    raf = requestAnimationFrame(frame);
 
     apiRef.current = {
       sync: layout,
@@ -560,6 +643,8 @@ export default function ThreeTable(props: ThreeTableProps) {
         ro.disconnect();
         renderer.domElement.removeEventListener('click', onClick);
         geometry.dispose();
+        barGeometry.dispose();
+        bars.forEach(b => (b.material as THREE.Material).dispose());
         sideMaterial.dispose();
         backMaterial.dispose();
         matCache.forEach(m => m.dispose());
@@ -580,8 +665,36 @@ export default function ThreeTable(props: ThreeTableProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // GameBoard re-renders several times a second while the claim and turn
+  // timers tick. Relaying out the whole scene on each of those was pure churn
+  // — allocating, rebuilding maps, dirtying the renderer — for a board that
+  // had not changed. Only sync when something the scene actually draws moved.
+  const sigRef = useRef('');
   useEffect(() => {
-    apiRef.current?.sync(propsRef.current);
+    const p = propsRef.current;
+    const sig = [
+      p.mode,
+      p.palette.id,
+      p.selectedTileId ?? '',
+      p.suggestedTileId ?? '',
+      p.game.wall.length,
+      p.game.players
+        .map(pl =>
+          [
+            pl.id,
+            pl.hand.map(t => t.id).join(','),
+            pl.melds.length,
+            (p.game.playerDiscards?.[pl.id] ?? []).length,
+          ].join(':'),
+        )
+        .join('|'),
+      p.tutorColors ? Array.from(p.tutorColors).map(([k, v]) => k + v).join(',') : '',
+    ].join('#');
+    if (sig === sigRef.current) return;
+    sigRef.current = sig;
+    const w = window as unknown as Record<string, number>;
+    w.__protoLayouts = (w.__protoLayouts ?? 0) + 1;
+    apiRef.current?.sync(p);
   });
 
   return (

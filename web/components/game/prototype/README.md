@@ -61,6 +61,46 @@ open http://localhost:3000/play/game?difficulty=easy&variant=F
   their 3D position fall off-screen on a phone; they are clamped back inside the
   canvas. That clamp is the DOM-overlay tax the 2D rim layout never paid.
 
+### Jitter, and what actually caused it
+
+Three separate things, none of them the GPU:
+
+1. **The settle animation was per-frame, not per-second.** `y += delta * 0.18`
+   converged 2.4x faster on a 144Hz screen than at 60Hz and stuttered whenever
+   the frame interval wobbled. Now `1 - exp(-11 * dt)`.
+2. **The whole scene relaid out on every React render.** The claim and turn
+   timers tick several times a second, so a board that had not changed was
+   rebuilding its mesh maps constantly. `sync` is now gated on a signature of
+   what the scene actually draws.
+3. **It rendered 60x a second forever.** A shadow-mapped, bloomed, static board
+   redrawn continuously keeps the GPU hot for no picture change. Now render-on-
+   demand: draw only while something animates or after a change.
+
+Measured after the fix, idle on the human's turn for 5s:
+**584 rAF ticks → 0 GPU renders, 0 relayouts.** Whole session since load: 12
+renders, 5 relayouts.
+
+Gotcha that comes with render-on-demand: **async work must invalidate.** Tile
+face textures resolve after the frames budgeted for their layout are spent, so
+`makeFaceTexture`'s `.then` has to request its own redraw or the tile stays
+blank until the next move.
+
+### Easy mode — verified
+
+Easy mode's help is `tutorAdvice` (the Discard Tip panel), per-tile GOOD/OK/KEEP
+`tileClassifications`, `suggestedTileId`, the FaanMeter, the DiscardReadingPanel,
+and an easy-only tenpai badge. Gated on `displayMode === 'tutor' && showTutor`,
+and only live on the human's discard turn or an open claim — check for it at any
+other moment and you will wrongly conclude it is broken.
+
+- AI opponents confirmed playing: wall drains 2–4 per human turn in both A and G.
+- Assist confirmed rendering in **A** and **G**, measured on the human's turn.
+- **G originally dropped it entirely** — the variant hid the tutor panel and
+  replaced the DOM hand, which is where the colour strips lived. Fixed: the
+  panel is docked under the table, and advice is drawn as an unlit lozenge at
+  each tile's foot. Unlit matters — a lit material shades the colour, which is
+  exactly what breaks a colour-coded assist (and the Okabe-Ito palette).
+
 ## Open — next session
 
 - On a phone the NPC plaques cover a lot of the 3D table. They are legible and

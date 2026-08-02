@@ -291,9 +291,22 @@ function PrototypeStyles() {
       /* The NPC seats stay — portrait, name, wind, turn cue and speech bubbles
          are the hybrid's whole point. Only the tile-shaped DOM goes. */
       :is([data-proto-variant="F"], [data-proto-variant="G"]) [data-proto-discard-sea],
-      :is([data-proto-variant="F"], [data-proto-variant="G"]) [data-proto-tutor],
+      [data-proto-variant="F"] [data-proto-tutor],
       :is([data-proto-variant="F"], [data-proto-variant="G"]) [data-seat-anchor] .proto-art-face {
         display: none;
+      }
+      /* G keeps the tutor panel — it IS easy mode's help — but docks it under
+         the table instead of letting it sit across the discard sea. */
+      [data-proto-variant="G"] [data-proto-tutor] {
+        position: absolute;
+        left: 50%;
+        bottom: 4px;
+        transform: translateX(-50%);
+        z-index: 4;
+        width: min(94%, 36rem);
+        max-height: none;
+        backdrop-filter: blur(4px);
+        border-radius: 10px;
       }
       /* Plaques sit over a lit 3D table, so give them something to sit on. */
       :is([data-proto-variant="F"], [data-proto-variant="G"]) [data-seat-anchor] {

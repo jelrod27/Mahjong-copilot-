@@ -91,13 +91,20 @@ type Push = (event: Unsequenced<PresentationEvent>) => void;
  * The deal reveals flowers for every seat and draws their replacements inside
  * the one transition, so it is multi-event on every run.
  *
- * Two details are not recoverable from the dealt state, because the engine
- * keeps no record of them: which of a seat's flowers came off the deal rather
- * than off a replacement draw, and which tile each replacement was. Both are
- * invisible on the table — every flower ends up on the rack either way — so
- * the deal is reported as if every flower was dealt, and the replacements are
- * reported with an unknown tile. Counts stay exact: a seat that shows F
- * flowers was dealt F of them among its 13 tiles and drew F replacements.
+ * One thing is not recoverable here, and it is worth being exact about what it
+ * costs. The engine keeps no record of which of a seat's flowers came off the
+ * deal and which came off a replacement draw that was itself a flower, and two
+ * different shuffles can leave byte-identical post-deal states — so no
+ * derivation from state can tell them apart. Only the seed could, at the price
+ * of reproducing the engine's deal layout here.
+ *
+ * The deal is therefore reported as if every flower was dealt: F reveals, then
+ * F replacement draws, whose tiles are unknown for the same reason. Counts and
+ * flower identities stay exact, and a seat holding one flower — the common
+ * case — is exact outright, because both readings agree there. A seat that
+ * chained (dealt a flower, drew a flower to replace it) really saw
+ * reveal → draw → reveal → draw; it is reported as reveal → reveal → draw →
+ * draw. Same tiles, same counts, idealised order.
  */
 function pushDealEvents(next: GameState, push: Push) {
   const dealt: TileId[] = [];
@@ -266,6 +273,12 @@ function findMeldDelta(previous: GameState, next: GameState): MeldDelta | null {
   return null;
 }
 
+/**
+ * A meld in a player's hand can only have come from a chow, pung or kong.
+ * `MeldInfo` also carries a `'pair'` shape, but that belongs to win
+ * decomposition (`winDetection`) and never reaches `Player.melds`; the branch
+ * is here to keep the mapping total, not because a pair can be claimed.
+ */
 function meldClaim(meld: MeldInfo): ClaimKind {
   return meld.type === 'pair' ? 'pung' : meld.type;
 }

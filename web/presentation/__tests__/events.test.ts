@@ -2,8 +2,19 @@ import { describe, it, expect } from 'vitest';
 import { initializeGame, applyAction, GameOptions } from '@/engine/turnManager';
 import { GameState, GamePhase } from '@/models/GameState';
 import { Tile, TileType, WindTile } from '@/models/Tile';
+import { GameAction } from '@/engine/types';
 import { deriveEvents, PresentationEvent } from '../events';
 import { dot, bam, char, windTile, flowerTile } from '@/engine/__tests__/testHelpers';
+
+type EventOf<K extends PresentationEvent['kind']> = Extract<PresentationEvent, { kind: K }>;
+
+/** Narrow a stream to one event kind, keeping that variant's fields typed. */
+function ofKind<K extends PresentationEvent['kind']>(
+  events: PresentationEvent[],
+  kind: K,
+): EventOf<K>[] {
+  return events.filter((e): e is EventOf<K> => e.kind === kind);
+}
 
 const HUMAN = 'human-1';
 
@@ -71,7 +82,7 @@ function nearWinHand(): Tile[] {
   ];
 }
 
-function act(state: GameState, seat: number, action: any): { next: GameState; events: PresentationEvent[] } {
+function act(state: GameState, seat: number, action: GameAction): { next: GameState; events: PresentationEvent[] } {
   const next = applyAction(state, state.players[seat].id, action);
   expect(next).not.toBeNull();
   return { next: next!, events: deriveEvents(state, action, next!, 0) };
@@ -134,11 +145,42 @@ describe('deriveEvents — initial deal', () => {
     ]);
   });
 
+  it('idealises the order when a deal replacement was itself a flower', () => {
+    // Seed chain-1: seat 0 was dealt flower_4 and drew a plain replacement;
+    // seat 1 was dealt season_1 and drew season_3 — a flower — to replace it,
+    // then drew again. The engine's true order for seat 1 is
+    // reveal(season_1) → draw(season_3) → reveal(season_3) → draw(plain).
+    // Nothing in the dealt state records which flower arrived how, so the deal
+    // is reported as if both were dealt: both reveals, then both draws.
+    const chained = initializeGame(options({ seed: 'chain-1' }));
+    expect(chained.players.map(p => p.flowers.map(f => f.id))).toEqual([
+      ['flower_4'], ['season_1', 'season_3'], [], [],
+    ]);
+
+    const events = deriveEvents(null, { type: 'DEAL' }, chained, 0);
+
+    expect(events.slice(1)).toEqual([
+      { kind: 'flowerReveal', seq: 1, seat: 0, tile: 'flower_4' },
+      { kind: 'draw', seq: 2, seat: 0, tile: null, source: 'deadWall' },
+      { kind: 'flowerReveal', seq: 3, seat: 1, tile: 'season_1' },
+      { kind: 'flowerReveal', seq: 4, seat: 1, tile: 'season_3' },
+      { kind: 'draw', seq: 5, seat: 1, tile: null, source: 'deadWall' },
+      { kind: 'draw', seq: 6, seat: 1, tile: null, source: 'deadWall' },
+      { kind: 'turnChange', seq: 7, to: 0 },
+    ]);
+
+    // The approximation is confined to ordering: every flower is still
+    // reported once, and every replacement the engine drew is still accounted
+    // for — three draws against the three tiles the dead wall lost.
+    expect(ofKind(events, 'flowerReveal')).toHaveLength(3);
+    expect(ofKind(events, 'draw')).toHaveLength(14 - chained.deadWall.length);
+  });
+
   it('reveals flowers dealer-first, matching the engine replacement order', () => {
     const eastIsSeat2 = initializeGame(options({ seed: 'deal-145', dealerIndex: 2 }));
     const events = deriveEvents(null, { type: 'DEAL' }, eastIsSeat2, 0);
 
-    const revealSeats = events.filter(e => e.kind === 'flowerReveal').map(e => (e as any).seat as number);
+    const revealSeats = ofKind(events, 'flowerReveal').map(e => e.seat);
     const seatsWithFlowers = [2, 3, 0, 1].filter(seat => eastIsSeat2.players[seat].flowers.length > 0);
 
     expect(Array.from(new Set(revealSeats))).toEqual(seatsWithFlowers);
@@ -368,7 +410,7 @@ describe('deriveEvents — sequence numbers', () => {
     let counter = 0;
     const stream: PresentationEvent[] = [];
 
-    const run = (seat: number, action: any) => {
+    const run = (seat: number, action: GameAction) => {
       const next = applyAction(state, state.players[seat].id, action)!;
       const events = deriveEvents(state, action, next, counter);
       counter += events.length;
@@ -392,36 +434,40 @@ describe('deriveEvents — invariants across a full AI hand', () => {
    * a hand-written golden would miss.
    */
   function checkTransition(previous: GameState, next: GameState, events: PresentationEvent[]) {
-    const wallTaken = previous.wall.slice(0, previous.wall.length - next.wall.length);
-    const deadTaken = previous.deadWall.slice(0, previous.deadWall.length - next.deadWall.length);
-    const takenIds = [...wallTaken, ...deadTaken].map(t => t.id).sort();
+    // Deliberately not the prefix-slice the module uses: a tile counts as
+    // drawn if it left the walls as a set and arrived in the drawing seat's
+    // hand or flower rack. A wrong slice formula cannot hide behind itself.
+    const inWallsBefore = new Set([...previous.wall, ...previous.deadWall].map(t => t.id));
+    const inWallsAfter = new Set([...next.wall, ...next.deadWall].map(t => t.id));
 
-    const drawnIds = events
-      .filter(e => e.kind === 'draw' || e.kind === 'kongReplacement')
-      .map(e => (e as any).tile as string | null)
-      .filter((id): id is string => id !== null)
-      .sort();
-    expect(drawnIds).toEqual(takenIds);
+    const draws = [...ofKind(events, 'draw'), ...ofKind(events, 'kongReplacement')];
+    expect(draws.filter(e => e.tile !== null)).toHaveLength(inWallsBefore.size - inWallsAfter.size);
+    for (const draw of draws) {
+      if (draw.tile === null) continue;
+      expect(inWallsBefore.has(draw.tile)).toBe(true);
+      expect(inWallsAfter.has(draw.tile)).toBe(false);
+      const seatTiles = [...next.players[draw.seat].hand, ...next.players[draw.seat].flowers];
+      expect(seatTiles.map(t => t.id)).toContain(draw.tile);
+    }
 
-    const revealed = events.filter(e => e.kind === 'flowerReveal').map(e => (e as any).tile as string);
+    const revealed = ofKind(events, 'flowerReveal').map(e => e.tile);
     const flowersGained = previous.players.flatMap((p, i) =>
       next.players[i].flowers.slice(p.flowers.length).map(t => t.id),
     );
     expect(revealed).toEqual(flowersGained);
 
-    const discards = events.filter(e => e.kind === 'discard');
     const discardsGained = previous.players.flatMap(p => {
       const before = previous.playerDiscards[p.id]?.length ?? 0;
       return (next.playerDiscards[p.id] ?? []).slice(before).map(t => t.id);
     });
-    expect(discards.map(e => (e as any).tile)).toEqual(discardsGained);
+    expect(ofKind(events, 'discard').map(e => e.tile)).toEqual(discardsGained);
 
     const meldsChanged = previous.players.filter((p, i) => {
       const after = next.players[i].melds;
       return after.length !== p.melds.length
         || p.melds.some((m, mi) => after[mi].tiles.length !== m.tiles.length);
     }).length;
-    const meldClaims = events.filter(e => e.kind === 'claim' && (e as any).meldIndex >= 0);
+    const meldClaims = ofKind(events, 'claim').filter(e => e.meldIndex >= 0);
     expect(meldClaims).toHaveLength(meldsChanged);
 
     const ended = next.phase === GamePhase.FINISHED;
@@ -458,7 +504,7 @@ describe('deriveEvents — invariants across a full AI hand', () => {
         const seat = state.currentPlayerIndex;
         const player = state.players[seat];
 
-        let action: any;
+        let action: GameAction;
         if (state.turnPhase === 'draw') {
           action = { type: 'DRAW' };
         } else if (state.turnPhase === 'discard') {

@@ -9,7 +9,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { saveGame, loadGame } from '../matchStorage';
 import { initializeMatch } from '@/engine/matchManager';
-import { applyAction } from '@/engine/turnManager';
+import { applyAction, getLegalClaims } from '@/engine/turnManager';
+import { getAIDecision, getAIClaimDecision } from '@/engine/ai';
+import { validateSavedGamePayload } from '../savedGameValidator';
 import { matchStateToJson } from '@/models/MatchState';
 
 const KEY = 'mahjong_match_in_progress';
@@ -92,6 +94,52 @@ describe('matchStorage validation', () => {
       expect(loaded!.game!.players).toHaveLength(4);
       expect(getRaw()).not.toBeNull();
     }
+  });
+
+  // Stronger than the eight-turn case above: play whole hands through the real engine
+  // — draws, discards, claims, melds, kongs, flower replacements — and require every
+  // state the engine can reach to validate. This is what keeps a future tightening of
+  // the validator from rejecting legal play.
+  it.each(['seed-a', 'seed-b'])('accepts every state of a full hand played with %s', seed => {
+    const match = initializeMatch({
+      mode: 'quick',
+      difficulty: 'hard',
+      playerNames: ['You', 'West AI', 'North AI', 'East AI'],
+      humanPlayerId: 'player-0',
+      seed,
+    });
+
+    let hand = match.currentHand!;
+    let steps = 0;
+
+    const expectValid = () => {
+      saveGame({ ...match, currentHand: hand }, hand);
+      const result = validateSavedGamePayload(JSON.parse(getRaw()!));
+      expect(result, `step ${steps} (${hand.turnPhase})`).toEqual({ ok: true });
+    };
+
+    expectValid();
+    while (hand.phase === 'playing' && steps < 500) {
+      steps++;
+      const current = hand.players[hand.currentPlayerIndex];
+      if (hand.turnPhase === 'draw') {
+        hand = applyAction(hand, current.id, { type: 'DRAW' })!;
+      } else if (hand.turnPhase === 'discard') {
+        hand = applyAction(hand, current.id, getAIDecision(hand, hand.currentPlayerIndex).action)!;
+      } else if (hand.turnPhase === 'claim') {
+        const claims = getLegalClaims(hand, hand.currentPlayerIndex);
+        const decision = claims.length > 0
+          ? getAIClaimDecision(hand, hand.currentPlayerIndex, claims)
+          : { action: { type: 'PASS' as const } };
+        hand = applyAction(hand, current.id, decision.action)
+          ?? applyAction(hand, current.id, { type: 'PASS' })!;
+      } else {
+        break;
+      }
+      expectValid();
+    }
+
+    expect(steps).toBeGreaterThan(10);
   });
 
   // Case 2: player hand inflated to 200 copies of one tile

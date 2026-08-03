@@ -310,6 +310,155 @@ describe('validateSavedGamePayload', () => {
   });
 });
 
+/**
+ * A physical tile is owned by exactly one authoritative location — wall, dead wall,
+ * hand, meld, flowers, discard pile. playerDiscards, lastDrawnTile, lastDiscardedTile
+ * and winningTile are aliases: they point at a tile one of those already owns.
+ */
+describe('physical tile ownership', () => {
+  /** The `game` payload, ready to mutate. */
+  function game(payload: Record<string, unknown>): Record<string, unknown> {
+    return payload['game'] as Record<string, unknown>;
+  }
+
+  function players(payload: Record<string, unknown>): Record<string, unknown>[] {
+    return game(payload)['players'] as Record<string, unknown>[];
+  }
+
+  function handOf(payload: Record<string, unknown>, index: number): Record<string, unknown>[] {
+    return players(payload)[index]['hand'] as Record<string, unknown>[];
+  }
+
+  describe('aliases may repeat an id the authoritative location owns', () => {
+    it('accepts a drawn tile present in both the hand and lastDrawnTile', () => {
+      const payload = v1Payload();
+      const drawn = handOf(payload, 0)[0];
+      game(payload)['lastDrawnTile'] = { ...drawn };
+
+      expect(validateSavedGamePayload(payload)).toEqual({ ok: true });
+    });
+
+    it('accepts a discard present in discardPile, playerDiscards and lastDiscardedTile', () => {
+      const payload = v1Payload();
+      const discarded = (game(payload)['discardPile'] as Record<string, unknown>[])[0];
+      game(payload)['playerDiscards'] = { 'player-0': [{ ...discarded }] };
+      game(payload)['lastDiscardedTile'] = { ...discarded };
+
+      expect(validateSavedGamePayload(payload)).toEqual({ ok: true });
+    });
+
+    it('accepts both alias groups at once, as a real mid-hand save carries them', () => {
+      const payload = v1Payload();
+      const drawn = handOf(payload, 0)[1];
+      const discarded = (game(payload)['discardPile'] as Record<string, unknown>[])[0];
+      game(payload)['lastDrawnTile'] = { ...drawn };
+      game(payload)['playerDiscards'] = { 'player-0': [{ ...discarded }] };
+      game(payload)['lastDiscardedTile'] = { ...discarded };
+      game(payload)['winningTile'] = { ...drawn };
+
+      expect(validateSavedGamePayload(payload)).toEqual({ ok: true });
+    });
+  });
+
+  describe('one id may not be owned by two authoritative locations', () => {
+    it('rejects the same tile in two players’ hands', () => {
+      const payload = v1Payload();
+      const stolen = handOf(payload, 0)[0];
+      handOf(payload, 1).push({ ...stolen });
+
+      expect(validateSavedGamePayload(payload)).toMatchObject({
+        ok: false,
+        reason: expect.stringContaining("appears in both players[0].hand and players[1].hand"),
+      });
+    });
+
+    it('rejects the same tile in a hand and the discard pile', () => {
+      const payload = v1Payload();
+      const stolen = handOf(payload, 0)[0];
+      (game(payload)['discardPile'] as Record<string, unknown>[]).push({ ...stolen });
+
+      expect(validateSavedGamePayload(payload)).toMatchObject({
+        ok: false,
+        reason: expect.stringContaining("appears in both"),
+      });
+    });
+
+    it('rejects the same tile in the wall and a meld', () => {
+      const payload = v1Payload();
+      const stolen = (game(payload)['wall'] as Record<string, unknown>[])[0];
+      players(payload)[2]['melds'] = [{ type: 'pung', tiles: [{ ...stolen }] }];
+
+      expect(validateSavedGamePayload(payload)).toMatchObject({
+        ok: false,
+        reason: expect.stringContaining("appears in both wall and players[2].melds[0].tiles"),
+      });
+    });
+
+    it('rejects the same tile in two separate melds', () => {
+      const payload = v1Payload();
+      const claimed = tile('character_5_1', 'character', 5, 'Five Character');
+      players(payload)[2]['melds'] = [{ type: 'pung', tiles: [{ ...claimed }] }];
+      players(payload)[3]['melds'] = [{ type: 'pung', tiles: [{ ...claimed }] }];
+
+      expect(validateSavedGamePayload(payload)).toMatchObject({
+        ok: false,
+        reason: expect.stringContaining("appears in both players[2].melds[0].tiles and players[3].melds[0].tiles"),
+      });
+    });
+
+    it('rejects the same tile twice within one location', () => {
+      const payload = v1Payload();
+      const stolen = handOf(payload, 0)[0];
+      handOf(payload, 0).push({ ...stolen });
+
+      expect(validateSavedGamePayload(payload)).toMatchObject({
+        ok: false,
+        reason: expect.stringContaining("appears twice in players[0].hand"),
+      });
+    });
+  });
+
+  describe('distinct physical tiles are still counted', () => {
+    it('rejects five distinct tile ids of the same kind', () => {
+      const payload = v1Payload();
+      // character_3 appears nowhere in the fixture, so these five are the only copies.
+      game(payload)['wall'] = Array.from({ length: 5 }, (_, i) =>
+        tile(`character_3_${i + 1}`, 'character', 3, 'Three Character'));
+
+      expect(validateSavedGamePayload(payload)).toMatchObject({
+        ok: false,
+        reason: expect.stringContaining("appears 5 times"),
+      });
+    });
+
+    it('rejects more than 144 distinct physical tiles', () => {
+      const payload = v1Payload();
+      const g = game(payload);
+      // 160 distinct ids, four per kind, so only the total can be what rejects this.
+      const many = Array.from({ length: 160 }, (_, i) => {
+        const kind = Math.floor(i / 4) + 1;
+        return tile(`bamboo_${kind}_${i}`, 'bamboo', kind, `Bamboo ${kind}`);
+      });
+      g['wall'] = many.slice(0, 100);
+      g['deadWall'] = many.slice(100);
+      g['discardPile'] = [];
+      g['playerDiscards'] = {};
+      delete g['lastDrawnTile'];
+      delete g['lastDiscardedTile'];
+      for (const p of g['players'] as Record<string, unknown>[]) {
+        p['hand'] = [];
+        p['melds'] = [];
+        p['flowers'] = [];
+      }
+
+      expect(validateSavedGamePayload(payload)).toMatchObject({
+        ok: false,
+        reason: expect.stringContaining("total tile count 160 exceeds 144"),
+      });
+    });
+  });
+});
+
 describe('presentation log', () => {
   beforeEach(() => {
     localStorage.clear();

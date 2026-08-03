@@ -140,69 +140,96 @@ function validateGamePayload(game: Record<string, unknown>): ValidationResult {
     }
   }
 
-  // Collect all tiles for shape validation and multiset check
-  const allTiles: Record<string, unknown>[] = [];
+  // Tile shape and physical-location accounting.
+  //
+  // A physical tile is *owned* by exactly one authoritative location: the wall, the
+  // dead wall, a player's hand, a meld, a player's flowers, or the discard pile. The
+  // remaining tile fields are aliases — playerDiscards indexes the discard pile by
+  // player, and lastDrawnTile / lastDiscardedTile / winningTile point at a tile that
+  // already sits somewhere authoritative. An alias may repeat an id freely; two
+  // authoritative locations claiming one id is physically impossible and is rejected.
+  const owners = new Map<string, string>();
+  const tilesById = new Map<string, Record<string, unknown>>();
 
-  const addArr = (arr: unknown, label: string): ValidationFailure | null => {
+  const addOwned = (arr: unknown, label: string): ValidationFailure | null => {
     if (!Array.isArray(arr)) return null;
     const err = validateTiles(arr, label);
     if (err) return err;
-    for (const t of arr) allTiles.push(t as Record<string, unknown>);
+    for (const t of arr) {
+      const tile = t as Record<string, unknown>;
+      const id = tile['id'] as string;
+      const owner = owners.get(id);
+      if (owner !== undefined) {
+        return fail(
+          owner === label
+            ? `tile id '${id}' appears twice in ${label}`
+            : `tile id '${id}' appears in both ${owner} and ${label}`
+        );
+      }
+      owners.set(id, label);
+      tilesById.set(id, tile);
+    }
     return null;
   };
 
-  const addOptional = (t: unknown, label: string): ValidationFailure | null => {
+  const addAliasArr = (arr: unknown, label: string): ValidationFailure | null => {
+    if (!Array.isArray(arr)) return null;
+    const err = validateTiles(arr, label);
+    if (err) return err;
+    for (const t of arr) {
+      const tile = t as Record<string, unknown>;
+      if (!tilesById.has(tile['id'] as string)) tilesById.set(tile['id'] as string, tile);
+    }
+    return null;
+  };
+
+  const addAlias = (t: unknown, label: string): ValidationFailure | null => {
     if (t === undefined || t === null) return null;
     if (!isTileShape(t)) return fail(`${label} is not a valid tile object`);
-    allTiles.push(t as Record<string, unknown>);
+    const tile = t as Record<string, unknown>;
+    if (!tilesById.has(tile['id'] as string)) tilesById.set(tile['id'] as string, tile);
     return null;
   };
 
   let err: ValidationFailure | null;
 
-  err = addArr(wall, 'wall'); if (err) return err;
-  err = addArr(deadWall, 'deadWall'); if (err) return err;
-  err = addArr(discardPile, 'discardPile'); if (err) return err;
-  err = addOptional(game['lastDrawnTile'], 'lastDrawnTile'); if (err) return err;
-  err = addOptional(game['lastDiscardedTile'], 'lastDiscardedTile'); if (err) return err;
-  err = addOptional(game['winningTile'], 'winningTile'); if (err) return err;
-
-  if (isObject(playerDiscards)) {
-    for (const [k, v] of Object.entries(playerDiscards)) {
-      err = addArr(v, `playerDiscards['${k}']`); if (err) return err;
-    }
-  }
+  // Authoritative locations
+  err = addOwned(wall, 'wall'); if (err) return err;
+  err = addOwned(deadWall, 'deadWall'); if (err) return err;
+  err = addOwned(discardPile, 'discardPile'); if (err) return err;
 
   for (let i = 0; i < 4; i++) {
     const p = players[i] as Record<string, unknown>;
-    err = addArr(p['hand'], `players[${i}].hand`); if (err) return err;
-    err = addArr(p['flowers'], `players[${i}].flowers`); if (err) return err;
+    err = addOwned(p['hand'], `players[${i}].hand`); if (err) return err;
+    err = addOwned(p['flowers'], `players[${i}].flowers`); if (err) return err;
     if (Array.isArray(p['melds'])) {
       for (let m = 0; m < (p['melds'] as unknown[]).length; m++) {
         const meld = (p['melds'] as unknown[])[m];
         if (isObject(meld) && Array.isArray(meld['tiles'])) {
-          err = addArr(meld['tiles'], `players[${i}].melds[${m}].tiles`); if (err) return err;
+          err = addOwned(meld['tiles'], `players[${i}].melds[${m}].tiles`); if (err) return err;
         }
       }
     }
   }
 
-  // Multiset legality, counted per physical tile.
-  //
-  // One physical tile is referenced from several places at once: a drawn tile is in
-  // the player's hand and in lastDrawnTile, and a discard is in discardPile, in that
-  // player's discards and in lastDiscardedTile. Tile ids are unique per physical
-  // tile, so counting each id once is what keeps a legal mid-hand save from looking
-  // like it holds five of a kind. Without this, every save after the first draw is
-  // rejected and cleared.
-  const seenTileIds = new Set<string>();
+  // Aliases — references to tiles the locations above already own
+  err = addAlias(game['lastDrawnTile'], 'lastDrawnTile'); if (err) return err;
+  err = addAlias(game['lastDiscardedTile'], 'lastDiscardedTile'); if (err) return err;
+  err = addAlias(game['winningTile'], 'winningTile'); if (err) return err;
+
+  if (isObject(playerDiscards)) {
+    for (const [k, v] of Object.entries(playerDiscards)) {
+      err = addAliasArr(v, `playerDiscards['${k}']`); if (err) return err;
+    }
+  }
+
+  // Multiset legality, over distinct physical tiles. A drawn tile is in its hand and
+  // in lastDrawnTile; a discard is in discardPile, in that player's discards and in
+  // lastDiscardedTile. Counting those references separately made every save after the
+  // first draw look like it held five of a kind.
   const kindCounts = new Map<string, number>();
   let totalTiles = 0;
-  for (const t of allTiles) {
-    const tileId = t['id'] as string;
-    if (seenTileIds.has(tileId)) continue;
-    seenTileIds.add(tileId);
-
+  for (const t of tilesById.values()) {
     const key = rawTileKey(t);
     const suit = t['suit'] as string;
     const prev = kindCounts.get(key) ?? 0;

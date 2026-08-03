@@ -211,6 +211,29 @@ describe('save-format migration', () => {
     }
   );
 
+  // Nothing reads savedAt, so it may not be grounds for deleting a restorable match.
+  it.each([undefined, null, 42])('restores a match whose savedAt is %p', savedAt => {
+    localStorage.setItem(KEY, JSON.stringify({ ...v1Payload(), savedAt }));
+
+    const loaded = loadGame();
+
+    expect(loaded).not.toBeNull();
+    expect(loaded!.match!.handNumber).toBe(3);
+    expect(typeof loaded!.savedAt).toBe('string');
+    expect(localStorage.getItem(KEY)).not.toBeNull();
+  });
+
+  it('does not rewrite storage when only asking whether a match can resume', () => {
+    localStorage.setItem(KEY, JSON.stringify(v1Payload()));
+
+    expect(canResume()).toBe(true);
+    // canResume runs during first paint of /play — it must not pay for a write.
+    expect(storedPayload()['version']).toBe(1);
+
+    loadGame();
+    expect(storedPayload()['version']).toBe(SAVE_VERSION);
+  });
+
   it('still rejects a malformed payload carrying the older version, without rewriting it', () => {
     const payload = v1Payload();
     const game = payload['game'] as Record<string, unknown>;
@@ -238,13 +261,16 @@ describe('validateSavedGamePayload', () => {
     expect(validateSavedGamePayload(payload)).toMatchObject({ ok: false });
   });
 
-  it.each([undefined, null, 42, {}])('rejects a payload whose savedAt is %p', savedAt => {
-    expect(validateSavedGamePayload({ ...v1Payload(), savedAt })).toMatchObject({ ok: false });
+  // matchStateFromJson calls handResults?.map(...) and dereferences each entry, so a
+  // non-array — or a null inside the array — throws and takes the whole save down.
+  it.each(['junk', 42, { 0: 'first' }])('rejects handResults of %p', handResults => {
+    const payload = v1Payload();
+    (payload['match'] as Record<string, unknown>)['handResults'] = handResults;
+
+    expect(validateSavedGamePayload(payload)).toMatchObject({ ok: false });
   });
 
-  // matchStateFromJson calls handResults?.map(...), which a non-array survives type-wise
-  // and then throws on — taking the whole save down with it.
-  it.each(['junk', 42, { 0: 'first' }])('rejects handResults of %p', handResults => {
+  it.each([[[null]], [['junk']], [[42]]])('rejects handResults containing %p', handResults => {
     const payload = v1Payload();
     (payload['match'] as Record<string, unknown>)['handResults'] = handResults;
 

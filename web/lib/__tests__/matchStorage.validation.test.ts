@@ -9,6 +9,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { saveGame, loadGame } from '../matchStorage';
 import { initializeMatch } from '@/engine/matchManager';
+import { applyAction } from '@/engine/turnManager';
 import { matchStateToJson } from '@/models/MatchState';
 
 const KEY = 'mahjong_match_in_progress';
@@ -58,6 +59,39 @@ describe('matchStorage validation', () => {
     expect(result).not.toBeNull();
     // Storage should still be present (not cleared)
     expect(getRaw()).not.toBeNull();
+  });
+
+  // A real match past the first draw: the drawn tile is in the player's hand and in
+  // lastDrawnTile, and each discard is in discardPile, playerDiscards and
+  // lastDiscardedTile. Counting those references as separate tiles used to make every
+  // mid-hand save look illegal, so loadGame deleted the match the player was in.
+  it('accepts a real match saved mid-hand, after draws and discards', () => {
+    const match = initializeMatch({
+      mode: 'quick',
+      difficulty: 'easy',
+      playerNames: ['You', 'West AI', 'North AI', 'East AI'],
+      humanPlayerId: 'player-0',
+      seed: 'mid-hand-test',
+    });
+
+    let hand = match.currentHand!;
+    for (let turn = 0; turn < 8; turn++) {
+      const current = hand.players[hand.currentPlayerIndex];
+      if (hand.turnPhase === 'draw') {
+        hand = applyAction(hand, current.id, { type: 'DRAW' });
+      } else if (hand.turnPhase === 'discard') {
+        hand = applyAction(hand, current.id, { type: 'DISCARD', tile: current.hand[0] });
+      } else {
+        break;
+      }
+
+      saveGame({ ...match, currentHand: hand }, hand);
+
+      const loaded = loadGame();
+      expect(loaded, `turn ${turn} (${hand.turnPhase}) was rejected`).not.toBeNull();
+      expect(loaded!.game!.players).toHaveLength(4);
+      expect(getRaw()).not.toBeNull();
+    }
   });
 
   // Case 2: player hand inflated to 200 copies of one tile

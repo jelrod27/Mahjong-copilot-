@@ -187,10 +187,22 @@ function validateGamePayload(game: Record<string, unknown>): ValidationResult {
     }
   }
 
-  // Multiset legality
+  // Multiset legality, counted per physical tile.
+  //
+  // One physical tile is referenced from several places at once: a drawn tile is in
+  // the player's hand and in lastDrawnTile, and a discard is in discardPile, in that
+  // player's discards and in lastDiscardedTile. Tile ids are unique per physical
+  // tile, so counting each id once is what keeps a legal mid-hand save from looking
+  // like it holds five of a kind. Without this, every save after the first draw is
+  // rejected and cleared.
+  const seenTileIds = new Set<string>();
   const kindCounts = new Map<string, number>();
   let totalTiles = 0;
   for (const t of allTiles) {
+    const tileId = t['id'] as string;
+    if (seenTileIds.has(tileId)) continue;
+    seenTileIds.add(tileId);
+
     const key = rawTileKey(t);
     const suit = t['suit'] as string;
     const prev = kindCounts.get(key) ?? 0;
@@ -246,9 +258,26 @@ function validateMatchPayload(match: Record<string, unknown>): ValidationResult 
     if (handResults.length > 200) {
       return fail(`handResults.length ${handResults.length} exceeds cap of 200`);
     }
+    // handResultFromJson dereferences each entry, so a null or primitive throws there.
+    for (let i = 0; i < handResults.length; i++) {
+      if (!isObject(handResults[i])) {
+        return fail(`handResults[${i}] is not an object`);
+      }
+    }
   }
 
   return ok;
+}
+
+/**
+ * Is this payload's stored version one the loader knows? Checked before migration,
+ * so an unrecognised version is rejected without the shape rules of a newer format
+ * ever being applied to an older payload.
+ */
+export function isSupportedSaveVersion(parsed: unknown): boolean {
+  if (!isObject(parsed)) return false;
+  const version = parsed['version'];
+  return typeof version === 'number' && SUPPORTED_SAVE_VERSIONS.includes(version);
 }
 
 /**
@@ -287,10 +316,9 @@ export function validateSavedGamePayload(parsed: unknown): ValidationResult {
     return fail(`version must be one of ${SUPPORTED_SAVE_VERSIONS.join(', ')} (got ${parsed['version']})`);
   }
 
-  // loadGame hands savedAt straight to callers as a string.
-  if (typeof parsed['savedAt'] !== 'string') {
-    return fail(`savedAt must be a string (got ${typeof parsed['savedAt']})`);
-  }
+  // savedAt is deliberately not required: no production code reads it, and rejecting
+  // a payload over it would mean deleting a match that is otherwise fully restorable.
+  // loadGame reads it defensively instead.
 
   const rawMatch = parsed['match'];
   const rawGame = parsed['game'];

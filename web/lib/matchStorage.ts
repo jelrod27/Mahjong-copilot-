@@ -7,6 +7,7 @@ import { GameState, gameStateToJson, gameStateFromJson } from '@/models/GameStat
 import {
   validateSavedGamePayload,
   readPresentationLog,
+  isSupportedSaveVersion,
   isObject,
   SAVE_VERSION,
   PresentationLog,
@@ -86,17 +87,22 @@ export function saveGame(match: MatchState | null, game: GameState | null): void
   }
 }
 
-export function loadGame(): SavedGame | null {
+/**
+ * Read the stored save. `persist` writes a migrated payload back, which only the
+ * resume path wants — a screen merely asking whether a save exists should not pay
+ * for a full serialise and write.
+ */
+function readSavedGame(persist: boolean): SavedGame | null {
   if (!isBrowser()) return null;
   try {
     const raw = localStorage.getItem(MATCH_KEY);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
 
-    // Validate the payload as stored, at the version it was written at, so the
-    // version gate is a real check rather than one migration has already satisfied.
-    const validation = validateSavedGamePayload(parsed);
-    if (!validation.ok || !isObject(parsed)) {
+    // Gate the version as stored — an unrecognised version never reaches the
+    // migrator, and the shape rules below are only ever applied to a payload the
+    // migrator has brought up to the current format.
+    if (!isObject(parsed) || !isSupportedSaveVersion(parsed)) {
       clearSavedGame();
       return null;
     }
@@ -106,7 +112,14 @@ export function loadGame(): SavedGame | null {
       clearSavedGame();
       return null;
     }
-    if (migrated !== parsed) persistMigration(migrated);
+
+    const validation = validateSavedGamePayload(migrated);
+    if (!validation.ok) {
+      clearSavedGame();
+      return null;
+    }
+
+    if (persist && migrated !== parsed) persistMigration(migrated);
 
     // Deserialize dates and tile objects
     const rawMatch = migrated['match'];
@@ -116,17 +129,13 @@ export function loadGame(): SavedGame | null {
       ? gameStateFromJson(rawGame as Record<string, any>)
       : match?.currentHand ?? null;
 
-    // Guaranteed a string by validateSavedGamePayload; narrowed rather than cast.
+    // Read defensively: nothing reads savedAt, so a missing one may not cost a match.
     const savedAt = migrated['savedAt'];
-    if (typeof savedAt !== 'string') {
-      clearSavedGame();
-      return null;
-    }
 
     return {
       match,
       game,
-      savedAt,
+      savedAt: typeof savedAt === 'string' ? savedAt : '',
       version: SAVE_VERSION,
       presentationLog: readPresentationLog(migrated),
     };
@@ -134,6 +143,10 @@ export function loadGame(): SavedGame | null {
     clearSavedGame();
     return null;
   }
+}
+
+export function loadGame(): SavedGame | null {
+  return readSavedGame(true);
 }
 
 export function clearSavedGame(): void {
@@ -149,7 +162,9 @@ export function clearSavedGame(): void {
  * Lightweight check — returns true only if a non-finished, non-between-hands game is stored.
  */
 export function canResume(): boolean {
-  const saved = loadGame();
+  // Reads without persisting: this runs in a mount effect on the /play landing
+  // screen, which only decides whether to offer Resume.
+  const saved = readSavedGame(false);
   if (!saved || !saved.match) return false;
   if (saved.match.phase === 'finished') return false;
   return true;

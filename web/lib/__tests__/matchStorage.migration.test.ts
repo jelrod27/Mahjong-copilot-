@@ -198,18 +198,30 @@ describe('save-format migration', () => {
     expect(HISTORICAL_SAVE_VERSIONS).toContain(SAVE_VERSION);
   });
 
-  it.each(HISTORICAL_SAVE_VERSIONS.filter(v => v !== SAVE_VERSION))(
-    'migrates a version-%i save forward and upgrades it on disk',
-    version => {
-      localStorage.setItem(KEY, JSON.stringify({ ...v1Payload(), version }));
+  /** Seed storage with the fixture relabelled at an older supported version. */
+  function seedHistoricalSave(version: number): void {
+    localStorage.setItem(KEY, JSON.stringify({ ...v1Payload(), version }));
+  }
 
-      const loaded = loadGame();
+  const OLDER_SAVE_VERSIONS = HISTORICAL_SAVE_VERSIONS.filter(v => v !== SAVE_VERSION);
 
-      expect(loaded).not.toBeNull();
-      expect(loaded!.match!.handNumber).toBe(3);
-      expect(storedPayload()['version']).toBe(SAVE_VERSION);
-    }
-  );
+  it.each(OLDER_SAVE_VERSIONS)('restores the match from a version-%i save', version => {
+    seedHistoricalSave(version);
+
+    const loaded = loadGame();
+
+    expect(loaded).not.toBeNull();
+    expect(loaded!.match!.handNumber).toBe(3);
+    expect(loaded!.game!.id).toBe('hand-from-v1');
+  });
+
+  it.each(OLDER_SAVE_VERSIONS)('upgrades a stored version-%i save to the current version', version => {
+    seedHistoricalSave(version);
+
+    loadGame();
+
+    expect(storedPayload()['version']).toBe(SAVE_VERSION);
+  });
 
   // Nothing reads savedAt, so it may not be grounds for deleting a restorable match.
   it.each([undefined, null, 42])('restores a match whose savedAt is %p', savedAt => {
@@ -511,15 +523,27 @@ describe('presentation log', () => {
     expect(localStorage.getItem(KEY)).not.toBeNull();
   });
 
-  it('discards a log too large to be one match, and still restores the match', () => {
+  /** Seed storage with a log larger than any single match could produce. */
+  function seedOversizedLog(): void {
     const events = Array.from({ length: 5001 }, (_, seq) => ({ kind: 'discard', seq }));
     localStorage.setItem(KEY, JSON.stringify(payloadWithLog({ version: 1, events })));
+  }
+
+  it('discards a log too large to be one match', () => {
+    seedOversizedLog();
+
+    expect(loadGame()!.presentationLog).toBeUndefined();
+  });
+
+  it('restores the authoritative match despite an oversized log', () => {
+    seedOversizedLog();
 
     const loaded = loadGame();
 
     expect(loaded).not.toBeNull();
-    expect(loaded!.presentationLog).toBeUndefined();
     expect(loaded!.match!.handNumber).toBe(3);
+    expect(loaded!.game!.id).toBe('hand-from-v1');
+    expect(localStorage.getItem(KEY)).not.toBeNull();
   });
 
   // Each case seeds storage on its own, so both paths genuinely exercise both calls.

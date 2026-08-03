@@ -12,6 +12,8 @@ import { initializeMatch } from '@/engine/matchManager';
 import { applyAction, getLegalClaims } from '@/engine/turnManager';
 import { getAIDecision, getAIClaimDecision } from '@/engine/ai';
 import { validateSavedGamePayload } from '../savedGameValidator';
+import type { GameState } from '@/models/GameState';
+import type { GameAction } from '@/engine/types';
 import { matchStateToJson } from '@/models/MatchState';
 
 const KEY = 'mahjong_match_in_progress';
@@ -78,14 +80,16 @@ describe('matchStorage validation', () => {
 
     let hand = match.currentHand!;
     for (let turn = 0; turn < 8; turn++) {
+      if (hand.turnPhase !== 'draw' && hand.turnPhase !== 'discard') break;
       const current = hand.players[hand.currentPlayerIndex];
-      if (hand.turnPhase === 'draw') {
-        hand = applyAction(hand, current.id, { type: 'DRAW' });
-      } else if (hand.turnPhase === 'discard') {
-        hand = applyAction(hand, current.id, { type: 'DISCARD', tile: current.hand[0] });
-      } else {
-        break;
-      }
+      const action: GameAction = hand.turnPhase === 'draw'
+        ? { type: 'DRAW' }
+        : { type: 'DISCARD', tile: current.hand[0] };
+
+      // A rejected action must say so here, not surface later as a null dereference.
+      const next = applyAction(hand, current.id, action);
+      expect(next, `turn ${turn}: ${action.type} by ${current.id} was rejected`).not.toBeNull();
+      hand = next!;
 
       saveGame({ ...match, currentHand: hand }, hand);
 
@@ -122,20 +126,27 @@ describe('matchStorage validation', () => {
     while (hand.phase === 'playing' && steps < 500) {
       steps++;
       const current = hand.players[hand.currentPlayerIndex];
+      let next: GameState | null;
+
       if (hand.turnPhase === 'draw') {
-        hand = applyAction(hand, current.id, { type: 'DRAW' })!;
+        next = applyAction(hand, current.id, { type: 'DRAW' });
       } else if (hand.turnPhase === 'discard') {
-        hand = applyAction(hand, current.id, getAIDecision(hand, hand.currentPlayerIndex).action)!;
+        next = applyAction(hand, current.id, getAIDecision(hand, hand.currentPlayerIndex).action);
       } else if (hand.turnPhase === 'claim') {
         const claims = getLegalClaims(hand, hand.currentPlayerIndex);
         const decision = claims.length > 0
           ? getAIClaimDecision(hand, hand.currentPlayerIndex, claims)
           : { action: { type: 'PASS' as const } };
-        hand = applyAction(hand, current.id, decision.action)
-          ?? applyAction(hand, current.id, { type: 'PASS' })!;
+        // A claim can be invalidated between decision and application (the min-faan
+        // gate); passing instead is legitimate, a rejected pass is not.
+        next = applyAction(hand, current.id, decision.action)
+          ?? applyAction(hand, current.id, { type: 'PASS' });
       } else {
         break;
       }
+
+      expect(next, `step ${steps}: ${hand.turnPhase} action was rejected`).not.toBeNull();
+      hand = next!;
       expectValid();
     }
 

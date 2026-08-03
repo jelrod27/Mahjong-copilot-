@@ -9,6 +9,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { saveGame, loadGame } from '../matchStorage';
 import { initializeMatch } from '@/engine/matchManager';
+import { applyAction, getLegalClaims } from '@/engine/turnManager';
+import { getAIDecision, getAIClaimDecision } from '@/engine/ai';
+import { validateSavedGamePayload } from '../savedGameValidator';
+import type { GameState } from '@/models/GameState';
+import type { GameAction } from '@/engine/types';
 import { matchStateToJson } from '@/models/MatchState';
 
 const KEY = 'mahjong_match_in_progress';
@@ -58,6 +63,94 @@ describe('matchStorage validation', () => {
     expect(result).not.toBeNull();
     // Storage should still be present (not cleared)
     expect(getRaw()).not.toBeNull();
+  });
+
+  // A real match past the first draw: the drawn tile is in the player's hand and in
+  // lastDrawnTile, and each discard is in discardPile, playerDiscards and
+  // lastDiscardedTile. Counting those references as separate tiles used to make every
+  // mid-hand save look illegal, so loadGame deleted the match the player was in.
+  it('accepts a real match saved mid-hand, after draws and discards', () => {
+    const match = initializeMatch({
+      mode: 'quick',
+      difficulty: 'easy',
+      playerNames: ['You', 'West AI', 'North AI', 'East AI'],
+      humanPlayerId: 'player-0',
+      seed: 'mid-hand-test',
+    });
+
+    let hand = match.currentHand!;
+    for (let turn = 0; turn < 8; turn++) {
+      if (hand.turnPhase !== 'draw' && hand.turnPhase !== 'discard') break;
+      const current = hand.players[hand.currentPlayerIndex];
+      const action: GameAction = hand.turnPhase === 'draw'
+        ? { type: 'DRAW' }
+        : { type: 'DISCARD', tile: current.hand[0] };
+
+      // A rejected action must say so here, not surface later as a null dereference.
+      const next = applyAction(hand, current.id, action);
+      expect(next, `turn ${turn}: ${action.type} by ${current.id} was rejected`).not.toBeNull();
+      hand = next!;
+
+      saveGame({ ...match, currentHand: hand }, hand);
+
+      const loaded = loadGame();
+      expect(loaded, `turn ${turn} (${hand.turnPhase}) was rejected`).not.toBeNull();
+      expect(loaded!.game!.players).toHaveLength(4);
+      expect(getRaw()).not.toBeNull();
+    }
+  });
+
+  // Stronger than the eight-turn case above: play whole hands through the real engine
+  // — draws, discards, claims, melds, kongs, flower replacements — and require every
+  // state the engine can reach to validate. This is what keeps a future tightening of
+  // the validator from rejecting legal play.
+  it.each(['seed-a', 'seed-b'])('accepts every state of a full hand played with %s', seed => {
+    const match = initializeMatch({
+      mode: 'quick',
+      difficulty: 'hard',
+      playerNames: ['You', 'West AI', 'North AI', 'East AI'],
+      humanPlayerId: 'player-0',
+      seed,
+    });
+
+    let hand = match.currentHand!;
+    let steps = 0;
+
+    const expectValid = () => {
+      saveGame({ ...match, currentHand: hand }, hand);
+      const result = validateSavedGamePayload(JSON.parse(getRaw()!));
+      expect(result, `step ${steps} (${hand.turnPhase})`).toEqual({ ok: true });
+    };
+
+    expectValid();
+    while (hand.phase === 'playing' && steps < 500) {
+      steps++;
+      const current = hand.players[hand.currentPlayerIndex];
+      let next: GameState | null;
+
+      if (hand.turnPhase === 'draw') {
+        next = applyAction(hand, current.id, { type: 'DRAW' });
+      } else if (hand.turnPhase === 'discard') {
+        next = applyAction(hand, current.id, getAIDecision(hand, hand.currentPlayerIndex).action);
+      } else if (hand.turnPhase === 'claim') {
+        const claims = getLegalClaims(hand, hand.currentPlayerIndex);
+        const decision = claims.length > 0
+          ? getAIClaimDecision(hand, hand.currentPlayerIndex, claims)
+          : { action: { type: 'PASS' as const } };
+        // A claim can be invalidated between decision and application (the min-faan
+        // gate); passing instead is legitimate, a rejected pass is not.
+        next = applyAction(hand, current.id, decision.action)
+          ?? applyAction(hand, current.id, { type: 'PASS' });
+      } else {
+        break;
+      }
+
+      expect(next, `step ${steps}: ${hand.turnPhase} action was rejected`).not.toBeNull();
+      hand = next!;
+      expectValid();
+    }
+
+    expect(steps).toBeGreaterThan(10);
   });
 
   // Case 2: player hand inflated to 200 copies of one tile

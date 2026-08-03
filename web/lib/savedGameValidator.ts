@@ -12,9 +12,31 @@ const VALID_TURN_PHASES = new Set(['draw', 'discard', 'claim', 'endOfTurn']);
 // Bonus suits — each unique bonus tile exists only once in the full set
 const BONUS_SUITS = new Set(['flower', 'season']);
 
+// The one save format. Older versions migrate forward on load; none is kept alongside it.
+export const SAVE_VERSION = 2;
+// Every version ever written, listed literally. Do NOT derive an entry from
+// SAVE_VERSION: `[1, SAVE_VERSION]` would drop the outgoing version on the next
+// bump, and the loader would delete every save in the field on that deploy.
+// Adding a version here means teaching migrateSavedPayload to migrate it.
+export const SUPPORTED_SAVE_VERSIONS: readonly number[] = [1, 2];
+
 export interface ValidationFailure { ok: false; reason: string }
 export interface ValidationOk { ok: true }
 export type ValidationResult = ValidationOk | ValidationFailure;
+
+/**
+ * Optional decoration on a save: the presentation-event log a hand is replayed from.
+ * Versioned independently of the save. Events stay untyped — nothing writes them yet.
+ */
+export interface PresentationLog {
+  version: number;
+  events: unknown[];
+}
+
+// A ceiling on what the reader will accept, sized well above one hand and in line
+// with the turnHistory cap, so a corrupt or truncated blob cannot be handed on as a
+// log. Retention — how many events are kept and what gets pruned — belongs to #120.
+const MAX_PRESENTATION_LOG_EVENTS = 5000;
 
 function fail(reason: string): ValidationFailure {
   return { ok: false, reason };
@@ -22,7 +44,7 @@ function fail(reason: string): ValidationFailure {
 
 const ok: ValidationOk = { ok: true };
 
-function isObject(v: unknown): v is Record<string, unknown> {
+export function isObject(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === 'object' && !Array.isArray(v);
 }
 
@@ -118,57 +140,96 @@ function validateGamePayload(game: Record<string, unknown>): ValidationResult {
     }
   }
 
-  // Collect all tiles for shape validation and multiset check
-  const allTiles: Record<string, unknown>[] = [];
+  // Tile shape and physical-location accounting.
+  //
+  // A physical tile is *owned* by exactly one authoritative location: the wall, the
+  // dead wall, a player's hand, a meld, a player's flowers, or the discard pile. The
+  // remaining tile fields are aliases — playerDiscards indexes the discard pile by
+  // player, and lastDrawnTile / lastDiscardedTile / winningTile point at a tile that
+  // already sits somewhere authoritative. An alias may repeat an id freely; two
+  // authoritative locations claiming one id is physically impossible and is rejected.
+  const owners = new Map<string, string>();
+  const tilesById = new Map<string, Record<string, unknown>>();
 
-  const addArr = (arr: unknown, label: string): ValidationFailure | null => {
+  const addOwned = (arr: unknown, label: string): ValidationFailure | null => {
     if (!Array.isArray(arr)) return null;
     const err = validateTiles(arr, label);
     if (err) return err;
-    for (const t of arr) allTiles.push(t as Record<string, unknown>);
+    for (const t of arr) {
+      const tile = t as Record<string, unknown>;
+      const id = tile['id'] as string;
+      const owner = owners.get(id);
+      if (owner !== undefined) {
+        return fail(
+          owner === label
+            ? `tile id '${id}' appears twice in ${label}`
+            : `tile id '${id}' appears in both ${owner} and ${label}`
+        );
+      }
+      owners.set(id, label);
+      tilesById.set(id, tile);
+    }
     return null;
   };
 
-  const addOptional = (t: unknown, label: string): ValidationFailure | null => {
+  const addAliasArr = (arr: unknown, label: string): ValidationFailure | null => {
+    if (!Array.isArray(arr)) return null;
+    const err = validateTiles(arr, label);
+    if (err) return err;
+    for (const t of arr) {
+      const tile = t as Record<string, unknown>;
+      if (!tilesById.has(tile['id'] as string)) tilesById.set(tile['id'] as string, tile);
+    }
+    return null;
+  };
+
+  const addAlias = (t: unknown, label: string): ValidationFailure | null => {
     if (t === undefined || t === null) return null;
     if (!isTileShape(t)) return fail(`${label} is not a valid tile object`);
-    allTiles.push(t as Record<string, unknown>);
+    const tile = t as Record<string, unknown>;
+    if (!tilesById.has(tile['id'] as string)) tilesById.set(tile['id'] as string, tile);
     return null;
   };
 
   let err: ValidationFailure | null;
 
-  err = addArr(wall, 'wall'); if (err) return err;
-  err = addArr(deadWall, 'deadWall'); if (err) return err;
-  err = addArr(discardPile, 'discardPile'); if (err) return err;
-  err = addOptional(game['lastDrawnTile'], 'lastDrawnTile'); if (err) return err;
-  err = addOptional(game['lastDiscardedTile'], 'lastDiscardedTile'); if (err) return err;
-  err = addOptional(game['winningTile'], 'winningTile'); if (err) return err;
-
-  if (isObject(playerDiscards)) {
-    for (const [k, v] of Object.entries(playerDiscards)) {
-      err = addArr(v, `playerDiscards['${k}']`); if (err) return err;
-    }
-  }
+  // Authoritative locations
+  err = addOwned(wall, 'wall'); if (err) return err;
+  err = addOwned(deadWall, 'deadWall'); if (err) return err;
+  err = addOwned(discardPile, 'discardPile'); if (err) return err;
 
   for (let i = 0; i < 4; i++) {
     const p = players[i] as Record<string, unknown>;
-    err = addArr(p['hand'], `players[${i}].hand`); if (err) return err;
-    err = addArr(p['flowers'], `players[${i}].flowers`); if (err) return err;
+    err = addOwned(p['hand'], `players[${i}].hand`); if (err) return err;
+    err = addOwned(p['flowers'], `players[${i}].flowers`); if (err) return err;
     if (Array.isArray(p['melds'])) {
       for (let m = 0; m < (p['melds'] as unknown[]).length; m++) {
         const meld = (p['melds'] as unknown[])[m];
         if (isObject(meld) && Array.isArray(meld['tiles'])) {
-          err = addArr(meld['tiles'], `players[${i}].melds[${m}].tiles`); if (err) return err;
+          err = addOwned(meld['tiles'], `players[${i}].melds[${m}].tiles`); if (err) return err;
         }
       }
     }
   }
 
-  // Multiset legality
+  // Aliases — references to tiles the locations above already own
+  err = addAlias(game['lastDrawnTile'], 'lastDrawnTile'); if (err) return err;
+  err = addAlias(game['lastDiscardedTile'], 'lastDiscardedTile'); if (err) return err;
+  err = addAlias(game['winningTile'], 'winningTile'); if (err) return err;
+
+  if (isObject(playerDiscards)) {
+    for (const [k, v] of Object.entries(playerDiscards)) {
+      err = addAliasArr(v, `playerDiscards['${k}']`); if (err) return err;
+    }
+  }
+
+  // Multiset legality, over distinct physical tiles. A drawn tile is in its hand and
+  // in lastDrawnTile; a discard is in discardPile, in that player's discards and in
+  // lastDiscardedTile. Counting those references separately made every save after the
+  // first draw look like it held five of a kind.
   const kindCounts = new Map<string, number>();
   let totalTiles = 0;
-  for (const t of allTiles) {
+  for (const t of tilesById.values()) {
     const key = rawTileKey(t);
     const suit = t['suit'] as string;
     const prev = kindCounts.get(key) ?? 0;
@@ -214,12 +275,57 @@ function validateMatchPayload(match: Record<string, unknown>): ValidationResult 
     return fail(`match.phase is not a string`);
   }
 
+  // A present non-array reaches matchStateFromJson's `handResults?.map(...)`, where
+  // optional chaining does not save it — it throws and the save is cleared.
   const handResults = match['handResults'];
-  if (Array.isArray(handResults) && handResults.length > 200) {
-    return fail(`handResults.length ${handResults.length} exceeds cap of 200`);
+  if (handResults !== undefined && handResults !== null) {
+    if (!Array.isArray(handResults)) {
+      return fail(`handResults must be an array (got ${typeof handResults})`);
+    }
+    if (handResults.length > 200) {
+      return fail(`handResults.length ${handResults.length} exceeds cap of 200`);
+    }
+    // handResultFromJson dereferences each entry, so a null or primitive throws there.
+    for (let i = 0; i < handResults.length; i++) {
+      if (!isObject(handResults[i])) {
+        return fail(`handResults[${i}] is not an object`);
+      }
+    }
   }
 
   return ok;
+}
+
+/**
+ * Is this payload's stored version one the loader knows? Checked before migration,
+ * so an unrecognised version is rejected without the shape rules of a newer format
+ * ever being applied to an older payload.
+ */
+export function isSupportedSaveVersion(parsed: unknown): boolean {
+  if (!isObject(parsed)) return false;
+  const version = parsed['version'];
+  return typeof version === 'number' && SUPPORTED_SAVE_VERSIONS.includes(version);
+}
+
+/**
+ * Read the optional presentation log off a raw payload.
+ * Anything absent or misshapen is discarded rather than failed — the log is
+ * decoration, and a corrupt one may never cost a player their match.
+ * validateSavedGamePayload ignores this key for the same reason.
+ */
+export function readPresentationLog(parsed: unknown): PresentationLog | undefined {
+  if (!isObject(parsed)) return undefined;
+
+  const log = parsed['presentationLog'];
+  if (!isObject(log)) return undefined;
+
+  const version = log['version'];
+  const events = log['events'];
+  if (!Number.isInteger(version) || (version as number) < 1) return undefined;
+  if (!Array.isArray(events)) return undefined;
+  if (events.length > MAX_PRESENTATION_LOG_EVENTS) return undefined;
+
+  return { version: version as number, events };
 }
 
 /**
@@ -232,25 +338,30 @@ export function validateSavedGamePayload(parsed: unknown): ValidationResult {
     return fail('payload is not an object');
   }
 
-  if (parsed['version'] !== 1) {
-    return fail(`version must be 1 (got ${parsed['version']})`);
+  const version = parsed['version'];
+  if (typeof version !== 'number' || !SUPPORTED_SAVE_VERSIONS.includes(version)) {
+    return fail(`version must be one of ${SUPPORTED_SAVE_VERSIONS.join(', ')} (got ${parsed['version']})`);
   }
+
+  // savedAt is deliberately not required: no production code reads it, and rejecting
+  // a payload over it would mean deleting a match that is otherwise fully restorable.
+  // loadGame reads it defensively instead.
 
   const rawMatch = parsed['match'];
   const rawGame = parsed['game'];
 
-  // Both null/absent is valid (loadGame handles that path)
-  const gamePayload =
-    (rawGame !== undefined && rawGame !== null) ? rawGame :
-    (isObject(rawMatch) && rawMatch['currentHand'] !== undefined && rawMatch['currentHand'] !== null)
-      ? rawMatch['currentHand']
-      : null;
+  // Both null/absent is valid (loadGame handles that path). Every hand loadGame may
+  // deserialise is checked — the writer stores the same hand at both `game` and
+  // `match.currentHand`, and validating only one lets the other through corrupt.
+  const handPayloads: [unknown, string][] = [[rawGame, 'game']];
+  if (isObject(rawMatch)) handPayloads.push([rawMatch['currentHand'], 'match.currentHand']);
 
-  if (gamePayload !== null) {
-    if (!isObject(gamePayload)) {
-      return fail('game payload is not an object');
+  for (const [hand, label] of handPayloads) {
+    if (hand === undefined || hand === null) continue;
+    if (!isObject(hand)) {
+      return fail(`${label} payload is not an object`);
     }
-    const result = validateGamePayload(gamePayload);
+    const result = validateGamePayload(hand);
     if (!result.ok) return result;
   }
 

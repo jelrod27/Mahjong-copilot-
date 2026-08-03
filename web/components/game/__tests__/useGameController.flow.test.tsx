@@ -15,6 +15,7 @@ import { GamePhase } from '@/models/GameState';
 import { TileSuit, TileType, WindTile, type Tile } from '@/models/Tile';
 import type { GameState } from '@/models/GameState';
 import type { MatchState } from '@/models/MatchState';
+import { SAVE_VERSION } from '@/lib/savedGameValidator';
 
 // ---- Mocks ----------------------------------------------------------------
 
@@ -250,17 +251,31 @@ describe('saved-game resume', () => {
     vi.useRealTimers();
   });
 
-  function seedLocalStorage(matchOverrides: Partial<MatchState> = {}) {
+  function seedLocalStorage(
+    matchOverrides: Partial<MatchState> = {},
+    payloadOverrides: Record<string, unknown> = {},
+  ) {
     const game = makeGame();
     const match = { ...makeMatch(game), ...matchOverrides };
     localStorage.setItem('mahjong_match_in_progress', JSON.stringify({
       match, game: match.currentHand, savedAt: new Date().toISOString(), version: 1,
+      ...payloadOverrides,
     }));
     return { match, game };
   }
 
-  it('resumes a saved match without calling initializeMatch', () => {
-    const { match } = seedLocalStorage();
+  // The board resumes the same way at either save version, and a presentation log
+  // in the payload is inert to it — same resumed state, and nothing log-shaped
+  // reaches the controller's surface.
+  it.each([
+    ['the previous save version', { version: 1 }],
+    ['the current save version', { version: SAVE_VERSION }],
+    ['a payload carrying a presentation log', {
+      version: SAVE_VERSION,
+      presentationLog: { version: 1, events: [{ kind: 'deal', seq: 0 }] },
+    }],
+  ])('resumes a saved match from %s without calling initializeMatch', (_label, payloadOverrides) => {
+    const { match, game } = seedLocalStorage({}, payloadOverrides);
     // Normally initializeMatch returns a fresh match; it must NOT be called on resume.
     initializeMatchMock.mockReturnValue(match);
 
@@ -270,6 +285,9 @@ describe('saved-game resume', () => {
     expect(initializeMatchMock).not.toHaveBeenCalled();
     expect(result.current.match).not.toBeNull();
     expect(result.current.match?.mode).toBe('quick');
+    expect(result.current.match?.handNumber).toBe(match.handNumber);
+    expect(result.current.game?.id).toBe(game.id);
+    expect(Object.keys(result.current)).not.toContain('presentationLog');
   });
 
   it('skips resume when parlourFloor is set and calls initializeMatch fresh', () => {
@@ -299,7 +317,7 @@ describe('saved-game resume', () => {
     expect(initializeMatchMock).toHaveBeenCalled();
   });
 
-  it('auto-saves after init: localStorage contains version=1 and non-null match', () => {
+  it('auto-saves after init: localStorage contains the current save version and non-null match', () => {
     const game = makeGame();
     const match = makeMatch(game);
     initializeMatchMock.mockReturnValue(match);
@@ -310,7 +328,7 @@ describe('saved-game resume', () => {
     const raw = localStorage.getItem('mahjong_match_in_progress');
     expect(raw).not.toBeNull();
     const parsed = JSON.parse(raw!);
-    expect(parsed.version).toBe(1);
+    expect(parsed.version).toBe(SAVE_VERSION);
     expect(parsed.match).not.toBeNull();
   });
 });

@@ -300,7 +300,17 @@ export default function GameBoard({
                 </div>
               </div>
 
-              <div className="flex min-h-0 w-full max-w-[min(100%,22rem)] flex-col justify-center overflow-y-auto md:max-w-2xl">
+              {/* Scrolls once the sea fills up, so it needs its own tab stop:
+                  a scrollable region that cannot be focused is unreachable by
+                  keyboard everywhere except Chrome, which grants focus to
+                  scrollers implicitly. Explicit tabIndex makes the existing
+                  Chrome behaviour true in every browser. */}
+              <div
+                tabIndex={0}
+                role="group"
+                aria-label="Discard pool"
+                className="flex min-h-0 w-full max-w-[min(100%,22rem)] flex-col justify-center overflow-y-auto md:max-w-2xl"
+              >
                 <DiscardPool
                   discards={gameState.discardPile}
                   lastDiscardedTile={gameState.lastDiscardedTile}
@@ -311,7 +321,13 @@ export default function GameBoard({
               </div>
 
               {tutorAdvice && (
-                <div className="w-full max-w-[min(100%,20rem)] max-h-22 overflow-y-auto md:max-w-xl" style={{ flex: '0 0 auto' }}>
+                <div
+                  tabIndex={0}
+                  role="group"
+                  aria-label="Discard tip"
+                  className="w-full max-w-[min(100%,20rem)] max-h-22 overflow-y-auto md:max-w-xl"
+                  style={{ flex: '0 0 auto' }}
+                >
                   <TutorPanel advice={tutorAdvice} />
                 </div>
               )}

@@ -264,10 +264,18 @@ describe('saved-game resume', () => {
     return { match, game };
   }
 
-  // seedLocalStorage writes the previous save version, so this also covers a
-  // pre-upgrade save resuming on the board rather than being thrown away.
-  it('resumes a saved match without calling initializeMatch', () => {
-    const { match } = seedLocalStorage();
+  // The board resumes the same way at either save version, and a presentation log
+  // in the payload is inert to it — same resumed state, and nothing log-shaped
+  // reaches the controller's surface.
+  it.each([
+    ['the previous save version', { version: 1 }],
+    ['the current save version', { version: SAVE_VERSION }],
+    ['a payload carrying a presentation log', {
+      version: SAVE_VERSION,
+      presentationLog: { version: 1, events: [{ kind: 'deal', seq: 0 }] },
+    }],
+  ])('resumes a saved match from %s without calling initializeMatch', (_label, payloadOverrides) => {
+    const { match, game } = seedLocalStorage({}, payloadOverrides);
     // Normally initializeMatch returns a fresh match; it must NOT be called on resume.
     initializeMatchMock.mockReturnValue(match);
 
@@ -277,21 +285,9 @@ describe('saved-game resume', () => {
     expect(initializeMatchMock).not.toHaveBeenCalled();
     expect(result.current.match).not.toBeNull();
     expect(result.current.match?.mode).toBe('quick');
-  });
-
-  it('resumes a current-version save, ignoring the presentation log it carries', () => {
-    const { match } = seedLocalStorage({}, {
-      version: SAVE_VERSION,
-      presentationLog: { version: 1, events: [{ kind: 'deal', seq: 0 }] },
-    });
-    initializeMatchMock.mockReturnValue(match);
-
-    const { result } = renderHook(() => useGameController('easy', 'quick'));
-    act(() => { vi.advanceTimersByTime(0); });
-
-    expect(initializeMatchMock).not.toHaveBeenCalled();
-    expect(result.current.match).not.toBeNull();
-    expect(result.current.match?.mode).toBe('quick');
+    expect(result.current.match?.handNumber).toBe(match.handNumber);
+    expect(result.current.game?.id).toBe(game.id);
+    expect(Object.keys(result.current)).not.toContain('presentationLog');
   });
 
   it('skips resume when parlourFloor is set and calls initializeMatch fresh', () => {

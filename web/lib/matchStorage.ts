@@ -44,6 +44,19 @@ function migrateSavedPayload(parsed: unknown): Record<string, unknown> | null {
   }
 }
 
+/**
+ * Write a migrated payload back so the record on disk stops being legacy. Called only
+ * after the payload validated, and swallows its own errors: a failed write leaves the
+ * original save readable, so a full quota must never cost the player their match.
+ */
+function persistMigration(migrated: Record<string, unknown>): void {
+  try {
+    localStorage.setItem(MATCH_KEY, JSON.stringify(migrated));
+  } catch {
+    // Quota exceeded or private mode — the in-memory migration still stands.
+  }
+}
+
 function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 }
@@ -78,17 +91,22 @@ export function loadGame(): SavedGame | null {
   try {
     const raw = localStorage.getItem(MATCH_KEY);
     if (!raw) return null;
-    const migrated = migrateSavedPayload(JSON.parse(raw));
-    if (!migrated) {
+    const parsed: unknown = JSON.parse(raw);
+
+    // Validate the payload as stored, at the version it was written at, so the
+    // version gate is a real check rather than one migration has already satisfied.
+    const validation = validateSavedGamePayload(parsed);
+    if (!validation.ok || !isObject(parsed)) {
       clearSavedGame();
       return null;
     }
 
-    const validation = validateSavedGamePayload(migrated);
-    if (!validation.ok) {
+    const migrated = migrateSavedPayload(parsed);
+    if (!migrated) {
       clearSavedGame();
       return null;
     }
+    if (migrated !== parsed) persistMigration(migrated);
 
     // Deserialize dates and tile objects
     const rawMatch = migrated['match'];
@@ -98,10 +116,17 @@ export function loadGame(): SavedGame | null {
       ? gameStateFromJson(rawGame as Record<string, any>)
       : match?.currentHand ?? null;
 
+    // Guaranteed a string by validateSavedGamePayload; narrowed rather than cast.
+    const savedAt = migrated['savedAt'];
+    if (typeof savedAt !== 'string') {
+      clearSavedGame();
+      return null;
+    }
+
     return {
       match,
       game,
-      savedAt: migrated['savedAt'] as string,
+      savedAt,
       version: SAVE_VERSION,
       presentationLog: readPresentationLog(migrated),
     };

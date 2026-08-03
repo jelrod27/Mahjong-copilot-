@@ -14,8 +14,11 @@ const BONUS_SUITS = new Set(['flower', 'season']);
 
 // The one save format. Older versions migrate forward on load; none is kept alongside it.
 export const SAVE_VERSION = 2;
-// What a stored payload may carry: the current version plus every version the loader migrates.
-export const SUPPORTED_SAVE_VERSIONS: readonly number[] = [1, SAVE_VERSION];
+// Every version ever written, listed literally. Do NOT derive an entry from
+// SAVE_VERSION: `[1, SAVE_VERSION]` would drop the outgoing version on the next
+// bump, and the loader would delete every save in the field on that deploy.
+// Adding a version here means teaching migrateSavedPayload to migrate it.
+export const SUPPORTED_SAVE_VERSIONS: readonly number[] = [1, 2];
 
 export interface ValidationFailure { ok: false; reason: string }
 export interface ValidationOk { ok: true }
@@ -29,6 +32,11 @@ export interface PresentationLog {
   version: number;
   events: unknown[];
 }
+
+// A ceiling on what the reader will accept, sized well above one hand and in line
+// with the turnHistory cap, so a corrupt or truncated blob cannot be handed on as a
+// log. Retention — how many events are kept and what gets pruned — belongs to #120.
+const MAX_PRESENTATION_LOG_EVENTS = 5000;
 
 function fail(reason: string): ValidationFailure {
   return { ok: false, reason };
@@ -228,9 +236,16 @@ function validateMatchPayload(match: Record<string, unknown>): ValidationResult 
     return fail(`match.phase is not a string`);
   }
 
+  // A present non-array reaches matchStateFromJson's `handResults?.map(...)`, where
+  // optional chaining does not save it — it throws and the save is cleared.
   const handResults = match['handResults'];
-  if (Array.isArray(handResults) && handResults.length > 200) {
-    return fail(`handResults.length ${handResults.length} exceeds cap of 200`);
+  if (handResults !== undefined && handResults !== null) {
+    if (!Array.isArray(handResults)) {
+      return fail(`handResults must be an array (got ${typeof handResults})`);
+    }
+    if (handResults.length > 200) {
+      return fail(`handResults.length ${handResults.length} exceeds cap of 200`);
+    }
   }
 
   return ok;
@@ -252,6 +267,7 @@ export function readPresentationLog(parsed: unknown): PresentationLog | undefine
   const events = log['events'];
   if (!Number.isInteger(version) || (version as number) < 1) return undefined;
   if (!Array.isArray(events)) return undefined;
+  if (events.length > MAX_PRESENTATION_LOG_EVENTS) return undefined;
 
   return { version: version as number, events };
 }
@@ -271,21 +287,26 @@ export function validateSavedGamePayload(parsed: unknown): ValidationResult {
     return fail(`version must be one of ${SUPPORTED_SAVE_VERSIONS.join(', ')} (got ${parsed['version']})`);
   }
 
+  // loadGame hands savedAt straight to callers as a string.
+  if (typeof parsed['savedAt'] !== 'string') {
+    return fail(`savedAt must be a string (got ${typeof parsed['savedAt']})`);
+  }
+
   const rawMatch = parsed['match'];
   const rawGame = parsed['game'];
 
-  // Both null/absent is valid (loadGame handles that path)
-  const gamePayload =
-    (rawGame !== undefined && rawGame !== null) ? rawGame :
-    (isObject(rawMatch) && rawMatch['currentHand'] !== undefined && rawMatch['currentHand'] !== null)
-      ? rawMatch['currentHand']
-      : null;
+  // Both null/absent is valid (loadGame handles that path). Every hand loadGame may
+  // deserialise is checked — the writer stores the same hand at both `game` and
+  // `match.currentHand`, and validating only one lets the other through corrupt.
+  const handPayloads: [unknown, string][] = [[rawGame, 'game']];
+  if (isObject(rawMatch)) handPayloads.push([rawMatch['currentHand'], 'match.currentHand']);
 
-  if (gamePayload !== null) {
-    if (!isObject(gamePayload)) {
-      return fail('game payload is not an object');
+  for (const [hand, label] of handPayloads) {
+    if (hand === undefined || hand === null) continue;
+    if (!isObject(hand)) {
+      return fail(`${label} payload is not an object`);
     }
-    const result = validateGamePayload(gamePayload);
+    const result = validateGamePayload(hand);
     if (!result.ok) return result;
   }
 

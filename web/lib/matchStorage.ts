@@ -7,6 +7,7 @@ import { GameState, gameStateToJson, gameStateFromJson } from '@/models/GameStat
 import {
   validateSavedGamePayload,
   readPresentationLog,
+  isObject,
   SAVE_VERSION,
   PresentationLog,
 } from './savedGameValidator';
@@ -23,14 +24,13 @@ export interface SavedGame {
 }
 
 /**
- * Bring a stored payload up to SAVE_VERSION so a player mid-match keeps their
- * game across a format change. Returns null when the version is unknown — a
- * newer build wrote it, or the payload is not a save at all — and the caller
- * discards it.
+ * Bring a stored payload up to SAVE_VERSION so a player mid-match keeps their game
+ * across a format change. Null when the version is unknown — a newer build wrote it,
+ * or it is not a save at all — and the caller discards it.
  */
 function migrateSavedPayload(parsed: unknown): Record<string, unknown> | null {
-  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-  const payload = parsed as Record<string, unknown>;
+  if (!isObject(parsed)) return null;
+  const payload = parsed;
 
   switch (payload['version']) {
     case SAVE_VERSION:

@@ -8,7 +8,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { loadGame, saveGame, canResume } from '../matchStorage';
-import { SAVE_VERSION } from '../savedGameValidator';
+import { SAVE_VERSION, SUPPORTED_SAVE_VERSIONS, validateSavedGamePayload } from '../savedGameValidator';
 import { initializeMatch } from '@/engine/matchManager';
 
 const KEY = 'mahjong_match_in_progress';
@@ -138,6 +138,21 @@ describe('save-format migration', () => {
     expect(loaded!.savedAt).toBe('2026-01-15T10:42:00.000Z');
   });
 
+  // Guards the pair of files against drifting apart: bumping SAVE_VERSION without
+  // teaching the loader to migrate the version it replaces would delete saves again.
+  it.each(SUPPORTED_SAVE_VERSIONS.filter(v => v !== SAVE_VERSION))(
+    'migrates a version-%i save forward instead of clearing it',
+    version => {
+      localStorage.setItem(KEY, JSON.stringify({ ...v1Payload(), version }));
+
+      const loaded = loadGame();
+
+      expect(loaded).not.toBeNull();
+      expect(loaded!.version).toBe(SAVE_VERSION);
+      expect(localStorage.getItem(KEY)).not.toBeNull();
+    }
+  );
+
   it('still rejects a malformed payload carrying the older version', () => {
     const payload = v1Payload();
     const game = payload['game'] as Record<string, unknown>;
@@ -146,6 +161,25 @@ describe('save-format migration', () => {
 
     expect(loadGame()).toBeNull();
     expect(localStorage.getItem(KEY)).toBeNull();
+  });
+});
+
+// The loader normalises the version before validating, so these exercise the
+// validator directly — it is the piece that must accept both versions.
+describe('validateSavedGamePayload version acceptance', () => {
+  it.each(SUPPORTED_SAVE_VERSIONS)('accepts a well-formed version-%i payload', version => {
+    expect(validateSavedGamePayload({ ...v1Payload(), version })).toEqual({ ok: true });
+  });
+
+  it.each([999, 0, -1, '1', null, undefined])('rejects a payload versioned %p', version => {
+    expect(validateSavedGamePayload({ ...v1Payload(), version })).toMatchObject({ ok: false });
+  });
+
+  it.each(SUPPORTED_SAVE_VERSIONS)('still rejects a malformed version-%i payload', version => {
+    const payload = { ...v1Payload(), version };
+    (payload['game'] as Record<string, unknown>)['currentPlayerIndex'] = 99;
+
+    expect(validateSavedGamePayload(payload)).toMatchObject({ ok: false });
   });
 });
 
@@ -188,7 +222,7 @@ describe('presentation log', () => {
     ['versioned with zero', { version: 0, events: [] }],
     ['missing its events', { version: 1 }],
     ['events that are not an array', { version: 1, events: { 0: 'discard' } }],
-  ])('discards a log that is %s and restores the match anyway', (_label, log) => {
+  ])('discards a log that is %s, without blocking restoration', (_label, log) => {
     localStorage.setItem(KEY, JSON.stringify(payloadWithLog(log)));
 
     const loaded = loadGame();
@@ -236,27 +270,20 @@ describe('the written save', () => {
     return JSON.parse(localStorage.getItem(KEY)!);
   }
 
-  /** Every object key in the payload, at any depth. */
-  function allKeys(value: unknown, found: string[] = []): string[] {
-    if (Array.isArray(value)) {
-      for (const item of value) allKeys(item, found);
+  /** Every object key and every string value in the payload, at any depth. */
+  function walk(
+    value: unknown,
+    found: { keys: string[]; strings: string[] } = { keys: [], strings: [] },
+  ): { keys: string[]; strings: string[] } {
+    if (typeof value === 'string') {
+      found.strings.push(value);
+    } else if (Array.isArray(value)) {
+      for (const item of value) walk(item, found);
     } else if (value !== null && typeof value === 'object') {
       for (const [k, v] of Object.entries(value)) {
-        found.push(k);
-        allKeys(v, found);
+        found.keys.push(k);
+        walk(v, found);
       }
-    }
-    return found;
-  }
-
-  /** Every string value in the payload, at any depth. */
-  function allStringValues(value: unknown, found: string[] = []): string[] {
-    if (typeof value === 'string') {
-      found.push(value);
-    } else if (Array.isArray(value)) {
-      for (const item of value) allStringValues(item, found);
-    } else if (value !== null && typeof value === 'object') {
-      for (const v of Object.values(value)) allStringValues(v, found);
     }
     return found;
   }
@@ -272,15 +299,14 @@ describe('the written save', () => {
   it('records no renderer choice anywhere', () => {
     const payload = writeRealMatch();
 
-    const keys = allKeys(payload);
-    const values = allStringValues(payload);
-    // The walkers reach real content, so an empty result below means absence, not a broken scan.
+    const { keys, strings } = walk(payload);
+    // The walker reaches real content, so an empty result below means absence, not a broken scan.
     expect(keys).toContain('players');
-    expect(values).toContain('player-0');
+    expect(strings).toContain('player-0');
 
     expect(keys.filter(k => /render|webgl|three|canvas|scene|graphics/i.test(k))).toEqual([]);
-    expect(
-      values.filter(v => ['three', 'threejs', 'webgl', 'legacy', 'dom', '2d', '3d'].includes(v.toLowerCase()))
-    ).toEqual([]);
+    // Values are matched whole against renderer identifiers only — a player named
+    // "Dom" or a fan called "Three Great Scholars" is not a renderer choice.
+    expect(strings.filter(v => ['webgl', 'threejs', 'three.js', 'r3f'].includes(v.toLowerCase()))).toEqual([]);
   });
 });

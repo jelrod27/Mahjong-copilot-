@@ -251,18 +251,39 @@ describe('saved-game resume', () => {
     vi.useRealTimers();
   });
 
-  function seedLocalStorage(matchOverrides: Partial<MatchState> = {}) {
+  function seedLocalStorage(
+    matchOverrides: Partial<MatchState> = {},
+    payloadOverrides: Record<string, unknown> = {},
+  ) {
     const game = makeGame();
     const match = { ...makeMatch(game), ...matchOverrides };
     localStorage.setItem('mahjong_match_in_progress', JSON.stringify({
       match, game: match.currentHand, savedAt: new Date().toISOString(), version: 1,
+      ...payloadOverrides,
     }));
     return { match, game };
   }
 
+  // seedLocalStorage writes the previous save version, so this also covers a
+  // pre-upgrade save resuming on the board rather than being thrown away.
   it('resumes a saved match without calling initializeMatch', () => {
     const { match } = seedLocalStorage();
     // Normally initializeMatch returns a fresh match; it must NOT be called on resume.
+    initializeMatchMock.mockReturnValue(match);
+
+    const { result } = renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+
+    expect(initializeMatchMock).not.toHaveBeenCalled();
+    expect(result.current.match).not.toBeNull();
+    expect(result.current.match?.mode).toBe('quick');
+  });
+
+  it('resumes a current-version save, ignoring the presentation log it carries', () => {
+    const { match } = seedLocalStorage({}, {
+      version: SAVE_VERSION,
+      presentationLog: { version: 1, events: [{ kind: 'deal', seq: 0 }] },
+    });
     initializeMatchMock.mockReturnValue(match);
 
     const { result } = renderHook(() => useGameController('easy', 'quick'));

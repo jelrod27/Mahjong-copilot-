@@ -15,6 +15,7 @@ import { GamePhase } from '@/models/GameState';
 import { TileSuit, TileType, WindTile, type Tile } from '@/models/Tile';
 import type { GameState } from '@/models/GameState';
 import type { MatchState } from '@/models/MatchState';
+import { SAVE_VERSION } from '@/lib/savedGameValidator';
 
 // ---- Mocks ----------------------------------------------------------------
 
@@ -299,7 +300,7 @@ describe('saved-game resume', () => {
     expect(initializeMatchMock).toHaveBeenCalled();
   });
 
-  it('auto-saves after init: localStorage contains version=1 and non-null match', () => {
+  it('auto-saves after init: localStorage contains the current save version and non-null match', () => {
     const game = makeGame();
     const match = makeMatch(game);
     initializeMatchMock.mockReturnValue(match);
@@ -310,7 +311,7 @@ describe('saved-game resume', () => {
     const raw = localStorage.getItem('mahjong_match_in_progress');
     expect(raw).not.toBeNull();
     const parsed = JSON.parse(raw!);
-    expect(parsed.version).toBe(1);
+    expect(parsed.version).toBe(SAVE_VERSION);
     expect(parsed.match).not.toBeNull();
   });
 });

@@ -12,9 +12,28 @@ const VALID_TURN_PHASES = new Set(['draw', 'discard', 'claim', 'endOfTurn']);
 // Bonus suits — each unique bonus tile exists only once in the full set
 const BONUS_SUITS = new Set(['flower', 'season']);
 
+/**
+ * Current save format version. There is exactly one save format — older
+ * versions are migrated forward on load, never stored alongside this one.
+ */
+export const SAVE_VERSION = 2;
+
+/** Versions a stored payload may carry: the current one plus every version the loader migrates forward. */
+export const SUPPORTED_SAVE_VERSIONS: readonly number[] = [1, SAVE_VERSION];
+
 export interface ValidationFailure { ok: false; reason: string }
 export interface ValidationOk { ok: true }
 export type ValidationResult = ValidationOk | ValidationFailure;
+
+/**
+ * Optional decoration on a save: the presentation-event log used to replay a
+ * hand as motion. Carries its own version, independent of the save version.
+ * Events stay untyped here — the stream that fills them is defined elsewhere.
+ */
+export interface PresentationLog {
+  version: number;
+  events: unknown[];
+}
 
 function fail(reason: string): ValidationFailure {
   return { ok: false, reason };
@@ -223,6 +242,28 @@ function validateMatchPayload(match: Record<string, unknown>): ValidationResult 
 }
 
 /**
+ * Read the optional presentation log off a raw payload.
+ *
+ * Tolerant by design: the log is decoration, never authority, so anything
+ * absent or misshapen is discarded and the caller restores the match regardless.
+ * validateSavedGamePayload never inspects this key for the same reason — a
+ * corrupt log may not cost a player their game.
+ */
+export function readPresentationLog(parsed: unknown): PresentationLog | undefined {
+  if (!isObject(parsed)) return undefined;
+
+  const log = parsed['presentationLog'];
+  if (!isObject(log)) return undefined;
+
+  const version = log['version'];
+  const events = log['events'];
+  if (!Number.isInteger(version) || (version as number) < 1) return undefined;
+  if (!Array.isArray(events)) return undefined;
+
+  return { version: version as number, events };
+}
+
+/**
  * Validate a raw parsed JSON payload from localStorage before handing it to
  * gameStateFromJson / matchStateFromJson. Returns the first violation found.
  * Never throws.
@@ -232,8 +273,9 @@ export function validateSavedGamePayload(parsed: unknown): ValidationResult {
     return fail('payload is not an object');
   }
 
-  if (parsed['version'] !== 1) {
-    return fail(`version must be 1 (got ${parsed['version']})`);
+  const version = parsed['version'];
+  if (typeof version !== 'number' || !SUPPORTED_SAVE_VERSIONS.includes(version)) {
+    return fail(`version must be one of ${SUPPORTED_SAVE_VERSIONS.join(', ')} (got ${parsed['version']})`);
   }
 
   const rawMatch = parsed['match'];

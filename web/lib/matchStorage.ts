@@ -4,7 +4,12 @@
  */
 import { MatchState, matchStateToJson, matchStateFromJson } from '@/models/MatchState';
 import { GameState, gameStateToJson, gameStateFromJson } from '@/models/GameState';
-import { validateSavedGamePayload } from './savedGameValidator';
+import {
+  validateSavedGamePayload,
+  readPresentationLog,
+  SAVE_VERSION,
+  PresentationLog,
+} from './savedGameValidator';
 
 const MATCH_KEY = 'mahjong_match_in_progress';
 
@@ -13,9 +18,31 @@ export interface SavedGame {
   game: GameState | null;
   savedAt: string;
   version: number;
+  /** Present only when the stored payload carried a well-formed log. Never written by saveGame yet. */
+  presentationLog?: PresentationLog;
 }
 
-const SAVE_VERSION = 1;
+/**
+ * Bring a stored payload up to SAVE_VERSION so a player mid-match keeps their
+ * game across a format change. Returns null when the version is unknown — a
+ * newer build wrote it, or the payload is not a save at all — and the caller
+ * discards it.
+ */
+function migrateSavedPayload(parsed: unknown): Record<string, unknown> | null {
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+  const payload = parsed as Record<string, unknown>;
+
+  switch (payload['version']) {
+    case SAVE_VERSION:
+      return payload;
+    // v1 → v2: the presentation log added in v2 is optional, so an absent key
+    // is already a valid v2 payload and nothing needs moving.
+    case 1:
+      return { ...payload, version: SAVE_VERSION };
+    default:
+      return null;
+  }
+}
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -51,26 +78,33 @@ export function loadGame(): SavedGame | null {
   try {
     const raw = localStorage.getItem(MATCH_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as SavedGame;
-
-    if (parsed.version !== SAVE_VERSION) {
+    const migrated = migrateSavedPayload(JSON.parse(raw));
+    if (!migrated) {
       clearSavedGame();
       return null;
     }
 
-    const validation = validateSavedGamePayload(parsed);
+    const validation = validateSavedGamePayload(migrated);
     if (!validation.ok) {
       clearSavedGame();
       return null;
     }
 
     // Deserialize dates and tile objects
-    const match = parsed.match ? matchStateFromJson(parsed.match as Record<string, any>) : null;
-    const game = parsed.game
-      ? gameStateFromJson(parsed.game as Record<string, any>)
+    const rawMatch = migrated['match'];
+    const rawGame = migrated['game'];
+    const match = rawMatch ? matchStateFromJson(rawMatch as Record<string, any>) : null;
+    const game = rawGame
+      ? gameStateFromJson(rawGame as Record<string, any>)
       : match?.currentHand ?? null;
 
-    return { match, game, savedAt: parsed.savedAt, version: parsed.version };
+    return {
+      match,
+      game,
+      savedAt: migrated['savedAt'] as string,
+      version: SAVE_VERSION,
+      presentationLog: readPresentationLog(migrated),
+    };
   } catch {
     clearSavedGame();
     return null;

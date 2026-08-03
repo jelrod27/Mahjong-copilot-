@@ -59,6 +59,10 @@ User action → engine.applyAction() → new GameState → useGameController Rea
 
 `useGameController` (`/web/components/game/useGameController.ts`) is the bridge between the engine and UI. It owns game/match session state (not the Redux `game` slice), orchestrates AI turn timing, manages claim timeouts, and exposes action methods to components. Engine modules never import React or Redux.
 
+### Presentation seam (`/web/presentation/`)
+
+Pure modules that turn engine state into something a renderer can show, with no React, three.js or DOM. `events.ts` derives `PresentationEvent[]` from a (previous state, action, next state) triple — the ordered list of what visibly moved, since one engine transition can move many tiles. Sequence numbers come from a counter the caller owns, never a clock.
+
 ### Key types
 
 - **`Tile`** (`/web/models/Tile.ts`) — 144-tile set: suits (bamboo/character/dot), honors (wind/dragon), bonus (flower/season).

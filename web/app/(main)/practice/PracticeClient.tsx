@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import useGameController from '@/components/game/useGameController';
 import GameBoard from '@/components/game/GameBoard';
@@ -12,6 +12,7 @@ import HandRecognition from './HandRecognition';
 import { loadStats, type GameStats, type QuizMode } from '@/lib/gameStats';
 import { deriveMastery, getRecommendedQuiz, masteryLabel } from '@/lib/mastery';
 import { PageHeader } from '@/components/ui/page-header';
+import { useBrowserValue } from '@/hooks/useBrowserValue';
 
 type Mode = 'menu' | 'tile-quiz' | 'scoring-quiz' | 'hand-recognition' | 'practice-game';
 
@@ -106,11 +107,8 @@ const MASTERY_BADGE_CLASS: Record<ReturnType<typeof deriveMastery>, string> = {
 };
 
 function PracticeMenu({ onSelect }: { onSelect: (mode: Mode) => void }) {
-  // Hydrate after mount so SSR and client agree on the initial render.
-  const [stats, setStats] = useState<GameStats | null>(null);
-  useEffect(() => {
-    setStats(loadStats());
-  }, []);
+  // The server render sees null so SSR and client markup agree.
+  const stats = useBrowserValue<GameStats | null>(loadStats, null);
 
   const quizModes: QuizMode[] = MODES.flatMap(m => (m.quizMode ? [m.quizMode] : []));
   const recommendedMode = stats ? getRecommendedQuiz(stats, quizModes) : null;

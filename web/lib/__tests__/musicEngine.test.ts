@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import musicEngine, { SAMPLE_ASSETS } from '../musicEngine';
+import musicEngine, { SAMPLE_ASSETS, pulseCoefficients } from '../musicEngine';
 
 /**
  * Covers the ambient-bed decision recorded in docs/design/audio.md: once a
@@ -15,16 +15,24 @@ import musicEngine, { SAMPLE_ASSETS } from '../musicEngine';
 
 interface FakeOsc {
   type: string;
-  frequency: { value: number };
+  frequency: { value: number; setValueAtTime: unknown; exponentialRampToValueAtTime: unknown };
+  detune: unknown;
   connect: () => void;
   start: () => void;
   stop: () => void;
   started: boolean;
   stopped: boolean;
+  periodic: boolean;
+  setPeriodicWave: (w: unknown) => void;
 }
 
 let createdOscs: FakeOsc[] = [];
 let intervalCount = 0;
+/** Voices that went through a PeriodicWave rather than a stock waveform. */
+let periodicWaves: { real: Float32Array; imag: Float32Array }[] = [];
+/** Noise-backed voices: snare and hats. */
+let bufferSources: { filterType: string | null }[] = [];
+let filters: { type: string; frequency: number }[] = [];
 
 const makeParam = () => ({
   value: 0,
@@ -45,13 +53,18 @@ class FakeAudioContext {
     return { gain: makeParam(), connect: vi.fn(), disconnect: vi.fn() };
   }
 
+  sampleRate = 44100;
+
   createOscillator(): FakeOsc {
     const osc: FakeOsc = {
       type: 'sine',
-      frequency: { value: 0 },
+      frequency: Object.assign(makeParam(), { value: 0 }),
+      detune: makeParam(),
       connect: vi.fn(),
       started: false,
       stopped: false,
+      periodic: false,
+      setPeriodicWave: vi.fn(() => { osc.periodic = true; }),
       start: vi.fn(() => { osc.started = true; }),
       stop: vi.fn(() => { osc.stopped = true; }),
     };
@@ -59,7 +72,24 @@ class FakeAudioContext {
     return osc;
   }
 
+  createPeriodicWave(real: Float32Array, imag: Float32Array) {
+    periodicWaves.push({ real, imag });
+    return { real, imag } as unknown as PeriodicWave;
+  }
+
+  createBuffer(channels: number, length: number, sampleRate: number) {
+    const data = new Float32Array(length);
+    return { length, sampleRate, numberOfChannels: channels, getChannelData: () => data };
+  }
+
+  createBiquadFilter() {
+    const f = { type: 'lowpass', frequency: { value: 0 }, Q: { value: 0 }, connect: vi.fn() };
+    filters.push(f as unknown as { type: string; frequency: number });
+    return f;
+  }
+
   createBufferSource() {
+    bufferSources.push({ filterType: null });
     return {
       buffer: null,
       loop: false,
@@ -76,10 +106,14 @@ class FakeAudioContext {
 }
 
 const realSetInterval = globalThis.setInterval;
+const realSetTimeout = globalThis.setTimeout;
 
 beforeEach(() => {
   createdOscs = [];
   intervalCount = 0;
+  periodicWaves = [];
+  bufferSources = [];
+  filters = [];
   // @ts-expect-error - test double for a browser global absent in jsdom
   globalThis.AudioContext = FakeAudioContext;
   // @ts-expect-error - counting scheduler starts, not driving them
@@ -190,5 +224,72 @@ describe('musicEngine with an ambient bed registered', () => {
     const before = droneOscs();
     musicEngine.stop();
     expect(before.every(o => o.stopped)).toBe(true);
+  });
+});
+
+/**
+ * The oscillator sequencer's own voices. These were previously unreachable
+ * from the suite: every existing test drives `danger`, which is a drone, or
+ * the sample path. The parlour track is the one that exercises pitched voices
+ * and percussion, and it had no coverage at all.
+ */
+describe('synthesis', () => {
+  /** One scheduler tick. The window is 120ms wide, so step 0 lands inside it. */
+  const tick = () => new Promise((r) => realSetTimeout(r, 60));
+
+  beforeEach(() => {
+    delete SAMPLE_ASSETS.parlour;
+    musicEngine.stop();
+  });
+  afterEach(() => musicEngine.stop());
+
+  it('voices pitched channels with a pulse wave, not a stock waveform', async () => {
+    musicEngine.play('parlour');
+    await tick();
+
+    expect(periodicWaves.length).toBeGreaterThan(0);
+    expect(createdOscs.some((o) => o.periodic)).toBe(true);
+  });
+
+  it('collapses a 50% pulse to a square: even harmonics vanish', () => {
+    // sin(n·pi/2) is zero for even n, so a correct series has no even
+    // harmonics at 50% — the identity that says the coefficients are right
+    // rather than merely present.
+    const { real } = pulseCoefficients(0.5);
+    expect(Math.abs(real[2])).toBeLessThan(1e-6);
+    expect(Math.abs(real[4])).toBeLessThan(1e-6);
+    expect(Math.abs(real[6])).toBeLessThan(1e-6);
+
+    // ...while the odd ones carry the energy, falling off as 1/n.
+    expect(Math.abs(real[1])).toBeGreaterThan(Math.abs(real[3]));
+    expect(Math.abs(real[3])).toBeGreaterThan(Math.abs(real[5]));
+  });
+
+  it('keeps even harmonics at narrower pulse widths', () => {
+    // A 25% pulse is audibly thinner precisely because the even terms return.
+    expect(Math.abs(pulseCoefficients(0.25).real[2])).toBeGreaterThan(0.3);
+    expect(Math.abs(pulseCoefficients(0.125).real[2])).toBeGreaterThan(0.2);
+  });
+
+  it('builds the kick as a pitch drop rather than a noise burst', async () => {
+    musicEngine.play('parlour');
+    await tick();
+
+    // Step 0 of the parlour loop carries a kick. It is the only voice that
+    // ramps its own frequency, which is what makes it read as a drum.
+    const dropped = createdOscs.some(
+      (o) => (o.frequency.exponentialRampToValueAtTime as ReturnType<typeof vi.fn>).mock?.calls?.length > 0,
+    );
+    expect(dropped).toBe(true);
+  });
+
+  it('routes noise percussion through a filter', async () => {
+    musicEngine.play('parlour');
+    await tick();
+
+    // Hats sit on every quarter, so step 0 has one. Unfiltered white noise
+    // reads as static; the highpass is what makes it a hi-hat.
+    expect(bufferSources.length).toBeGreaterThan(0);
+    expect(filters.some((f) => f.type === 'highpass' || f.type === 'bandpass')).toBe(true);
   });
 });

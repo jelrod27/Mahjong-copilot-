@@ -7,7 +7,13 @@
  * (docs/design/audio.md).
  */
 
-type Channel = 'lead' | 'bass' | 'pad';
+type Channel = 'lead' | 'bass' | 'pad' | 'arp' | 'perc';
+
+/**
+ * Percussion is addressed by note number the way a drum machine is, so a hit
+ * is just another PatternNote and the sequencer needs no special case.
+ */
+const KICK = 36, SNARE = 38, HAT = 42, OPEN_HAT = 46;
 
 /** One note: [stepIndex, midiNote, durationInSteps, channel] */
 type PatternNote = [number, number, number, Channel];
@@ -32,6 +38,17 @@ const midiToFreq = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
 const A2 = 45, C3 = 48, D3 = 50, E3 = 52, F3 = 53, G3 = 55;
 const A3 = 57, C4 = 60, D4 = 62, E4 = 64, G4 = 67, A4 = 69, C5 = 72, D5 = 74, E5 = 76, G5 = 79;
 
+/** Every `stride` steps from `from` up to (not including) `to`. */
+const every = (stride: number, to: number, from = 0): number[] => {
+  const out: number[] = [];
+  for (let i = from; i < to; i += stride) out.push(i);
+  return out;
+};
+
+/** One percussion hit per position, so drum parts read as rhythm not tuples. */
+const hits = (positions: number[], midi: number): PatternNote[] =>
+  positions.map((pos) => [pos, midi, 1, 'perc'] as PatternNote);
+
 const PARLOUR_THEME: MusicTrack = {
   id: 'parlour',
   bpm: 84,
@@ -48,6 +65,12 @@ const PARLOUR_THEME: MusicTrack = {
     [48, D5, 3, 'lead'], [52, E5, 2, 'lead'], [54, D5, 2, 'lead'], [56, C5, 6, 'lead'],
     // Pad: long roots an octave up from bass, very quiet
     [0, A3, 16, 'pad'], [16, A3, 16, 'pad'], [32, F3 + 12, 16, 'pad'], [48, G3 + 12, 16, 'pad'],
+    // Drums: deliberately sparse at rest — kick on the downbeat, backbeat
+    // snare, hats on quarters. The busier subdivisions are what wall-low
+    // intensity adds later, so the base loop has somewhere to grow into.
+    ...hits([0, 16, 32, 48], KICK),
+    ...hits([8, 24, 40, 56], SNARE),
+    ...hits(every(4, 64), HAT),
   ],
 };
 
@@ -73,11 +96,92 @@ const TRACKS: Record<string, MusicTrack> = {
 
 /* ── Engine ──────────────────────────────────────────────────────────── */
 
-const CHANNEL_CONFIG: Record<Channel, { type: OscillatorType; gain: number }> = {
-  lead: { type: 'square', gain: 0.16 },
-  bass: { type: 'triangle', gain: 0.3 },
-  pad: { type: 'sine', gain: 0.07 },
+interface ChannelConfig {
+  /** 'pulse' builds a PeriodicWave at `duty`; anything else is a stock type. */
+  type: OscillatorType | 'pulse';
+  /** Pulse width as a fraction of the cycle. 0.5 is a square wave. */
+  duty?: number;
+  gain: number;
+  /** ADSR in seconds; `sustain` is a level between 0 and 1. */
+  attack: number;
+  decay: number;
+  sustain: number;
+  release: number;
+  /** Depth in cents; a slow LFO that fades in after the attack. */
+  vibrato?: number;
+}
+
+/**
+ * The envelopes matter more than the waveforms here. Every note used to ramp
+ * linearly to silence across its whole duration, which is why they read as
+ * emitted rather than played: no attack transient, no decay, nothing for the
+ * ear to latch onto. A 5ms attack and a fast decay to a lower sustain is the
+ * difference between a pluck and a test tone.
+ *
+ * Pulse widths do the same job for timbre. A 50% pulse is a square; narrowing
+ * it to 25% or 12.5% thins and nasalises the voice, which is how the era's
+ * hardware got three distinct lead sounds out of one oscillator.
+ */
+const CHANNEL_CONFIG: Record<Channel, ChannelConfig> = {
+  lead: { type: 'pulse', duty: 0.25, gain: 0.15, attack: 0.005, decay: 0.08, sustain: 0.62, release: 0.06, vibrato: 14 },
+  arp:  { type: 'pulse', duty: 0.125, gain: 0.07, attack: 0.002, decay: 0.03, sustain: 0.35, release: 0.02 },
+  bass: { type: 'triangle', gain: 0.32, attack: 0.002, decay: 0.05, sustain: 0.80, release: 0.04 },
+  pad:  { type: 'pulse', duty: 0.5, gain: 0.05, attack: 0.35, decay: 0.20, sustain: 0.75, release: 0.40 },
+  perc: { type: 'square', gain: 0.30, attack: 0.001, decay: 0.02, sustain: 0.0, release: 0.02 },
 };
+
+/* ── Voices ──────────────────────────────────────────────────────────────
+   Two things the stock oscillator set cannot do: pulse waves at an arbitrary
+   duty cycle, and noise. Both are cached per context because building a
+   PeriodicWave or filling a noise buffer on every note would be wasteful at
+   sixteenth-note rates. */
+
+/**
+ * Fourier coefficients for a pulse wave of the given width.
+ *
+ * Exported for its own sake: the identity worth protecting is that a 50% pulse
+ * has no even harmonics, and checking that through the scheduler is both
+ * indirect and order-dependent, because waves are cached per context.
+ */
+export function pulseCoefficients(duty: number, harmonics = 28) {
+  const real = new Float32Array(harmonics);
+  const imag = new Float32Array(harmonics);
+  for (let n = 1; n < harmonics; n++) {
+    real[n] = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * duty);
+  }
+  return { real, imag };
+}
+
+const pulseCache = new WeakMap<BaseAudioContext, Map<number, PeriodicWave>>();
+
+/**
+ * A band-limited pulse wave. The nth harmonic of a pulse of width d has
+ * amplitude (2 / n·pi)·sin(n·pi·d) — at d = 0.5 the even terms vanish and it
+ * collapses to a square, which is the identity check worth remembering.
+ */
+function pulseWave(ctx: BaseAudioContext, duty: number): PeriodicWave {
+  let perCtx = pulseCache.get(ctx);
+  if (!perCtx) { perCtx = new Map(); pulseCache.set(ctx, perCtx); }
+  const cached = perCtx.get(duty);
+  if (cached) return cached;
+
+  const { real, imag } = pulseCoefficients(duty);
+  const wave = ctx.createPeriodicWave(real, imag, { disableNormalization: false });
+  perCtx.set(duty, wave);
+  return wave;
+}
+
+const noiseCache = new WeakMap<BaseAudioContext, AudioBuffer>();
+
+function noiseBuffer(ctx: BaseAudioContext): AudioBuffer {
+  const cached = noiseCache.get(ctx);
+  if (cached) return cached;
+  const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.5), ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  noiseCache.set(ctx, buf);
+  return buf;
+}
 
 const LOOKAHEAD_MS = 25;
 const SCHEDULE_AHEAD_S = 0.12;
@@ -396,6 +500,13 @@ class MusicEngine {
   }
 
   private scheduleNote(note: PatternNote, when: number, stepDur: number) {
+    const [, midi, durSteps, channel] = note;
+    if (channel === 'perc') this.scheduleDrum(midi, when);
+    else this.scheduleTone(note, when, stepDur);
+  }
+
+  /** A pitched voice: pulse or stock waveform, ADSR, optional vibrato. */
+  private scheduleTone(note: PatternNote, when: number, stepDur: number) {
     const ctx = this.ctx!;
     const [, midi, durSteps, channel] = note;
     const conf = CHANNEL_CONFIG[channel];
@@ -403,19 +514,93 @@ class MusicEngine {
 
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = conf.type;
+
+    if (conf.type === 'pulse') osc.setPeriodicWave(pulseWave(ctx, conf.duty ?? 0.5));
+    else osc.type = conf.type;
     osc.frequency.value = midiToFreq(midi + this.transpose);
 
-    gain.gain.setValueAtTime(0, when);
-    gain.gain.linearRampToValueAtTime(conf.gain, when + 0.01);
-    gain.gain.setValueAtTime(conf.gain, when + dur * 0.7);
-    gain.gain.linearRampToValueAtTime(0.0001, when + dur);
+    // Vibrato enters after the attack so the note lands on pitch and only then
+    // starts to move — leading with it reads as tuning drift, not expression.
+    if (conf.vibrato) {
+      const lfo = ctx.createOscillator();
+      const depth = ctx.createGain();
+      lfo.frequency.value = 5.2;
+      depth.gain.setValueAtTime(0, when);
+      depth.gain.linearRampToValueAtTime(conf.vibrato, when + Math.min(dur * 0.5, 0.25));
+      lfo.connect(depth);
+      depth.connect(osc.detune);
+      lfo.start(when);
+      lfo.stop(when + dur + conf.release);
+      this.scheduled.push(lfo);
+    }
+
+    // ADSR. The sustain hold ends at `dur`; release runs past it, which is why
+    // stop() is scheduled after the release rather than at the note boundary.
+    const peak = conf.gain;
+    const sustainLevel = Math.max(peak * conf.sustain, 0.0001);
+    const attackEnd = when + conf.attack;
+    const decayEnd = attackEnd + conf.decay;
+    gain.gain.setValueAtTime(0.0001, when);
+    gain.gain.linearRampToValueAtTime(peak, attackEnd);
+    if (decayEnd < when + dur) {
+      gain.gain.linearRampToValueAtTime(sustainLevel, decayEnd);
+      gain.gain.setValueAtTime(sustainLevel, when + dur);
+    }
+    gain.gain.linearRampToValueAtTime(0.0001, when + dur + conf.release);
 
     osc.connect(gain);
     gain.connect(this.musicGain!);
     osc.start(when);
-    osc.stop(when + dur + 0.02);
+    osc.stop(when + dur + conf.release + 0.02);
     this.scheduled.push(osc);
+  }
+
+  /**
+   * Percussion. Chiptune without drums reads as a ringtone — there is nothing
+   * for the ear to keep time against, so an eleven-second loop has nothing to
+   * hide behind. Kick is a pitch drop, snare and hats are filtered noise.
+   */
+  private scheduleDrum(midi: number, when: number) {
+    const ctx = this.ctx!;
+    const bus = this.musicGain!;
+    const level = CHANNEL_CONFIG.perc.gain;
+
+    if (midi === KICK) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(142, when);
+      osc.frequency.exponentialRampToValueAtTime(46, when + 0.08);
+      gain.gain.setValueAtTime(level, when);
+      gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.14);
+      osc.connect(gain); gain.connect(bus);
+      osc.start(when); osc.stop(when + 0.16);
+      this.scheduled.push(osc);
+      return;
+    }
+
+    const src = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+    src.buffer = noiseBuffer(ctx);
+
+    if (midi === SNARE) {
+      filter.type = 'bandpass';
+      filter.frequency.value = 1750;
+      filter.Q.value = 0.9;
+      gain.gain.setValueAtTime(level * 0.75, when);
+      gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.16);
+      src.start(when); src.stop(when + 0.18);
+    } else {
+      const open = midi === OPEN_HAT;
+      filter.type = 'highpass';
+      filter.frequency.value = 7200;
+      gain.gain.setValueAtTime(level * (open ? 0.32 : 0.24), when);
+      gain.gain.exponentialRampToValueAtTime(0.0001, when + (open ? 0.22 : 0.045));
+      src.start(when); src.stop(when + (open ? 0.24 : 0.06));
+    }
+
+    src.connect(filter); filter.connect(gain); gain.connect(bus);
   }
 }
 

@@ -287,6 +287,9 @@ export default function useGameController(
   useEffect(() => {
     const saved = (parlourFloor || dailyMode) ? null : loadGame();
     if (saved?.match && saved.match.phase !== 'finished') {
+      // Restores a match from localStorage on mount. The saved blob is not
+      // reachable during render and this deliberately runs once.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMatch(saved.match);
       setGame(saved.game ?? saved.match.currentHand ?? null);
       setDifficulty(saved.match.difficulty);
@@ -595,6 +598,11 @@ export default function useGameController(
   // Tutor mode is also gated on `showTutor` for backward compatibility and the in-game HUD toggle.
   useEffect(() => {
     if (!game || game.phase !== GamePhase.PLAYING) {
+      // Overlay state is cleared imperatively by the action handlers above (see
+      // claim/discard) so stale advice vanishes the instant a move lands. That
+      // makes these four values owned by more than this derivation, so they
+      // cannot become a useMemo without losing the immediate clear.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTutorAdvice(null);
       setSuggestedTileId(undefined);
       setTileClassifications(new Map());
@@ -685,6 +693,9 @@ export default function useGameController(
   const faanFlowerSig = humanPlayerForFaan?.flowers.map(t => t.id).join(',') ?? '';
   useEffect(() => {
     if (!liveFaanMeter || !game || game.phase !== GamePhase.PLAYING) {
+      // Same ownership as the tutor overlay: resetHandState clears the
+      // projection directly, so this cannot collapse into a derived value.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFaanProjection(null);
       return;
     }
@@ -717,6 +728,8 @@ export default function useGameController(
   // === Persistent tenpai badge (easy mode, all phases) ===
   useEffect(() => {
     if (difficulty !== 'easy' || !game || game.phase !== GamePhase.PLAYING) {
+      // Same ownership as above; resetHandState clears tenpai status directly.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTenpaiStatus(null);
       return;
     }
@@ -814,6 +827,9 @@ export default function useGameController(
   // discard phase begins; clear it once the phase moves on. ===
   useEffect(() => {
     if (!game || game.phase !== GamePhase.PLAYING) {
+      // Arms and disarms a wall-clock countdown. A timer is external state, not
+      // something render can express.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       updateTurnTimer(0);
       setTurnTimeout(0);
       return;
@@ -833,6 +849,9 @@ export default function useGameController(
   useEffect(() => {
     if (turnTimer <= 0) return;
     if (!game || game.phase !== GamePhase.PLAYING || game.turnPhase !== 'discard' || game.currentPlayerIndex !== humanIndex) {
+      // Stops the countdown when the phase moves on mid-tick; the interval that
+      // drives it lives in this effect.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (turnTimer !== 0) updateTurnTimer(0);
       return;
     }
@@ -903,6 +922,9 @@ export default function useGameController(
   useEffect(() => {
     if (!game || game.phase !== GamePhase.PLAYING) return;
     if (game.turnPhase !== 'claim') {
+      // Claim options are armed from a phase transition and cleared here when it
+      // ends, so the window closes on the same edge that opened it.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       updateClaimOptions([]);
       updateClaimTimer(0);
       return;
@@ -978,6 +1000,9 @@ export default function useGameController(
     if (claimOptions.length === 0) return;
     if (!game || game.phase !== GamePhase.PLAYING || game.turnPhase !== 'claim') {
       // Reset timer synchronously so lingering UI also clears.
+      // Bug #8 guard: stops the claim countdown the moment the hand ends, which
+      // is a transition rather than a value.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (claimTimer !== 0) updateClaimTimer(0);
       return;
     }

@@ -7,6 +7,8 @@
  * (docs/design/audio.md).
  */
 
+import { createRng, type Rng } from '@/engine/rng';
+
 type Channel = 'lead' | 'bass' | 'pad' | 'arp' | 'perc';
 
 /**
@@ -26,6 +28,12 @@ interface MusicTrack {
   notes: PatternNote[];
   /** Semitone offset applied to every note (floor-intensity variants). */
   transpose?: number;
+  /**
+   * When present, lead and arpeggio parts are generated over this harmony on
+   * every pass instead of being authored. `notes` then carries the skeleton
+   * only: bass, pads and drums.
+   */
+  harmony?: Harmony;
 }
 
 const midiToFreq = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
@@ -38,6 +46,87 @@ const midiToFreq = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
 const A2 = 45, C3 = 48, D3 = 50, E3 = 52, F3 = 53, G3 = 55;
 const A3 = 57, C4 = 60, D4 = 62, E4 = 64, G4 = 67, A4 = 69, C5 = 72, D5 = 74, E5 = 76, G5 = 79;
 
+/* ── Ornamentation ───────────────────────────────────────────────────────
+   The loop was 11.4 seconds long, which is 315 repeats an hour. No amount of
+   better synthesis survives that, and hand-authoring a two-minute pattern per
+   track does not scale to a rotating set.
+
+   So the skeleton stays composed — bass, pads and drums carry the harmony and
+   the groove, which is the part an ear needs to be stable — while the lead and
+   arpeggio are generated over it fresh on every pass. The track never repeats
+   exactly, but it is always in key and always on the chord, because the
+   generator only ever picks from the chord and the scale.
+
+   Seeded from the loop counter so a given pass is reproducible, matching how
+   the rest of the app treats randomness. */
+
+export interface Harmony {
+  /** Root of the key, as a midi note. */
+  root: number;
+  /** Scale degrees in semitones from the root. */
+  scale: number[];
+  /** Chord root per bar, expressed as an index into `scale`. */
+  progression: number[];
+  /** Steps in a bar. Sixteenths, so 16 is one 4/4 bar. */
+  barSteps: number;
+  /** Octave offsets for the generated lead and arpeggio. */
+  leadOctave: number;
+  arpOctave: number;
+}
+
+/** Chord tones for a scale degree: root, third and fifth stacked in-scale. */
+function chordTones(h: Harmony, degree: number): number[] {
+  const at = (i: number) => {
+    const wrapped = ((i % h.scale.length) + h.scale.length) % h.scale.length;
+    const octave = Math.floor(i / h.scale.length) * 12;
+    return h.root + h.scale[wrapped] + octave;
+  };
+  return [at(degree), at(degree + 2), at(degree + 4)];
+}
+
+/**
+ * Generate one pass of lead and arpeggio over the harmony.
+ *
+ * The arpeggio is continuous and cycles the chord, which is how the era's
+ * hardware implied chords it had no channels to play. The lead is deliberately
+ * sparse: it enters on some bars and rests on others, because a melody that
+ * never stops is what makes a loop feel like a loop.
+ */
+export function ornament(h: Harmony, totalSteps: number, rng: Rng): PatternNote[] {
+  const out: PatternNote[] = [];
+  const bars = Math.floor(totalSteps / h.barSteps);
+
+  for (let bar = 0; bar < bars; bar++) {
+    const degree = h.progression[bar % h.progression.length];
+    const tones = chordTones(h, degree);
+    const base = bar * h.barSteps;
+
+    // Arpeggio: sixteenths, cycling up or up-and-back depending on the bar.
+    const updown = rng() < 0.4;
+    const order = updown ? [0, 1, 2, 1] : [0, 1, 2, 0];
+    for (let i = 0; i < h.barSteps; i += 1) {
+      if (i % 2 === 1) continue; // eighths, so it breathes
+      const tone = tones[order[(i / 2) % order.length]] + h.arpOctave * 12;
+      out.push([base + i, tone, 1, 'arp']);
+    }
+
+    // Lead: rest on roughly a third of bars, so phrases have edges.
+    if (rng() < 0.34) continue;
+
+    let step = base + (rng() < 0.5 ? 0 : 2);
+    while (step < base + h.barSteps - 1) {
+      const fromChord = rng() < 0.62;
+      const pitch = fromChord
+        ? tones[Math.floor(rng() * tones.length)]
+        : h.root + h.scale[Math.floor(rng() * h.scale.length)] + 12;
+      const dur = rng() < 0.3 ? 4 : rng() < 0.6 ? 3 : 2;
+      out.push([step, pitch + h.leadOctave * 12, dur, 'lead']);
+      step += dur + (rng() < 0.35 ? 2 : 0); // occasional breath
+    }
+  }
+  return out;
+}
+
 /** Every `stride` steps from `from` up to (not including) `to`. */
 const every = (stride: number, to: number, from = 0): number[] => {
   const out: number[] = [];
@@ -49,29 +138,56 @@ const every = (stride: number, to: number, from = 0): number[] => {
 const hits = (positions: number[], midi: number): PatternNote[] =>
   positions.map((pos) => [pos, midi, 1, 'perc'] as PatternNote);
 
+export const PARLOUR_HARMONY: Harmony = {
+  root: A3,
+  // A minor pentatonic. Five notes with no semitone clashes, so generated
+  // ornamentation cannot land on a wrong note — which is what makes
+  // generating it safe in the first place.
+  scale: [0, 3, 5, 7, 10],
+  progression: [0, 3, 1, 2],
+  barSteps: 16,
+  leadOctave: 1,
+  arpOctave: 0,
+};
+
+/**
+ * The authored half of the parlour track: bass, pad and kit across sixteen
+ * bars. Written as a builder rather than a literal because sixteen bars of
+ * sixteenth-note tuples is unreadable, and because the bass has to follow the
+ * same progression the generator ornaments over.
+ */
+function parlourSkeleton(): PatternNote[] {
+  const h = PARLOUR_HARMONY;
+  const bars = 16;
+  const notes: PatternNote[] = [];
+
+  for (let bar = 0; bar < bars; bar++) {
+    const base = bar * h.barSteps;
+    const [root, , fifth] = chordTones(h, h.progression[bar % h.progression.length]);
+
+    // Bass: root on the downbeat, fifth mid-bar, an octave below the pad.
+    notes.push([base, root - 12, 6, 'bass']);
+    notes.push([base + 8, fifth - 12, 6, 'bass']);
+
+    // Pad: the chord root held across the bar, very quiet.
+    notes.push([base, root, h.barSteps, 'pad']);
+
+    // Kit: sparse at rest. The fill every fourth bar is what stops sixteen
+    // bars of identical drums from becoming its own short loop.
+    notes.push(...hits([base, base + 10], KICK));
+    notes.push(...hits([base + 8], SNARE));
+    notes.push(...hits(every(4, base + h.barSteps, base), HAT));
+    if (bar % 4 === 3) notes.push(...hits([base + 12, base + 14], SNARE));
+  }
+  return notes;
+}
+
 const PARLOUR_THEME: MusicTrack = {
   id: 'parlour',
   bpm: 84,
-  steps: 64,
-  notes: [
-    // Bass: a patient walk, two bars of A, one of F, one of G
-    [0, A2, 4, 'bass'], [8, E3, 4, 'bass'], [16, A2, 4, 'bass'], [24, G3, 4, 'bass'],
-    [32, F3, 4, 'bass'], [40, C3, 4, 'bass'], [48, G3, 4, 'bass'], [56, E3, 4, 'bass'],
-    // Lead: sparse pentatonic phrases with space between them
-    [0, A4, 3, 'lead'], [4, C5, 3, 'lead'], [8, E5, 4, 'lead'],
-    [14, D5, 2, 'lead'], [16, C5, 4, 'lead'],
-    [24, A4, 4, 'lead'],
-    [32, G4, 3, 'lead'], [36, A4, 3, 'lead'], [40, C5, 6, 'lead'],
-    [48, D5, 3, 'lead'], [52, E5, 2, 'lead'], [54, D5, 2, 'lead'], [56, C5, 6, 'lead'],
-    // Pad: long roots an octave up from bass, very quiet
-    [0, A3, 16, 'pad'], [16, A3, 16, 'pad'], [32, F3 + 12, 16, 'pad'], [48, G3 + 12, 16, 'pad'],
-    // Drums: deliberately sparse at rest — kick on the downbeat, backbeat
-    // snare, hats on quarters. The busier subdivisions are what wall-low
-    // intensity adds later, so the base loop has somewhere to grow into.
-    ...hits([0, 16, 32, 48], KICK),
-    ...hits([8, 24, 40, 56], SNARE),
-    ...hits(every(4, 64), HAT),
-  ],
+  steps: 16 * PARLOUR_HARMONY.barSteps,
+  harmony: PARLOUR_HARMONY,
+  notes: parlourSkeleton(),
 };
 
 const DANGER_MOTIF: MusicTrack = {
@@ -222,6 +338,10 @@ class MusicEngine {
   private scheduled: OscillatorNode[] = [];
   /** Floor-intensity variant: semitones added and bpm multiplier. */
   private transpose = 0;
+  /** Authored part of the current track: bass, pads, drums. */
+  private skeleton: PatternNote[] = [];
+  /** Passes completed, so each one seeds a different ornament. */
+  private loopCount = 0;
   private tempoScale = 1;
   /** Decoded ambient beds, cached per URL so repeat plays skip the fetch. */
   private bufferCache = new Map<string, AudioBuffer>();
@@ -324,7 +444,9 @@ class MusicEngine {
     this.stop();
     // The scheduler walks notes in array order; patterns are authored by
     // channel, so sort by step or later channels would never schedule.
-    this.current = { ...track, notes: [...track.notes].sort((a, b) => a[0] - b[0]) };
+    this.skeleton = track.notes;
+    this.loopCount = 0;
+    this.current = { ...track, notes: this.buildPass(track) };
     this.transpose = nextTranspose;
     this.tempoScale = nextTempo;
     this.nextNoteIndex = 0;
@@ -492,11 +614,26 @@ class MusicEngine {
       if (this.nextNoteIndex >= track.notes.length) {
         this.nextNoteIndex = 0;
         this.loopStartTime += loopDur; // exact loop point
+        // A generated track gets new ornamentation for the next pass, so the
+        // loop point is where the music changes rather than where it repeats.
+        this.loopCount += 1;
+        if (track.harmony) this.current = { ...track, notes: this.buildPass(track) };
       }
     }
 
     // Keep the scheduled list bounded; old oscillators have already stopped
     if (this.scheduled.length > 48) this.scheduled = this.scheduled.slice(-48);
+  }
+
+  /**
+   * The note list for one pass: the authored skeleton plus freshly generated
+   * ornamentation, sorted by step because the scheduler walks in array order.
+   */
+  private buildPass(track: MusicTrack): PatternNote[] {
+    if (!track.harmony) return [...this.skeleton].sort((a, b) => a[0] - b[0]);
+    const rng = createRng(`${track.id}:${this.loopCount}`);
+    return [...this.skeleton, ...ornament(track.harmony, track.steps, rng)]
+      .sort((a, b) => a[0] - b[0]);
   }
 
   private scheduleNote(note: PatternNote, when: number, stepDur: number) {

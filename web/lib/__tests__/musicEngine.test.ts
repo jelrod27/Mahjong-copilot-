@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import musicEngine, { SAMPLE_ASSETS, pulseCoefficients } from '../musicEngine';
+import musicEngine, { SAMPLE_ASSETS, pulseCoefficients, ornament, PARLOUR_HARMONY } from '../musicEngine';
+import { createRng } from '@/engine/rng';
 
 /**
  * Covers the ambient-bed decision recorded in docs/design/audio.md: once a
@@ -291,5 +292,60 @@ describe('synthesis', () => {
     // reads as static; the highpass is what makes it a hi-hat.
     expect(bufferSources.length).toBeGreaterThan(0);
     expect(filters.some((f) => f.type === 'highpass' || f.type === 'bandpass')).toBe(true);
+  });
+});
+
+/**
+ * Generated ornamentation. The loop was 11.4 seconds and repeated 315 times an
+ * hour; the fix is a longer skeleton with lead and arpeggio generated fresh
+ * each pass. That is only safe if the generator cannot leave the key, which is
+ * the property these pin.
+ */
+describe('ornamentation', () => {
+  const PITCHED = new Set(['lead', 'arp']);
+
+  it('never leaves the scale', () => {
+    const h = PARLOUR_HARMONY;
+    // Every pitch class the scale permits, in any octave.
+    const allowed = new Set(h.scale.map((d) => (((h.root + d) % 12) + 12) % 12));
+
+    for (let seed = 0; seed < 40; seed++) {
+      for (const [, midi, , channel] of ornament(h, 256, createRng(`t:${seed}`))) {
+        if (!PITCHED.has(channel)) continue;
+        expect(allowed.has(((midi % 12) + 12) % 12), `midi ${midi} is out of key`).toBe(true);
+      }
+    }
+  });
+
+  it('is deterministic for a given seed', () => {
+    const a = ornament(PARLOUR_HARMONY, 256, createRng('same'));
+    const b = ornament(PARLOUR_HARMONY, 256, createRng('same'));
+    expect(a).toEqual(b);
+  });
+
+  it('differs between passes, which is the entire point', () => {
+    const first = ornament(PARLOUR_HARMONY, 256, createRng('parlour:0'));
+    const second = ornament(PARLOUR_HARMONY, 256, createRng('parlour:1'));
+    expect(first).not.toEqual(second);
+  });
+
+  it('stays inside the loop it was asked for', () => {
+    const steps = 256;
+    for (const [step, , dur] of ornament(PARLOUR_HARMONY, steps, createRng('bounds'))) {
+      expect(step).toBeGreaterThanOrEqual(0);
+      // A note may sustain over the loop point, but it must not start past it.
+      expect(step).toBeLessThan(steps);
+      expect(dur).toBeGreaterThan(0);
+    }
+  });
+
+  it('leaves rests, so phrases have edges', () => {
+    // A melody that never stops is what makes a loop feel like a loop. Across
+    // sixteen bars some should carry no lead at all.
+    const notes = ornament(PARLOUR_HARMONY, 256, createRng('rests'));
+    const barsWithLead = new Set(
+      notes.filter((n) => n[3] === 'lead').map((n) => Math.floor(n[0] / PARLOUR_HARMONY.barSteps)),
+    );
+    expect(barsWithLead.size).toBeLessThan(16);
   });
 });

@@ -1,16 +1,13 @@
 const { withSentryConfig } = require("@sentry/nextjs");
+const { buildContentSecurityPolicy } = require("./lib/csp");
 
 const isDev = process.env.NODE_ENV !== "production";
 
-const ContentSecurityPolicy = `
-  default-src 'self';
-  script-src 'self' ${isDev ? "'unsafe-eval' " : ""}'unsafe-inline' https://vercel.live;
-  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-  font-src 'self' https://fonts.gstatic.com;
-  img-src 'self' data: blob:;
-  connect-src 'self' https://o123.ingest.us.sentry.io https://vitals.vercel-insights.com;
-  frame-ancestors 'none';
-`;
+// Only the browser is subject to CSP, so this tracks the client DSN.
+const contentSecurityPolicy = buildContentSecurityPolicy({
+  isDev,
+  sentryDsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -24,7 +21,7 @@ const nextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: ContentSecurityPolicy.replace(/\n/g, " ").trim(),
+            value: contentSecurityPolicy,
           },
           {
             key: "X-Frame-Options",

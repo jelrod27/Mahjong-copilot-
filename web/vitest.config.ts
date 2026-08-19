@@ -11,7 +11,7 @@ export default defineConfig({
     include: ['**/__tests__/**/*.test.{ts,tsx}'],
     coverage: {
       reporter: ['text', 'lcov'],
-      include: ['engine/**', 'models/**', 'presentation/**', 'store/reducers/**', 'components/**'],
+      include: ['engine/**', 'scene/**', 'presentation/**', 'models/**', 'store/reducers/**', 'components/**'],
       // A floor, not a target. Set just under the measured baseline so the
       // number can only be pushed up; raise it as coverage improves.
       //

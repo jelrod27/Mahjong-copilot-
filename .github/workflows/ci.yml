@@ -19,6 +19,7 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: ./web
@@ -54,6 +55,7 @@ jobs:
     name: E2E (local dev server)
     if: success() && needs.quality.result == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs: [quality]
     defaults:
       run:

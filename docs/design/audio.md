@@ -133,3 +133,40 @@ Licence rule is unchanged and hard (plan 016): royalty-free or CC0, commercial
 use permitted, **no attribution requirement**. CC-BY, CC-BY-NC, or unclear
 terms are rejected — the app has no credits surface, so an attribution
 requirement cannot be satisfied. Asset acquisition is the operator's action.
+
+
+## Decision: generated score, rotating (2026-08-19)
+
+Supersedes the ambient-bed direction above. That plan is not wrong; it is
+answering a different question, and the asset it depended on never arrived.
+
+**What prompted it.** The score was one 64-step loop at 84bpm — 11.4 seconds,
+repeating 315 times an hour — with no percussion and a single linear gain ramp
+standing in for an envelope. The complaint was not that it was generated. It
+was that there was one of it.
+
+**Why generated rather than licensed.** The requirement that decides this is a
+tempo that rises as the wall runs down. Speeding up a sample raises its pitch;
+matching it needs time-stretching, which is a different class of problem. A
+step sequencer just shortens the step. Once the score has to respond to game
+state, staying generated is the cheaper correct answer, not the poorer one.
+
+**The shape.** Each track is a key, a chord progression and a kit style. The
+skeleton — bass, pads, drums — is composed, because that is the part an ear
+needs to be stable. Lead and arpeggio are generated over it on every pass, from
+the chord and the scale only, so there is no wrong note available to land on.
+Six tracks rotate at the loop boundary: about four and a half minutes before
+anything is heard twice, and the ornamentation differs even then.
+
+**Intensity has two axes now.** Parlour floor sets the key, as before. The wall
+running down sets the push: tempo up to +22%, and layers that fill in the
+subdivisions the ear already expects — hats to eighths, bass on the offbeat,
+snare doubling. Layers are added, never substituted, so nothing is taken out
+from under the player.
+
+**What this does not change.** `SAMPLE_ASSETS` stays, and registering a bed
+still short-circuits the sequencer. If a licensed room tone is ever approved it
+works exactly as documented above — it simply cannot deliver the tempo ramp, so
+it is no longer the plan of record. The licence rule is unchanged and still
+hard: royalty-free or CC0, commercial use permitted, no attribution
+requirement.

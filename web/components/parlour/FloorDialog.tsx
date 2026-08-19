@@ -6,7 +6,7 @@
  * character-forward. The rival speaks; Uncle Gam frames wins and losses.
  */
 
-import { useMemo } from 'react';
+import { useState } from 'react';
 import CharacterPortrait from '@/components/npc/CharacterPortrait';
 import { NPCS, NpcId } from '@/content/npcs';
 
@@ -29,12 +29,14 @@ export default function FloorDialog({
   secondaryLabel, onSecondary,
 }: FloorDialogProps) {
   const npc = NPCS[npcId];
-  const line = useMemo(() => {
+  // A lazy initialiser runs exactly once per mount, which is what picking a
+  // line needs. useMemo gives no such guarantee — React may discard and
+  // recompute it, handing the reader a different line mid-dialogue.
+  const [line] = useState(() => {
     const lines = npc.dialogue?.[kind] ?? [];
     if (lines.length === 0) return '';
     return lines[Math.floor(Math.random() * lines.length)];
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- pick once per mount
-  }, []);
+  });
 
   const gamLine = kind === 'winMatch'
     ? NPCS.gam.dialogue?.winMatch[0]

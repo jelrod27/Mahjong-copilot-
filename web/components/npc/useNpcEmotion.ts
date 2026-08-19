@@ -209,9 +209,10 @@ export function useNpcEmotion(
     return () => clearTimeout(t);
   }, [transient]);
 
-  const effectiveEmotion: NpcEmotion =
-    transient && transient.until > Date.now() ? transient.emotion : baseEmotion;
-  const voiceLine = transient && transient.until > Date.now() ? transient.line : null;
+  // Expiry is owned by the effect above, which clears `transient` on its own
+  // timer. Re-checking the clock here would read a moving value during render.
+  const effectiveEmotion: NpcEmotion = transient ? transient.emotion : baseEmotion;
+  const voiceLine = transient ? transient.line : null;
 
   return { emotion: effectiveEmotion, voiceLine, eventNonce };
 }

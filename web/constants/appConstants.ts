@@ -58,6 +58,8 @@ export class AppConstants {
   static readonly CRT_EFFECT_KEY = 'crt_effect';
   /** Chiptune background music during play. */
   static readonly MUSIC_ENABLED_KEY = 'music_enabled';
+  /** Stored 0-100 so it round-trips through setInt. */
+  static readonly MUSIC_VOLUME_KEY = 'music_volume';
   static readonly OFFLINE_PROGRESS_KEY = 'offline_progress';
 }
 

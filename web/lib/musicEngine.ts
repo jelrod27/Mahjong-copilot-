@@ -440,6 +440,8 @@ class MusicEngine {
    * layers follow at the next loop point so they arrive musically.
    */
   private drive = 0;
+  /** Master music level, 0 to 1, multiplied into MUSIC_GAIN. */
+  private volume = 1;
   /** Track ids to cycle through; empty when a single track was requested. */
   private rotation: string[] = [];
   private rotationIndex = 0;
@@ -782,6 +784,26 @@ class MusicEngine {
 
   /** Parlour-wing level, kept so drive and intensity can compose. */
   private intensityLevel = 0;
+
+  /**
+   * Set the music level, 0 to 1.
+   *
+   * Previously the only control was on or off, with the gain fixed in the
+   * source. If it was too loud the only remedy was silence, which is a poor
+   * choice to force on someone who wants music at all. Applied to the bus, so
+   * it affects everything scheduled after it without disturbing the grid.
+   */
+  setVolume(next: number) {
+    this.volume = Math.min(1, Math.max(0, next));
+    if (this.musicGain) {
+      const ctx = this.ctx;
+      const now = ctx ? ctx.currentTime : 0;
+      // Ramped rather than stepped: an instant gain change on a running
+      // oscillator is an audible click.
+      this.musicGain.gain.cancelScheduledValues(now);
+      this.musicGain.gain.linearRampToValueAtTime(MUSIC_GAIN * this.volume, now + 0.05);
+    }
+  }
 
   /**
    * The note list for one pass: the authored skeleton plus freshly generated

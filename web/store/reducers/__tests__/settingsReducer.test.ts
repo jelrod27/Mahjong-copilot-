@@ -7,6 +7,7 @@ import {
   SETTINGS_SET_GAME_SPEED,
   SETTINGS_SET_LIVE_FAAN_METER,
   SETTINGS_SET_TILE_VOICE, SETTINGS_SET_CRT_EFFECT, SETTINGS_SET_MUSIC_ENABLED,
+  SETTINGS_SET_MUSIC_VOLUME,
 } from '../../actions/settingsActions';
 import { DEFAULT_TABLE_FELT } from '@/lib/cosmetics';
 
@@ -30,6 +31,7 @@ const initialState = {
   npcRosterMode: 'auto' as const,
   crtEffect: false,
   musicEnabled: true,
+  musicVolume: 70,
 };
 
 describe('settingsReducer', () => {
@@ -145,5 +147,33 @@ describe('settingsReducer', () => {
   it('returns state unchanged for unknown action', () => {
     const state = settingsReducer(initialState, { type: 'SOMETHING_RANDOM' });
     expect(state).toEqual(initialState);
+  });
+});
+
+describe('music volume', () => {
+  it('starts at a level that is audible but not the loudest available', () => {
+    // Defaulting to 100 makes the first impression the worst one; defaulting
+    // to 0 means someone who never opens settings never hears the score.
+    const state = settingsReducer(undefined, { type: '@@INIT' } as never);
+    expect(state.musicVolume).toBeGreaterThan(0);
+    expect(state.musicVolume).toBeLessThan(100);
+  });
+
+  it('stores the level it is given', () => {
+    const state = settingsReducer(undefined, {
+      type: SETTINGS_SET_MUSIC_VOLUME,
+      payload: 35,
+    } as never);
+    expect(state.musicVolume).toBe(35);
+  });
+
+  it('leaves the on/off switch alone', () => {
+    // Volume and enablement are separate controls: turning the score down
+    // should never silently disable it, or the toggle stops meaning anything.
+    const quiet = settingsReducer(undefined, {
+      type: SETTINGS_SET_MUSIC_VOLUME,
+      payload: 0,
+    } as never);
+    expect(quiet.musicEnabled).toBe(true);
   });
 });

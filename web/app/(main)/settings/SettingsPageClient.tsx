@@ -15,10 +15,12 @@ import {
   setLiveFaanMeter,
   setCrtEffect,
   setMusicEnabled,
+  setMusicVolume,
   setTileVoice,
   SettingsState,
 } from '@/store/actions/settingsActions';
 import soundManager from '@/lib/soundManager';
+import musicEngine from '@/lib/musicEngine';
 import {
   saveSettings,
   loadGamePreferences,
@@ -340,8 +342,39 @@ export default function SettingsPageClient() {
           checked={settings.musicEnabled}
           onChange={(v) => void dispatch(setMusicEnabled(v))}
           label="Parlour music"
-          description="Chiptune background score during play, with a danger motif when the wall runs low."
+          description="Rotating chiptune score during play. The tempo picks up as the wall runs down."
         />
+
+        {settings.musicEnabled && (
+          <div className="flex flex-col gap-2 py-3">
+            <label htmlFor="music-volume" className="flex items-baseline justify-between gap-3">
+              <span className="font-sans text-sm text-foreground">Music volume</span>
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                {settings.musicVolume}%
+              </span>
+            </label>
+            <input
+              id="music-volume"
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={settings.musicVolume}
+              onChange={(e) => {
+                const next = Number(e.target.value);
+                // Applied to the engine immediately so the slider is audible
+                // while it is being dragged; persistence follows the dispatch.
+                musicEngine.setVolume(next / 100);
+                void dispatch(setMusicVolume(next));
+              }}
+              className="w-full accent-accent"
+              aria-describedby="music-volume-help"
+            />
+            <p id="music-volume-help" className="font-sans text-xs text-muted-foreground">
+              Independent of sound effects, so the tile clack stays audible with the score turned down.
+            </p>
+          </div>
+        )}
 
         {/* CRT effect */}
         <ToggleRow

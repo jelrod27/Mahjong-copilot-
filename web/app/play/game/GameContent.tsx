@@ -75,6 +75,7 @@ export default function GameContent() {
   }, []);
 
   const musicEnabled = useAppSelector((s) => s.settings.musicEnabled);
+  const musicVolume = useAppSelector((s) => s.settings.musicVolume);
 
   const onMatchRosterResolved = useCallback(
     (rosterId: typeof npcRoster) => {
@@ -152,12 +153,13 @@ export default function GameContent() {
     controller.game.wall.length <= 8;
   useEffect(() => {
     musicEngine.setEnabled(musicEnabled);
+    musicEngine.setVolume(musicVolume / 100);
     if (!musicEnabled) return;
     if (gamePhase !== GamePhase.PLAYING) return;
     const intensity = floorDef ? (floorDef.floor <= 3 ? 0 : floorDef.floor <= 6 ? 1 : 2) : 0;
     musicEngine.play(wallLow ? 'danger' : 'parlour', intensity);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [musicEnabled, wallLow, gamePhase]);
+  }, [musicEnabled, musicVolume, wallLow, gamePhase]);
 
   // Endgame pressure. The wall running down is the one clock every hand shares,
   // so it drives the tempo: nothing at 40 tiles or more, full push by the last

@@ -57,8 +57,12 @@ updates:
       # eslint-config-next ships compatible transitive deps.
       - dependency-name: eslint
         versions: [">=10.0.0"]   # eslint-plugin-react crashes in usedPropTypes
+      # The real ceiling is typescript-eslint's peer range, currently
+      # >=4.8.4 <6.1.0 — not the major boundary. 6.0.x is verified working;
+      # 6.1 will break exactly as 7.0 did ("typescript-eslint does not
+      # support TS 7.0"), so pin to the range rather than the major.
       - dependency-name: typescript
-        versions: [">=7.0.0"]    # "typescript-eslint does not support TS 7.0"
+        versions: [">=6.1.0"]
 
       # @types/node should track the Node version CI actually runs, not the
       # newest published. Typing against a newer runtime lets code compile

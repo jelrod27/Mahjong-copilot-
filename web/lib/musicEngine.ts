@@ -442,6 +442,14 @@ class MusicEngine {
   private drive = 0;
   /** Master music level, 0 to 1, multiplied into MUSIC_GAIN. */
   private volume = 1;
+  /**
+   * What was asked for while the AudioContext was still gesture-blocked.
+   *
+   * Scheduling into a suspended context is worse than not starting: its clock
+   * does not advance, so every note lands on the same timestamp and they all
+   * fire together the moment it resumes.
+   */
+  private pending: { id: 'parlour' | 'danger'; intensity: 0 | 1 | 2 } | null = null;
   /** Track ids to cycle through; empty when a single track was requested. */
   private rotation: string[] = [];
   private rotationIndex = 0;
@@ -497,6 +505,14 @@ class MusicEngine {
     if (!this.enabled) return;
     const ctx = this.getContext();
     if (!ctx || !this.musicGain) return;
+
+    // Blocked until the page has been interacted with. Remember the request
+    // and let resume() start it, rather than running the scheduler against a
+    // clock that is not moving.
+    if (ctx.state !== 'running') {
+      this.pending = { id: trackId, intensity };
+      return;
+    }
 
     // Ambient-bed mode (Direction A, docs/design/audio.md): once a licensed
     // room tone is registered for `parlour`, that bed is the game's continuous
@@ -784,6 +800,32 @@ class MusicEngine {
 
   /** Parlour-wing level, kept so drive and intensity can compose. */
   private intensityLevel = 0;
+
+  /**
+   * Call from a user gesture to lift the browser's autoplay block.
+   *
+   * Whatever was requested while blocked starts here. Deliberately takes no
+   * arguments: the caller is a gesture listener, and asking it to also know
+   * which track should be playing is what made the previous version fail —
+   * it captured game state at mount, when there was none.
+   */
+  resume() {
+    if (!this.enabled) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+    void Promise.resolve(ctx.resume()).then(() => {
+      const queued = this.pending;
+      if (queued && !this.timer) {
+        this.pending = null;
+        this.play(queued.id, queued.intensity);
+      }
+    });
+  }
+
+  /** Whether audio is actually allowed to sound yet. */
+  get unlocked(): boolean {
+    return this.ctx?.state === 'running';
+  }
 
   /**
    * Set the music level, 0 to 1.

@@ -47,11 +47,34 @@ const makeParam = () => ({
   exponentialRampToValueAtTime: vi.fn(),
 });
 
+/**
+ * The engine is a singleton and caches its AudioContext for the process, so a
+ * test that wants a gesture-blocked context has to reach the live one rather
+ * than construct a new one.
+ */
+const contexts: FakeAudioContext[] = [];
+
 class FakeAudioContext {
   currentTime = 0;
   state = 'running';
   destination = {};
-  resume = vi.fn();
+  // Asynchronous on purpose. The real resume() returns a promise and the
+  // context is still suspended when it returns — a double that flips the
+  // state synchronously hides exactly the race this suite exists to cover.
+  resume = vi.fn(() =>
+    Promise.resolve().then(() => {
+      this.state = 'running';
+    }),
+  );
+
+  constructor() {
+    contexts.push(this);
+  }
+
+  /** The context the engine is actually using. */
+  static get live(): FakeAudioContext | undefined {
+    return contexts[contexts.length - 1];
+  }
 
   createGain() {
     return { gain: makeParam(), connect: vi.fn(), disconnect: vi.fn() };
@@ -461,5 +484,74 @@ describe('track roster', () => {
     const shapes = new Set(rotation.map((t) => t.harmony!.progression.join(',')));
     expect(shapes.size).toBeGreaterThan(3);
     expect(new Set(rotation.map((t) => t.bpm)).size).toBeGreaterThan(3);
+  });
+});
+
+/**
+ * Autoplay. Browsers gate the AudioContext until the page has been interacted
+ * with, and the previous handling of that lost the music for the whole session
+ * if anything was clicked before the deal finished. Nothing covered it, which
+ * is why it shipped.
+ */
+describe('gesture gating', () => {
+  /** Put the engine's live context back into the blocked state. */
+  const block = () => {
+    musicEngine.play('parlour');          // force the context to exist
+    musicEngine.stop();
+    const ctx = FakeAudioContext.live;
+    if (ctx) ctx.state = 'suspended';
+    intervalCount = 0;
+  };
+
+  beforeEach(() => {
+    delete SAMPLE_ASSETS.parlour;
+    musicEngine.stop();
+  });
+  afterEach(() => {
+    musicEngine.stop();
+    const ctx = FakeAudioContext.live;
+    if (ctx) ctx.state = 'running';
+  });
+
+  it('does not run the scheduler against a clock that is not moving', () => {
+    // A suspended context's currentTime does not advance, so every note would
+    // land on the same timestamp and fire together the moment it resumed.
+    block();
+    musicEngine.play('parlour');
+    expect(intervalCount).toBe(0);
+  });
+
+  it('starts what was asked for once the gesture arrives', async () => {
+    block();
+    musicEngine.play('parlour');
+    expect(intervalCount).toBe(0);
+
+    musicEngine.resume();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(intervalCount).toBe(1);
+  });
+
+  it('needs no argument, so a gesture listener cannot pass a stale one', () => {
+    // The old handler took its own view of what should play, captured at
+    // mount when there was no game yet, and guarded on it. resume() takes
+    // nothing: the request was already recorded by play().
+    expect(musicEngine.resume.length).toBe(0);
+  });
+
+  it('reports whether audio is actually allowed to sound', async () => {
+    block();
+    expect(musicEngine.unlocked).toBe(false);
+
+    // Resuming is asynchronous even after a valid gesture, so `unlocked` is
+    // still false the instant resume() returns. Anything that reads it to
+    // decide whether to draw a "music playing" state has to wait too.
+    musicEngine.resume();
+    expect(musicEngine.unlocked).toBe(false);
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(musicEngine.unlocked).toBe(true);
   });
 });

@@ -173,17 +173,21 @@ export default function GameContent() {
     if (gamePhase === GamePhase.PLAYING) musicEngine.setDrive(drive);
   }, [drive, gamePhase]);
   useEffect(() => {
-    // Browsers gate AudioContext on a user gesture: retry the loop on the
-    // first interaction so music starts as soon as it is allowed to.
-    const kick = () => {
-      if (musicEnabled && controller.game?.phase === GamePhase.PLAYING) {
-        musicEngine.play(wallLow ? 'danger' : 'parlour');
-      }
+    // Browsers gate the AudioContext until the page has been interacted with.
+    // This listener only lifts that block; the effect above decides what
+    // plays. The previous version tried to do both from here and could not:
+    // it read game state captured at mount, when there was none, so the guard
+    // never passed — and `once: true` meant that one failed attempt consumed
+    // the listener for good. Clicking anything before the deal finished was
+    // enough to lose the music for the whole session.
+    const unlock = () => musicEngine.resume();
+    window.addEventListener('pointerdown', unlock);
+    window.addEventListener('keydown', unlock);
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
     };
-    window.addEventListener('pointerdown', kick, { once: true });
-    return () => window.removeEventListener('pointerdown', kick);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [musicEnabled]);
+  }, []);
   useEffect(() => () => musicEngine.stop(), []);
 
   const floorSeats = floorDef

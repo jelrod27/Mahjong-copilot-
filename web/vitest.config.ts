@@ -11,7 +11,7 @@ export default defineConfig({
     include: ['**/__tests__/**/*.test.{ts,tsx}'],
     coverage: {
       reporter: ['text', 'lcov'],
-      include: ['engine/**', 'models/**', 'store/reducers/**', 'components/**'],
+      include: ['engine/**', 'models/**', 'presentation/**', 'store/reducers/**', 'components/**'],
     },
   },
   resolve: {

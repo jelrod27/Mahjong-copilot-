@@ -26,6 +26,7 @@ import {
   clearGameStats,
   GamePreferences,
 } from '@/lib/settingsStorage';
+import { useBrowserValue } from '@/hooks/useBrowserValue';
 
 const TIMER_OPTIONS = [
   { value: 10, label: '10s' },
@@ -52,26 +53,34 @@ const GAME_SPEED_OPTIONS: { value: SettingsState['gameSpeed']; label: string; de
   { value: 'fast', label: 'Fast', description: 'Minimal waiting. Best once you know the flow.' },
 ];
 
+// Stable identity, and what the server renders before localStorage is readable.
+const DEFAULT_GAME_PREFS: GamePreferences = { turnTimer: 20, autoPass: false };
+
 export default function SettingsPageClient() {
   const dispatch = useAppDispatch();
   const settings = useAppSelector((s) => s.settings);
 
-  // Game-specific prefs (localStorage only)
-  const [gamePrefs, setGamePrefs] = useState<GamePreferences>({
-    turnTimer: 20,
-    autoPass: false,
-  });
+  // Game-specific prefs (localStorage only). The stored value is read during
+  // render so the controls show the real setting on the first client paint;
+  // `edited` holds changes made in this session and wins once it exists.
+  const storedPrefs = useBrowserValue(loadGamePreferences, DEFAULT_GAME_PREFS);
+  const [edited, setEdited] = useState<GamePreferences | null>(null);
+  const gamePrefs = edited ?? storedPrefs;
+  const setGamePrefs = useCallback(
+    (next: GamePreferences | ((prev: GamePreferences) => GamePreferences)) =>
+      setEdited((prev) =>
+        typeof next === 'function'
+          ? next(prev ?? loadGamePreferences())
+          : next,
+      ),
+    [],
+  );
 
   // Toast state
   const [toast, setToast] = useState<string | null>(null);
 
   // Confirmation dialogs
   const [confirmAction, setConfirmAction] = useState<'clearStats' | 'resetAll' | null>(null);
-
-  // Load game prefs on mount
-  useEffect(() => {
-    setGamePrefs(loadGamePreferences());
-  }, []);
 
   // Persist Redux settings to localStorage on every change
   useEffect(() => {
@@ -96,7 +105,7 @@ export default function SettingsPageClient() {
         return next;
       });
     },
-    [],
+    [setGamePrefs],
   );
 
   const handleClearStats = useCallback(() => {
@@ -117,12 +126,12 @@ export default function SettingsPageClient() {
     void dispatch(setMusicEnabled(true));
     void dispatch(setCrtEffect(false));
     void dispatch(setTileVoice('off'));
-    const defaultPrefs: GamePreferences = { turnTimer: 20, autoPass: false };
+    const defaultPrefs: GamePreferences = { ...DEFAULT_GAME_PREFS };
     setGamePrefs(defaultPrefs);
     saveGamePreferences(defaultPrefs);
     setConfirmAction(null);
     showToast('Settings reset to defaults.');
-  }, [dispatch, showToast]);
+  }, [dispatch, showToast, setGamePrefs]);
 
   return (
     <div className="max-w-lg mx-auto space-y-6 animate-slide-up px-1 pb-8">

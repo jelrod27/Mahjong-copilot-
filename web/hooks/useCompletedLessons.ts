@@ -1,27 +1,44 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useBrowserValue } from '@/hooks/useBrowserValue';
 
 const COMPLETED_LESSONS_KEY = '@mahjong_completed_lessons';
+
+// Stable identity: useBrowserValue compares snapshots by reference.
+const NONE: string[] = [];
+
+function readCompletedLessons(): string[] {
+  try {
+    const stored = localStorage.getItem(COMPLETED_LESSONS_KEY);
+    return stored ? JSON.parse(stored) : NONE;
+  } catch {
+    return NONE;
+  }
+}
 
 /**
  * Shared hook for reading and writing completed lesson state from localStorage.
  */
 export default function useCompletedLessons() {
-  const [completedLessons, setCompletedLessons] = useState<string[]>([]);
+  // localStorage stays the source of truth; `added` only exists to re-render
+  // the caller after a write it made itself.
+  const stored = useBrowserValue(readCompletedLessons, NONE);
+  const [added, setAdded] = useState<string[]>(NONE);
 
-  useEffect(() => {
-    const stored = localStorage.getItem(COMPLETED_LESSONS_KEY);
-    if (stored) setCompletedLessons(JSON.parse(stored));
-  }, []);
+  const completedLessons = useMemo(
+    () => (added.length === 0 ? stored : [...stored, ...added]),
+    [stored, added],
+  );
 
   const markComplete = useCallback((lessonId: string) => {
-    setCompletedLessons(prev => {
-      if (prev.includes(lessonId)) return prev;
-      const updated = [...prev, lessonId];
-      localStorage.setItem(COMPLETED_LESSONS_KEY, JSON.stringify(updated));
-      return updated;
-    });
+    const current = readCompletedLessons();
+    if (current.includes(lessonId)) return;
+    localStorage.setItem(
+      COMPLETED_LESSONS_KEY,
+      JSON.stringify([...current, lessonId]),
+    );
+    setAdded(prev => (prev.includes(lessonId) ? prev : [...prev, lessonId]));
   }, []);
 
   return { completedLessons, markComplete };

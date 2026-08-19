@@ -136,6 +136,9 @@ export function useNpcEmotion(
     ) {
       const line = pickBark(npcId, 'claimedAgainst');
       if (line) {
+        // Edge-triggered: fires on the transition where another player's meld
+        // count rises against this npc's discard, detected via the ref above.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setEventNonce(n => n + 1);
         setTransient({ emotion: 'frustrated', line, until: Date.now() + REACTION_MS });
       }
@@ -157,6 +160,9 @@ export function useNpcEmotion(
     if (tenpaiNow && !wasTenpai.current) {
       const line = pickBark(npcId, 'tenpai');
       if (line) {
+        // Edge-triggered on the hand first reaching tenpai, tracked by the
+        // wasTenpai ref; the current hand alone cannot express "just became".
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setEventNonce(n => n + 1);
         setTransient({ emotion: 'smug', line, until: Date.now() + REACTION_MS });
       }
@@ -186,6 +192,9 @@ export function useNpcEmotion(
           gameState.isSelfDrawn === false &&
           gameState.players.find(p => p.id === gameState.lastDiscardedBy && !p.isAI);
         const line = (humanDealtIn && pickBark(npcId, 'youDealIn')) || pickVoiceLine(npcId, emotion);
+        // Edge-triggered on the phase transition into FINISHED, guarded by the
+        // prevPhase ref so the reaction plays exactly once per hand.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setEventNonce(n => n + 1);
         setTransient({
           emotion,
@@ -202,6 +211,10 @@ export function useNpcEmotion(
     if (!transient) return;
     const remaining = transient.until - Date.now();
     if (remaining <= 0) {
+      // This effect owns expiry now that render no longer reads the clock, so
+      // an already-elapsed transient has to be cleared here rather than waiting
+      // on a zero-delay timer.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTransient(null);
       return;
     }

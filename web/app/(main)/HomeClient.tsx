@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useBrowserValue } from '@/hooks/useBrowserValue';
 import Link from 'next/link';
 import { AllLevels } from '@/content';
 import { MahjongTile } from '@/components/MahjongTile';
@@ -50,36 +51,57 @@ const HERO_HAND: Tile[] = (() => {
   ];
 })();
 
+interface HomeSnapshot {
+  randomTile: Tile | null;
+  rank: PlayerRank | null;
+  floorsLit: number;
+  daily: DailyState | null;
+  hasSaved: boolean;
+  gamesPlayed: number;
+  mounted: boolean;
+}
+
+// Stable identity, and the exact shape the server renders.
+const HOME_PLACEHOLDER: HomeSnapshot = {
+  randomTile: null,
+  rank: null,
+  floorsLit: 0,
+  daily: null,
+  hasSaved: false,
+  gamesPlayed: 0,
+  mounted: false,
+};
+
+function readHomeSnapshot(): HomeSnapshot {
+  const tiles = getAllTiles();
+  return {
+    randomTile: tiles[Math.floor(Math.random() * tiles.length)],
+    rank: getCurrentRank(),
+    floorsLit: getParlourProgress().highestCleared,
+    daily: getDailyState(),
+    hasSaved: hasSavedGame(),
+    gamesPlayed: loadStats().gamesPlayed,
+    mounted: true,
+  };
+}
+
 export default function HomePage() {
   const { completedLessons } = useCompletedLessons();
-  const [randomTile, setRandomTile] = useState<ReturnType<typeof getAllTiles>[0] | null>(null);
-  const [rank, setRank] = useState<PlayerRank | null>(null);
+  // Everything here reads localStorage, so the server and the hydration pass
+  // both see HOME_PLACEHOLDER and the markup matches by construction. `mounted`
+  // rides along in the snapshot: without it a returning player would flash
+  // "Play your first hand" before the real label arrived.
+  const { randomTile, rank, floorsLit, daily, hasSaved, gamesPlayed, mounted } =
+    useBrowserValue(readHomeSnapshot, HOME_PLACEHOLDER);
+
   const [rankUp, setRankUp] = useState<PlayerRank | null>(null);
-  const [floorsLit, setFloorsLit] = useState(0);
-  const [daily, setDaily] = useState<DailyState | null>(null);
-  // Post-mount hydration guard: these read localStorage, so they must start
-  // at a value that matches the server render (no saved game, no games
-  // played yet) and only update once mounted on the client.
-  const [hasSaved, setHasSaved] = useState(false);
-  const [gamesPlayed, setGamesPlayed] = useState(0);
-  // The primary CTA label depends on hasSaved/gamesPlayed, which only become
-  // accurate after the effect below runs. Without this flag a returning
-  // player briefly sees "Play your first hand" before it swaps to "Resume
-  // your match" once localStorage is read. `mounted` gates the label on a
-  // neutral placeholder for that one frame instead.
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const tiles = getAllTiles();
-    setRandomTile(tiles[Math.floor(Math.random() * tiles.length)]);
-    setRank(getCurrentRank());
-    setFloorsLit(getParlourProgress().highestCleared);
-    setDaily(getDailyState());
-    setHasSaved(hasSavedGame());
-    setGamesPlayed(loadStats().gamesPlayed);
-    setMounted(true);
+    // consumeRankUp clears the stored promotion as it reads it, so this is a
+    // real side effect and has to stay in an effect rather than move to render.
     const up = consumeRankUp();
     if (up) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRankUp(up);
       soundManager.play('win');
     }

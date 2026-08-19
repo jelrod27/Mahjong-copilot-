@@ -1,5 +1,12 @@
 # Security advisories are delivered by Dependabot alerts (enabled in repo
-# settings); this file only schedules routine version updates.
+# settings); this file only schedules routine version updates and decides how
+# they are bundled.
+#
+# Every update belongs to exactly one group, so a normal week produces a handful
+# of reviewable PRs rather than one per package. Groups default to
+# applies-to: version-updates — security updates are a separate stream and need
+# their own group, which is why enabling them first produced five PRs in forty
+# seconds despite the groups below already existing.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -9,8 +16,10 @@ updates:
       day: monday
     open-pull-requests-limit: 5
     groups:
-      # One PR per class keeps the weekly noise to a couple of reviews
-      # rather than a dozen single-package bumps.
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
+
       dev-tooling:
         patterns:
           - "@types/*"
@@ -21,6 +30,7 @@ updates:
           - jsdom
           - typescript
         update-types: [minor, patch]
+
       production:
         patterns: ["*"]
         exclude-patterns:
@@ -33,8 +43,34 @@ updates:
           - typescript
         update-types: [minor, patch]
 
+      # Majors land together too. They still need a human deciding when, but
+      # arriving as one PR makes that a single decision rather than one per
+      # package — and reviewing them side by side surfaces the ones that move
+      # together, like react and react-dom.
+      majors:
+        patterns: ["*"]
+        update-types: [major]
+
+    ignore:
+      # Both verified broken against this codebase on 2026-08-19, by upgrading
+      # and reverting rather than by reputation. Remove these entries once
+      # eslint-config-next ships compatible transitive deps.
+      - dependency-name: eslint
+        versions: [">=10.0.0"]   # eslint-plugin-react crashes in usedPropTypes
+      - dependency-name: typescript
+        versions: [">=7.0.0"]    # "typescript-eslint does not support TS 7.0"
+
+      # @types/node should track the Node version CI actually runs, not the
+      # newest published. Typing against a newer runtime lets code compile
+      # against APIs that are not there at execution time.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
     open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns: ["*"]

@@ -9,6 +9,14 @@ updates:
       day: monday
     open-pull-requests-limit: 5
     groups:
+      # Security updates are a separate stream from version updates and ignore
+      # any group that does not opt in, which is why five advisories arrived as
+      # five PRs the first time this ran. One patched-advisory PR is easier to
+      # review than five, and they nearly always want landing together anyway.
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
+
       # One PR per class keeps the weekly noise to a couple of reviews
       # rather than a dozen single-package bumps.
       dev-tooling:

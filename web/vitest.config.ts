@@ -12,6 +12,14 @@ export default defineConfig({
     coverage: {
       reporter: ['text', 'lcov'],
       include: ['engine/**', 'models/**', 'presentation/**', 'store/reducers/**', 'components/**'],
+      // A floor, not a target. Set just under the measured baseline so the
+      // number can only be pushed up; raise it as coverage improves.
+      thresholds: {
+        statements: 58,
+        branches: 80,
+        functions: 83,
+        lines: 58,
+      },
     },
   },
   resolve: {

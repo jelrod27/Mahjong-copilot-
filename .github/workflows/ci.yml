@@ -44,8 +44,8 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
-      - name: Unit tests
-        run: npm test
+      - name: Unit tests and coverage floor
+        run: npm run test:coverage
 
       - name: Production build
         run: npm run build

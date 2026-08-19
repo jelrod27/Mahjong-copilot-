@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import musicEngine, {
   SAMPLE_ASSETS, pulseCoefficients, ornament, PARLOUR_HARMONY, intensityLayers,
-  type PatternNote,
+  TRACKS, PARLOUR_ROTATION, type PatternNote,
 } from '../musicEngine';
 import { createRng } from '@/engine/rng';
 
@@ -401,5 +401,65 @@ describe('intensity layers', () => {
       expect(n).toBeGreaterThanOrEqual(previous);
       previous = n;
     }
+  });
+});
+
+/**
+ * The rotation. Six tracks at roughly 45 seconds a pass, so nothing is heard
+ * twice for about four and a half minutes — and the ornamentation differs even
+ * then. These check the roster as a set rather than one track at a time,
+ * because a track added later is exactly the one that will skip the review.
+ */
+describe('track roster', () => {
+  const rotation = PARLOUR_ROTATION.map((id) => TRACKS[id]);
+
+  it('resolves every id in the rotation', () => {
+    PARLOUR_ROTATION.forEach((id, i) => {
+      expect(rotation[i], `no track registered for "${id}"`).toBeDefined();
+    });
+    expect(new Set(PARLOUR_ROTATION).size).toBe(PARLOUR_ROTATION.length);
+  });
+
+  it('keeps every generated part inside its own key', () => {
+    // The safety property, applied across the whole roster: a track added with
+    // a mistyped scale or an out-of-range progression fails here rather than
+    // in someone's ears.
+    for (const t of rotation) {
+      expect(t.harmony, `${t.id} has no harmony`).toBeDefined();
+      const h = t.harmony!;
+      const allowed = new Set(h.scale.map((d) => (((h.root + d) % 12) + 12) % 12));
+      for (let seed = 0; seed < 8; seed++) {
+        for (const [, midi, , ch] of ornament(h, t.steps, createRng(`${t.id}:${seed}`))) {
+          if (ch !== 'lead' && ch !== 'arp') continue;
+          expect(allowed.has(((midi % 12) + 12) % 12), `${t.id}: midi ${midi} out of key`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('gives every track a loop long enough not to grate', () => {
+    // The original was 11.4s and repeated 315 times an hour. Nothing in the
+    // roster should be able to regress to that.
+    for (const t of rotation) {
+      const seconds = t.steps * (60 / t.bpm / 4);
+      expect(seconds, `${t.id} loops every ${seconds.toFixed(1)}s`).toBeGreaterThan(30);
+    }
+  });
+
+  it('authors a skeleton but no melody, so the generator owns the tune', () => {
+    for (const t of rotation) {
+      const channels = new Set(t.notes.map((n) => n[3]));
+      expect(channels.has('bass'), `${t.id} has no bass`).toBe(true);
+      expect(channels.has('perc'), `${t.id} has no drums`).toBe(true);
+      expect(channels.has('lead'), `${t.id} authors a lead`).toBe(false);
+    }
+  });
+
+  it('varies more than just the key', () => {
+    // Two tracks in the same key with different chord orders read as different
+    // pieces; a roster that only transposes reads as one piece six times.
+    const shapes = new Set(rotation.map((t) => t.harmony!.progression.join(',')));
+    expect(shapes.size).toBeGreaterThan(3);
+    expect(new Set(rotation.map((t) => t.bpm)).size).toBeGreaterThan(3);
   });
 });

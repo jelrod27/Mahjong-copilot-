@@ -7,7 +7,7 @@
  * (docs/design/audio.md).
  */
 
-import { createRng, type Rng } from '@/engine/rng';
+import { createRng, randomSeed, shuffleInPlace, type Rng } from '@/engine/rng';
 
 type Channel = 'lead' | 'bass' | 'pad' | 'arp' | 'perc';
 
@@ -20,7 +20,7 @@ const KICK = 36, SNARE = 38, HAT = 42, OPEN_HAT = 46;
 /** One note: [stepIndex, midiNote, durationInSteps, channel] */
 export type PatternNote = [number, number, number, Channel];
 
-interface MusicTrack {
+export interface MusicTrack {
   id: string;
   bpm: number;
   /** Total steps in the loop (16th notes). */
@@ -180,45 +180,101 @@ export const PARLOUR_HARMONY: Harmony = {
   arpOctave: 0,
 };
 
+/** How busy the kit is at rest. Intensity layers thicken it from here. */
+type Kit = 'sparse' | 'steady' | 'driving';
+
 /**
- * The authored half of the parlour track: bass, pad and kit across sixteen
- * bars. Written as a builder rather than a literal because sixteen bars of
- * sixteenth-note tuples is unreadable, and because the bass has to follow the
- * same progression the generator ornaments over.
+ * The authored half of a track: bass, pad and kit across `bars`, following the
+ * harmony's progression so the generated ornamentation has something coherent
+ * to sit on.
+ *
+ * A builder rather than literals because sixteen bars of sixteenth-note tuples
+ * is unreadable, and because every track wants the same relationship between
+ * its bassline and its chords — writing that out per track is how the two
+ * drift apart.
  */
-function parlourSkeleton(): PatternNote[] {
-  const h = PARLOUR_HARMONY;
-  const bars = 16;
+function buildSkeleton(h: Harmony, bars: number, kit: Kit): PatternNote[] {
   const notes: PatternNote[] = [];
 
   for (let bar = 0; bar < bars; bar++) {
     const base = bar * h.barSteps;
     const [root, , fifth] = chordTones(h, h.progression[bar % h.progression.length]);
 
-    // Bass: root on the downbeat, fifth mid-bar, an octave below the pad.
     notes.push([base, root - 12, 6, 'bass']);
     notes.push([base + 8, fifth - 12, 6, 'bass']);
-
-    // Pad: the chord root held across the bar, very quiet.
     notes.push([base, root, h.barSteps, 'pad']);
 
-    // Kit: sparse at rest. The fill every fourth bar is what stops sixteen
-    // bars of identical drums from becoming its own short loop.
-    notes.push(...hits([base, base + 10], KICK));
-    notes.push(...hits([base + 8], SNARE));
-    notes.push(...hits(every(4, base + h.barSteps, base), HAT));
+    if (kit === 'sparse') {
+      notes.push(...hits([base, base + 10], KICK));
+      notes.push(...hits([base + 8], SNARE));
+      notes.push(...hits(every(4, base + h.barSteps, base), HAT));
+    } else if (kit === 'steady') {
+      notes.push(...hits([base, base + 6, base + 10], KICK));
+      notes.push(...hits([base + 8], SNARE));
+      notes.push(...hits(every(2, base + h.barSteps, base), HAT));
+    } else {
+      notes.push(...hits([base, base + 6, base + 10, base + 14], KICK));
+      notes.push(...hits([base + 4, base + 12], SNARE));
+      notes.push(...hits(every(2, base + h.barSteps, base), HAT));
+    }
+
+    // A fill every fourth bar. Without it, sixteen identical bars become their
+    // own short loop underneath the long one — the exact problem being fixed.
     if (bar % 4 === 3) notes.push(...hits([base + 12, base + 14], SNARE));
   }
   return notes;
 }
 
-const PARLOUR_THEME: MusicTrack = {
-  id: 'parlour',
-  bpm: 84,
-  steps: 16 * PARLOUR_HARMONY.barSteps,
-  harmony: PARLOUR_HARMONY,
-  notes: parlourSkeleton(),
-};
+/** Minor pentatonic: five notes, no semitone clashes, nothing to land wrong on. */
+const MINOR_PENT = [0, 3, 5, 7, 10];
+/** Major pentatonic: the same safety, brighter. */
+const MAJOR_PENT = [0, 2, 4, 7, 9];
+
+function track(
+  id: string, bpm: number, h: Harmony, bars: number, kit: Kit,
+): MusicTrack {
+  return { id, bpm, steps: bars * h.barSteps, harmony: h, notes: buildSkeleton(h, bars, kit) };
+}
+
+const PARLOUR_THEME = track('parlour', 84, PARLOUR_HARMONY, 16, 'sparse');
+
+/* The rest of the roster. Each track is a key, a progression and a kit — the
+   generator supplies the melody, which is what makes five more tracks cost
+   five declarations rather than five compositions. Progressions differ as
+   much as keys do: two tracks in the same key with different chord orders
+   read as different pieces, and that is most of the variety here. */
+
+const NIGHT_SHIFT = track('night-shift', 92, {
+  root: D3, scale: MINOR_PENT, progression: [0, 2, 4, 3],
+  barSteps: 16, leadOctave: 2, arpOctave: 1,
+}, 16, 'steady');
+
+const CLIMB = track('climb', 104, {
+  root: E3, scale: MINOR_PENT, progression: [0, 4, 1, 4],
+  barSteps: 16, leadOctave: 2, arpOctave: 1,
+}, 16, 'driving');
+
+const LANTERN = track('lantern', 78, {
+  root: G3, scale: MAJOR_PENT, progression: [0, 3, 1, 4],
+  barSteps: 16, leadOctave: 1, arpOctave: 0,
+}, 16, 'sparse');
+
+const DAYBREAK = track('daybreak', 96, {
+  root: C4, scale: MAJOR_PENT, progression: [0, 4, 2, 3],
+  barSteps: 16, leadOctave: 1, arpOctave: 0,
+}, 16, 'steady');
+
+const VERDIGRIS = track('verdigris', 88, {
+  root: A3, scale: MINOR_PENT, progression: [2, 0, 3, 1],
+  barSteps: 16, leadOctave: 1, arpOctave: 1,
+}, 16, 'steady');
+
+/**
+ * What plays during a hand, in rotation. Six tracks at roughly 45 seconds a
+ * pass is about four and a half minutes before anything is heard twice — and
+ * the ornamentation differs even then, so a repeat is not a repetition.
+ */
+export const PARLOUR_ROTATION = ['parlour', 'night-shift', 'climb', 'lantern', 'daybreak', 'verdigris'];
 
 const DANGER_MOTIF: MusicTrack = {
   id: 'danger',
@@ -235,8 +291,13 @@ const DANGER_MOTIF: MusicTrack = {
   ],
 };
 
-const TRACKS: Record<string, MusicTrack> = {
+export const TRACKS: Record<string, MusicTrack> = {
   parlour: PARLOUR_THEME,
+  'night-shift': NIGHT_SHIFT,
+  climb: CLIMB,
+  lantern: LANTERN,
+  daybreak: DAYBREAK,
+  verdigris: VERDIGRIS,
   danger: DANGER_MOTIF,
 };
 
@@ -379,6 +440,9 @@ class MusicEngine {
    * layers follow at the next loop point so they arrive musically.
    */
   private drive = 0;
+  /** Track ids to cycle through; empty when a single track was requested. */
+  private rotation: string[] = [];
+  private rotationIndex = 0;
   private tempoScale = 1;
   /** Decoded ambient beds, cached per URL so repeat plays skip the fetch. */
   private bufferCache = new Map<string, AudioBuffer>();
@@ -455,12 +519,21 @@ class MusicEngine {
       return;
     }
 
-    const track = TRACKS[trackId];
+    // `parlour` names a rotation, not a track. Anything else is itself.
+    const wanted = trackId === 'parlour' ? PARLOUR_ROTATION : [trackId];
+
+    // Already inside the requested rotation: this is an intensity change, not
+    // a request for different music. Comparing against trackId alone would
+    // restart the rotation from the top every time the floor level changed,
+    // because by then `current` is whichever track the rotation reached.
+    const inRotation = !!this.timer && !!this.current && wanted.includes(this.current.id);
+
+    const track = inRotation ? this.current! : TRACKS[wanted[0]];
     if (!track) return;
     const nextTranspose = (track.transpose ?? 0) + intensity * 2;
     const nextTempo = 1 + intensity * 0.08 + this.drive * 0.22;
     this.intensityLevel = intensity;
-    if (this.current?.id === trackId && this.timer) {
+    if (inRotation) {
       // Same track: retune in place when only the intensity changed.
       // A tempo change alters the step duration, so re-anchor loopStartTime
       // to keep the next scheduled note at its current wall-clock time —
@@ -474,9 +547,16 @@ class MusicEngine {
     this.stop();
     // The scheduler walks notes in array order; patterns are authored by
     // channel, so sort by step or later channels would never schedule.
-    this.skeleton = track.notes;
+    // Shuffled per session so the same six tracks do not arrive in the same
+    // order every time the game is opened.
+    this.rotation = wanted.length > 1
+      ? shuffleInPlace([...wanted], createRng(randomSeed()))
+      : wanted;
+    this.rotationIndex = 0;
+    const first = TRACKS[this.rotation[0]] ?? track;
+    this.skeleton = first.notes;
     this.loopCount = 0;
-    this.current = { ...track, notes: this.buildPass(track) };
+    this.current = { ...first, notes: this.buildPass(first) };
     this.transpose = nextTranspose;
     this.tempoScale = nextTempo;
     this.nextNoteIndex = 0;
@@ -644,15 +724,29 @@ class MusicEngine {
       if (this.nextNoteIndex >= track.notes.length) {
         this.nextNoteIndex = 0;
         this.loopStartTime += loopDur; // exact loop point
-        // A generated track gets new ornamentation for the next pass, so the
-        // loop point is where the music changes rather than where it repeats.
+        // The loop point is where the music changes rather than where it
+        // repeats: either the next track in the rotation, or a fresh pass of
+        // ornamentation over the same one.
         this.loopCount += 1;
-        if (track.harmony) this.current = { ...track, notes: this.buildPass(track) };
+        const nextTrack = this.advanceRotation() ?? track;
+        this.skeleton = nextTrack.notes;
+        this.current = { ...nextTrack, notes: this.buildPass(nextTrack) };
       }
     }
 
     // Keep the scheduled list bounded; old oscillators have already stopped
     if (this.scheduled.length > 48) this.scheduled = this.scheduled.slice(-48);
+  }
+
+  /**
+   * Step to the next track in the rotation, or null when there is nothing to
+   * rotate through. Called only at a loop boundary, so a track always plays
+   * to its end rather than being cut off mid-phrase.
+   */
+  private advanceRotation(): MusicTrack | null {
+    if (this.rotation.length < 2) return null;
+    this.rotationIndex = (this.rotationIndex + 1) % this.rotation.length;
+    return TRACKS[this.rotation[this.rotationIndex]] ?? null;
   }
 
   /**

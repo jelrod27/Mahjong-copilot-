@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import musicEngine, { SAMPLE_ASSETS, pulseCoefficients, ornament, PARLOUR_HARMONY } from '../musicEngine';
+import musicEngine, {
+  SAMPLE_ASSETS, pulseCoefficients, ornament, PARLOUR_HARMONY, intensityLayers,
+  type PatternNote,
+} from '../musicEngine';
 import { createRng } from '@/engine/rng';
 
 /**
@@ -347,5 +350,56 @@ describe('ornamentation', () => {
       notes.filter((n) => n[3] === 'lead').map((n) => Math.floor(n[0] / PARLOUR_HARMONY.barSteps)),
     );
     expect(barsWithLead.size).toBeLessThan(16);
+  });
+});
+
+/**
+ * Endgame pressure. The wall running down is the clock every hand shares, so
+ * it drives tempo and thickens the kit. Layers are added rather than swapped
+ * so the arrangement never has anything taken away underneath the player.
+ */
+describe('intensity layers', () => {
+  const skeleton: PatternNote[] = [
+    [0, 45, 6, 'bass'],
+    [16, 50, 6, 'bass'],
+  ];
+  const count = (notes: PatternNote[], ch: string) => notes.filter((n) => n[3] === ch).length;
+
+  it('adds nothing while the wall is deep', () => {
+    expect(intensityLayers(skeleton, 64, 0)).toHaveLength(0);
+    expect(intensityLayers(skeleton, 64, 0.2)).toHaveLength(0);
+  });
+
+  it('fills hats in to eighths first', () => {
+    const layers = intensityLayers(skeleton, 64, 0.3);
+    expect(count(layers, 'perc')).toBeGreaterThan(0);
+    expect(count(layers, 'bass')).toBe(0);
+  });
+
+  it('answers on the offbeat with the bass note already in the bar', () => {
+    const layers = intensityLayers(skeleton, 64, 0.6);
+    const bass = layers.filter((n) => n[3] === 'bass');
+    expect(bass.length).toBe(2);
+    // Same pitches as the skeleton, so a generated offbeat cannot drift out
+    // of the harmony the composed part established.
+    expect(bass.map((n) => n[1]).sort()).toEqual([45, 50]);
+    expect(bass.map((n) => n[0]).sort((a, b) => a - b)).toEqual([4, 20]);
+  });
+
+  it('never places a layer past the end of the loop', () => {
+    for (const drive of [0.3, 0.6, 0.9, 1]) {
+      for (const [step] of intensityLayers(skeleton, 64, drive)) {
+        expect(step).toBeLessThan(64);
+      }
+    }
+  });
+
+  it('only ever adds, so the base arrangement survives every level', () => {
+    let previous = 0;
+    for (const drive of [0, 0.25, 0.55, 0.8, 1]) {
+      const n = intensityLayers(skeleton, 64, drive).length;
+      expect(n).toBeGreaterThanOrEqual(previous);
+      previous = n;
+    }
   });
 });

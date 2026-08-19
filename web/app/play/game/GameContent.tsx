@@ -140,6 +140,10 @@ export default function GameContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [floorMatchOver, floorHumanWon]);
 
+  // Wall counts at which the music is at rest and at full pressure.
+  const WALL_CALM = 40;
+  const WALL_TENSE = 8;
+
   // === Music: parlour theme during play, danger motif on the last stretch
   // of the wall; intensity rises with the Parlour wing. Stops on unmount.
   const gamePhase = controller.game?.phase;
@@ -154,6 +158,18 @@ export default function GameContent() {
     musicEngine.play(wallLow ? 'danger' : 'parlour', intensity);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [musicEnabled, wallLow, gamePhase]);
+
+  // Endgame pressure. The wall running down is the one clock every hand shares,
+  // so it drives the tempo: nothing at 40 tiles or more, full push by the last
+  // eight. Quantised to tenths because this recomputes on every draw and
+  // retuning the grid on each one would be churn for an inaudible difference.
+  const wallLeft = controller.game?.wall.length ?? WALL_CALM;
+  const drive = Math.round(
+    Math.min(1, Math.max(0, (WALL_CALM - wallLeft) / (WALL_CALM - WALL_TENSE))) * 10,
+  ) / 10;
+  useEffect(() => {
+    if (gamePhase === GamePhase.PLAYING) musicEngine.setDrive(drive);
+  }, [drive, gamePhase]);
   useEffect(() => {
     // Browsers gate AudioContext on a user gesture: retry the loop on the
     // first interaction so music starts as soon as it is allowed to.

@@ -18,7 +18,7 @@ type Channel = 'lead' | 'bass' | 'pad' | 'arp' | 'perc';
 const KICK = 36, SNARE = 38, HAT = 42, OPEN_HAT = 46;
 
 /** One note: [stepIndex, midiNote, durationInSteps, channel] */
-type PatternNote = [number, number, number, Channel];
+export type PatternNote = [number, number, number, Channel];
 
 interface MusicTrack {
   id: string;
@@ -125,6 +125,36 @@ export function ornament(h: Harmony, totalSteps: number, rng: Rng): PatternNote[
     }
   }
   return out;
+}
+
+/**
+ * Extra parts that arrive as the wall runs down.
+ *
+ * Added rather than substituted, so the base arrangement is never taken away
+ * — the track thickens under the player instead of changing into a different
+ * track. Each threshold is a subdivision the ear already expects to exist,
+ * which is why filling it in reads as urgency rather than as a new song.
+ */
+export function intensityLayers(skeleton: PatternNote[], totalSteps: number, drive: number): PatternNote[] {
+  const extra: PatternNote[] = [];
+  if (drive >= 0.25) {
+    // Hats fill in to eighths: the base kit puts them on quarters.
+    extra.push(...hits(every(4, totalSteps, 2), HAT));
+  }
+  if (drive >= 0.55) {
+    // Bass answers on the offbeat, using the note the skeleton already put on
+    // the downbeat of that bar so the harmony cannot drift.
+    for (const [step, midi, , channel] of skeleton) {
+      if (channel !== 'bass') continue;
+      const off = step + 4;
+      if (off < totalSteps) extra.push([off, midi, 2, 'bass']);
+    }
+  }
+  if (drive >= 0.8) {
+    // Snare doubles into the backbeat.
+    extra.push(...hits(every(16, totalSteps, 12), SNARE));
+  }
+  return extra;
 }
 
 /** Every `stride` steps from `from` up to (not including) `to`. */
@@ -342,6 +372,13 @@ class MusicEngine {
   private skeleton: PatternNote[] = [];
   /** Passes completed, so each one seeds a different ornament. */
   private loopCount = 0;
+  /**
+   * Endgame pressure, 0 to 1. Orthogonal to `intensity`, which is the Parlour
+   * wing and sets the key: this is how close the hand is to running out, and
+   * it sets the push. Tempo follows it immediately so the change is felt;
+   * layers follow at the next loop point so they arrive musically.
+   */
+  private drive = 0;
   private tempoScale = 1;
   /** Decoded ambient beds, cached per URL so repeat plays skip the fetch. */
   private bufferCache = new Map<string, AudioBuffer>();
@@ -421,22 +458,15 @@ class MusicEngine {
     const track = TRACKS[trackId];
     if (!track) return;
     const nextTranspose = (track.transpose ?? 0) + intensity * 2;
-    const nextTempo = 1 + intensity * 0.08;
+    const nextTempo = 1 + intensity * 0.08 + this.drive * 0.22;
+    this.intensityLevel = intensity;
     if (this.current?.id === trackId && this.timer) {
       // Same track: retune in place when only the intensity changed.
       // A tempo change alters the step duration, so re-anchor loopStartTime
       // to keep the next scheduled note at its current wall-clock time —
       // otherwise the loop anchor maps steps onto the new grid and notes
       // bunch or skip.
-      if (this.tempoScale !== nextTempo) {
-        const oldStep = this.secondsPerStep();
-        this.tempoScale = nextTempo;
-        const newStep = this.secondsPerStep();
-        const nextNote = this.current.notes[this.nextNoteIndex];
-        if (nextNote) {
-          this.loopStartTime += nextNote[0] * (oldStep - newStep);
-        }
-      }
+      this.applyTempo(nextTempo);
       this.transpose = nextTranspose;
       return;
     }
@@ -626,13 +656,50 @@ class MusicEngine {
   }
 
   /**
+   * Change tempo without dislodging the grid.
+   *
+   * A tempo change alters the step duration, so loopStartTime is re-anchored
+   * to keep the next scheduled note at its current wall-clock time. Skipping
+   * this maps every step onto the new grid at once and the notes bunch or
+   * skip audibly.
+   */
+  private applyTempo(next: number) {
+    if (this.tempoScale === next || !this.current) return;
+    const oldStep = this.secondsPerStep();
+    this.tempoScale = next;
+    const newStep = this.secondsPerStep();
+    const nextNote = this.current.notes[this.nextNoteIndex];
+    if (nextNote) this.loopStartTime += nextNote[0] * (oldStep - newStep);
+  }
+
+  /**
+   * Set endgame pressure, 0 (full wall) to 1 (last tiles).
+   *
+   * Tempo moves now; the arrangement thickens at the next loop point. Doing
+   * both immediately would drop a snare into the middle of a bar.
+   */
+  setDrive(next: number) {
+    const clamped = Math.min(1, Math.max(0, next));
+    if (clamped === this.drive) return;
+    this.drive = clamped;
+    const base = this.current ? 1 + (this.intensityLevel * 0.08) : 1;
+    this.applyTempo(base + clamped * 0.22);
+  }
+
+  /** Parlour-wing level, kept so drive and intensity can compose. */
+  private intensityLevel = 0;
+
+  /**
    * The note list for one pass: the authored skeleton plus freshly generated
    * ornamentation, sorted by step because the scheduler walks in array order.
    */
   private buildPass(track: MusicTrack): PatternNote[] {
-    if (!track.harmony) return [...this.skeleton].sort((a, b) => a[0] - b[0]);
+    const layers = intensityLayers(this.skeleton, track.steps, this.drive);
+    if (!track.harmony) {
+      return [...this.skeleton, ...layers].sort((a, b) => a[0] - b[0]);
+    }
     const rng = createRng(`${track.id}:${this.loopCount}`);
-    return [...this.skeleton, ...ornament(track.harmony, track.steps, rng)]
+    return [...this.skeleton, ...layers, ...ornament(track.harmony, track.steps, rng)]
       .sort((a, b) => a[0] - b[0]);
   }
 

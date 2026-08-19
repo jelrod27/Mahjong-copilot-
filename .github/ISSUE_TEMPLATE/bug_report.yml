@@ -1,0 +1,67 @@
+name: Bug report
+description: Something in the app behaved wrongly.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A vague report beats no report. If you only remember "tiles stopped
+        responding after a claim", file that — partial detail is still a lead.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, and what the app did instead of what you expected.
+      placeholder: Claimed a pung, then the board stopped accepting clicks.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where
+      options:
+        - Solo play (/play/game)
+        - Practice
+        - Learn / lessons
+        - Daily hand
+        - Reference
+        - Progress / stats
+        - Settings
+        - Somewhere else / not sure
+    validations:
+      required: true
+
+  - type: input
+    id: sentry
+    attributes:
+      label: Sentry issue
+      description: Paste the link if this produced an error in Sentry. Leave blank if not.
+      placeholder: https://16bitweather.sentry.io/issues/...
+
+  - type: textarea
+    id: state
+    attributes:
+      label: Game state, if relevant
+      description: >
+        Difficulty, round and hand number, your seat wind, whether melds were
+        exposed, and anything unusual about the hand. Skip what you do not recall.
+
+  - type: dropdown
+    id: reproducible
+    attributes:
+      label: Does it happen again
+      options:
+        - Every time
+        - Sometimes
+        - Saw it once
+        - Not tried
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: Browser and device
+      placeholder: Chrome 141 on macOS / Safari on iPhone 15

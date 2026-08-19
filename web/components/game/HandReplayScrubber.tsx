@@ -29,13 +29,17 @@ export default function HandReplayScrubber({ gameState }: HandReplayScrubberProp
   );
   const [expanded, setExpanded] = useState(false);
   const [cursor, setCursor] = useState(turns.length > 0 ? turns.length - 1 : 0);
+  const [seenTurns, setSeenTurns] = useState(turns);
 
   // Snap the cursor to the latest turn whenever the timeline grows or
   // shrinks (e.g. post-hand state update appending turns, or component
-  // remounted with a different hand).
-  useEffect(() => {
+  // remounted with a different hand). Adjusting during render rather than in
+  // an effect means the scrubber never paints one frame pointing at the old
+  // turn before correcting itself.
+  if (turns !== seenTurns) {
+    setSeenTurns(turns);
     setCursor(Math.max(0, turns.length - 1));
-  }, [turns]);
+  }
 
   if (turns.length === 0) return null;
 

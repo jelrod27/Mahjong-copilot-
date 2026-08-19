@@ -5,7 +5,6 @@
  * beat them; the next floor unlocks; Uncle Gam keeps the front desk.
  */
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Lock } from 'lucide-react';
 import CharacterPortrait from '@/components/npc/CharacterPortrait';
@@ -14,13 +13,11 @@ import {
   PARLOUR_FLOORS, getParlourProgress, isFloorUnlocked, ParlourProgress,
 } from '@/lib/parlour';
 import { Meter } from '@/components/ui/meter';
+import { useBrowserValue } from '@/hooks/useBrowserValue';
 
 export default function ParlourPage() {
-  // Progress lives in localStorage; read after mount to avoid SSR mismatch.
-  const [progress, setProgress] = useState<ParlourProgress | null>(null);
-  useEffect(() => {
-    setProgress(getParlourProgress());
-  }, []);
+  // Progress lives in localStorage; the server render sees null so markup matches.
+  const progress = useBrowserValue<ParlourProgress | null>(getParlourProgress, null);
 
   const cleared = progress?.highestCleared ?? 0;
   const litFloors = cleared;

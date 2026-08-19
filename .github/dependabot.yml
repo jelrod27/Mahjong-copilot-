@@ -1,0 +1,40 @@
+# Security advisories are delivered by Dependabot alerts (enabled in repo
+# settings); this file only schedules routine version updates.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # One PR per class keeps the weekly noise to a couple of reviews
+      # rather than a dozen single-package bumps.
+      dev-tooling:
+        patterns:
+          - "@types/*"
+          - "@testing-library/*"
+          - "@vitejs/*"
+          - eslint*
+          - vitest
+          - jsdom
+          - typescript
+        update-types: [minor, patch]
+      production:
+        patterns: ["*"]
+        exclude-patterns:
+          - "@types/*"
+          - "@testing-library/*"
+          - "@vitejs/*"
+          - eslint*
+          - vitest
+          - jsdom
+          - typescript
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3

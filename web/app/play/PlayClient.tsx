@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { GameMode } from '@/models/MatchState';
 import { canResume as hasResumableGame, clearSavedGame } from '@/lib/matchStorage';
+import { useBrowserValue } from '@/hooks/useBrowserValue';
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 type MinFaan = 0 | 1 | 3;
@@ -21,14 +22,10 @@ export default function PlayPage() {
   // Beginner-friendly default: any scoring hand wins. 3-faan HK competition
   // rules remain a one-tap opt-in (and the upper Jade Parlour floors enforce it).
   const [minFaan, setMinFaan] = useState<MinFaan>(1);
-  const [canResume, setCanResume] = useState(false);
-
-  useEffect(() => {
-    // hasSavedGame() only checks that a blob exists; canResume() also rejects
-    // a match whose phase is 'finished'. Using the weaker one showed "Resume
-    // saved game" after a completed match and routed to a dead game.
-    setCanResume(hasResumableGame());
-  }, []);
+  // hasSavedGame() only checks that a blob exists; canResume() also rejects
+  // a match whose phase is 'finished'. Using the weaker one showed "Resume
+  // saved game" after a completed match and routed to a dead game.
+  const canResume = useBrowserValue(hasResumableGame, false);
 
   const handleStart = () => {
     clearSavedGame();

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { TrendingUp } from 'lucide-react';
 import { loadStats, GameStats, QuizMode } from '@/lib/gameStats';
 import { getAchievements, Achievement } from '@/lib/achievements';
+import { useBrowserValue } from '@/hooks/useBrowserValue';
 
 const QUIZ_LABELS: Record<QuizMode, string> = {
   'tile-quiz': 'Tile Quiz',
@@ -53,14 +53,12 @@ function PlacementBar({ counts }: { counts: [number, number, number, number] }) 
   );
 }
 
-export default function ProgressPage() {
-  const [stats, setStats] = useState<GameStats | null>(null);
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
+// Stable identity: useSyncExternalStore compares snapshots by reference.
+const NO_ACHIEVEMENTS: Achievement[] = [];
 
-  useEffect(() => {
-    setStats(loadStats());
-    setAchievements(getAchievements());
-  }, []);
+export default function ProgressPage() {
+  const stats = useBrowserValue<GameStats | null>(loadStats, null);
+  const achievements = useBrowserValue<Achievement[]>(getAchievements, NO_ACHIEVEMENTS);
 
   if (!stats) {
     return (

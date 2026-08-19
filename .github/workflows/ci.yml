@@ -19,6 +19,7 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: ./web
@@ -30,7 +31,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: web/package-lock.json
 
@@ -43,8 +44,8 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
-      - name: Unit tests
-        run: npm test
+      - name: Unit tests and coverage floor
+        run: npm run test:coverage
 
       - name: Production build
         run: npm run build
@@ -54,6 +55,7 @@ jobs:
     name: E2E (local dev server)
     if: success() && needs.quality.result == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs: [quality]
     defaults:
       run:
@@ -66,7 +68,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: web/package-lock.json
 

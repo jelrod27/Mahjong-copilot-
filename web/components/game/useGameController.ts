@@ -660,7 +660,7 @@ export default function useGameController(
   // When a tile is discarded (by any player), optionally speak it in the
   // user's chosen language and emit a subtitle so learners see Chinese +
   // English side by side. `lastDiscardedTile.id` debounces duplicate fires.
-  const lastSpokenDiscardIdRef = useRef<string | undefined>();
+  const lastSpokenDiscardIdRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (tileVoice === 'off' || !game) return;
     const tile = game.lastDiscardedTile;

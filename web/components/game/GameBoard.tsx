@@ -79,7 +79,7 @@ export default function GameBoard({
 
   // Toast system — track last discard for event messages
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const prevDiscardRef = useRef<string | undefined>();
+  const prevDiscardRef = useRef<string | undefined>(undefined);
   const prevMeldCountsRef = useRef<Record<string, number>>({});
 
   useEffect(() => {

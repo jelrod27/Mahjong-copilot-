@@ -32,7 +32,7 @@ npm run test:e2e:ui   # Playwright UI mode
 npx vitest run engine/__tests__/scoring.test.ts
 ```
 
-CI (`.github/workflows/ci.yml`) runs lint → typecheck → unit tests → build on every PR and push. Playwright against a local dev server runs only on pushes to `main`.
+CI (`.github/workflows/ci.yml`) runs lint → typecheck → unit tests → build on every PR and push. Playwright against a local dev server runs after that job succeeds, on pull requests and on pushes to `main`. Both jobs carry a `timeout-minutes` bound — a hung step should fail fast rather than hold a runner.
 
 A second workflow (`.github/workflows/e2e-preview.yml`) runs Playwright against a Vercel preview URL on `workflow_dispatch`. For protected previews, set the `VERCEL_AUTOMATION_BYPASS_SECRET` GitHub secret to match Vercel's *Protection Bypass for Automation* value.
 

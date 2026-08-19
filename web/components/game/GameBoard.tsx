@@ -89,6 +89,10 @@ export default function GameBoard({
       prevDiscardRef.current = lastTileId;
       const discarder = gameState.players.find(p => p.id === gameState.lastDiscardedBy);
       if (discarder && discarder.id !== humanPlayerId) {
+        // Announces a transition, not a derived value: this fires on the edge
+        // where a discard first appears, tracked through the refs above. No
+        // render-time expression reproduces "this just changed".
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setToastMessage(`${discarder.name} discarded ${gameState.lastDiscardedTile?.nameEnglish}`);
       }
     }

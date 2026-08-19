@@ -1,9 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useBrowserValue } from '@/hooks/useBrowserValue';
 
 const BOOT_SESSION_KEY = 'mj_boot_shown';
 const BOOT_DURATION_MS = 1600;
+
+function shouldPlayBoot(): boolean {
+  if (window.sessionStorage.getItem(BOOT_SESSION_KEY)) return false;
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return false;
+  return true;
+}
 
 /**
  * Cartridge boot: a CRT power-on sweep with the logo glowing in, shown once
@@ -11,26 +18,26 @@ const BOOT_DURATION_MS = 1600;
  * entirely under prefers-reduced-motion (CSS) and after the first showing.
  */
 export default function BootOverlay() {
-  const [visible, setVisible] = useState(false);
+  // Reading the session flag is pure, so it belongs in render; only the write
+  // and the hide timer are effects.
+  const shouldBoot = useBrowserValue(shouldPlayBoot, false);
+  const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (window.sessionStorage.getItem(BOOT_SESSION_KEY)) return;
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    if (!shouldBoot) return;
     window.sessionStorage.setItem(BOOT_SESSION_KEY, '1');
-    setVisible(true);
     // No cleanup on purpose: StrictMode's double-invoke would cancel the hide
     // timer (the re-run early-returns on the session flag) and strand the
-    // overlay. A stray late setVisible(false) is harmless.
-    setTimeout(() => setVisible(false), BOOT_DURATION_MS);
-  }, []);
+    // overlay. A stray late setHidden(true) is harmless.
+    setTimeout(() => setHidden(true), BOOT_DURATION_MS);
+  }, [shouldBoot]);
 
-  if (!visible) return null;
+  if (!shouldBoot || hidden) return null;
 
   return (
     <div
       className="boot-overlay"
-      onClick={() => setVisible(false)}
+      onClick={() => setHidden(true)}
       data-testid="boot-overlay"
       aria-hidden
     >

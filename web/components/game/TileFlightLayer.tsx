@@ -230,6 +230,9 @@ export default function TileFlightLayer({
     rectCache.current = rects;
 
     if (newFlights.length > 0) {
+      // Flight geometry comes from getBoundingClientRect against the
+      // just-committed DOM, so by definition it cannot be computed in render.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFlights(prev => [...prev, ...newFlights]);
     }
   }, [gameState, humanPlayerId]);

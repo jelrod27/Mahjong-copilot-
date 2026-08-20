@@ -1241,6 +1241,17 @@
       border-color 0.2s ease;
   }
 
+  /* The drawing sits on a transparent ground, so the palette's faceBg shows
+     through behind it and one artwork set serves every palette. contain
+     rather than cover because a cropped tile face is unreadable. */
+  .mahjong-tile-art {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
   .mahjong-tile-face::after {
     content: '';
     pointer-events: none;
@@ -1271,12 +1282,6 @@
       inset 0 1px 0 rgb(255 255 255 / 0.45),
       0 0 0 1px rgb(232 197 90 / 0.35),
       0 0 12px rgb(201 168 76 / 0.32);
-  }
-
-  .mahjong-tile-symbol {
-    font-family: var(--font-display), Georgia, serif;
-    font-weight: 700;
-    line-height: 1;
   }
 }
 

@@ -1,7 +1,8 @@
 'use client';
 
 import { memo } from 'react';
-import { Tile, TileType, TileSuit, WindTile, DragonTile } from '@/models/Tile';
+import { Tile } from '@/models/Tile';
+import { tileArtSrc } from '@/lib/tileArt';
 import { useTilePalette } from './TilePaletteContext';
 import { TilePalette } from '@/lib/cosmetics';
 import type { TileHeatOverlay } from '@/engine/shantenHeat';
@@ -21,37 +22,6 @@ interface RetroTileProps {
   heatOverlay?: TileHeatOverlay;
   /** Override the contextual palette (used by cosmetics preview thumbnails). */
   paletteOverride?: TilePalette;
-}
-
-function getSymbol(tile: Tile): string {
-  if (tile.type === TileType.SUIT) return tile.number?.toString() || '';
-  if (tile.type === TileType.HONOR) {
-    if (tile.wind) {
-      const symbols: Record<WindTile, string> = {
-        [WindTile.EAST]: '東', [WindTile.SOUTH]: '南',
-        [WindTile.WEST]: '西', [WindTile.NORTH]: '北',
-      };
-      return symbols[tile.wind] || '';
-    }
-    if (tile.dragon) {
-      const symbols: Record<DragonTile, string> = {
-        [DragonTile.RED]: '中', [DragonTile.GREEN]: '發', [DragonTile.WHITE]: '白',
-      };
-      return symbols[tile.dragon] || '';
-    }
-  }
-  if (tile.type === TileType.BONUS) return tile.flower || tile.season || '';
-  return '';
-}
-
-function getSuitLabel(tile: Tile): string {
-  if (tile.type === TileType.SUIT) {
-    const labels: Record<string, string> = {
-      [TileSuit.BAMBOO]: '索', [TileSuit.CHARACTER]: '萬', [TileSuit.DOT]: '筒',
-    };
-    return labels[tile.suit] || '';
-  }
-  return '';
 }
 
 // The tutor strip and the legend under the hand must name the same three
@@ -132,24 +102,35 @@ function RetroTile({
         />
       )}
 
-      <div className="flex flex-1 flex-col items-center justify-center px-0.5">
-        <span
-          className="mahjong-tile-symbol"
-          style={{ fontSize: 'calc(var(--tile-w) * 0.42)', color: suitColor }}
-        >
-          {getSymbol(tile)}
-        </span>
-        {size !== 'sm' && size !== 'xs' && (
-          <span
-            className="mahjong-tile-symbol leading-none opacity-70"
-            style={{ fontSize: 'calc(var(--tile-w) * 0.2)', color: suitColor }}
-          >
-            {getSuitLabel(tile)}
-          </span>
-        )}
+      <div className="flex flex-1 items-center justify-center p-[6%]">
+        {/* Decorative: the tile is named on the element that carries the
+            accessible name, so describing the drawing as well would announce
+            every tile twice. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={tileArtSrc(tile)}
+          alt=""
+          aria-hidden
+          draggable={false}
+          className="mahjong-tile-art"
+        />
       </div>
     </div>
   );
+
+  // A tile with no click handler is not a button, and until now it had no
+  // accessible name either: its identity came from the Unicode glyph being
+  // read as text. The artwork is decorative, so that content has gone, and
+  // without this the whole discard sea and every exposed meld would announce
+  // as nothing. Interactive tiles are left alone, because the button below
+  // already carries the name and a second one inside would announce twice.
+  if (!onClick) {
+    return (
+      <div role="img" aria-label={tileAriaLabel}>
+        {tileContent}
+      </div>
+    );
+  }
 
   if (onClick) {
     return (

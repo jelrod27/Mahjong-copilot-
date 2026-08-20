@@ -72,7 +72,10 @@ describe('Beginner Assist printed labels', () => {
 
   it('still reserves the label slot for a useful tile so the hand keeps one baseline', () => {
     const { container } = renderHandWith('red');
-    const slot = container.querySelector('[aria-hidden="true"]');
+    // Narrowed to the div deliberately: the tile face now also carries an
+    // aria-hidden element, the decorative artwork, and it comes first in DOM
+    // order. The slot this test is about is the label row under the tile.
+    const slot = container.querySelector('div[aria-hidden="true"]');
     expect(slot).not.toBeNull();
     expect(slot?.textContent).toBe(' ');
   });

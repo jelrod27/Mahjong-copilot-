@@ -75,6 +75,7 @@ export default function GameContent() {
   }, []);
 
   const musicEnabled = useAppSelector((s) => s.settings.musicEnabled);
+  const musicVolume = useAppSelector((s) => s.settings.musicVolume);
 
   const onMatchRosterResolved = useCallback(
     (rosterId: typeof npcRoster) => {
@@ -140,6 +141,10 @@ export default function GameContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [floorMatchOver, floorHumanWon]);
 
+  // Wall counts at which the music is at rest and at full pressure.
+  const WALL_CALM = 40;
+  const WALL_TENSE = 8;
+
   // === Music: parlour theme during play, danger motif on the last stretch
   // of the wall; intensity rises with the Parlour wing. Stops on unmount.
   const gamePhase = controller.game?.phase;
@@ -148,24 +153,41 @@ export default function GameContent() {
     controller.game.wall.length <= 8;
   useEffect(() => {
     musicEngine.setEnabled(musicEnabled);
+    musicEngine.setVolume(musicVolume / 100);
     if (!musicEnabled) return;
     if (gamePhase !== GamePhase.PLAYING) return;
     const intensity = floorDef ? (floorDef.floor <= 3 ? 0 : floorDef.floor <= 6 ? 1 : 2) : 0;
     musicEngine.play(wallLow ? 'danger' : 'parlour', intensity);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [musicEnabled, wallLow, gamePhase]);
+  }, [musicEnabled, musicVolume, wallLow, gamePhase]);
+
+  // Endgame pressure. The wall running down is the one clock every hand shares,
+  // so it drives the tempo: nothing at 40 tiles or more, full push by the last
+  // eight. Quantised to tenths because this recomputes on every draw and
+  // retuning the grid on each one would be churn for an inaudible difference.
+  const wallLeft = controller.game?.wall.length ?? WALL_CALM;
+  const drive = Math.round(
+    Math.min(1, Math.max(0, (WALL_CALM - wallLeft) / (WALL_CALM - WALL_TENSE))) * 10,
+  ) / 10;
   useEffect(() => {
-    // Browsers gate AudioContext on a user gesture: retry the loop on the
-    // first interaction so music starts as soon as it is allowed to.
-    const kick = () => {
-      if (musicEnabled && controller.game?.phase === GamePhase.PLAYING) {
-        musicEngine.play(wallLow ? 'danger' : 'parlour');
-      }
+    if (gamePhase === GamePhase.PLAYING) musicEngine.setDrive(drive);
+  }, [drive, gamePhase]);
+  useEffect(() => {
+    // Browsers gate the AudioContext until the page has been interacted with.
+    // This listener only lifts that block; the effect above decides what
+    // plays. The previous version tried to do both from here and could not:
+    // it read game state captured at mount, when there was none, so the guard
+    // never passed — and `once: true` meant that one failed attempt consumed
+    // the listener for good. Clicking anything before the deal finished was
+    // enough to lose the music for the whole session.
+    const unlock = () => musicEngine.resume();
+    window.addEventListener('pointerdown', unlock);
+    window.addEventListener('keydown', unlock);
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
     };
-    window.addEventListener('pointerdown', kick, { once: true });
-    return () => window.removeEventListener('pointerdown', kick);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [musicEnabled]);
+  }, []);
   useEffect(() => () => musicEngine.stop(), []);
 
   const floorSeats = floorDef

@@ -18,8 +18,10 @@ import {
   SETTINGS_SET_NPC_ROSTER_MODE,
   SETTINGS_SET_CRT_EFFECT,
   SETTINGS_SET_MUSIC_ENABLED,
+  SETTINGS_SET_MUSIC_VOLUME,
 } from '../actions/settingsActions';
 import { DEFAULT_TILE_PALETTE, DEFAULT_TABLE_FELT, DEFAULT_ROSTER } from '@/lib/cosmetics';
+import { AppConstants } from '@/constants/appConstants';
 
 const initialState: SettingsState = {
   selectedVariant: 'Hong Kong Mahjong',
@@ -39,6 +41,7 @@ const initialState: SettingsState = {
   npcRosterMode: 'auto',
   crtEffect: false,
   musicEnabled: true,
+  musicVolume: AppConstants.DEFAULT_MUSIC_VOLUME,
 };
 
 export const settingsReducer = (
@@ -82,6 +85,8 @@ export const settingsReducer = (
       return { ...state, crtEffect: action.payload };
     case SETTINGS_SET_MUSIC_ENABLED:
       return { ...state, musicEnabled: action.payload };
+    case SETTINGS_SET_MUSIC_VOLUME:
+      return { ...state, musicVolume: action.payload };
     default:
       return state;
   }

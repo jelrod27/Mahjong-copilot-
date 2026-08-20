@@ -46,6 +46,8 @@ export interface SettingsState {
   crtEffect: boolean;
   /** Chiptune background music during play. */
   musicEnabled: boolean;
+  /** 0-100. */
+  musicVolume: number;
 }
 
 export const SETTINGS_INITIALIZE = 'SETTINGS_INITIALIZE' as const;
@@ -66,6 +68,7 @@ export const SETTINGS_SET_NPC_ROSTER = 'SETTINGS_SET_NPC_ROSTER' as const;
 export const SETTINGS_SET_NPC_ROSTER_MODE = 'SETTINGS_SET_NPC_ROSTER_MODE' as const;
 export const SETTINGS_SET_CRT_EFFECT = 'SETTINGS_SET_CRT_EFFECT' as const;
 export const SETTINGS_SET_MUSIC_ENABLED = 'SETTINGS_SET_MUSIC_ENABLED' as const;
+export const SETTINGS_SET_MUSIC_VOLUME = 'SETTINGS_SET_MUSIC_VOLUME' as const;
 
 export type SettingsAction =
   | { type: typeof SETTINGS_INITIALIZE; payload: SettingsState }
@@ -85,7 +88,8 @@ export type SettingsAction =
   | { type: typeof SETTINGS_SET_NPC_ROSTER; payload: RosterId }
   | { type: typeof SETTINGS_SET_NPC_ROSTER_MODE; payload: NpcRosterMode }
   | { type: typeof SETTINGS_SET_CRT_EFFECT; payload: boolean }
-  | { type: typeof SETTINGS_SET_MUSIC_ENABLED; payload: boolean };
+  | { type: typeof SETTINGS_SET_MUSIC_ENABLED; payload: boolean }
+  | { type: typeof SETTINGS_SET_MUSIC_VOLUME; payload: number };
 
 export const initializeSettings = () => async (dispatch: any) => {
   try {
@@ -133,6 +137,10 @@ export const initializeSettings = () => async (dispatch: any) => {
     const npcRosterMode: NpcRosterMode = isNpcRosterMode(rosterModeRaw) ? rosterModeRaw : 'auto';
     const crtEffect = await StorageService.getBool(AppConstants.CRT_EFFECT_KEY) ?? false;
     const musicEnabled = await StorageService.getBool(AppConstants.MUSIC_ENABLED_KEY) ?? true;
+    // getInt can return NaN for a malformed stored value, which ?? does not
+    // catch — it would reach musicEngine.setVolume() and silence the score.
+    const storedVolume = await StorageService.getInt(AppConstants.MUSIC_VOLUME_KEY);
+    const musicVolume = clampVolume(storedVolume);
 
     dispatch({
       type: SETTINGS_INITIALIZE,
@@ -154,6 +162,7 @@ export const initializeSettings = () => async (dispatch: any) => {
         npcRosterMode,
         crtEffect,
         musicEnabled,
+        musicVolume,
       },
     });
   } catch (error) {
@@ -241,6 +250,25 @@ export const setCrtEffect = (enabled: boolean) => async (dispatch: any) => {
 export const setMusicEnabled = (enabled: boolean) => async (dispatch: any) => {
   await StorageService.setBool(AppConstants.MUSIC_ENABLED_KEY, enabled);
   dispatch({ type: SETTINGS_SET_MUSIC_ENABLED, payload: enabled });
+};
+
+/**
+ * Coerce anything that reached us to a usable percentage.
+ *
+ * Applied on the way in and on the way out: a non-finite value from storage
+ * and a non-finite value from a caller both end up in the same place, and
+ * NaN propagates silently all the way to the gain node.
+ */
+export const clampVolume = (value: number | null | undefined): number =>
+  typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(100, Math.max(0, Math.round(value)))
+    : AppConstants.DEFAULT_MUSIC_VOLUME;
+
+/** Music level as a percentage, 0-100. */
+export const setMusicVolume = (volume: number) => async (dispatch: any) => {
+  const clamped = clampVolume(volume);
+  await StorageService.setInt(AppConstants.MUSIC_VOLUME_KEY, clamped);
+  dispatch({ type: SETTINGS_SET_MUSIC_VOLUME, payload: clamped });
 };
 
 export const setNpcRosterMode = (mode: NpcRosterMode) => async (dispatch: any) => {

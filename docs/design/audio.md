@@ -32,22 +32,37 @@ Mixing rules:
 ### Music (`lib/musicEngine.ts`)
 
 A chiptune sequencer: lookahead scheduler (25ms tick, 120ms horizon —
-the standard two-clocks pattern), 16th-note step patterns, three channels
-(square lead 0.16, triangle bass 0.30, sine pad 0.07), exact loop points
+the standard two-clocks pattern), 16th-note step patterns, exact loop points
 (loop start advances by pattern duration, never re-quantized).
 
-Tracks:
-- **parlour** — 84bpm, 64 steps, A minor pentatonic. Sparse lead phrases
-  over a patient walking bass; the warm lamplight default.
-- **danger** — 96bpm, 32 steps. Heartbeat bass with a flattened second
-  leaning against the root; thin held lead that creeps a semitone.
+Five channels: `lead` and `arp` on band-limited pulse waves at 25% and 12.5%
+duty, `bass` on a triangle, `pad` on a 50% pulse, and `perc` addressed by
+drum-machine note numbers — kick as a pitch drop, snare and hats as filtered
+noise. Every channel carries an ADSR rather than a single ramp to silence.
 
-Floor intensity: one pattern, three moods. `play(track, intensity 0-2)`
-transposes +2 semitones and adds 8% tempo per step — Novice wing hears the
-theme at rest, Master wing hears it brighter and urgent.
+Six tracks rotate during a hand, each 256 steps (roughly 45 seconds) and each
+a key, a chord progression and a kit style. Bass, pads and drums are composed;
+lead and arpeggio are generated over the harmony on every pass from the chord
+and the scale only.
+
+`danger` is not part of the rotation. With `SAMPLE_ASSETS` empty — the shipping
+state — `play('danger')` stops the rotation and plays the drone in its place.
+It is a layer *over* the music only when a parlour bed is registered, which is
+the ambient-bed path described in the 2026-07-27 decision below.
+
+Two intensity axes. `play(track, intensity 0-2)` is the Parlour wing and sets
+the key: +2 semitones and +8% tempo per step. `setDrive(0-1)` is the wall
+running down and sets the push: up to +22% tempo, plus layers that fill in
+subdivisions — hats to eighths, bass on the offbeat, snare doubling. Layers
+are added, never substituted.
 
 Music master gain is 0.14 — roughly half the perceived level of the tile
-clack, by design. The clack is the protagonist.
+clack, by design. The clack is the protagonist. `setVolume(0-1)` scales that
+bus and is exposed as a settings slider, independent of the on/off switch and
+of sound effects.
+
+The full reasoning is in **Decision: generated score, rotating (2026-08-19)**
+at the end of this file.
 
 ### Behavior wiring
 
@@ -133,3 +148,40 @@ Licence rule is unchanged and hard (plan 016): royalty-free or CC0, commercial
 use permitted, **no attribution requirement**. CC-BY, CC-BY-NC, or unclear
 terms are rejected — the app has no credits surface, so an attribution
 requirement cannot be satisfied. Asset acquisition is the operator's action.
+
+
+## Decision: generated score, rotating (2026-08-19)
+
+Supersedes the ambient-bed direction above. That plan is not wrong; it is
+answering a different question, and the asset it depended on never arrived.
+
+**What prompted it.** The score was one 64-step loop at 84bpm — 11.4 seconds,
+repeating 315 times an hour — with no percussion and a single linear gain ramp
+standing in for an envelope. The complaint was not that it was generated. It
+was that there was one of it.
+
+**Why generated rather than licensed.** The requirement that decides this is a
+tempo that rises as the wall runs down. Speeding up a sample raises its pitch;
+matching it needs time-stretching, which is a different class of problem. A
+step sequencer just shortens the step. Once the score has to respond to game
+state, staying generated is the cheaper correct answer, not the poorer one.
+
+**The shape.** Each track is a key, a chord progression and a kit style. The
+skeleton — bass, pads, drums — is composed, because that is the part an ear
+needs to be stable. Lead and arpeggio are generated over it on every pass, from
+the chord and the scale only, so there is no wrong note available to land on.
+Six tracks rotate at the loop boundary: about four and a half minutes before
+anything is heard twice, and the ornamentation differs even then.
+
+**Intensity has two axes now.** Parlour floor sets the key, as before. The wall
+running down sets the push: tempo up to +22%, and layers that fill in the
+subdivisions the ear already expects — hats to eighths, bass on the offbeat,
+snare doubling. Layers are added, never substituted, so nothing is taken out
+from under the player.
+
+**What this does not change.** `SAMPLE_ASSETS` stays, and registering a bed
+still short-circuits the sequencer. If a licensed room tone is ever approved it
+works exactly as documented above — it simply cannot deliver the tempo ramp, so
+it is no longer the plan of record. The licence rule is unchanged and still
+hard: royalty-free or CC0, commercial use permitted, no attribution
+requirement.

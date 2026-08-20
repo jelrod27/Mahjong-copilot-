@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import musicEngine, { SAMPLE_ASSETS } from '../musicEngine';
+import musicEngine, {
+  SAMPLE_ASSETS, pulseCoefficients, ornament, PARLOUR_HARMONY, intensityLayers,
+  TRACKS, PARLOUR_ROTATION, type PatternNote,
+} from '../musicEngine';
+import { clampVolume } from '@/store/actions/settingsActions';
+import { AppConstants } from '@/constants/appConstants';
+import { createRng } from '@/engine/rng';
 
 /**
  * Covers the ambient-bed decision recorded in docs/design/audio.md: once a
@@ -15,16 +21,24 @@ import musicEngine, { SAMPLE_ASSETS } from '../musicEngine';
 
 interface FakeOsc {
   type: string;
-  frequency: { value: number };
+  frequency: { value: number; setValueAtTime: unknown; exponentialRampToValueAtTime: unknown };
+  detune: unknown;
   connect: () => void;
   start: () => void;
   stop: () => void;
   started: boolean;
   stopped: boolean;
+  periodic: boolean;
+  setPeriodicWave: (w: unknown) => void;
 }
 
 let createdOscs: FakeOsc[] = [];
 let intervalCount = 0;
+/** Voices that went through a PeriodicWave rather than a stock waveform. */
+let periodicWaves: { real: Float32Array; imag: Float32Array }[] = [];
+/** Noise-backed voices: snare and hats. */
+let bufferSources: { filterType: string | null }[] = [];
+let filters: { type: string; frequency: number }[] = [];
 
 const makeParam = () => ({
   value: 0,
@@ -35,23 +49,59 @@ const makeParam = () => ({
   exponentialRampToValueAtTime: vi.fn(),
 });
 
+/**
+ * The engine is a singleton and caches its AudioContext for the process, so a
+ * test that wants a gesture-blocked context has to reach the live one rather
+ * than construct a new one.
+ */
+const contexts: FakeAudioContext[] = [];
+
 class FakeAudioContext {
+  /** Mutable so a test can drive the scheduler past a loop boundary. */
   currentTime = 0;
   state = 'running';
   destination = {};
-  resume = vi.fn();
+  /** Set false to model a browser refusing a non-gesture resume. */
+  static gestureAllowed = true;
+
+  // Asynchronous on purpose. The real resume() returns a promise and the
+  // context is still suspended when it returns — a double that flips the
+  // state synchronously hides exactly the race this suite exists to cover.
+  // It also rejects when the browser would refuse, so an unhandled rejection
+  // shows up here rather than in someone's console.
+  resume = vi.fn(() =>
+    FakeAudioContext.gestureAllowed
+      ? Promise.resolve().then(() => {
+          this.state = 'running';
+        })
+      : Promise.reject(new DOMException('not allowed', 'NotAllowedError')),
+  );
+
+  constructor() {
+    contexts.push(this);
+  }
+
+  /** The context the engine is actually using. */
+  static get live(): FakeAudioContext | undefined {
+    return contexts[contexts.length - 1];
+  }
 
   createGain() {
     return { gain: makeParam(), connect: vi.fn(), disconnect: vi.fn() };
   }
 
+  sampleRate = 44100;
+
   createOscillator(): FakeOsc {
     const osc: FakeOsc = {
       type: 'sine',
-      frequency: { value: 0 },
+      frequency: Object.assign(makeParam(), { value: 0 }),
+      detune: makeParam(),
       connect: vi.fn(),
       started: false,
       stopped: false,
+      periodic: false,
+      setPeriodicWave: vi.fn(() => { osc.periodic = true; }),
       start: vi.fn(() => { osc.started = true; }),
       stop: vi.fn(() => { osc.stopped = true; }),
     };
@@ -59,7 +109,24 @@ class FakeAudioContext {
     return osc;
   }
 
+  createPeriodicWave(real: Float32Array, imag: Float32Array) {
+    periodicWaves.push({ real, imag });
+    return { real, imag } as unknown as PeriodicWave;
+  }
+
+  createBuffer(channels: number, length: number, sampleRate: number) {
+    const data = new Float32Array(length);
+    return { length, sampleRate, numberOfChannels: channels, getChannelData: () => data };
+  }
+
+  createBiquadFilter() {
+    const f = { type: 'lowpass', frequency: { value: 0 }, Q: { value: 0 }, connect: vi.fn() };
+    filters.push(f as unknown as { type: string; frequency: number });
+    return f;
+  }
+
   createBufferSource() {
+    bufferSources.push({ filterType: null });
     return {
       buffer: null,
       loop: false,
@@ -76,10 +143,14 @@ class FakeAudioContext {
 }
 
 const realSetInterval = globalThis.setInterval;
+const realSetTimeout = globalThis.setTimeout;
 
 beforeEach(() => {
   createdOscs = [];
   intervalCount = 0;
+  periodicWaves = [];
+  bufferSources = [];
+  filters = [];
   // @ts-expect-error - test double for a browser global absent in jsdom
   globalThis.AudioContext = FakeAudioContext;
   // @ts-expect-error - counting scheduler starts, not driving them
@@ -190,5 +261,453 @@ describe('musicEngine with an ambient bed registered', () => {
     const before = droneOscs();
     musicEngine.stop();
     expect(before.every(o => o.stopped)).toBe(true);
+  });
+});
+
+/**
+ * The oscillator sequencer's own voices. These were previously unreachable
+ * from the suite: every existing test drives `danger`, which is a drone, or
+ * the sample path. The parlour track is the one that exercises pitched voices
+ * and percussion, and it had no coverage at all.
+ */
+describe('synthesis', () => {
+  /** One scheduler tick. The window is 120ms wide, so step 0 lands inside it. */
+  const tick = () => new Promise((r) => realSetTimeout(r, 60));
+
+  beforeEach(() => {
+    delete SAMPLE_ASSETS.parlour;
+    musicEngine.stop();
+  });
+  afterEach(() => musicEngine.stop());
+
+  it('voices pitched channels with a pulse wave, not a stock waveform', async () => {
+    musicEngine.play('parlour');
+    await tick();
+
+    expect(periodicWaves.length).toBeGreaterThan(0);
+    expect(createdOscs.some((o) => o.periodic)).toBe(true);
+  });
+
+  it('collapses a 50% pulse to a square: even harmonics vanish', () => {
+    // sin(n·pi/2) is zero for even n, so a correct series has no even
+    // harmonics at 50% — the identity that says the coefficients are right
+    // rather than merely present.
+    const { real } = pulseCoefficients(0.5);
+    expect(Math.abs(real[2])).toBeLessThan(1e-6);
+    expect(Math.abs(real[4])).toBeLessThan(1e-6);
+    expect(Math.abs(real[6])).toBeLessThan(1e-6);
+
+    // ...while the odd ones carry the energy, falling off as 1/n.
+    expect(Math.abs(real[1])).toBeGreaterThan(Math.abs(real[3]));
+    expect(Math.abs(real[3])).toBeGreaterThan(Math.abs(real[5]));
+  });
+
+  it('keeps even harmonics at narrower pulse widths', () => {
+    // A 25% pulse is audibly thinner precisely because the even terms return.
+    expect(Math.abs(pulseCoefficients(0.25).real[2])).toBeGreaterThan(0.3);
+    expect(Math.abs(pulseCoefficients(0.125).real[2])).toBeGreaterThan(0.2);
+  });
+
+  it('builds the kick as a pitch drop rather than a noise burst', async () => {
+    musicEngine.play('parlour');
+    await tick();
+
+    // Step 0 of the parlour loop carries a kick. It is the only voice that
+    // ramps its own frequency, which is what makes it read as a drum.
+    const dropped = createdOscs.some(
+      (o) => (o.frequency.exponentialRampToValueAtTime as ReturnType<typeof vi.fn>).mock?.calls?.length > 0,
+    );
+    expect(dropped).toBe(true);
+  });
+
+  it('routes noise percussion through a filter', async () => {
+    musicEngine.play('parlour');
+    await tick();
+
+    // Hats sit on every quarter, so step 0 has one. Unfiltered white noise
+    // reads as static; the highpass is what makes it a hi-hat.
+    expect(bufferSources.length).toBeGreaterThan(0);
+    expect(filters.some((f) => f.type === 'highpass' || f.type === 'bandpass')).toBe(true);
+  });
+});
+
+/**
+ * Generated ornamentation. The loop was 11.4 seconds and repeated 315 times an
+ * hour; the fix is a longer skeleton with lead and arpeggio generated fresh
+ * each pass. That is only safe if the generator cannot leave the key, which is
+ * the property these pin.
+ */
+describe('ornamentation', () => {
+  const PITCHED = new Set(['lead', 'arp']);
+
+  it('never leaves the scale', () => {
+    const h = PARLOUR_HARMONY;
+    // Every pitch class the scale permits, in any octave.
+    const allowed = new Set(h.scale.map((d) => (((h.root + d) % 12) + 12) % 12));
+
+    for (let seed = 0; seed < 40; seed++) {
+      for (const [, midi, , channel] of ornament(h, 256, createRng(`t:${seed}`))) {
+        if (!PITCHED.has(channel)) continue;
+        expect(allowed.has(((midi % 12) + 12) % 12), `midi ${midi} is out of key`).toBe(true);
+      }
+    }
+  });
+
+  it('is deterministic for a given seed', () => {
+    const a = ornament(PARLOUR_HARMONY, 256, createRng('same'));
+    const b = ornament(PARLOUR_HARMONY, 256, createRng('same'));
+    expect(a).toEqual(b);
+  });
+
+  it('differs between passes, which is the entire point', () => {
+    const first = ornament(PARLOUR_HARMONY, 256, createRng('parlour:0'));
+    const second = ornament(PARLOUR_HARMONY, 256, createRng('parlour:1'));
+    expect(first).not.toEqual(second);
+  });
+
+  it('stays inside the loop it was asked for', () => {
+    const steps = 256;
+    for (const [step, , dur] of ornament(PARLOUR_HARMONY, steps, createRng('bounds'))) {
+      expect(step).toBeGreaterThanOrEqual(0);
+      // A note may sustain over the loop point, but it must not start past it.
+      expect(step).toBeLessThan(steps);
+      expect(dur).toBeGreaterThan(0);
+    }
+  });
+
+  it('leaves rests, so phrases have edges', () => {
+    // A melody that never stops is what makes a loop feel like a loop. Across
+    // sixteen bars some should carry no lead at all.
+    const notes = ornament(PARLOUR_HARMONY, 256, createRng('rests'));
+    const barsWithLead = new Set(
+      notes.filter((n) => n[3] === 'lead').map((n) => Math.floor(n[0] / PARLOUR_HARMONY.barSteps)),
+    );
+    expect(barsWithLead.size).toBeLessThan(16);
+  });
+});
+
+/**
+ * Endgame pressure. The wall running down is the clock every hand shares, so
+ * it drives tempo and thickens the kit. Layers are added rather than swapped
+ * so the arrangement never has anything taken away underneath the player.
+ */
+describe('intensity layers', () => {
+  const skeleton: PatternNote[] = [
+    [0, 45, 6, 'bass'],
+    [16, 50, 6, 'bass'],
+  ];
+  const count = (notes: PatternNote[], ch: string) => notes.filter((n) => n[3] === ch).length;
+
+  it('adds nothing while the wall is deep', () => {
+    expect(intensityLayers(skeleton, 64, 0)).toHaveLength(0);
+    expect(intensityLayers(skeleton, 64, 0.2)).toHaveLength(0);
+  });
+
+  it('fills hats in to eighths first', () => {
+    const layers = intensityLayers(skeleton, 64, 0.3);
+    expect(count(layers, 'perc')).toBeGreaterThan(0);
+    expect(count(layers, 'bass')).toBe(0);
+  });
+
+  it('answers on the offbeat with the bass note already in the bar', () => {
+    const layers = intensityLayers(skeleton, 64, 0.6);
+    const bass = layers.filter((n) => n[3] === 'bass');
+    expect(bass.length).toBe(2);
+    // Same pitches as the skeleton, so a generated offbeat cannot drift out
+    // of the harmony the composed part established.
+    expect(bass.map((n) => n[1]).sort()).toEqual([45, 50]);
+    expect(bass.map((n) => n[0]).sort((a, b) => a - b)).toEqual([4, 20]);
+  });
+
+  it('never places a layer past the end of the loop', () => {
+    for (const drive of [0.3, 0.6, 0.9, 1]) {
+      for (const [step] of intensityLayers(skeleton, 64, drive)) {
+        expect(step).toBeLessThan(64);
+      }
+    }
+  });
+
+  it('only ever adds, so the base arrangement survives every level', () => {
+    let previous = 0;
+    for (const drive of [0, 0.25, 0.55, 0.8, 1]) {
+      const n = intensityLayers(skeleton, 64, drive).length;
+      expect(n).toBeGreaterThanOrEqual(previous);
+      previous = n;
+    }
+  });
+});
+
+/**
+ * The rotation. Six tracks at roughly 45 seconds a pass, so nothing is heard
+ * twice for about four and a half minutes — and the ornamentation differs even
+ * then. These check the roster as a set rather than one track at a time,
+ * because a track added later is exactly the one that will skip the review.
+ */
+describe('track roster', () => {
+  const rotation = PARLOUR_ROTATION.map((id) => TRACKS[id]);
+
+  it('resolves every id in the rotation', () => {
+    PARLOUR_ROTATION.forEach((id, i) => {
+      expect(rotation[i], `no track registered for "${id}"`).toBeDefined();
+    });
+    expect(new Set(PARLOUR_ROTATION).size).toBe(PARLOUR_ROTATION.length);
+  });
+
+  it('keeps every generated part inside its own key', () => {
+    // The safety property, applied across the whole roster: a track added with
+    // a mistyped scale or an out-of-range progression fails here rather than
+    // in someone's ears.
+    for (const t of rotation) {
+      expect(t.harmony, `${t.id} has no harmony`).toBeDefined();
+      const h = t.harmony!;
+      const allowed = new Set(h.scale.map((d) => (((h.root + d) % 12) + 12) % 12));
+      for (let seed = 0; seed < 8; seed++) {
+        for (const [, midi, , ch] of ornament(h, t.steps, createRng(`${t.id}:${seed}`))) {
+          if (ch !== 'lead' && ch !== 'arp') continue;
+          expect(allowed.has(((midi % 12) + 12) % 12), `${t.id}: midi ${midi} out of key`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('gives every track a loop long enough not to grate', () => {
+    // The original was 11.4s and repeated 315 times an hour. Nothing in the
+    // roster should be able to regress to that.
+    for (const t of rotation) {
+      const seconds = t.steps * (60 / t.bpm / 4);
+      expect(seconds, `${t.id} loops every ${seconds.toFixed(1)}s`).toBeGreaterThan(30);
+    }
+  });
+
+  it('authors a skeleton but no melody, so the generator owns the tune', () => {
+    for (const t of rotation) {
+      const channels = new Set(t.notes.map((n) => n[3]));
+      expect(channels.has('bass'), `${t.id} has no bass`).toBe(true);
+      expect(channels.has('perc'), `${t.id} has no drums`).toBe(true);
+      expect(channels.has('lead'), `${t.id} authors a lead`).toBe(false);
+    }
+  });
+
+  it('varies its chord progressions, not only its keys', () => {
+    // Two tracks in the same key with different chord orders read as different
+    // pieces; a roster that only transposes reads as one piece six times.
+    const shapes = new Set(rotation.map((t) => t.harmony!.progression.join(',')));
+    expect(shapes.size).toBeGreaterThan(3);
+  });
+
+  it('varies its tempos', () => {
+    expect(new Set(rotation.map((t) => t.bpm)).size).toBeGreaterThan(3);
+  });
+});
+
+/**
+ * Autoplay. Browsers gate the AudioContext until the page has been interacted
+ * with, and the previous handling of that lost the music for the whole session
+ * if anything was clicked before the deal finished. Nothing covered it, which
+ * is why it shipped.
+ */
+describe('gesture gating', () => {
+  /** Put the engine's live context back into the blocked state. */
+  const block = () => {
+    musicEngine.play('parlour');          // force the context to exist
+    musicEngine.stop();
+    const ctx = FakeAudioContext.live;
+    if (ctx) ctx.state = 'suspended';
+    intervalCount = 0;
+  };
+
+  beforeEach(() => {
+    delete SAMPLE_ASSETS.parlour;
+    musicEngine.stop();
+  });
+  afterEach(() => {
+    musicEngine.stop();
+    const ctx = FakeAudioContext.live;
+    if (ctx) ctx.state = 'running';
+  });
+
+  it('does not run the scheduler against a clock that is not moving', () => {
+    // A suspended context's currentTime does not advance, so every note would
+    // land on the same timestamp and fire together the moment it resumed.
+    block();
+    musicEngine.play('parlour');
+    expect(intervalCount).toBe(0);
+  });
+
+  it('starts what was asked for once the gesture arrives', async () => {
+    block();
+    musicEngine.play('parlour');
+    expect(intervalCount).toBe(0);
+
+    musicEngine.resume();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(intervalCount).toBe(1);
+  });
+
+  it('needs no argument, so a gesture listener cannot pass a stale one', () => {
+    // The old handler took its own view of what should play, captured at
+    // mount when there was no game yet, and guarded on it. resume() takes
+    // nothing: the request was already recorded by play().
+    expect(musicEngine.resume.length).toBe(0);
+  });
+
+  it('reports whether audio is actually allowed to sound', async () => {
+    block();
+    expect(musicEngine.unlocked).toBe(false);
+
+    // Resuming is asynchronous even after a valid gesture, so `unlocked` is
+    // still false the instant resume() returns. Anything that reads it to
+    // decide whether to draw a "music playing" state has to wait too.
+    musicEngine.resume();
+    expect(musicEngine.unlocked).toBe(false);
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(musicEngine.unlocked).toBe(true);
+  });
+});
+
+/**
+ * Stateful paths. These had no coverage, which is how a crash at the rotation
+ * boundary got as far as review: the scheduler captured its track before the
+ * loop and kept reading it after the boundary replaced it.
+ */
+describe('loop boundary', () => {
+  const tick = () => new Promise((r) => realSetTimeout(r, 60));
+
+  beforeEach(() => {
+    delete SAMPLE_ASSETS.parlour;
+    musicEngine.stop();
+  });
+  afterEach(() => {
+    musicEngine.stop();
+    const ctx = FakeAudioContext.live;
+    if (ctx) ctx.currentTime = 0;
+  });
+
+  // A smoke test, and labelled as one: it drives 120 simulated seconds through
+  // several rotation boundaries and asserts the engine is still scheduling a
+  // rotation track afterwards. It does not discriminate the wrong-track bleed
+  // the `break` prevents — that needs the boundary crossed inside a single
+  // 120ms window, which a 45-second loop cannot do. Verified by removing the
+  // fix: this still passes.
+  it('keeps scheduling across repeated rotation boundaries', async () => {
+    musicEngine.play('parlour');
+    await tick();
+
+    const ctx = FakeAudioContext.live!;
+    // Well past one 45-second pass, so the scheduler must roll over. Before
+    // the fix it kept indexing the previous pass's array and destructured
+    // undefined once the new one was shorter.
+    for (let t = 0; t < 120; t += 5) {
+      ctx.currentTime = t;
+      await tick();
+    }
+    // Still scheduling, and on one of the rotation's tracks rather than a
+    // torn state left behind by the boundary.
+    expect(musicEngine.isPlaying()).toBe(true);
+    expect(PARLOUR_ROTATION.some((id) => musicEngine.isPlaying(id))).toBe(true);
+  });
+
+  it('clears a queued request when stopped', () => {
+    // Otherwise a gesture after leaving the route restarts music the route
+    // already asked to stop.
+    musicEngine.play('parlour');
+    musicEngine.stop();
+    const ctx = FakeAudioContext.live;
+    if (ctx) ctx.state = 'suspended';
+    musicEngine.play('parlour');   // queued, because the context is blocked
+    musicEngine.stop();            // ...and must not survive this
+    intervalCount = 0;
+
+    musicEngine.resume();
+    expect(intervalCount).toBe(0);
+    if (ctx) ctx.state = 'running';
+  });
+});
+
+describe('volume as the single source for the bus', () => {
+  it('normalises anything that reaches it', () => {
+    // getInt can hand back NaN for a malformed stored value, and ?? does not
+    // catch it. NaN then propagates silently to the gain node.
+    expect(clampVolume(NaN)).toBe(70);
+    expect(clampVolume(null)).toBe(70);
+    expect(clampVolume(undefined)).toBe(70);
+    expect(clampVolume(Infinity)).toBe(70);
+    expect(clampVolume(-20)).toBe(0);
+    expect(clampVolume(999)).toBe(100);
+    expect(clampVolume(42.6)).toBe(43);
+  });
+
+  it('matches the reducer default, so reset and a fresh install agree', () => {
+    expect(clampVolume(NaN)).toBe(AppConstants.DEFAULT_MUSIC_VOLUME);
+  });
+});
+
+describe('intensity layers do not double-strike', () => {
+  it('skips hat positions the kit already plays', () => {
+    // The steady and driving kits place hats on eighths already. Adding more
+    // at the same steps sums two voices at one instant, so the hat jumps in
+    // level rather than the grid filling in.
+    const eighthKit: PatternNote[] = [0, 2, 4, 6].map((p) => [p, 42, 1, 'perc']);
+    const layers = intensityLayers(eighthKit, 8, 0.5);
+    const added = new Set(layers.filter((n) => n[1] === 42).map((n) => n[0]));
+    for (const [step] of eighthKit) {
+      expect(added.has(step), `hat duplicated at step ${step}`).toBe(false);
+    }
+  });
+
+  it('still fills the gaps in a sparse kit', () => {
+    const quarterKit: PatternNote[] = [0, 4].map((p) => [p, 42, 1, 'perc']);
+    const layers = intensityLayers(quarterKit, 8, 0.5);
+    expect(layers.filter((n) => n[1] === 42).length).toBeGreaterThan(0);
+  });
+});
+
+describe('a refused resume', () => {
+  afterEach(() => {
+    FakeAudioContext.gestureAllowed = true;
+    musicEngine.stop();
+  });
+
+  it('does not surface as an unhandled rejection', async () => {
+    // Browsers reject resume() outside a gesture, and the engine calls it
+    // speculatively from play(). An uncaught rejection there is a console
+    // error on a path that is expected to fail.
+    const unhandled: unknown[] = [];
+    const onUnhandled = (e: PromiseRejectionEvent | { reason?: unknown }) =>
+      unhandled.push(e);
+    process.on('unhandledRejection', onUnhandled);
+
+    FakeAudioContext.gestureAllowed = false;
+    const ctx = FakeAudioContext.live;
+    if (ctx) ctx.state = 'suspended';
+
+    musicEngine.play('parlour');
+    musicEngine.resume();
+    await new Promise((r) => realSetTimeout(r, 20));
+
+    process.off('unhandledRejection', onUnhandled);
+    expect(unhandled).toHaveLength(0);
+  });
+
+  it('keeps the request queued for the next gesture', async () => {
+    FakeAudioContext.gestureAllowed = false;
+    const ctx = FakeAudioContext.live;
+    if (ctx) ctx.state = 'suspended';
+
+    musicEngine.play('parlour');
+    musicEngine.resume();
+    await new Promise((r) => realSetTimeout(r, 20));
+    expect(musicEngine.isPlaying()).toBe(false);
+
+    // The next gesture is accepted, and the request that was waiting starts.
+    FakeAudioContext.gestureAllowed = true;
+    intervalCount = 0;
+    musicEngine.resume();
+    await new Promise((r) => realSetTimeout(r, 20));
+    expect(intervalCount).toBe(1);
   });
 });

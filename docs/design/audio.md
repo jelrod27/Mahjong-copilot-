@@ -32,22 +32,33 @@ Mixing rules:
 ### Music (`lib/musicEngine.ts`)
 
 A chiptune sequencer: lookahead scheduler (25ms tick, 120ms horizon —
-the standard two-clocks pattern), 16th-note step patterns, three channels
-(square lead 0.16, triangle bass 0.30, sine pad 0.07), exact loop points
+the standard two-clocks pattern), 16th-note step patterns, exact loop points
 (loop start advances by pattern duration, never re-quantized).
 
-Tracks:
-- **parlour** — 84bpm, 64 steps, A minor pentatonic. Sparse lead phrases
-  over a patient walking bass; the warm lamplight default.
-- **danger** — 96bpm, 32 steps. Heartbeat bass with a flattened second
-  leaning against the root; thin held lead that creeps a semitone.
+Five channels: `lead` and `arp` on band-limited pulse waves at 25% and 12.5%
+duty, `bass` on a triangle, `pad` on a 50% pulse, and `perc` addressed by
+drum-machine note numbers — kick as a pitch drop, snare and hats as filtered
+noise. Every channel carries an ADSR rather than a single ramp to silence.
 
-Floor intensity: one pattern, three moods. `play(track, intensity 0-2)`
-transposes +2 semitones and adds 8% tempo per step — Novice wing hears the
-theme at rest, Master wing hears it brighter and urgent.
+Six tracks rotate during a hand, each 256 steps (roughly 45 seconds) and each
+a key, a chord progression and a kit style. Bass, pads and drums are composed;
+lead and arpeggio are generated over the harmony on every pass from the chord
+and the scale only. `danger` remains a short drone, used as a layer rather
+than as a member of the rotation.
+
+Two intensity axes. `play(track, intensity 0-2)` is the Parlour wing and sets
+the key: +2 semitones and +8% tempo per step. `setDrive(0-1)` is the wall
+running down and sets the push: up to +22% tempo, plus layers that fill in
+subdivisions — hats to eighths, bass on the offbeat, snare doubling. Layers
+are added, never substituted.
 
 Music master gain is 0.14 — roughly half the perceived level of the tile
-clack, by design. The clack is the protagonist.
+clack, by design. The clack is the protagonist. `setVolume(0-1)` scales that
+bus and is exposed as a settings slider, independent of the on/off switch and
+of sound effects.
+
+The full reasoning is in **Decision: generated score, rotating (2026-08-19)**
+at the end of this file.
 
 ### Behavior wiring
 

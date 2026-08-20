@@ -158,10 +158,111 @@ SVG rasterisation needs the `<img>` + `onload` + double-rAF path, not
 `createImageBitmap` — Chrome rejects SVG blobs there, and an SVG can report
 loaded before it has painted (the same race that made honour tiles black).
 
+### Board depth — detail without dominance
+
+The brief was that the board is *liked* but thin, and that the 3D table must not
+become the focal point. Those pull against each other, and the resolution is
+which register the detail goes in: **fine and low-contrast, not bigger shapes.**
+Felt nap, wood grain and an edge falloff, all in `boardMaterials.ts`; no new
+geometry beyond turning the rim from a hidden slab into a bevelled frame.
+
+- **The edge falloff is the load-bearing piece.** Darkening the felt outward adds
+  depth *and* pushes the eye back to the centre and the near hand, so it is the
+  one addition that buys detail while actively reducing dominance.
+- **GTAO is where depth actually reads.** Tile-to-felt contact, wall-stack
+  crevices, meld rows. It only ever darkens, so unlike a brighter rim it costs
+  no attention. `GTAOPass` between the render and the bloom.
+- **Depth of field was cut.** Asked for explicitly: the whole board stays sharp.
+- **The centre marking is geometry, not type.** A compass rose needs no font, and
+  canvas cannot be relied on to have a CJK face for 東南西北.
+
+#### The bug that made the first attempt look black
+
+Writing `new THREE.Color('#1d5140').r * 255` into a canvas produces RGB(3,22,13),
+near-black. With colour management on, `THREE.Color` holds **linear** values;
+canvases are **sRGB**. The jade felt came out looking like slate and it read as a
+lighting problem, which it was not. Textures authored in canvas space now parse
+hex to sRGB bytes directly and never round-trip through `THREE.Color`.
+
+### NPCs — 2.5D, and why the slices alone were not enough
+
+Characters are four rasterised slices of the `CharacterPortrait` rig spaced along
+z (`portraitTexture.ts` cuts them, `npcRig.ts` builds them). The rig gained
+`<g data-layer>` groups; they paint nothing and the DOM is unchanged.
+
+**The slices and the gaze are one feature.** Slices with nothing to turn them are
+an expensive flat plane; a turning flat plane is a sliding sticker. Shipping
+either alone is wasted work.
+
+Three things had to be true before any of it read:
+
+1. **The billboard had to go, but not entirely.** Facing a side seat inward is
+   correct and makes them *invisible* — a flat plane at 90° is a line. The rig
+   sits at a fixed blend (`INWARD_BIAS = 0.34`) between facing the camera and
+   facing the table, so side seats read as three-quarter views.
+2. **Yaw alone made them fall over.** A world-vertical plane seen off-centre
+   through a camera that looks *down* projects with apparent roll — about 20° at
+   the side seats. Not an orientation bug; it is what perspective does, and it is
+   the real reason v1 billboarded. Each rig now pitches back by the camera's own
+   pitch, which recovers what the billboard was buying while leaving yaw free.
+3. **Grounding is the sink, not a shadow.** A drawn contact shadow was tried and
+   removed: sinking the bust below the felt lets the table plane occlude its flat
+   bottom edge, which *is* the contact. Moving the characters outboard of the
+   felt to get a "table edge crop" does the opposite — out there nothing is left
+   to crop against and they float with a visible hard cut.
+
+`alphaTest` on the slices lets the silhouette write depth, so the wall and melds
+occlude the characters instead of the characters hovering over the whole board.
+
+### Reactions, and what the slicing bought
+
+Emotion is confined to the `face` slice, so a reaction re-rasterises **one texture
+of four**; `back`/`body`/`front` are cached per character for the session. Without
+that, every reaction would re-render the full 566-line rig per character, which is
+what would have made reactive emotion too expensive to use at all. A test pins the
+invariant across every character × emotion, because an edit that moves an
+emotion-driven element out of the face group would silently show a stale layer.
+
+Characters react to *each other*: a claimer is smug, the seat whose tile was taken
+is frustrated, onlookers are surprised — whether or not the human was involved.
+All six rig emotions are now reachable; previously only `idle` and `thinking` ever
+appeared.
+
+`npcFocus.ts` is pure seat -> seat and unit-tested. It recovers events by diffing
+snapshots. **The real implementation should consume `presentation/events.ts`**,
+which already derives exactly this vocabulary and is tested — but `deriveEvents`
+currently has **no consumers**, and wiring it into `useGameController` is a change
+to the bridge layer that deserves its own PR, not a rider on a prototype.
+
+### The idle cost, measured rather than estimated
+
+Idle glances are the one thing that breaks the perfect-idle property. The first
+estimate of ~6% was made by hand and was wrong in a structural way: three
+characters easing independently means *someone* is nearly always moving.
+
+Fix was a **single glance token** — only one character may hold an idle glance at
+a time. That is both cheaper and better-looking; three heads swivelling in unison
+reads as uncanny. Interval 10–18s, hold 1.3s.
+
+Measured idle (variant G, 5s window after the board settles, counters zeroed):
+**~19 renders / 5s, every one animation-driven, 0 relayouts.**
+
+Careful reading the duty-cycle percentage from `proto-check`: under SwiftShader
+the loop ticks ~6×/s, and the frame loop clamps `dt` to 50ms, so easing advances
+at roughly a third of real time and every animation lasts ~3× longer in
+wall-clock. The reported 60% duty is that artifact. Renders-per-second is the
+honest number; the real-GPU figure is still unmeasured.
+
 ## Open — next session
 
-- On a phone the NPC plaques cover a lot of the 3D table. They are legible and
-  on-screen, but the hybrid needs a compact plaque variant at that width.
+- On a phone the NPC plaques cover a lot of the 3D table, and this got a little
+  worse: plaques now anchor on the felt *in front of* each character rather than
+  at their position, which fixed name cards sitting across their chests on
+  desktop but pushes them further inboard on a narrow viewport. The side
+  characters themselves are cropped out of frame at 390px. Still wants a compact
+  plaque variant and a mobile-specific seat radius.
+- Real-GPU cost of GTAO is unmeasured; SwiftShader runs variant G at 1-3 fps and
+  those numbers mean nothing. Check before believing the AO is affordable.
 - No player attribution on the discard groups in D–G. `DiscardPool`'s
   "You / Yuki / Hana / Mei" headers have no 3D equivalent yet.
 - Bloom and IBL are on in G but subtle by design. Worth deciding whether they
@@ -183,9 +284,14 @@ mirror*, not *3D board*. Budget the mirror from the start.
 ## Files
 
 - `PrototypeVariant.tsx` — variant registry, context, switcher, all prototype CSS
-- `ThreeTable.tsx` — the WebGL scene (`mode: 'sea' | 'full' | 'board'`)
-- `tileArt.ts` — Tile → artwork URL (SVG for DOM, PNG for textures)
-- `proto-check.mjs` — headless driver: screenshots + metrics. `node components/game/prototype/proto-check.mjs A,C,F`
+- `ThreeTable.tsx` — the WebGL scene (`mode: 'sea' | 'full' | 'board' | 'max'`)
+- `boardMaterials.ts` — procedural felt, wood and rim geometry. Canvas in, texture out
+- `npcRig.ts` — the 2.5D character rigs: slices, gaze, lean, emotion swap
+- `npcFocus.ts` — pure: who looks at whom, and how they feel about it
+- `portraitTexture.ts` — cuts the portrait rig into depth slices and rasterises them
+- `tileArt.ts` — format shim over `lib/tileArt` (SVG for DOM, PNG for textures)
+- `proto-check.mjs` — headless driver: screenshots + metrics.
+  `PROTO_OUT=./shots node components/game/prototype/proto-check.mjs G,F`
 
 Touches outside this directory, each marked `PROTOTYPE`: `RetroTile.tsx`,
 `GameBoard.tsx`, `app/play/game/GameContent.tsx`. Plus `three` + `@types/three`

@@ -1,6 +1,11 @@
 import { chromium } from '@playwright/test';
+import { mkdir } from 'node:fs/promises';
 
-const OUT = '/tmp/claude-1000/-home-justin-Projects/9ecafeae-f854-4ed2-9a11-50bc12e6832c/scratchpad';
+// Absolute path from a previous session used to be baked in here, which made
+// the script silently unrunnable for anyone else. Override with PROTO_OUT.
+const OUT = process.env.PROTO_OUT ?? './proto-out';
+const PORT = process.env.PROTO_PORT ?? '3000';
+await mkdir(OUT, { recursive: true });
 const VARIANTS = process.argv[2]?.split(',') ?? ['A', 'B', 'C', 'D', 'E'];
 
 // WebGL in headless needs a software rasteriser.
@@ -14,7 +19,7 @@ for (const v of VARIANTS) {
   page.on('pageerror', e => errors.push(String(e).slice(0, 160)));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text().slice(0, 160)); });
 
-  await page.goto(`http://localhost:3000/play/game?difficulty=easy&variant=${v}`, { waitUntil: 'networkidle' });
+  await page.goto(`http://localhost:${PORT}/play/game?difficulty=easy&variant=${v}`, { waitUntil: 'networkidle' });
 
   const skip = page.getByRole('button', { name: /skip intro/i });
   if (await skip.count()) await skip.first().click().catch(() => {});
@@ -37,7 +42,19 @@ for (const v of VARIANTS) {
     await page.waitForTimeout(2600);
   }
   await driver.evaluate(el => el.remove());
-  await page.waitForTimeout(1200);
+
+  // Let the AI finish its turns and the board settle, THEN zero the counters.
+  // Measuring across the tail of a hand conflates "the board is busy because
+  // things are happening" with "the board redraws when nothing is happening",
+  // and only the second one is the render-on-demand claim.
+  await page.waitForTimeout(6000);
+  await page.evaluate(() => {
+    window.__protoTicks = 0;
+    window.__protoRenders = 0;
+    window.__protoLayouts = 0;
+    window.__protoAnimFrames = 0;
+  });
+  await page.waitForTimeout(5000);
 
   const stats = await page.evaluate(() => new Promise(resolve => {
     let frames = 0;
@@ -50,6 +67,10 @@ for (const v of VARIANTS) {
       canvases: document.querySelectorAll('.proto-three-mount canvas').length,
       // Everything a screen reader can name in the discard sea.
       seaAccessible: document.querySelectorAll('[data-proto-discard-sea] [aria-label]').length,
+      ticks: window.__protoTicks ?? 0,
+      renders: window.__protoRenders ?? 0,
+      layouts: window.__protoLayouts ?? 0,
+      animFrames: window.__protoAnimFrames ?? 0,
     });
     requestAnimationFrame(tick);
   }));
@@ -57,6 +78,11 @@ for (const v of VARIANTS) {
   console.log(
     `variant ${v}: fps=${stats.fps} domNodes=${stats.domNodes} handButtons=${stats.tileButtons} ` +
     `canvases=${stats.canvases} seaAriaLabels=${stats.seaAccessible} errors=${errors.length}`,
+  );
+  console.log(
+    `   frames: ticks=${stats.ticks} renders=${stats.renders} layouts=${stats.layouts} ` +
+    `anim=${stats.animFrames} rendersPerSec=${(stats.renders / 5).toFixed(1)} ` +
+    `(duty=${stats.ticks ? Math.round((stats.renders / stats.ticks) * 100) : 0}%)`,
   );
   if (errors.length) console.log(`   ! ${errors.slice(0, 3).join(' | ')}`);
 

@@ -43,17 +43,50 @@ export interface Tile {
   assetPath: string;
 }
 
+/** The four flowers, in the order the factory builds them. */
+export const FLOWER_NAMES = ['Plum', 'Orchid', 'Chrysanthemum', 'Bamboo'] as const;
+export type FlowerName = (typeof FLOWER_NAMES)[number];
+
+/** The four seasons, in the order the factory builds them. */
+export const SEASON_NAMES = ['Spring', 'Summer', 'Autumn', 'Winter'] as const;
+export type SeasonName = (typeof SEASON_NAMES)[number];
+
+/** Ranks a suited tile can take. */
+export type TileRank = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+
+type SuitedId = `${TileSuit.BAMBOO | TileSuit.CHARACTER | TileSuit.DOT}_${TileRank}`;
+type WindId = `wind_${WindTile}`;
+type DragonId = `dragon_${DragonTile}`;
+type FlowerId = `flower_${FlowerName}`;
+type SeasonId = `season_${SeasonName}`;
+
 /**
- * Canonical identity string ignoring copy number.
- * e.g. "bamboo_5", "wind_east", "dragon_red", "flower_Plum"
+ * Every distinct tile face, ignoring copy number. Exactly 42 of them:
+ * 27 suited, 4 winds, 3 dragons, 4 flowers, 4 seasons.
+ *
+ * Built from the enums above rather than written out, so there is no second
+ * list to fall out of step with the first. Anything keyed by this, such as the
+ * artwork map in lib/tileArt.ts, is exhaustive at compile time: leaving a face
+ * out is a type error rather than a tile that renders blank.
  */
-export function tileKey(tile: Tile): string {
-  if (tile.number !== undefined) return `${tile.suit}_${tile.number}`;
+export type TileId = SuitedId | WindId | DragonId | FlowerId | SeasonId;
+
+/**
+ * Canonical identity of a tile, ignoring copy number.
+ * e.g. "bamboo_5", "wind_east", "dragon_red", "flower_Plum"
+ *
+ * Throws on a tile that carries none of the identifying fields. That is not a
+ * tile the factory can produce, and returning `tile.id` instead, as this used
+ * to, hands back a copy-specific string that silently misses every lookup
+ * keyed by face.
+ */
+export function tileKey(tile: Tile): TileId {
+  if (tile.number !== undefined) return `${tile.suit}_${tile.number}` as TileId;
   if (tile.wind) return `wind_${tile.wind}`;
   if (tile.dragon) return `dragon_${tile.dragon}`;
-  if (tile.flower) return `flower_${tile.flower}`;
-  if (tile.season) return `season_${tile.season}`;
-  return tile.id;
+  if (tile.flower) return `flower_${tile.flower}` as TileId;
+  if (tile.season) return `season_${tile.season}` as TileId;
+  throw new Error(`Tile ${tile.id} carries no suit rank, wind, dragon, flower or season`);
 }
 
 /** Check if two tiles are the same type (ignoring copy number) */

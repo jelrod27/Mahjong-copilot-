@@ -41,6 +41,8 @@ export class AppConstants {
   static readonly SOUND_ENABLED_KEY = 'sound_enabled';
   static readonly LARGER_UI_TEXT_KEY = 'larger_ui_text';
   static readonly SHOW_TUTOR_KEY = 'show_tutor';
+  /** Stored as 'auto' | 'on' | 'off'. See lib/beginnerAssist.ts. */
+  static readonly BEGINNER_ASSIST_KEY = 'beginner_assist';
   /** In-game overlay mode: tutor, shantenHeat, or off. */
   static readonly DISPLAY_MODE_KEY = 'display_mode';
   /** Pacing of AI turns during play: relaxed, normal, or fast. */

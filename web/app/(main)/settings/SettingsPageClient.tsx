@@ -16,6 +16,7 @@ import {
   setCrtEffect,
   setMusicEnabled,
   setMusicVolume,
+  setBeginnerAssist,
   setTileVoice,
   SettingsState,
 } from '@/store/actions/settingsActions';
@@ -48,6 +49,15 @@ const DISPLAY_MODE_OPTIONS: { value: SettingsState['displayMode']; label: string
   { value: 'tutor', label: 'Tutor', description: 'Beginner discard tips, claim suggestions, and safe-tile hints.' },
   { value: 'shantenHeat', label: 'Shanten Heat', description: 'Color each tile by how close to winning you are if you discard it. Blue = tenpai, red = far. No text — just the math made visible.' },
   { value: 'off', label: 'Off', description: 'No in-game overlay. Just you and the tiles.' },
+];
+
+// Labelled "Tile numbers" rather than "Beginner Assist": that phrase already
+// names the tutor's colour strip in GameHUD and on the tile itself, and two
+// unrelated features under one name is worse than a longer label.
+const TILE_NUMBER_OPTIONS: { value: SettingsState['beginnerAssist']; label: string; description: string }[] = [
+  { value: 'auto', label: 'Follow the table', description: 'On at Beginner tables, off elsewhere.' },
+  { value: 'on', label: 'Always show', description: 'Print the rank on every suited tile.' },
+  { value: 'off', label: 'Never show', description: 'Read the rank from the artwork alone.' },
 ];
 
 const GAME_SPEED_OPTIONS: { value: SettingsState['gameSpeed']; label: string; description: string }[] = [
@@ -128,6 +138,7 @@ export default function SettingsPageClient() {
     void dispatch(setLiveFaanMeter(true));
     void dispatch(setMusicEnabled(true));
     void dispatch(setMusicVolume(AppConstants.DEFAULT_MUSIC_VOLUME));
+    void dispatch(setBeginnerAssist('auto'));
     void dispatch(setCrtEffect(false));
     void dispatch(setTileVoice('off'));
     const defaultPrefs: GamePreferences = { ...DEFAULT_GAME_PREFS };
@@ -256,6 +267,34 @@ export default function SettingsPageClient() {
                 }`}
               >
                 {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tile numbers */}
+        <div>
+          <span className="font-sans text-foreground block mb-1">Tile numbers</span>
+          <p className="text-muted-foreground text-xs font-sans mb-2">
+            Whether suited tiles print their rank as a digit. The artwork shows the
+            rank by counting sticks, circles or characters, which takes practice to
+            read at a glance.
+          </p>
+          <div className="space-y-2">
+            {TILE_NUMBER_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => void dispatch(setBeginnerAssist(opt.value))}
+                aria-pressed={settings.beginnerAssist === opt.value}
+                className={`w-full text-left font-sans text-sm px-3 py-2 border transition-colors ${
+                  settings.beginnerAssist === opt.value
+                    ? 'border-info text-info bg-info/10'
+                    : 'border-border/40 text-muted-foreground hover:border-border'
+                }`}
+              >
+                <span className="block font-medium text-foreground">{opt.label}</span>
+                <span className="block text-xs text-muted-foreground mt-0.5">{opt.description}</span>
               </button>
             ))}
           </div>

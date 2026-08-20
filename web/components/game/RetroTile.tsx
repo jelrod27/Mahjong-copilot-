@@ -1,9 +1,10 @@
 'use client';
 
 import { memo } from 'react';
-import { Tile } from '@/models/Tile';
+import { Tile, TileType } from '@/models/Tile';
 import { tileArtSrc } from '@/lib/tileArt';
 import { useTilePalette } from './TilePaletteContext';
+import { useTileDisplay } from './TileDisplayContext';
 import { TilePalette } from '@/lib/cosmetics';
 import type { TileHeatOverlay } from '@/engine/shantenHeat';
 
@@ -39,6 +40,7 @@ function RetroTile({
   tutorColor, tutorLabel, heatOverlay, paletteOverride,
 }: RetroTileProps) {
   const ctxPalette = useTilePalette();
+  const { showNumerals } = useTileDisplay();
   const palette = paletteOverride ?? ctxPalette;
   const suitColor = palette.suitColors[tile.suit] || '#5c4632';
   const faceStyle = palette.faceBg.startsWith('#')
@@ -100,6 +102,18 @@ function RetroTile({
           className="h-[3px] w-full"
           style={{ backgroundColor: TUTOR_COLORS[tutorColor] }}
         />
+      )}
+
+      {/* Rank as a numeral, for players still learning to count bamboo sticks
+          at a glance. Suited tiles only: an honour has no rank to print, and
+          a numeral on a dragon would be inventing information. Sized from
+          --tile-w so it tracks every tile size, and parked in the top corner
+          clear of the artwork, which is centred. aria-hidden because the
+          tile's name already speaks the rank. */}
+      {showNumerals && tile.type === TileType.SUIT && tile.number !== undefined && (
+        <span className="mahjong-tile-numeral" style={{ color: suitColor }} aria-hidden>
+          {tile.number}
+        </span>
       )}
 
       <div className="flex flex-1 items-center justify-center p-[6%]">

@@ -8,6 +8,7 @@ import {
   SETTINGS_SET_NOTIFICATIONS_ENABLED,
   SETTINGS_SET_LARGER_UI_TEXT,
   SETTINGS_SET_SHOW_TUTOR,
+  SETTINGS_SET_BEGINNER_ASSIST,
   SETTINGS_SET_DISPLAY_MODE,
   SETTINGS_SET_GAME_SPEED,
   SETTINGS_SET_LIVE_FAAN_METER,
@@ -31,6 +32,7 @@ const initialState: SettingsState = {
   notificationsEnabled: true,
   largerUiText: false,
   showTutor: true,
+  beginnerAssist: 'auto',
   displayMode: 'tutor',
   gameSpeed: 'normal',
   liveFaanMeter: true,
@@ -65,6 +67,8 @@ export const settingsReducer = (
       return { ...state, largerUiText: action.payload };
     case SETTINGS_SET_SHOW_TUTOR:
       return { ...state, showTutor: action.payload };
+    case SETTINGS_SET_BEGINNER_ASSIST:
+      return { ...state, beginnerAssist: action.payload };
     case SETTINGS_SET_DISPLAY_MODE:
       return { ...state, displayMode: action.payload };
     case SETTINGS_SET_GAME_SPEED:

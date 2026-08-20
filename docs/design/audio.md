@@ -43,8 +43,12 @@ noise. Every channel carries an ADSR rather than a single ramp to silence.
 Six tracks rotate during a hand, each 256 steps (roughly 45 seconds) and each
 a key, a chord progression and a kit style. Bass, pads and drums are composed;
 lead and arpeggio are generated over the harmony on every pass from the chord
-and the scale only. `danger` remains a short drone, used as a layer rather
-than as a member of the rotation.
+and the scale only.
+
+`danger` is not part of the rotation. With `SAMPLE_ASSETS` empty — the shipping
+state — `play('danger')` stops the rotation and plays the drone in its place.
+It is a layer *over* the music only when a parlour bed is registered, which is
+the ambient-bed path described in the 2026-07-27 decision below.
 
 Two intensity axes. `play(track, intensity 0-2)` is the Parlour wing and sets
 the key: +2 semitones and +8% tempo per step. `setDrive(0-1)` is the wall

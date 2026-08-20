@@ -29,6 +29,7 @@ import {
   GamePreferences,
 } from '@/lib/settingsStorage';
 import { useBrowserValue } from '@/hooks/useBrowserValue';
+import { AppConstants } from '@/constants/appConstants';
 
 const TIMER_OPTIONS = [
   { value: 10, label: '10s' },
@@ -57,10 +58,6 @@ const GAME_SPEED_OPTIONS: { value: SettingsState['gameSpeed']; label: string; de
 
 // Stable identity, and what the server renders before localStorage is readable.
 const DEFAULT_GAME_PREFS: GamePreferences = { turnTimer: 20, autoPass: false };
-
-// Matches the reducer's initial state. Declared once so a reset and a fresh
-// install cannot drift apart.
-const DEFAULT_MUSIC_VOLUME = 70;
 
 export default function SettingsPageClient() {
   const dispatch = useAppDispatch();
@@ -130,7 +127,7 @@ export default function SettingsPageClient() {
     void dispatch(setGameSpeed('normal'));
     void dispatch(setLiveFaanMeter(true));
     void dispatch(setMusicEnabled(true));
-    void dispatch(setMusicVolume(DEFAULT_MUSIC_VOLUME));
+    void dispatch(setMusicVolume(AppConstants.DEFAULT_MUSIC_VOLUME));
     void dispatch(setCrtEffect(false));
     void dispatch(setTileVoice('off'));
     const defaultPrefs: GamePreferences = { ...DEFAULT_GAME_PREFS };

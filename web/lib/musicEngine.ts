@@ -137,9 +137,23 @@ export function ornament(h: Harmony, totalSteps: number, rng: Rng): PatternNote[
  */
 export function intensityLayers(skeleton: PatternNote[], totalSteps: number, drive: number): PatternNote[] {
   const extra: PatternNote[] = [];
+
+  // Only fill positions the kit has left empty. The steady and driving kits
+  // already place hats on eighths, so adding more would retrigger the same
+  // hit at the same step — two voices at one instant sum, so the hat jumps in
+  // level instead of the grid filling in.
+  const taken = new Map<number, Set<number>>();
+  for (const [step, midi, , channel] of skeleton) {
+    if (channel !== 'perc') continue;
+    let atStep = taken.get(step);
+    if (!atStep) { atStep = new Set(); taken.set(step, atStep); }
+    atStep.add(midi);
+  }
+  const free = (step: number, midi: number) => !taken.get(step)?.has(midi);
+
   if (drive >= 0.25) {
-    // Hats fill in to eighths: the base kit puts them on quarters.
-    extra.push(...hits(every(4, totalSteps, 2), HAT));
+    // Hats fill in to eighths: the sparse kit puts them on quarters.
+    extra.push(...hits(every(4, totalSteps, 2).filter((p) => free(p, HAT)), HAT));
   }
   if (drive >= 0.55) {
     // Bass answers on the offbeat, using the note the skeleton already put on
@@ -151,8 +165,9 @@ export function intensityLayers(skeleton: PatternNote[], totalSteps: number, dri
     }
   }
   if (drive >= 0.8) {
-    // Snare doubles into the backbeat.
-    extra.push(...hits(every(16, totalSteps, 12), SNARE));
+    // Snare doubles into the backbeat, skipping the bars whose fill already
+    // put one there.
+    extra.push(...hits(every(16, totalSteps, 12).filter((p) => free(p, SNARE)), SNARE));
   }
   return extra;
 }
@@ -472,7 +487,9 @@ class MusicEngine {
       try {
         this.ctx = new AudioContext();
         this.musicGain = this.ctx.createGain();
-        this.musicGain.gain.value = MUSIC_GAIN;
+        // GameContent sets the volume before the first play(), when there is
+        // no gain node yet, so the stored level is applied at creation.
+        this.musicGain.gain.value = this.busLevel;
         this.musicGain.connect(this.ctx.destination);
       } catch {
         return null;
@@ -583,6 +600,10 @@ class MusicEngine {
   }
 
   stop() {
+    // A request queued while the context was gesture-blocked must not survive
+    // a stop: resume() would otherwise start music after the route that asked
+    // for it has gone.
+    this.pending = null;
     if (this.timer) {
       clearInterval(this.timer);
       this.timer = null;
@@ -711,8 +732,8 @@ class MusicEngine {
     const gain = this.musicGain.gain;
     gain.cancelScheduledValues(now);
     gain.setValueAtTime(gain.value, now);
-    gain.linearRampToValueAtTime(MUSIC_GAIN * level, now + 0.08);
-    gain.linearRampToValueAtTime(MUSIC_GAIN, now + durationMs / 1000);
+    gain.linearRampToValueAtTime(this.busLevel * level, now + 0.08);
+    gain.linearRampToValueAtTime(this.busLevel, now + durationMs / 1000);
   }
 
   private secondsPerStep(): number {
@@ -749,6 +770,21 @@ class MusicEngine {
         const nextTrack = this.advanceRotation() ?? track;
         this.skeleton = nextTrack.notes;
         this.current = { ...nextTrack, notes: this.buildPass(nextTrack) };
+
+        // Stop scheduling in this window. `track`, `loopDur` and `stepDur`
+        // are all captured before the loop, so continuing would keep reading
+        // the pass that just ended and space it at the previous bpm: the first
+        // slice of every new track would be the previous track's opening
+        // notes, at the previous tempo. The next tick re-derives everything
+        // from `this.current`.
+        //
+        // Reviewed as a crash risk — `notes[nextNoteIndex]` reading undefined
+        // when the new pass is shorter. That part does not hold: the index is
+        // reset to 0 on the same line and the 64-iteration guard cannot walk
+        // it past a track of several hundred notes inside one window. The
+        // wrong-track bleed is the real defect, and it is audible at every
+        // rotation boundary.
+        break;
       }
     }
 
@@ -836,15 +872,27 @@ class MusicEngine {
    * it affects everything scheduled after it without disturbing the grid.
    */
   setVolume(next: number) {
-    this.volume = Math.min(1, Math.max(0, next));
+    const clamped = Math.min(1, Math.max(0, Number.isFinite(next) ? next : 1));
+    this.volume = clamped;
     if (this.musicGain) {
-      const ctx = this.ctx;
-      const now = ctx ? ctx.currentTime : 0;
-      // Ramped rather than stepped: an instant gain change on a running
-      // oscillator is an audible click.
+      const now = this.ctx ? this.ctx.currentTime : 0;
+      // Anchored before the ramp: after cancelScheduledValues a ramp
+      // interpolates from the last event, so without a value set at `now` the
+      // start point is whatever was left on the param. Ramped rather than
+      // stepped because an instant gain change on a running oscillator clicks.
       this.musicGain.gain.cancelScheduledValues(now);
-      this.musicGain.gain.linearRampToValueAtTime(MUSIC_GAIN * this.volume, now + 0.05);
+      this.musicGain.gain.setValueAtTime(this.musicGain.gain.value, now);
+      this.musicGain.gain.linearRampToValueAtTime(this.busLevel, now + 0.05);
     }
+  }
+
+  /**
+   * The music bus level. Every path that writes the bus goes through here, so
+   * a stored volume cannot be silently ignored — which it was in two places:
+   * the context was created at full MUSIC_GAIN, and ducking ramped back to it.
+   */
+  private get busLevel(): number {
+    return MUSIC_GAIN * this.volume;
   }
 
   /**

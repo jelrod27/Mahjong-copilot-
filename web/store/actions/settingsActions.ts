@@ -137,7 +137,10 @@ export const initializeSettings = () => async (dispatch: any) => {
     const npcRosterMode: NpcRosterMode = isNpcRosterMode(rosterModeRaw) ? rosterModeRaw : 'auto';
     const crtEffect = await StorageService.getBool(AppConstants.CRT_EFFECT_KEY) ?? false;
     const musicEnabled = await StorageService.getBool(AppConstants.MUSIC_ENABLED_KEY) ?? true;
-    const musicVolume = await StorageService.getInt(AppConstants.MUSIC_VOLUME_KEY) ?? 70;
+    // getInt can return NaN for a malformed stored value, which ?? does not
+    // catch — it would reach musicEngine.setVolume() and silence the score.
+    const storedVolume = await StorageService.getInt(AppConstants.MUSIC_VOLUME_KEY);
+    const musicVolume = clampVolume(storedVolume);
 
     dispatch({
       type: SETTINGS_INITIALIZE,
@@ -249,9 +252,21 @@ export const setMusicEnabled = (enabled: boolean) => async (dispatch: any) => {
   dispatch({ type: SETTINGS_SET_MUSIC_ENABLED, payload: enabled });
 };
 
+/**
+ * Coerce anything that reached us to a usable percentage.
+ *
+ * Applied on the way in and on the way out: a non-finite value from storage
+ * and a non-finite value from a caller both end up in the same place, and
+ * NaN propagates silently all the way to the gain node.
+ */
+export const clampVolume = (value: number | null | undefined): number =>
+  typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(100, Math.max(0, Math.round(value)))
+    : AppConstants.DEFAULT_MUSIC_VOLUME;
+
 /** Music level as a percentage, 0-100. */
 export const setMusicVolume = (volume: number) => async (dispatch: any) => {
-  const clamped = Math.min(100, Math.max(0, Math.round(volume)));
+  const clamped = clampVolume(volume);
   await StorageService.setInt(AppConstants.MUSIC_VOLUME_KEY, clamped);
   dispatch({ type: SETTINGS_SET_MUSIC_VOLUME, payload: clamped });
 };

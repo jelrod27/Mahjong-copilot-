@@ -3,6 +3,8 @@ import musicEngine, {
   SAMPLE_ASSETS, pulseCoefficients, ornament, PARLOUR_HARMONY, intensityLayers,
   TRACKS, PARLOUR_ROTATION, type PatternNote,
 } from '../musicEngine';
+import { clampVolume } from '@/store/actions/settingsActions';
+import { AppConstants } from '@/constants/appConstants';
 import { createRng } from '@/engine/rng';
 
 /**
@@ -55,6 +57,7 @@ const makeParam = () => ({
 const contexts: FakeAudioContext[] = [];
 
 class FakeAudioContext {
+  /** Mutable so a test can drive the scheduler past a loop boundary. */
   currentTime = 0;
   state = 'running';
   destination = {};
@@ -478,11 +481,14 @@ describe('track roster', () => {
     }
   });
 
-  it('varies more than just the key', () => {
+  it('varies its chord progressions, not only its keys', () => {
     // Two tracks in the same key with different chord orders read as different
     // pieces; a roster that only transposes reads as one piece six times.
     const shapes = new Set(rotation.map((t) => t.harmony!.progression.join(',')));
     expect(shapes.size).toBeGreaterThan(3);
+  });
+
+  it('varies its tempos', () => {
     expect(new Set(rotation.map((t) => t.bpm)).size).toBeGreaterThan(3);
   });
 });
@@ -553,5 +559,102 @@ describe('gesture gating', () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(musicEngine.unlocked).toBe(true);
+  });
+});
+
+/**
+ * Stateful paths. These had no coverage, which is how a crash at the rotation
+ * boundary got as far as review: the scheduler captured its track before the
+ * loop and kept reading it after the boundary replaced it.
+ */
+describe('loop boundary', () => {
+  const tick = () => new Promise((r) => realSetTimeout(r, 60));
+
+  beforeEach(() => {
+    delete SAMPLE_ASSETS.parlour;
+    musicEngine.stop();
+  });
+  afterEach(() => {
+    musicEngine.stop();
+    const ctx = FakeAudioContext.live;
+    if (ctx) ctx.currentTime = 0;
+  });
+
+  // A smoke test, and labelled as one: it drives 120 simulated seconds through
+  // several rotation boundaries and asserts the engine is still scheduling a
+  // rotation track afterwards. It does not discriminate the wrong-track bleed
+  // the `break` prevents — that needs the boundary crossed inside a single
+  // 120ms window, which a 45-second loop cannot do. Verified by removing the
+  // fix: this still passes.
+  it('keeps scheduling across repeated rotation boundaries', async () => {
+    musicEngine.play('parlour');
+    await tick();
+
+    const ctx = FakeAudioContext.live!;
+    // Well past one 45-second pass, so the scheduler must roll over. Before
+    // the fix it kept indexing the previous pass's array and destructured
+    // undefined once the new one was shorter.
+    for (let t = 0; t < 120; t += 5) {
+      ctx.currentTime = t;
+      await tick();
+    }
+    // Still scheduling, and on one of the rotation's tracks rather than a
+    // torn state left behind by the boundary.
+    expect(musicEngine.isPlaying()).toBe(true);
+    expect(PARLOUR_ROTATION.some((id) => musicEngine.isPlaying(id))).toBe(true);
+  });
+
+  it('clears a queued request when stopped', () => {
+    // Otherwise a gesture after leaving the route restarts music the route
+    // already asked to stop.
+    musicEngine.play('parlour');
+    musicEngine.stop();
+    const ctx = FakeAudioContext.live;
+    if (ctx) ctx.state = 'suspended';
+    musicEngine.play('parlour');   // queued, because the context is blocked
+    musicEngine.stop();            // ...and must not survive this
+    intervalCount = 0;
+
+    musicEngine.resume();
+    expect(intervalCount).toBe(0);
+    if (ctx) ctx.state = 'running';
+  });
+});
+
+describe('volume as the single source for the bus', () => {
+  it('normalises anything that reaches it', () => {
+    // getInt can hand back NaN for a malformed stored value, and ?? does not
+    // catch it. NaN then propagates silently to the gain node.
+    expect(clampVolume(NaN)).toBe(70);
+    expect(clampVolume(null)).toBe(70);
+    expect(clampVolume(undefined)).toBe(70);
+    expect(clampVolume(Infinity)).toBe(70);
+    expect(clampVolume(-20)).toBe(0);
+    expect(clampVolume(999)).toBe(100);
+    expect(clampVolume(42.6)).toBe(43);
+  });
+
+  it('matches the reducer default, so reset and a fresh install agree', () => {
+    expect(clampVolume(NaN)).toBe(AppConstants.DEFAULT_MUSIC_VOLUME);
+  });
+});
+
+describe('intensity layers do not double-strike', () => {
+  it('skips hat positions the kit already plays', () => {
+    // The steady and driving kits place hats on eighths already. Adding more
+    // at the same steps sums two voices at one instant, so the hat jumps in
+    // level rather than the grid filling in.
+    const eighthKit: PatternNote[] = [0, 2, 4, 6].map((p) => [p, 42, 1, 'perc']);
+    const layers = intensityLayers(eighthKit, 8, 0.5);
+    const added = new Set(layers.filter((n) => n[1] === 42).map((n) => n[0]));
+    for (const [step] of eighthKit) {
+      expect(added.has(step), `hat duplicated at step ${step}`).toBe(false);
+    }
+  });
+
+  it('still fills the gaps in a sparse kit', () => {
+    const quarterKit: PatternNote[] = [0, 4].map((p) => [p, 42, 1, 'perc']);
+    const layers = intensityLayers(quarterKit, 8, 0.5);
+    expect(layers.filter((n) => n[1] === 42).length).toBeGreaterThan(0);
   });
 });

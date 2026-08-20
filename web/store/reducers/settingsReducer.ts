@@ -21,6 +21,7 @@ import {
   SETTINGS_SET_MUSIC_VOLUME,
 } from '../actions/settingsActions';
 import { DEFAULT_TILE_PALETTE, DEFAULT_TABLE_FELT, DEFAULT_ROSTER } from '@/lib/cosmetics';
+import { AppConstants } from '@/constants/appConstants';
 
 const initialState: SettingsState = {
   selectedVariant: 'Hong Kong Mahjong',
@@ -40,7 +41,7 @@ const initialState: SettingsState = {
   npcRosterMode: 'auto',
   crtEffect: false,
   musicEnabled: true,
-  musicVolume: 70,
+  musicVolume: AppConstants.DEFAULT_MUSIC_VOLUME,
 };
 
 export const settingsReducer = (

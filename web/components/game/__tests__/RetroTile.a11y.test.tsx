@@ -83,4 +83,21 @@ describe('tile accessible name', () => {
     expect(screen.getByRole('button', { name: 'Face-down tile' })).toBeInTheDocument();
     expect(screen.queryByText(/Three Bamboo/)).not.toBeInTheDocument();
   });
+
+  it('names a face-down tile that cannot be clicked', () => {
+    // Every tile in an opponent's hand. The "?" on the back is aria-hidden,
+    // so without a name here the whole hand announces as nothing. This branch
+    // returns before the face-up wrapper, so it needs its own name.
+    render(<RetroTile tile={threeBamboo()} showBack />);
+    expect(screen.getByRole('img', { name: 'Face-down tile' })).toBeInTheDocument();
+  });
+
+  it('names a face-down tile exactly once, in either form', () => {
+    const passive = render(<RetroTile tile={threeBamboo()} showBack />);
+    expect(passive.container.querySelectorAll('[aria-label]')).toHaveLength(1);
+    passive.unmount();
+
+    const active = render(<RetroTile tile={threeBamboo()} showBack onClick={vi.fn()} />);
+    expect(active.container.querySelectorAll('[aria-label]')).toHaveLength(1);
+  });
 });

@@ -280,22 +280,34 @@ export default function SettingsPageClient() {
             rank by counting sticks, circles or characters, which takes practice to
             read at a glance.
           </p>
-          <div className="space-y-2">
+          {/* A radio group, not three toggle buttons. The values are mutually
+              exclusive, and aria-pressed describes each control's own state
+              without saying they are alternatives: a screen reader announces
+              three independent switches rather than one choice of three.
+              Note the two settings below still use the older pattern. */}
+          <div className="space-y-2" role="radiogroup" aria-label="Tile numbers">
             {TILE_NUMBER_OPTIONS.map((opt) => (
-              <button
+              <label
                 key={opt.value}
-                type="button"
-                onClick={() => void dispatch(setBeginnerAssist(opt.value))}
-                aria-pressed={settings.beginnerAssist === opt.value}
-                className={`w-full text-left font-sans text-sm px-3 py-2 border transition-colors ${
+                className={`flex w-full cursor-pointer items-start gap-3 border px-3 py-2 text-left font-sans text-sm transition-colors ${
                   settings.beginnerAssist === opt.value
                     ? 'border-info text-info bg-info/10'
                     : 'border-border/40 text-muted-foreground hover:border-border'
                 }`}
               >
-                <span className="block font-medium text-foreground">{opt.label}</span>
-                <span className="block text-xs text-muted-foreground mt-0.5">{opt.description}</span>
-              </button>
+                <input
+                  type="radio"
+                  name="tile-numbers"
+                  value={opt.value}
+                  checked={settings.beginnerAssist === opt.value}
+                  onChange={() => void dispatch(setBeginnerAssist(opt.value))}
+                  className="mt-1 accent-info"
+                />
+                <span>
+                  <span className="block font-medium text-foreground">{opt.label}</span>
+                  <span className="block text-xs text-muted-foreground mt-0.5">{opt.description}</span>
+                </span>
+              </label>
             ))}
           </div>
         </div>

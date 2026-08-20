@@ -68,7 +68,18 @@ function RetroTile({
         <span className="text-muted-foreground text-[30%] min-w-[1em]" aria-hidden>?</span>
       </div>
     );
-    return onClick ? (
+    if (!onClick) {
+      // Same gap the face-up branch had, in the branch that returns earlier:
+      // the "?" inside is aria-hidden, so a face-down tile nobody can click,
+      // which is every tile in an opponent's hand, announced nothing at all.
+      return (
+        <div role="img" aria-label="Face-down tile">
+          {backContent}
+        </div>
+      );
+    }
+
+    return (
       <button
         onClick={onClick}
         disabled={disabled}
@@ -77,7 +88,7 @@ function RetroTile({
       >
         {backContent}
       </button>
-    ) : backContent;
+    );
   }
 
   const tileContent = (

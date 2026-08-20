@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { GameState, GamePhase } from '@/models/GameState';
 import { MatchState } from '@/models/MatchState';
 import type { AvailableClaim } from '@/engine/types';
@@ -29,7 +30,22 @@ import type { TileHeatOverlay } from '@/engine/shantenHeat';
 // PROTOTYPE — remove with the prototype directory
 import { useTileFaceVariant } from './prototype/PrototypeVariant';
 import { useTilePalette } from './TilePaletteContext';
-import ThreeTable, { type SeatAnchors } from './prototype/ThreeTable';
+import type { SeatAnchors } from './prototype/ThreeTable';
+
+/**
+ * PROTOTYPE — loaded lazily, and that is load-bearing rather than tidiness.
+ *
+ * A static import put `three` (and `react-dom/server`, via portraitTexture) in
+ * the FIRST-LOAD bundle for /play/game and /practice: 2.09MB against ~1.08MB for
+ * every other route. PrototypeVariantProvider renders nothing in production, so
+ * every real player on the DOM board was downloading and parsing ~1MB of WebGL
+ * that could never run. Referenced from JSX and unconditional, so nothing could
+ * tree-shake it either.
+ *
+ * `next/dynamic` puts it in its own chunk that is only requested when a variant
+ * actually asks for it, which in production is never.
+ */
+const ThreeTable = dynamic(() => import('./prototype/ThreeTable'), { ssr: false });
 
 interface GameBoardProps {
   gameState: GameState;
@@ -268,6 +284,12 @@ export default function GameBoard({
             to the table region so the hand isn't hidden behind the dock. */}
         {(protoVariant.three === 'board' || protoVariant.three === 'max') && (
           <ThreeTable
+            /* The scene is built once in a mount effect that captures `mode`.
+               F and G occupy the same JSX slot, so without a key React would
+               reconcile G into F's instance and show the F scene — no IBL, no
+               AO, wrong pitch and exposure — which is exactly the comparison
+               these variants exist to make. */
+            key={protoVariant.three}
             game={gameState}
             humanPlayerId={humanPlayerId}
             palette={protoPalette}
@@ -314,6 +336,11 @@ export default function GameBoard({
         )}
         <div className="game-table-surface relative flex min-h-0 w-full flex-col">
           {/* Top rim: opposite seat (desktop only) */}
+          {/* PROTOTYPE: unmounted under G, not merely CSS-hidden. G draws these
+              seats in the projected layer above, and leaving the rim copies
+              mounted gave every NPC two opponent-seat test ids, two seat
+              anchors and two copies of OpponentSeat's reaction effect. */}
+          {protoVariant.three !== 'max' && (
           <div className="hidden md:flex justify-center pt-2" style={{ flex: '0 0 auto' }} data-proto-rim-seat /* PROTOTYPE */>
             <OpponentSeat
               player={topPlayer}
@@ -325,9 +352,11 @@ export default function GameBoard({
               score={match?.playerScores?.[gameState.players.indexOf(topPlayer)]}
             />
           </div>
+          )}
 
           <div className="flex min-h-0 flex-1 items-stretch gap-2 px-1 md:px-2">
             {/* Left rim seat */}
+            {protoVariant.three !== 'max' && (
             <div className="hidden md:flex w-44 shrink-0 flex-col items-start justify-center" data-proto-rim-seat /* PROTOTYPE */>
               <OpponentSeat
                 player={leftPlayer}
@@ -339,6 +368,7 @@ export default function GameBoard({
                 score={match?.playerScores?.[gameState.players.indexOf(leftPlayer)]}
               />
             </div>
+            )}
 
             {/* Center: phase pill + discard sea + tutor line */}
             <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1 md:gap-2">
@@ -372,10 +402,13 @@ export default function GameBoard({
                 className="flex min-h-0 w-full max-w-[min(100%,22rem)] flex-col justify-center overflow-y-auto md:max-w-2xl"
                 data-proto-discard-sea /* PROTOTYPE — variant C tilt target */
               >
-                {/* PROTOTYPE: variants D/E render the sea in WebGL; F renders
-                    the whole board and mounts full-bleed further up. */}
-                {protoVariant.three && protoVariant.three !== 'board' ? (
+                {/* PROTOTYPE: variants D/E render the sea in WebGL. F AND G both
+                    render the whole board and mount full-bleed further up — the
+                    check has to name both, because testing `!== 'board'` alone
+                    let G mount a second, hidden scene in here. */}
+                {protoVariant.three === 'sea' || protoVariant.three === 'full' ? (
                   <ThreeTable
+                    key={protoVariant.three}
                     game={gameState}
                     humanPlayerId={humanPlayerId}
                     palette={protoPalette}
@@ -383,7 +416,7 @@ export default function GameBoard({
                     onTileSelect={onTileSelect}
                     selectedTileId={selectedTileId}
                   />
-                ) : protoVariant.three === 'board' ? null : (
+                ) : protoVariant.three ? null : (
                   <DiscardPool
                     discards={gameState.discardPile}
                     lastDiscardedTile={gameState.lastDiscardedTile}
@@ -410,6 +443,7 @@ export default function GameBoard({
 
             {/* Right rim seat + coach rail */}
             <div className="hidden md:flex w-44 shrink-0 min-h-0 flex-col items-end justify-center gap-2">
+              {protoVariant.three !== 'max' && (
               <div data-proto-rim-seat /* PROTOTYPE */>
               <OpponentSeat
                 player={rightPlayer}
@@ -421,6 +455,7 @@ export default function GameBoard({
                 score={match?.playerScores?.[gameState.players.indexOf(rightPlayer)]}
               />
               </div>
+              )}
               <div className="flex w-full min-h-0 flex-col gap-1 overflow-y-auto">
                 {faanProjection && <FaanMeter projection={faanProjection} minFaan={gameState.minFaan} />}
                 <DiscardReadingPanel game={gameState} humanPlayerId={humanPlayerId} />

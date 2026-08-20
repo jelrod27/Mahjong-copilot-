@@ -245,13 +245,64 @@ a time. That is both cheaper and better-looking; three heads swivelling in uniso
 reads as uncanny. Interval 10–18s, hold 1.3s.
 
 Measured idle (variant G, 5s window after the board settles, counters zeroed):
-**~19 renders / 5s, every one animation-driven, 0 relayouts.**
+**~13-17 renders / 5s, every one animation-driven, 0 relayouts, 1 canvas.**
+
+An earlier figure of ~19 published here was measured while variant G was
+silently mounting **two** scenes (see below), and `__protoTicks`/`__protoRenders`
+are globals — so it was the sum of both. Same fix took G from 2fps to 18fps
+headless, because the hidden scene was running its own composer, GTAO and bloom.
 
 Careful reading the duty-cycle percentage from `proto-check`: under SwiftShader
 the loop ticks ~6×/s, and the frame loop clamps `dt` to 50ms, so easing advances
 at roughly a third of real time and every animation lasts ~3× longer in
 wall-clock. The reported 60% duty is that artifact. Renders-per-second is the
 honest number; the real-GPU figure is still unmeasured.
+
+### Review pass — the bugs the screenshots could not show
+
+A review of the branch found fifteen issues; the ones worth remembering:
+
+- **`three` was in the PRODUCTION first-load bundle.** A static import in
+  GameBoard put it (and `react-dom/server`, via portraitTexture) on /play/game
+  and /practice: **2.09MB against ~1.08MB** for every other route. The provider
+  renders nothing in production, so every real player on the DOM board was
+  downloading ~1MB of WebGL that could never run, and nothing could tree-shake it
+  because the component is referenced from JSX. `next/dynamic` fixed it —
+  **2.09 → 1.30MB**. The README had "production bundle delta unmeasured" listed
+  as open for two sessions; it was one build-stats query away the whole time.
+- **Variant G mounted two scenes.** The sea branch tested `three !== 'board'`,
+  and G is `'max'` — truthy, and not `'board'`. The second scene rendered into a
+  `display:none` container at 1x1px with a full renderer, composer, GTAO, bloom
+  and rAF loop. It also made every frame metric double-counted and made
+  `proto-check` report the *hidden* canvas rather than the visible one.
+- **A self-drawn win fired no reaction at all.** `handleSelfDrawnWin` returns the
+  same hands, melds, discards and wall with only `phase` and `winnerId` changed,
+  and neither was in the sync signature — so `layout()` never ran and
+  `deriveTableEvent` never saw `finished`. Win-by-discard worked only by
+  accident, because that path rewrites every player's hand. The headline feature
+  was half dead and no screenshot could have shown it.
+- **`EffectComposer.setSize` takes LOGICAL pixels and applies the ratio itself**
+  (three 0.185, EffectComposer.js:317). This file previously asserted the
+  opposite in a comment and "corrected" each pass by hand, which resized bloom
+  back *down* to CSS pixels. `composer.setSize(w, h)` alone is the whole job.
+  `EffectComposer.dispose()` does *not* dispose the passes you gave it.
+- **Texture accumulation.** Every reaction pushed a CanvasTexture into a list
+  that lived until unmount; `dispose()` frees the GPU copy but the list kept the
+  JS reference, and a CanvasTexture holds its 512x614 canvas — ~1.26MB per
+  reaction, unreclaimable. The material already owns exactly one texture.
+- **Async rasterisation needs a liveness flag.** Slices resolving after unmount
+  wrote to disposed materials and invalidated a dead loop.
+- **`portraitImageSet` would make a character invisible.** CharacterPortrait
+  short-circuits to an `<img>` for any emotion with an override; that has no
+  viewBox and no layer groups, so slicing yields four transparent textures and
+  the NPC silently vanishes in that emotion. `hasImageOverride` now exists so
+  callers can ask.
+- **The wall reflowed as it drained.** `perSide` was recomputed from the live
+  count, so every eighth draw shifted ~136 tiles half a tile sideways. Anchored
+  to the initial size instead.
+- **`?variant=toString` passed validation** — `in` walks the prototype chain.
+- Advice lozenges were hidden rather than removed, accumulating one mesh and
+  material per tile the tutor ever mentioned.
 
 ## Open — next session
 
@@ -273,7 +324,6 @@ honest number; the real-GPU figure is still unmeasured.
 - Real GPU performance unmeasured. Headless is SwiftShader software rendering,
   so the FPS numbers from `proto-check.mjs` are meaningless. Check on a real
   machine and a phone.
-- Production bundle delta from `three` unmeasured.
 
 ## Decision pending
 

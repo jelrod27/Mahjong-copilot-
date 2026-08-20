@@ -351,8 +351,10 @@ export default function ThreeTable(props: ThreeTableProps) {
       // an edge falloff that darkens the board outward — rather than in bigger
       // shapes, so the table gains character without becoming what the eye goes
       // to first. See boardMaterials.ts.
+      // NOT disposed on unmount: makeFeltTextures memoises its result at module
+      // scope, so these outlive this scene and are handed to the next one.
+      // Disposing them here would give the next mount a dead texture.
       const feltTex = makeFeltTextures();
-      boardDisposables.push(feltTex.map, feltTex.normalMap, feltTex.roughnessMap);
       const felt = new THREE.Mesh(
         new THREE.BoxGeometry(18.6, 0.5, 18.6),
         new THREE.MeshStandardMaterial({
@@ -372,8 +374,7 @@ export default function ThreeTable(props: ThreeTableProps) {
       scene.add(felt);
       boardDisposables.push(felt.geometry, felt.material as THREE.Material);
 
-      const woodTex = makeWoodTextures();
-      boardDisposables.push(woodTex.map, woodTex.roughnessMap);
+      const woodTex = makeWoodTextures(); // memoised; see the felt note above
       const rimGeometry = makeRimGeometry(20.6, 18.4, 0.62);
       const rim = new THREE.Mesh(
         rimGeometry,
@@ -431,6 +432,7 @@ export default function ThreeTable(props: ThreeTableProps) {
           texCache.set(k, p);
         }
         p.then(tex => {
+          if (disposed) { tex.dispose(); return; }
           createdTextures.push(tex);
           mat!.map = tex;
           mat!.needsUpdate = true;
@@ -516,13 +518,37 @@ export default function ThreeTable(props: ThreeTableProps) {
     const seenBars = new Set<string>();
     const barGeometry = new THREE.BoxGeometry(TILE_W * 0.82, 0.06, 0.14);
 
+    /**
+     * Set on teardown. Face textures and portrait slices resolve async, and a
+     * scene can be unmounted or switched between a rasterisation starting and
+     * finishing — at which point the callback would write to a disposed material
+     * and invalidate a frame loop that no longer runs.
+     */
+    let disposed = false;
+    /** Columns per wall side, fixed at the first deal so the ring never reflows. */
+    let wallColumns = 0;
     // Frames still owed to the compositor after a change (see the frame loop).
     let dirty = 3;
     const invalidate = () => { dirty = 2; };
 
-    /** Advice lozenges only exist for tiles the tutor spoke about this turn. */
+    /**
+     * Advice lozenges only exist for tiles the tutor spoke about this turn.
+     *
+     * Removed and disposed rather than merely hidden. Tile ids are unique across
+     * the 144-tile wall, so toggling `visible` left one resident mesh and
+     * material per tile the tutor had ever mentioned — every one of them walked
+     * by the renderer on every frame, for the rest of the match.
+     */
     function sweepBars() {
-      for (const [id, bar] of bars) bar.visible = seenBars.has(id);
+      for (const [id, bar] of bars) {
+        if (seenBars.has(id)) {
+          bar.visible = true;
+          continue;
+        }
+        tileGroup.remove(bar);
+        (bar.material as THREE.Material).dispose();
+        bars.delete(id);
+      }
     }
 
     /** Rotate a seat-local (x,z) into world space. Seat 0 is nearest camera. */
@@ -729,8 +755,16 @@ export default function ThreeTable(props: ThreeTableProps) {
       });
 
       // --- The wall: face-down, stacked two high, ringing the table.
+      //
+      // Column count comes from the wall's ORIGINAL size, not its current one.
+      // Deriving it live meant `perSide` stepped down every time the count
+      // crossed a multiple of eight, and since wall x/z are written directly
+      // rather than eased, all ~136 remaining tiles teleported half a tile
+      // sideways mid-hand, roughly every eight draws. A real wall does not
+      // reflow as it is consumed; it just gets shorter.
       const remaining = game.wall.length;
-      const perSide = Math.ceil(remaining / 8); // 4 sides x 2 levels
+      if (wallColumns === 0 && remaining > 0) wallColumns = Math.ceil(remaining / 8);
+      const perSide = wallColumns || 1; // 4 sides x 2 levels
       let placed = 0;
       for (let side = 0; side < 4 && placed < remaining; side++) {
         for (let n = 0; n < perSide && placed < remaining; n++) {
@@ -832,15 +866,14 @@ export default function ThreeTable(props: ThreeTableProps) {
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
       }
+      // EffectComposer.setSize takes LOGICAL pixels and applies the pixel ratio
+      // itself, forwarding device pixels to both swap buffers and to every pass
+      // (three 0.185, EffectComposer.js:317). An earlier version of this handler
+      // assumed the opposite and "corrected" each pass by hand, which resized
+      // bloom back DOWN to CSS pixels — halving its resolution on a 2x display —
+      // and left the two swap buffers a pixel apart on a fractional DPR, since
+      // only renderTarget1 was being re-sized. One call does the whole job.
       composer?.setSize(w, h);
-      bloomPass?.setSize(w, h);
-      const dw = Math.floor(w * renderer.getPixelRatio());
-      const dh = Math.floor(h * renderer.getPixelRatio());
-      composerTarget?.setSize(dw, dh);
-      // EffectComposer.setSize forwards CSS pixels to every pass, but AO is
-      // sampled against the real depth buffer — at CSS size on a 2x display it
-      // would sample half the pixels it is compositing onto.
-      gtaoPass?.setSize(dw, dh);
       emitSeatAnchors(w, h);
       invalidate();
     }
@@ -943,6 +976,7 @@ export default function ThreeTable(props: ThreeTableProps) {
     apiRef.current = {
       sync: layout,
       dispose: () => {
+        disposed = true;
         cancelAnimationFrame(raf);
         ro.disconnect();
         renderer.domElement.removeEventListener('click', onClick);
@@ -955,7 +989,10 @@ export default function ThreeTable(props: ThreeTableProps) {
         backMaterial.dispose();
         matCache.forEach(m => m.dispose());
         createdTextures.forEach(tex => tex.dispose());
+        // EffectComposer.dispose() frees its own swap buffers and copy pass but
+        // NOT the passes it was given, so each one needs disposing by name.
         gtaoPass?.dispose();
+        bloomPass?.dispose();
         composer?.dispose();
         composerTarget?.dispose();
         envRT?.dispose();
@@ -986,6 +1023,14 @@ export default function ThreeTable(props: ThreeTableProps) {
       p.selectedTileId ?? '',
       p.suggestedTileId ?? '',
       p.game.wall.length,
+      // A self-drawn win changes ONLY these two: handleSelfDrawnWin returns the
+      // same hands, melds, discards and wall with phase and winnerId set. Without
+      // them in the signature the scene never relaid out, deriveTableEvent never
+      // saw `finished`, and the win reaction — triumphant winner, frustrated
+      // table — never fired at all. Win-by-discard worked only by accident,
+      // because that path happens to rewrite every player's hand.
+      p.game.phase,
+      p.game.winnerId ?? '',
       p.game.players
         .map(pl =>
           [

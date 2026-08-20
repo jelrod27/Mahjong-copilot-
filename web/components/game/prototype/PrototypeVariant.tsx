@@ -119,7 +119,11 @@ export function useTileFaceVariant(): FaceVariant {
 function readInitialVariant(): VariantKey {
   if (typeof window === 'undefined') return 'A';
   const v = new URLSearchParams(window.location.search).get('variant')?.toUpperCase();
-  return v && v in VARIANTS ? (v as VariantKey) : 'A';
+  // hasOwnProperty, not `in`: `in` walks the prototype chain, so ?variant=TOSTRING
+  // (or CONSTRUCTOR, VALUEOF, HASOWNPROPERTY) passed this check and handed every
+  // consumer Object.prototype's method as if it were a variant — undefined
+  // faceClass stamped into className, no renderFace, "undefined" in the switcher.
+  return v && Object.prototype.hasOwnProperty.call(VARIANTS, v) ? (v as VariantKey) : 'A';
 }
 
 /**

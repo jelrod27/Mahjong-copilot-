@@ -139,10 +139,19 @@ export function createNpcRigSet(
 ): NpcRigSet {
   const rigs = new Map<string, Rig>();
   const planeGeometry = new THREE.PlaneGeometry(PLANE_W, PLANE_H);
-  const createdTextures: THREE.Texture[] = [];
+  /**
+   * Set once the rig set is torn down.
+   *
+   * Rasterisation is async, so a slice can resolve after unmount or after a
+   * variant switch. Without this the callback would find its mesh (layers are
+   * never cleared), build a texture, assign it to a material whose dispose()
+   * has already run, and poke a frame loop that no longer exists.
+   */
+  let disposed = false;
 
   function applyLayerTexture(rig: Rig, layer: PortraitLayer, token: number) {
     renderPortraitLayer(rig.npcId, rig.emotion, layer, textureSize).then((canvas) => {
+      if (disposed) return;
       // The face slice re-rasterises on every reaction; if the character has
       // reacted again in the meantime this result is already stale.
       if (layer === 'face' && rig.faceToken !== token) return;
@@ -153,8 +162,13 @@ export function createNpcRigSet(
       tex.generateMipmaps = true;
       tex.minFilter = THREE.LinearMipmapLinearFilter;
       tex.magFilter = THREE.LinearFilter;
-      createdTextures.push(tex);
       const mat = mesh.material as THREE.MeshBasicMaterial;
+      // Replacing, not accumulating. An earlier version pushed every texture
+      // into a list that lived until unmount: dispose() frees the GPU copy, but
+      // the list kept the JS reference, and a CanvasTexture holds its 512x614
+      // canvas — ~1.26MB of backing store per reaction that GC could never
+      // reclaim. Three characters reacting across a match ran to hundreds of MB.
+      // The material already owns exactly one texture; that is the whole set.
       mat.map?.dispose();
       mat.map = tex;
       mat.opacity = 1;
@@ -163,6 +177,17 @@ export function createNpcRigSet(
       // layout are long spent, so each texture has to ask for its own redraw.
       invalidate();
     });
+  }
+
+  /** Frees a rig's meshes and the one texture each of its materials owns. */
+  function destroy(rig: Rig) {
+    parent.remove(rig.group);
+    rig.layers.forEach((m) => {
+      const mat = m.material as THREE.MeshBasicMaterial;
+      mat.map?.dispose();
+      mat.dispose();
+    });
+    rig.layers.clear();
   }
 
   function build(playerId: string, npcId: NpcId, seat: number, pos: { x: number; z: number }): Rig {
@@ -224,12 +249,7 @@ export function createNpcRigSet(
       let rig = rigs.get(playerId);
       if (rig && rig.npcId !== npcId) {
         // Different character in the same seat: rebuild rather than repaint.
-        parent.remove(rig.group);
-        rig.layers.forEach((m) => {
-          const mat = m.material as THREE.MeshBasicMaterial;
-          mat.map?.dispose();
-          mat.dispose();
-        });
+        destroy(rig);
         rigs.delete(playerId);
         rig = undefined;
       }
@@ -319,12 +339,7 @@ export function createNpcRigSet(
     sweep(seen) {
       for (const [id, rig] of rigs) {
         if (seen.has(id)) continue;
-        parent.remove(rig.group);
-        rig.layers.forEach((m) => {
-          const mat = m.material as THREE.MeshBasicMaterial;
-          mat.map?.dispose();
-          mat.dispose();
-        });
+        destroy(rig);
         rigs.delete(id);
       }
     },
@@ -333,17 +348,10 @@ export function createNpcRigSet(
     ids: () => Array.from(rigs.keys()),
 
     dispose() {
-      for (const rig of rigs.values()) {
-        parent.remove(rig.group);
-        rig.layers.forEach((m) => {
-          const mat = m.material as THREE.MeshBasicMaterial;
-          mat.map?.dispose();
-          mat.dispose();
-        });
-      }
+      disposed = true;
+      for (const rig of rigs.values()) destroy(rig);
       rigs.clear();
       planeGeometry.dispose();
-      createdTextures.forEach((t) => t.dispose());
     },
   };
 }

@@ -64,7 +64,13 @@ for (const v of VARIANTS) {
       fps: Math.round((frames / (performance.now() - start)) * 1000),
       domNodes: document.getElementsByTagName('*').length,
       tileButtons: document.querySelectorAll('[data-testid="human-hand-tile"] button').length,
-      canvases: document.querySelectorAll('.proto-three-mount canvas').length,
+      // Board modes mount full-bleed with their own class; only the sea/hand
+      // variants use the default mount. Matching just the latter reported 0 for
+      // F and G — and, before the duplicate mount was removed, reported the
+      // HIDDEN scene rather than the visible one.
+      canvases: document.querySelectorAll(
+        '.proto-three-mount canvas, .proto-three-board canvas',
+      ).length,
       // Everything a screen reader can name in the discard sea.
       seaAccessible: document.querySelectorAll('[data-proto-discard-sea] [aria-label]').length,
       ticks: window.__protoTicks ?? 0,

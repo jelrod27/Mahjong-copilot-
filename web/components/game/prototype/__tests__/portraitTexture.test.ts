@@ -4,6 +4,7 @@ import {
   portraitSvg,
   layerNamesIn,
   sliceSvg,
+  hasImageOverride,
 } from '../portraitTexture';
 import { NPCS, type NpcId, type NpcEmotion } from '@/content/npcs';
 
@@ -42,7 +43,7 @@ describe('portrait layer slicing', () => {
         const emitted = new Set(layerNamesIn(markup));
         expect(emitted.size, `${character}/${emotion} emitted no layer groups`).toBeGreaterThan(0);
 
-        const slices = sliceSvg(markup, 512);
+        const slices = sliceSvg(markup, 512).layers;
         const claimed = new Set<string>();
         for (const layer of PORTRAIT_LAYERS) {
           for (const name of layerNamesIn(slices[layer])) claimed.add(name);
@@ -56,7 +57,7 @@ describe('portrait layer slicing', () => {
 
   it('puts each group in exactly one slice, never two', () => {
     const markup = portraitSvg(CHARACTERS[0], 'idle');
-    const slices = sliceSvg(markup, 512);
+    const slices = sliceSvg(markup, 512).layers;
     const seen = new Map<string, string>();
     for (const layer of PORTRAIT_LAYERS) {
       for (const name of layerNamesIn(slices[layer])) {
@@ -69,7 +70,7 @@ describe('portrait layer slicing', () => {
   it('keeps every slice on the source viewBox so the layers register', () => {
     const markup = portraitSvg(CHARACTERS[0], 'idle');
     const sourceViewBox = markup.match(/viewBox="([^"]+)"/)![1];
-    const slices = sliceSvg(markup, 512);
+    const slices = sliceSvg(markup, 512).layers;
     for (const layer of PORTRAIT_LAYERS) {
       expect(slices[layer]).toContain(`viewBox="${sourceViewBox}"`);
     }
@@ -78,7 +79,7 @@ describe('portrait layer slicing', () => {
   it('carries defs into every slice, so no slice paints a missing gradient black', () => {
     const markup = portraitSvg(CHARACTERS[0], 'idle');
     expect(markup).toContain('<defs>');
-    const slices = sliceSvg(markup, 512);
+    const slices = sliceSvg(markup, 512).layers;
     for (const layer of PORTRAIT_LAYERS) {
       // Serialising a parsed SVG re-declares xmlns on each child, so the tag
       // comes back as `<defs xmlns="...">` rather than a bare `<defs>`.
@@ -87,8 +88,30 @@ describe('portrait layer slicing', () => {
     }
   });
 
+  it('derives the raster height from the viewBox rather than a second hardcoded ratio', () => {
+    // The rig is 200x240, so 512 wide is 614 high. The point of returning it is
+    // that the caller no longer keeps its own copy of that ratio to drift from.
+    const sliced = sliceSvg(portraitSvg(CHARACTERS[0], 'idle'), 512);
+    expect(sliced.height).toBe(614);
+    for (const layer of PORTRAIT_LAYERS) {
+      expect(sliced.layers[layer]).toContain(`height="${sliced.height}"`);
+    }
+  });
+
+  it('reports characters whose emotion is served by an image override', () => {
+    // The override path returns an <img>, which has no viewBox and no layer
+    // groups, so slicing it would yield four transparent textures and an
+    // invisible character. Nothing populates portraitImageSet today; this pins
+    // that the rig can be asked rather than discovered as a missing NPC.
+    for (const character of CHARACTERS) {
+      for (const emotion of EMOTIONS) {
+        expect(typeof hasImageOverride(character, emotion)).toBe('boolean');
+      }
+    }
+  });
+
   it('rasterises at the requested texture size, not the rig DOM size', () => {
-    const slices = sliceSvg(portraitSvg(CHARACTERS[0], 'idle'), 512);
+    const slices = sliceSvg(portraitSvg(CHARACTERS[0], 'idle'), 512).layers;
     for (const layer of PORTRAIT_LAYERS) {
       expect(slices[layer]).toContain('width="512"');
       expect(slices[layer]).toContain('height="614"');
@@ -98,9 +121,9 @@ describe('portrait layer slicing', () => {
   it('confines emotion to the face slice', () => {
     const stable = PORTRAIT_LAYERS.filter((l) => l !== 'face');
     for (const character of CHARACTERS) {
-      const baseline = sliceSvg(portraitSvg(character, 'idle'), 512);
+      const baseline = sliceSvg(portraitSvg(character, 'idle'), 512).layers;
       for (const emotion of EMOTIONS) {
-        const slices = sliceSvg(portraitSvg(character, emotion), 512);
+        const slices = sliceSvg(portraitSvg(character, emotion), 512).layers;
         for (const layer of stable) {
           expect(
             slices[layer],
@@ -115,8 +138,8 @@ describe('portrait layer slicing', () => {
     // Guards the previous test from passing vacuously — if slicing returned
     // empty documents, every layer would compare equal.
     const character = CHARACTERS[0];
-    const idle = sliceSvg(portraitSvg(character, 'idle'), 512).face;
-    const surprised = sliceSvg(portraitSvg(character, 'surprised'), 512).face;
+    const idle = sliceSvg(portraitSvg(character, 'idle'), 512).layers.face;
+    const surprised = sliceSvg(portraitSvg(character, 'surprised'), 512).layers.face;
     expect(idle).not.toBe(surprised);
   });
 });

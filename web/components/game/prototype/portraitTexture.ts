@@ -25,7 +25,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import CharacterPortrait from '@/components/npc/CharacterPortrait';
-import type { NpcId, NpcEmotion } from '@/content/npcs';
+import { NPCS, type NpcId, type NpcEmotion } from '@/content/npcs';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -60,6 +60,20 @@ const EMOTION_DEPENDENT: Record<PortraitLayer, boolean> = {
   front: false,
 };
 
+/**
+ * True when the rig would render an `<img>` rather than its SVG.
+ *
+ * CharacterPortrait short-circuits to a plain image whenever
+ * `portraitImageSet[emotion]` is populated — the documented "round 2 art-swap"
+ * path. That markup has no viewBox and no data-layer groups, so slicing it
+ * yields four empty documents and the character rasterises to four fully
+ * transparent textures: invisible at their seat, with nothing logged. Callers
+ * have to know the difference rather than discover it as a missing NPC.
+ */
+export function hasImageOverride(character: NpcId, emotion: NpcEmotion): boolean {
+  return Boolean(NPCS[character]?.portraitImageSet?.[emotion]);
+}
+
 /** Renders the portrait component to a standalone SVG document string. */
 export function portraitSvg(character: NpcId, emotion: NpcEmotion): string {
   const markup = renderToStaticMarkup(
@@ -76,6 +90,12 @@ export function portraitSvg(character: NpcId, emotion: NpcEmotion): string {
   return markup.includes('xmlns=')
     ? markup
     : markup.replace('<svg', `<svg xmlns="${SVG_NS}"`);
+}
+
+/** One rig cut into depth slices, with the pixel height derived from its viewBox. */
+export interface SlicedPortrait {
+  layers: Record<PortraitLayer, string>;
+  height: number;
 }
 
 /** Every `data-layer` name present in a rendered rig, in document order. */
@@ -103,8 +123,12 @@ export function layerNamesIn(markup: string): string[] {
  * a 512px texture is exactly the one-bilinear-tap resample that made the tile
  * faces look crunchy. Sizing the document up front makes the browser rasterise
  * the vectors at full texture resolution instead.
+ *
+ * The derived pixel height is returned rather than left for the caller to
+ * recompute: it comes from the rig's own viewBox, and a second hardcoded copy of
+ * that ratio agrees only while framing is 'bust' ('face' framing is square).
  */
-export function sliceSvg(markup: string, size: number): Record<PortraitLayer, string> {
+export function sliceSvg(markup: string, size: number): SlicedPortrait {
   const doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
   const root = doc.documentElement;
   const defs = root.querySelector('defs');
@@ -113,20 +137,20 @@ export function sliceSvg(markup: string, size: number): Record<PortraitLayer, st
   const [, , vbW, vbH] = viewBox.split(/\s+/).map(Number);
   const height = Math.round((size * vbH) / vbW);
 
-  const out = {} as Record<PortraitLayer, string>;
+  const layers = {} as Record<PortraitLayer, string>;
   for (const layer of PORTRAIT_LAYERS) {
     const claimed = LAYER_GROUPS[layer];
     const groups = Array.from(root.querySelectorAll('[data-layer]')).filter((el) =>
       claimed.includes(el.getAttribute('data-layer') as string),
     );
     const body = groups.map((g) => g.outerHTML).join('');
-    out[layer] =
+    layers[layer] =
       `<svg xmlns="${SVG_NS}" viewBox="${viewBox}" width="${size}" height="${height}">` +
       (defs ? defs.outerHTML : '') +
       body +
       `</svg>`;
   }
-  return out;
+  return { layers, height };
 }
 
 /**
@@ -177,6 +201,25 @@ function cacheKey(character: NpcId, emotion: NpcEmotion, layer: PortraitLayer, s
 }
 
 const canvasCache = new Map<string, Promise<HTMLCanvasElement>>();
+/**
+ * Sliced documents, keyed by character:emotion:size.
+ *
+ * Slicing produces all four layers at once, so doing it per layer meant four
+ * full `renderToStaticMarkup` passes over the 566-line rig and four DOMParser
+ * passes to keep one document and throw three away — twelve of each for a
+ * three-character table. Cached at the set level, three quarters of that goes.
+ */
+const sliceCache = new Map<string, SlicedPortrait>();
+
+function slicesFor(character: NpcId, emotion: NpcEmotion, size: number): SlicedPortrait {
+  const key = `${character}:${emotion}:${size}`;
+  let sliced = sliceCache.get(key);
+  if (!sliced) {
+    sliced = sliceSvg(portraitSvg(character, emotion), size);
+    sliceCache.set(key, sliced);
+  }
+  return sliced;
+}
 
 /** One depth slice of a character, rasterised and cached. */
 export function renderPortraitLayer(
@@ -188,9 +231,13 @@ export function renderPortraitLayer(
   const key = cacheKey(character, emotion, layer, size);
   let pending = canvasCache.get(key);
   if (!pending) {
-    const slices = sliceSvg(portraitSvg(character, emotion), size);
-    const height = Math.round(size * 1.2); // rig is 200x240
-    pending = rasterise(slices[layer], size, height);
+    const sliced = slicesFor(character, emotion, size);
+    // Height comes from the slicer, which derived it from the rig's own
+    // viewBox. Hardcoding `size * 1.2` here duplicated that ratio in a second
+    // place: the two agree only while framing is 'bust', and 'face' framing is
+    // square, so any viewBox change would have stretched every character with
+    // no test able to see it.
+    pending = rasterise(sliced.layers[layer], size, sliced.height);
     canvasCache.set(key, pending);
   }
   return pending;
@@ -207,7 +254,8 @@ export function renderPortraitLayers(
   );
 }
 
-/** Test seam: the cache is module-level and would leak between cases. */
+/** Test seam: the caches are module-level and would leak between cases. */
 export function clearPortraitCache() {
   canvasCache.clear();
+  sliceCache.clear();
 }

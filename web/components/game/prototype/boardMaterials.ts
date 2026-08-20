@@ -134,7 +134,21 @@ export interface FeltTextures {
  * `feltHex` keeps the existing jade the board already ships — the brief was
  * that the board is liked and merely thin, so the colour does not move.
  */
+const feltCache = new Map<string, FeltTextures>();
+let woodCache: WoodTextures | null = null;
+
+/**
+ * The felt: colour at table scale, fibre at cloth scale.
+ *
+ * Memoised because the result is deterministic in `feltHex` and building it is
+ * not cheap: a 1024x1024 loop running a 4-octave fbm per pixel, then two 512x512
+ * fields plus a normal-map pass — tens of millions of scalar ops, synchronous on
+ * the main thread. Uncached, that ran again on every mount and every variant
+ * switch into a board mode, for a texture set that is byte-identical each time.
+ */
 export function makeFeltTextures(feltHex = '#1d5140'): FeltTextures {
+  const cached = feltCache.get(feltHex);
+  if (cached) return cached;
   const MAP = 1024;
   const NAP = 512;
   const NAP_REPEAT = 11;
@@ -221,11 +235,13 @@ export function makeFeltTextures(feltHex = '#1d5140'): FeltTextures {
   }
   rctx.putImageData(rimg, 0, 0);
 
-  return {
+  const textures: FeltTextures = {
     map: asTexture(mapCanvas, 1, true),
     normalMap: asTexture(heightToNormal(height, NAP, 2.2), NAP_REPEAT, false),
     roughnessMap: asTexture(roughCanvas, NAP_REPEAT, false),
   };
+  feltCache.set(feltHex, textures);
+  return textures;
 }
 
 export interface WoodTextures {
@@ -241,6 +257,7 @@ export interface WoodTextures {
  * pull the eye straight to the edge, which is the opposite of what is wanted.
  */
 export function makeWoodTextures(): WoodTextures {
+  if (woodCache) return woodCache;
   const SIZE = 512;
   const { canvas, ctx } = makeCanvas(SIZE);
   const img = ctx.createImageData(SIZE, SIZE);
@@ -278,10 +295,11 @@ export function makeWoodTextures(): WoodTextures {
   }
   rctx.putImageData(rimg, 0, 0);
 
-  return {
+  woodCache = {
     map: asTexture(canvas, 3, true),
     roughnessMap: asTexture(roughCanvas, 3, false),
   };
+  return woodCache;
 }
 
 /**

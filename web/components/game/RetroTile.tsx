@@ -1,8 +1,10 @@
 'use client';
 
 import { memo } from 'react';
-import { Tile, TileType, TileSuit, WindTile, DragonTile } from '@/models/Tile';
+import { Tile, TileType } from '@/models/Tile';
+import { tileArtSrc } from '@/lib/tileArt';
 import { useTilePalette } from './TilePaletteContext';
+import { useTileDisplay } from './TileDisplayContext';
 import { TilePalette } from '@/lib/cosmetics';
 import type { TileHeatOverlay } from '@/engine/shantenHeat';
 
@@ -23,37 +25,6 @@ interface RetroTileProps {
   paletteOverride?: TilePalette;
 }
 
-function getSymbol(tile: Tile): string {
-  if (tile.type === TileType.SUIT) return tile.number?.toString() || '';
-  if (tile.type === TileType.HONOR) {
-    if (tile.wind) {
-      const symbols: Record<WindTile, string> = {
-        [WindTile.EAST]: '東', [WindTile.SOUTH]: '南',
-        [WindTile.WEST]: '西', [WindTile.NORTH]: '北',
-      };
-      return symbols[tile.wind] || '';
-    }
-    if (tile.dragon) {
-      const symbols: Record<DragonTile, string> = {
-        [DragonTile.RED]: '中', [DragonTile.GREEN]: '發', [DragonTile.WHITE]: '白',
-      };
-      return symbols[tile.dragon] || '';
-    }
-  }
-  if (tile.type === TileType.BONUS) return tile.flower || tile.season || '';
-  return '';
-}
-
-function getSuitLabel(tile: Tile): string {
-  if (tile.type === TileType.SUIT) {
-    const labels: Record<string, string> = {
-      [TileSuit.BAMBOO]: '索', [TileSuit.CHARACTER]: '萬', [TileSuit.DOT]: '筒',
-    };
-    return labels[tile.suit] || '';
-  }
-  return '';
-}
-
 // The tutor strip and the legend under the hand must name the same three
 // colours, or the strip becomes unreadable. Both sides point at these tokens
 // rather than at literals so they cannot drift apart.
@@ -69,6 +40,7 @@ function RetroTile({
   tutorColor, tutorLabel, heatOverlay, paletteOverride,
 }: RetroTileProps) {
   const ctxPalette = useTilePalette();
+  const { showNumerals } = useTileDisplay();
   const palette = paletteOverride ?? ctxPalette;
   const suitColor = palette.suitColors[tile.suit] || '#5c4632';
   const faceStyle = palette.faceBg.startsWith('#')
@@ -96,7 +68,18 @@ function RetroTile({
         <span className="text-muted-foreground text-[30%] min-w-[1em]" aria-hidden>?</span>
       </div>
     );
-    return onClick ? (
+    if (!onClick) {
+      // Same gap the face-up branch had, in the branch that returns earlier:
+      // the "?" inside is aria-hidden, so a face-down tile nobody can click,
+      // which is every tile in an opponent's hand, announced nothing at all.
+      return (
+        <div role="img" aria-label="Face-down tile">
+          {backContent}
+        </div>
+      );
+    }
+
+    return (
       <button
         onClick={onClick}
         disabled={disabled}
@@ -105,7 +88,7 @@ function RetroTile({
       >
         {backContent}
       </button>
-    ) : backContent;
+    );
   }
 
   const tileContent = (
@@ -132,24 +115,47 @@ function RetroTile({
         />
       )}
 
-      <div className="flex flex-1 flex-col items-center justify-center px-0.5">
-        <span
-          className="mahjong-tile-symbol"
-          style={{ fontSize: 'calc(var(--tile-w) * 0.42)', color: suitColor }}
-        >
-          {getSymbol(tile)}
+      {/* Rank as a numeral, for players still learning to count bamboo sticks
+          at a glance. Suited tiles only: an honour has no rank to print, and
+          a numeral on a dragon would be inventing information. Sized from
+          --tile-w so it tracks every tile size, and parked in the top corner
+          clear of the artwork, which is centred. aria-hidden because the
+          tile's name already speaks the rank. */}
+      {showNumerals && tile.type === TileType.SUIT && tile.number !== undefined && (
+        <span className="mahjong-tile-numeral" style={{ color: suitColor }} aria-hidden>
+          {tile.number}
         </span>
-        {size !== 'sm' && size !== 'xs' && (
-          <span
-            className="mahjong-tile-symbol leading-none opacity-70"
-            style={{ fontSize: 'calc(var(--tile-w) * 0.2)', color: suitColor }}
-          >
-            {getSuitLabel(tile)}
-          </span>
-        )}
+      )}
+
+      <div className="flex flex-1 items-center justify-center p-[6%]">
+        {/* Decorative: the tile is named on the element that carries the
+            accessible name, so describing the drawing as well would announce
+            every tile twice. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={tileArtSrc(tile)}
+          alt=""
+          aria-hidden
+          draggable={false}
+          className="mahjong-tile-art"
+        />
       </div>
     </div>
   );
+
+  // A tile with no click handler is not a button, and until now it had no
+  // accessible name either: its identity came from the Unicode glyph being
+  // read as text. The artwork is decorative, so that content has gone, and
+  // without this the whole discard sea and every exposed meld would announce
+  // as nothing. Interactive tiles are left alone, because the button below
+  // already carries the name and a second one inside would announce twice.
+  if (!onClick) {
+    return (
+      <div role="img" aria-label={tileAriaLabel}>
+        {tileContent}
+      </div>
+    );
+  }
 
   if (onClick) {
     return (

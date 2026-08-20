@@ -12,6 +12,7 @@ import {
   DEFAULT_ROSTER,
 } from '@/lib/cosmetics';
 import { isNpcRosterMode, NpcRosterMode } from '@/lib/rosterRotation';
+import { isBeginnerAssistSetting, type BeginnerAssistSetting } from '@/lib/beginnerAssist';
 
 export type DisplayMode = 'tutor' | 'shantenHeat' | 'off';
 export type GameSpeed = 'relaxed' | 'normal' | 'fast';
@@ -26,6 +27,8 @@ export interface SettingsState {
   largerUiText: boolean;
   /** Show the in-game tutor panel (advice + tile safety hints) across all difficulties. */
   showTutor: boolean;
+  /** Numerals on suited tiles. 'auto' follows the table's difficulty. */
+  beginnerAssist: BeginnerAssistSetting;
   /** In-game overlay mode: tutor hints, shanten heatmap, or none. */
   displayMode: DisplayMode;
   /** Pacing of AI turns during play, independent of AI difficulty. */
@@ -58,6 +61,7 @@ export const SETTINGS_SET_SOUND_ENABLED = 'SETTINGS_SET_SOUND_ENABLED' as const;
 export const SETTINGS_SET_NOTIFICATIONS_ENABLED = 'SETTINGS_SET_NOTIFICATIONS_ENABLED' as const;
 export const SETTINGS_SET_LARGER_UI_TEXT = 'SETTINGS_SET_LARGER_UI_TEXT' as const;
 export const SETTINGS_SET_SHOW_TUTOR = 'SETTINGS_SET_SHOW_TUTOR' as const;
+export const SETTINGS_SET_BEGINNER_ASSIST = 'SETTINGS_SET_BEGINNER_ASSIST' as const;
 export const SETTINGS_SET_DISPLAY_MODE = 'SETTINGS_SET_DISPLAY_MODE' as const;
 export const SETTINGS_SET_GAME_SPEED = 'SETTINGS_SET_GAME_SPEED' as const;
 export const SETTINGS_SET_LIVE_FAAN_METER = 'SETTINGS_SET_LIVE_FAAN_METER' as const;
@@ -79,6 +83,7 @@ export type SettingsAction =
   | { type: typeof SETTINGS_SET_NOTIFICATIONS_ENABLED; payload: boolean }
   | { type: typeof SETTINGS_SET_LARGER_UI_TEXT; payload: boolean }
   | { type: typeof SETTINGS_SET_SHOW_TUTOR; payload: boolean }
+  | { type: typeof SETTINGS_SET_BEGINNER_ASSIST; payload: BeginnerAssistSetting }
   | { type: typeof SETTINGS_SET_DISPLAY_MODE; payload: DisplayMode }
   | { type: typeof SETTINGS_SET_GAME_SPEED; payload: GameSpeed }
   | { type: typeof SETTINGS_SET_LIVE_FAAN_METER; payload: boolean }
@@ -100,6 +105,11 @@ export const initializeSettings = () => async (dispatch: any) => {
     const languageCode = await StorageService.getString(AppConstants.LANGUAGE_KEY) || 'en';
     const largerUiText = await StorageService.getBool(AppConstants.LARGER_UI_TEXT_KEY) ?? false;
     const showTutor = await StorageService.getBool(AppConstants.SHOW_TUTOR_KEY) ?? true;
+    // Anything unrecognised, including a value written by an older build,
+    // falls back to 'auto' rather than being trusted into the store.
+    const beginnerAssistRaw = await StorageService.getString(AppConstants.BEGINNER_ASSIST_KEY);
+    const beginnerAssist: BeginnerAssistSetting =
+      isBeginnerAssistSetting(beginnerAssistRaw) ? beginnerAssistRaw : 'auto';
     const displayModeRaw = await StorageService.getString(AppConstants.DISPLAY_MODE_KEY);
     const displayMode: DisplayMode =
       displayModeRaw === 'shantenHeat' || displayModeRaw === 'off'
@@ -152,6 +162,7 @@ export const initializeSettings = () => async (dispatch: any) => {
         notificationsEnabled: true,
         largerUiText,
         showTutor,
+        beginnerAssist,
         displayMode,
         gameSpeed,
         liveFaanMeter,
@@ -203,6 +214,12 @@ export const setLargerUiText = (enabled: boolean) => async (dispatch: any) => {
 export const setShowTutor = (enabled: boolean) => async (dispatch: any) => {
   await StorageService.setBool(AppConstants.SHOW_TUTOR_KEY, enabled);
   dispatch({ type: SETTINGS_SET_SHOW_TUTOR, payload: enabled });
+};
+
+/** Numerals on suited tiles. 'auto' defers to the table's difficulty. */
+export const setBeginnerAssist = (setting: BeginnerAssistSetting) => async (dispatch: any) => {
+  await StorageService.setString(AppConstants.BEGINNER_ASSIST_KEY, setting);
+  dispatch({ type: SETTINGS_SET_BEGINNER_ASSIST, payload: setting });
 };
 
 export const setDisplayMode = (mode: DisplayMode) => async (dispatch: any) => {

@@ -19,6 +19,7 @@ const initialState = {
   notificationsEnabled: true,
   largerUiText: false,
   showTutor: true,
+  beginnerAssist: 'auto',
   displayMode: 'tutor' as const,
   gameSpeed: 'normal' as const,
   liveFaanMeter: true,

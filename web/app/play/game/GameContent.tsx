@@ -10,6 +10,7 @@ import MatchOverScreen from '@/components/game/MatchOverScreen';
 import VoiceSubtitle from '@/components/game/VoiceSubtitle';
 import PlayOnboardingDialog from '@/components/play/PlayOnboardingDialog';
 import { TilePaletteProvider } from '@/components/game/TilePaletteContext';
+import { TileDisplayProvider } from '@/components/game/TileDisplayContext';
 import { GameMode } from '@/models/MatchState';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setActiveMatchRoster } from '@/store/actions/settingsActions';
@@ -23,6 +24,7 @@ import DailyResultDialog from '@/components/daily/DailyResultDialog';
 import { getDailyState, recordDailyResult, DailyState } from '@/lib/dailyHand';
 import { computeFinalRankings } from '@/engine/matchManager';
 import { useEffect, useRef } from 'react';
+import { resolveBeginnerAssist } from '@/lib/beginnerAssist';
 
 const URL_DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
 const URL_MODES = ['quick', 'full'] as const;
@@ -141,6 +143,14 @@ export default function GameContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [floorMatchOver, floorHumanWon]);
 
+  // Numerals follow the setting, which defers to the table when left on
+  // 'auto'. Difficulty is a property of the match rather than of settings, so
+  // this is the first place that can see both. Uses the effective difficulty,
+  // not the URL's: a training table plays at easy whatever the query string
+  // said, and it is the table a learner is most likely to be sitting at.
+  const beginnerAssist = useAppSelector((s) => s.settings.beginnerAssist);
+  const showNumerals = resolveBeginnerAssist(beginnerAssist, effectiveDifficulty);
+
   // Wall counts at which the music is at rest and at full pressure.
   const WALL_CALM = 40;
   const WALL_TENSE = 8;
@@ -216,6 +226,7 @@ export default function GameContent() {
   return (
     <GameErrorBoundary>
       <TilePaletteProvider>
+        <TileDisplayProvider showNumerals={showNumerals}>
       <BootOverlay />
       <VoiceSubtitle />
       {showOnboarding && (
@@ -336,6 +347,7 @@ export default function GameContent() {
           onBackToMenu={() => router.push(floorDef ? '/parlour' : '/play')}
         />
       )}
+        </TileDisplayProvider>
       </TilePaletteProvider>
     </GameErrorBoundary>
   );

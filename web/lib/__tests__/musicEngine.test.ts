@@ -61,13 +61,20 @@ class FakeAudioContext {
   currentTime = 0;
   state = 'running';
   destination = {};
+  /** Set false to model a browser refusing a non-gesture resume. */
+  static gestureAllowed = true;
+
   // Asynchronous on purpose. The real resume() returns a promise and the
   // context is still suspended when it returns — a double that flips the
   // state synchronously hides exactly the race this suite exists to cover.
+  // It also rejects when the browser would refuse, so an unhandled rejection
+  // shows up here rather than in someone's console.
   resume = vi.fn(() =>
-    Promise.resolve().then(() => {
-      this.state = 'running';
-    }),
+    FakeAudioContext.gestureAllowed
+      ? Promise.resolve().then(() => {
+          this.state = 'running';
+        })
+      : Promise.reject(new DOMException('not allowed', 'NotAllowedError')),
   );
 
   constructor() {
@@ -656,5 +663,51 @@ describe('intensity layers do not double-strike', () => {
     const quarterKit: PatternNote[] = [0, 4].map((p) => [p, 42, 1, 'perc']);
     const layers = intensityLayers(quarterKit, 8, 0.5);
     expect(layers.filter((n) => n[1] === 42).length).toBeGreaterThan(0);
+  });
+});
+
+describe('a refused resume', () => {
+  afterEach(() => {
+    FakeAudioContext.gestureAllowed = true;
+    musicEngine.stop();
+  });
+
+  it('does not surface as an unhandled rejection', async () => {
+    // Browsers reject resume() outside a gesture, and the engine calls it
+    // speculatively from play(). An uncaught rejection there is a console
+    // error on a path that is expected to fail.
+    const unhandled: unknown[] = [];
+    const onUnhandled = (e: PromiseRejectionEvent | { reason?: unknown }) =>
+      unhandled.push(e);
+    process.on('unhandledRejection', onUnhandled);
+
+    FakeAudioContext.gestureAllowed = false;
+    const ctx = FakeAudioContext.live;
+    if (ctx) ctx.state = 'suspended';
+
+    musicEngine.play('parlour');
+    musicEngine.resume();
+    await new Promise((r) => realSetTimeout(r, 20));
+
+    process.off('unhandledRejection', onUnhandled);
+    expect(unhandled).toHaveLength(0);
+  });
+
+  it('keeps the request queued for the next gesture', async () => {
+    FakeAudioContext.gestureAllowed = false;
+    const ctx = FakeAudioContext.live;
+    if (ctx) ctx.state = 'suspended';
+
+    musicEngine.play('parlour');
+    musicEngine.resume();
+    await new Promise((r) => realSetTimeout(r, 20));
+    expect(musicEngine.isPlaying()).toBe(false);
+
+    // The next gesture is accepted, and the request that was waiting starts.
+    FakeAudioContext.gestureAllowed = true;
+    intervalCount = 0;
+    musicEngine.resume();
+    await new Promise((r) => realSetTimeout(r, 20));
+    expect(intervalCount).toBe(1);
   });
 });

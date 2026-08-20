@@ -496,9 +496,12 @@ class MusicEngine {
       }
     }
     if (this.ctx.state === 'suspended') {
-      // Resume requires a user gesture on most browsers; callers invoke
-      // play() from interaction handlers so this resolves naturally.
-      void this.ctx.resume();
+      // Speculative: a resume outside a user gesture is expected to fail, and
+      // the caught rejection is the normal path rather than an error. Left in
+      // because a context can also be suspended for reasons a gesture has
+      // already cleared, in which case this succeeds and saves a click.
+      // resume() is the one that runs from an actual gesture.
+      void this.ctx.resume().catch(() => {});
     }
     return this.ctx;
   }
@@ -849,13 +852,18 @@ class MusicEngine {
     if (!this.enabled) return;
     const ctx = this.getContext();
     if (!ctx) return;
-    void Promise.resolve(ctx.resume()).then(() => {
-      const queued = this.pending;
-      if (queued && !this.timer) {
-        this.pending = null;
-        this.play(queued.id, queued.intensity);
-      }
-    });
+    void Promise.resolve(ctx.resume())
+      .then(() => {
+        const queued = this.pending;
+        if (queued && !this.timer) {
+          this.pending = null;
+          this.play(queued.id, queued.intensity);
+        }
+      })
+      // A rejected resume means the browser did not accept this as a gesture.
+      // The queued request stays queued for the next one; swallowing it here
+      // keeps an expected refusal out of the console as an unhandled rejection.
+      .catch(() => {});
   }
 
   /** Whether audio is actually allowed to sound yet. */

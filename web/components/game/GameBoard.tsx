@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { GameState, GamePhase } from '@/models/GameState';
 import { MatchState } from '@/models/MatchState';
 import type { AvailableClaim } from '@/engine/types';
@@ -26,6 +27,25 @@ import { TutorAdvice } from '@/engine/types';
 import { TenpaiStatus, WinShortfall } from './useGameController';
 import { FaanProjection } from '@/engine/faanProjection';
 import type { TileHeatOverlay } from '@/engine/shantenHeat';
+// PROTOTYPE — remove with the prototype directory
+import { useTileFaceVariant } from './prototype/PrototypeVariant';
+import { useTilePalette } from './TilePaletteContext';
+import type { SeatAnchors } from './prototype/ThreeTable';
+
+/**
+ * PROTOTYPE — loaded lazily, and that is load-bearing rather than tidiness.
+ *
+ * A static import put `three` (and `react-dom/server`, via portraitTexture) in
+ * the FIRST-LOAD bundle for /play/game and /practice: 2.09MB against ~1.08MB for
+ * every other route. PrototypeVariantProvider renders nothing in production, so
+ * every real player on the DOM board was downloading and parsing ~1MB of WebGL
+ * that could never run. Referenced from JSX and unconditional, so nothing could
+ * tree-shake it either.
+ *
+ * `next/dynamic` puts it in its own chunk that is only requested when a variant
+ * actually asks for it, which in production is never.
+ */
+const ThreeTable = dynamic(() => import('./prototype/ThreeTable'), { ssr: false });
 
 interface GameBoardProps {
   gameState: GameState;
@@ -76,6 +96,10 @@ export default function GameBoard({
   const humanIndex = gameState.players.findIndex(p => p.id === humanPlayerId);
   const humanPlayer = gameState.players[humanIndex];
   const isHumanTurn = gameState.currentPlayerIndex === humanIndex;
+  const protoVariant = useTileFaceVariant(); // PROTOTYPE
+  const protoPalette = useTilePalette(); // PROTOTYPE
+  // PROTOTYPE: variant G places NPC plaques by projecting their 3D seat.
+  const [protoSeatAnchors, setProtoSeatAnchors] = useState<SeatAnchors>({});
 
   // Toast system — track last discard for event messages
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -216,7 +240,7 @@ export default function GameBoard({
 
       {/* Mobile: compact seat bar + collapsible coach drawer */}
       <div className="relative z-10 space-y-1 px-2 py-0.5 md:hidden" style={{ flex: '0 0 auto' }}>
-        <div className="flex items-center justify-between gap-1 px-1">
+        <div className="flex items-center justify-between gap-1 px-1" data-proto-mobile-seats /* PROTOTYPE */>
           <OpponentSeat
             player={leftPlayer}
             position="left"
@@ -256,9 +280,68 @@ export default function GameBoard({
           Desktop replaces the old three-column scatter (HUD card, vertical
           tile strips, floating pool) with rim plaques around a shared felt. */}
       <div className="relative z-10 flex min-h-0 flex-1 px-1 pb-1 md:px-3 md:pb-2">
+        {/* PROTOTYPE: variant F puts the whole table in one WebGL layer, sized
+            to the table region so the hand isn't hidden behind the dock. */}
+        {(protoVariant.three === 'board' || protoVariant.three === 'max') && (
+          <ThreeTable
+            /* The scene is built once in a mount effect that captures `mode`.
+               F and G occupy the same JSX slot, so without a key React would
+               reconcile G into F's instance and show the F scene — no IBL, no
+               AO, wrong pitch and exposure — which is exactly the comparison
+               these variants exist to make. */
+            key={protoVariant.three}
+            game={gameState}
+            humanPlayerId={humanPlayerId}
+            palette={protoPalette}
+            mode={protoVariant.three}
+            onTileSelect={onTileSelect}
+            selectedTileId={selectedTileId}
+            className="proto-three-board"
+            onSeatAnchors={protoVariant.three === 'max' ? setProtoSeatAnchors : undefined}
+            tutorColors={tileClassifications}
+            suggestedTileId={suggestedTileId}
+            npcSeats={protoVariant.three === 'max' ? {
+              [leftPlayer.id]: NPC_BY_POSITION.left,
+              [topPlayer.id]: NPC_BY_POSITION.top,
+              [rightPlayer.id]: NPC_BY_POSITION.right,
+            } : undefined}
+          />
+        )}
+        {/* PROTOTYPE: seats follow their 3D position instead of the DOM rim,
+            which is what stopped them clipping off the canvas edges. */}
+        {protoVariant.three === 'max' && (
+          <div className="proto-seat-layer">
+            {([
+              [leftPlayer, 'left'],
+              [topPlayer, 'top'],
+              [rightPlayer, 'right'],
+            ] as const).map(([player, position]) => {
+              const at = protoSeatAnchors[player.id];
+              if (!at) return null;
+              return (
+                <div key={player.id} style={{ left: at.x, top: at.y }}>
+                  <OpponentSeat
+                    player={player}
+                    position={position}
+                    isCurrentTurn={gameState.currentPlayerIndex === gameState.players.indexOf(player)}
+                    npcId={NPC_BY_POSITION[position]}
+                    gameState={gameState}
+                    playerIndex={gameState.players.indexOf(player)}
+                    score={match?.playerScores?.[gameState.players.indexOf(player)]}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
         <div className="game-table-surface relative flex min-h-0 w-full flex-col">
           {/* Top rim: opposite seat (desktop only) */}
-          <div className="hidden md:flex justify-center pt-2" style={{ flex: '0 0 auto' }}>
+          {/* PROTOTYPE: unmounted under G, not merely CSS-hidden. G draws these
+              seats in the projected layer above, and leaving the rim copies
+              mounted gave every NPC two opponent-seat test ids, two seat
+              anchors and two copies of OpponentSeat's reaction effect. */}
+          {protoVariant.three !== 'max' && (
+          <div className="hidden md:flex justify-center pt-2" style={{ flex: '0 0 auto' }} data-proto-rim-seat /* PROTOTYPE */>
             <OpponentSeat
               player={topPlayer}
               position="top"
@@ -269,10 +352,12 @@ export default function GameBoard({
               score={match?.playerScores?.[gameState.players.indexOf(topPlayer)]}
             />
           </div>
+          )}
 
           <div className="flex min-h-0 flex-1 items-stretch gap-2 px-1 md:px-2">
             {/* Left rim seat */}
-            <div className="hidden md:flex w-44 shrink-0 flex-col items-start justify-center">
+            {protoVariant.three !== 'max' && (
+            <div className="hidden md:flex w-44 shrink-0 flex-col items-start justify-center" data-proto-rim-seat /* PROTOTYPE */>
               <OpponentSeat
                 player={leftPlayer}
                 position="left"
@@ -283,6 +368,7 @@ export default function GameBoard({
                 score={match?.playerScores?.[gameState.players.indexOf(leftPlayer)]}
               />
             </div>
+            )}
 
             {/* Center: phase pill + discard sea + tutor line */}
             <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1 md:gap-2">
@@ -314,14 +400,31 @@ export default function GameBoard({
                 role="group"
                 aria-label="Discard pool"
                 className="flex min-h-0 w-full max-w-[min(100%,22rem)] flex-col justify-center overflow-y-auto md:max-w-2xl"
+                data-proto-discard-sea /* PROTOTYPE — variant C tilt target */
               >
-                <DiscardPool
-                  discards={gameState.discardPile}
-                  lastDiscardedTile={gameState.lastDiscardedTile}
-                  claimHighlight={showClaimHighlight}
-                  playerDiscards={gameState.playerDiscards}
-                  playerNames={playerNames}
-                />
+                {/* PROTOTYPE: variants D/E render the sea in WebGL. F AND G both
+                    render the whole board and mount full-bleed further up — the
+                    check has to name both, because testing `!== 'board'` alone
+                    let G mount a second, hidden scene in here. */}
+                {protoVariant.three === 'sea' || protoVariant.three === 'full' ? (
+                  <ThreeTable
+                    key={protoVariant.three}
+                    game={gameState}
+                    humanPlayerId={humanPlayerId}
+                    palette={protoPalette}
+                    mode={protoVariant.three}
+                    onTileSelect={onTileSelect}
+                    selectedTileId={selectedTileId}
+                  />
+                ) : protoVariant.three ? null : (
+                  <DiscardPool
+                    discards={gameState.discardPile}
+                    lastDiscardedTile={gameState.lastDiscardedTile}
+                    claimHighlight={showClaimHighlight}
+                    playerDiscards={gameState.playerDiscards}
+                    playerNames={playerNames}
+                  />
+                )}
               </div>
 
               {tutorAdvice && (
@@ -331,6 +434,7 @@ export default function GameBoard({
                   aria-label="Discard tip"
                   className="w-full max-w-[min(100%,20rem)] max-h-22 overflow-y-auto md:max-w-xl"
                   style={{ flex: '0 0 auto' }}
+                  data-proto-tutor /* PROTOTYPE */
                 >
                   <TutorPanel advice={tutorAdvice} />
                 </div>
@@ -339,6 +443,8 @@ export default function GameBoard({
 
             {/* Right rim seat + coach rail */}
             <div className="hidden md:flex w-44 shrink-0 min-h-0 flex-col items-end justify-center gap-2">
+              {protoVariant.three !== 'max' && (
+              <div data-proto-rim-seat /* PROTOTYPE */>
               <OpponentSeat
                 player={rightPlayer}
                 position="right"
@@ -348,6 +454,8 @@ export default function GameBoard({
                 playerIndex={gameState.players.indexOf(rightPlayer)}
                 score={match?.playerScores?.[gameState.players.indexOf(rightPlayer)]}
               />
+              </div>
+              )}
               <div className="flex w-full min-h-0 flex-col gap-1 overflow-y-auto">
                 {faanProjection && <FaanMeter projection={faanProjection} minFaan={gameState.minFaan} />}
                 <DiscardReadingPanel game={gameState} humanPlayerId={humanPlayerId} />

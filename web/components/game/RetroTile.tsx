@@ -5,6 +5,7 @@ import { Tile, TileType } from '@/models/Tile';
 import { tileArtSrc } from '@/lib/tileArt';
 import { useTilePalette } from './TilePaletteContext';
 import { useTileDisplay } from './TileDisplayContext';
+import { useTileFaceVariant } from './prototype/PrototypeVariant'; // PROTOTYPE — remove with the prototype directory
 import { TilePalette } from '@/lib/cosmetics';
 import type { TileHeatOverlay } from '@/engine/shantenHeat';
 
@@ -41,6 +42,7 @@ function RetroTile({
 }: RetroTileProps) {
   const ctxPalette = useTilePalette();
   const { showNumerals } = useTileDisplay();
+  const faceVariant = useTileFaceVariant(); // PROTOTYPE
   const palette = paletteOverride ?? ctxPalette;
   const suitColor = palette.suitColors[tile.suit] || '#5c4632';
   const faceStyle = palette.faceBg.startsWith('#')
@@ -91,6 +93,15 @@ function RetroTile({
     );
   }
 
+  // PROTOTYPE: the tutor strip is assist information, so every face variant
+  // keeps it. Extracted so the variants can place it themselves.
+  const tutorStrip = tutorColor ? (
+    <div
+      className="proto-tutor-strip h-[3px] w-full"
+      style={{ backgroundColor: TUTOR_COLORS[tutorColor] }}
+    />
+  ) : null;
+
   const tileContent = (
     <div
       className={`
@@ -101,19 +112,19 @@ function RetroTile({
         ${isLastDiscarded ? 'animate-pulse-gold' : ''}
         ${isNewlyDrawn ? 'animate-tile-draw' : ''}
         ${isSuggested && !isSelected ? 'animate-pulse-gold' : ''}
+        ${faceVariant.faceClass}
       `}
       style={{
         ...faceStyle,
         ...(heatOverlay ? { boxShadow: `inset 0 0 0 3px ${heatOverlay.color}` } : {}),
       }}
     >
+      {faceVariant.renderFace ? (
+        faceVariant.renderFace({ tile, size, suitColor, stripeHeight, tutorColor, tutorStrip })
+      ) : (
+        <>
       <div style={{ height: stripeHeight, width: '100%', backgroundColor: suitColor }} />
-      {tutorColor && (
-        <div
-          className="h-[3px] w-full"
-          style={{ backgroundColor: TUTOR_COLORS[tutorColor] }}
-        />
-      )}
+      {tutorStrip}
 
       {/* Rank as a numeral, for players still learning to count bamboo sticks
           at a glance. Suited tiles only: an honour has no rank to print, and
@@ -140,6 +151,8 @@ function RetroTile({
           className="mahjong-tile-art"
         />
       </div>
+        </>
+      )}
     </div>
   );
 

@@ -98,42 +98,62 @@ export default function CharacterPortrait({
         </linearGradient>
       </defs>
 
+      {/*
+        data-layer groups the rig into depth slices, back to front. They are
+        purely structural in the DOM — <g> paints nothing of its own — but the
+        3D board rasterises each slice to its own texture and spaces them along
+        z, so an NPC turning their head parallaxes instead of sliding a
+        postcard. See components/game/prototype/portraitTexture.ts.
+
+        Emotion must stay confined to the 'face' slice: that is what lets a
+        reaction re-rasterise one texture of four instead of the whole rig.
+      */}
       {showAura && (
-        <circle cx="100" cy="100" r="105" fill={`url(#aura-${character}-${uid})`} />
+        <g data-layer="aura">
+          <circle cx="100" cy="100" r="105" fill={`url(#aura-${character}-${uid})`} />
+        </g>
       )}
 
       {/* Hair back layer — sits behind face/neck. */}
-      <HairBack style={traits.hairStyle} character={character} uid={uid} />
+      <g data-layer="back">
+        <HairBack style={traits.hairStyle} character={character} uid={uid} />
+      </g>
 
-      {/* Neck */}
-      <path
-        d="M 84 178 Q 84 200 100 208 Q 116 200 116 178 Z"
-        fill={`url(#skin-shade-${character}-${uid})`}
-      />
-      <path
-        d="M 70 220 Q 100 200 130 220 L 130 240 L 70 240 Z"
-        fill={shade(traits.auraStops[1], -0.2)}
-      />
+      <g data-layer="body">
+        {/* Neck */}
+        <path
+          d="M 84 178 Q 84 200 100 208 Q 116 200 116 178 Z"
+          fill={`url(#skin-shade-${character}-${uid})`}
+        />
+        <path
+          d="M 70 220 Q 100 200 130 220 L 130 240 L 70 240 Z"
+          fill={shade(traits.auraStops[1], -0.2)}
+        />
+      </g>
 
-      {/* Face */}
-      <Face shape={traits.faceShape} character={character} uid={uid} />
+      <g data-layer="face">
+        {/* Face */}
+        <Face shape={traits.faceShape} character={character} uid={uid} />
 
-      {/* Blush */}
-      <BlushMarks shape={traits.faceShape} color={traits.blushColor} emotion={emotion} />
+        {/* Blush */}
+        <BlushMarks shape={traits.faceShape} color={traits.blushColor} emotion={emotion} />
 
-      {/* Expression rig: brows + eyes + mouth */}
-      <Brows emotion={emotion} hairColor={traits.hairColor} />
-      <Eyes emotion={emotion} eyeColor={traits.eyeColor} character={character} />
-      <Mouth emotion={emotion} skinColor={traits.skinColor} character={character} />
+        {/* Expression rig: brows + eyes + mouth */}
+        <Brows emotion={emotion} hairColor={traits.hairColor} />
+        <Eyes emotion={emotion} eyeColor={traits.eyeColor} character={character} />
+        <Mouth emotion={emotion} skinColor={traits.skinColor} character={character} />
+      </g>
 
-      {/* Hair front layer — bangs sit over forehead. */}
-      <HairFront style={traits.hairStyle} character={character} uid={uid} />
+      <g data-layer="front">
+        {/* Hair front layer — bangs sit over forehead. */}
+        <HairFront style={traits.hairStyle} character={character} uid={uid} />
 
-      {/* Hair shine */}
-      <HairShine style={traits.hairStyle} character={character} />
+        {/* Hair shine */}
+        <HairShine style={traits.hairStyle} character={character} />
 
-      {/* Accessory overlay */}
-      <Accessory kind={traits.accessory} character={character} />
+        {/* Accessory overlay */}
+        <Accessory kind={traits.accessory} character={character} />
+      </g>
     </svg>
   );
 }

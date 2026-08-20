@@ -21,17 +21,46 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { Tile, tileKey } from '@/models/Tile';
-import type { GameState, MeldInfo } from '@/models/GameState';
+import { isGameFinished, type GameState, type MeldInfo } from '@/models/GameState';
 import type { TilePalette } from '@/lib/cosmetics';
 import { tileArtSrc } from './tileArt';
-import { renderPortraitCanvas } from './portraitTexture';
-import type { NpcId, NpcEmotion } from '@/content/npcs';
+import { createNpcRigSet } from './npcRig';
+import { makeFeltTextures, makeWoodTextures, makeRimGeometry } from './boardMaterials';
+import {
+  deriveTableEvent,
+  gazeSeat,
+  reactionFor,
+  restingEmotion,
+  type TableEvent,
+  type TableSnapshot,
+} from './npcFocus';
+import type { NpcId } from '@/content/npcs';
 
 const TILE_W = 0.62;
 const TILE_H = 0.82;
 const TILE_D = 0.4;
+/** Felt surface. Tiles are centred on y=0, so their undersides rest here. */
+const TABLE_Y = -TILE_D / 2;
+/**
+ * Distance from table centre to a seat's character.
+ *
+ * Inside the felt (half-width 9.3), which is what makes the crop work. The bust
+ * is sunk below the table surface, and a horizontal opaque plane viewed from
+ * above occludes everything beneath it — so the felt itself hides the flat
+ * bottom edge of the artwork. Pushing the characters out past the felt looks
+ * like it should work better and does the opposite: out there nothing is left
+ * to crop against and they float with a visible hard cut.
+ */
+const SEAT_RADIUS = 9.15;
+/**
+ * Where a seat's DOM plaque anchors: on the felt in front of the character,
+ * not on the character. Projecting the character's own position put the name
+ * card across their chest once they were actually drawn there.
+ */
+const PLAQUE_RADIUS = SEAT_RADIUS - 1.9;
 
 export type TableMode = 'sea' | 'full' | 'board' | 'max';
 
@@ -230,6 +259,8 @@ export default function ThreeTable(props: ThreeTableProps) {
     else camera.position.set(0, isFull ? 6.0 : 7.6, isFull ? 8.6 : 6.4);
     const lookTarget = new THREE.Vector3(0, 0, isMax ? 2.4 : isBoard ? 1.4 : isFull ? 2.1 : 0.2);
     camera.lookAt(lookTarget);
+    /** How far the camera looks down. The NPC rigs pitch back by this to stay upright. */
+    const PITCH = THREE.MathUtils.degToRad(isMax ? 39 : 50);
 
     // --- Lighting
     scene.add(new THREE.AmbientLight(0x8899bb, isMax ? 0.18 : isBoard ? 0.85 : 1.1));
@@ -260,6 +291,7 @@ export default function ThreeTable(props: ThreeTableProps) {
     let composer: EffectComposer | null = null;
     let composerTarget: THREE.WebGLRenderTarget | null = null;
     let bloomPass: UnrealBloomPass | null = null;
+    let gtaoPass: GTAOPass | null = null;
     if (isMax) {
       pmrem = new THREE.PMREMGenerator(renderer);
       envRT = pmrem.fromScene(new RoomEnvironment(), 0.04);
@@ -278,6 +310,26 @@ export default function ThreeTable(props: ThreeTableProps) {
       });
       composer = new EffectComposer(renderer, composerTarget);
       composer.addPass(new RenderPass(scene, camera));
+
+      // Ambient occlusion is where depth actually reads on this board: the
+      // contact line under every tile, the crevices in the wall stacks, the
+      // gaps between meld rows. It only ever darkens, so unlike extra geometry
+      // or a brighter rim it buys depth without pulling the eye to the table.
+      gtaoPass = new GTAOPass(scene, camera, 1, 1);
+      gtaoPass.output = GTAOPass.OUTPUT.Default;
+      gtaoPass.blendIntensity = 0.85;
+      gtaoPass.updateGtaoMaterial({
+        // World units. A tile is 0.62 wide, so this samples roughly half a tile
+        // — enough to catch tile-to-felt contact without darkening whole areas.
+        radius: 0.34,
+        distanceExponent: 1.4,
+        thickness: 0.6,
+        scale: 1.05,
+        samples: 16,
+        screenSpaceRadius: false,
+      });
+      composer.addPass(gtaoPass);
+
       bloomPass = new UnrealBloomPass(
         new THREE.Vector2(1, 1),
         0.12, // strength — a sheen on lit tile edges, not a glow filter
@@ -289,24 +341,56 @@ export default function ThreeTable(props: ThreeTableProps) {
     }
 
     // --- Ground
+    const boardDisposables: Array<{ dispose: () => void }> = [];
     if (isBoard) {
       // A real table: felt top plus a wooden rim, so the 3D board stands on
       // its own instead of borrowing the CSS felt.
+      //
+      // Both surfaces were flat-coloured boxes, which is why the table read as a
+      // slab. The detail now lives in the material — cloth nap, wood grain, and
+      // an edge falloff that darkens the board outward — rather than in bigger
+      // shapes, so the table gains character without becoming what the eye goes
+      // to first. See boardMaterials.ts.
+      const feltTex = makeFeltTextures();
+      boardDisposables.push(feltTex.map, feltTex.normalMap, feltTex.roughnessMap);
       const felt = new THREE.Mesh(
         new THREE.BoxGeometry(18.6, 0.5, 18.6),
-        new THREE.MeshStandardMaterial({ color: 0x1d5140, roughness: 0.98, metalness: 0 }),
+        new THREE.MeshStandardMaterial({
+          map: feltTex.map,
+          normalMap: feltTex.normalMap,
+          // Cloth fibre is far finer than the table-scale colour map, so the two
+          // run at different repeats. three gives every map its own UV
+          // transform, so this needs no second UV set.
+          normalScale: new THREE.Vector2(0.55, 0.55),
+          roughnessMap: feltTex.roughnessMap,
+          roughness: 1,
+          metalness: 0,
+        }),
       );
-      felt.position.y = -TILE_D / 2 - 0.25;
+      felt.position.y = TABLE_Y - 0.25;
       felt.receiveShadow = true;
       scene.add(felt);
+      boardDisposables.push(felt.geometry, felt.material as THREE.Material);
 
+      const woodTex = makeWoodTextures();
+      boardDisposables.push(woodTex.map, woodTex.roughnessMap);
+      const rimGeometry = makeRimGeometry(20.6, 18.4, 0.62);
       const rim = new THREE.Mesh(
-        new THREE.BoxGeometry(20.2, 0.62, 20.2),
-        new THREE.MeshStandardMaterial({ color: 0x4a2f1d, roughness: 0.62, metalness: 0.05 }),
+        rimGeometry,
+        new THREE.MeshStandardMaterial({
+          map: woodTex.map,
+          roughnessMap: woodTex.roughnessMap,
+          roughness: 1,
+          metalness: 0.04,
+        }),
       );
-      rim.position.y = -TILE_D / 2 - 0.42;
+      // makeRimGeometry normalises its top face to y=0, so this positions the
+      // timber by where its surface sits. Barely proud of the felt: a raised lip
+      // would frame the board and pull the eye to the edge.
+      rim.position.y = TABLE_Y + 0.02;
       rim.receiveShadow = true;
       scene.add(rim);
+      boardDisposables.push(rimGeometry, rim.material as THREE.Material);
     } else {
       // Shadow-only ground: the board's CSS felt shows through the transparent
       // canvas, so tiles sit on the real table rather than a paler second one.
@@ -364,42 +448,68 @@ export default function ThreeTable(props: ThreeTableProps) {
     scene.add(tileGroup);
 
     // --- NPCs, in the scene rather than floating above it.
-    // Unlit: these are flat stylised 2D characters, and shading them with the
-    // table's key light makes them read as cardboard. The scene's job here is
-    // placement and occlusion, not relighting the art.
-    const portraits = new Map<string, THREE.Mesh>();
-    const portraitGeometry = new THREE.PlaneGeometry(3.1, 3.72);
-    function ensurePortrait(playerId: string, npcId: NpcId, emotion: NpcEmotion, seat: number) {
-      const key = `${playerId}:${npcId}:${emotion}`;
-      const existing = portraits.get(playerId);
-      if (existing && existing.userData.key === key) return;
-      if (existing) {
-        tileGroup.remove(existing);
-        (existing.material as THREE.MeshBasicMaterial).map?.dispose();
-        (existing.material as THREE.Material).dispose();
-        portraits.delete(playerId);
-      }
-      const mesh = new THREE.Mesh(
-        portraitGeometry,
-        new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0 }),
-      );
-      mesh.userData.key = key;
-      mesh.renderOrder = 2;
-      const { x, z } = seatToWorld(0, 9.15, seat);
-      mesh.position.set(x, 2.05, z);
-      tileGroup.add(mesh);
-      portraits.set(playerId, mesh);
-      renderPortraitCanvas(npcId, emotion, 512).then(canvas => {
-        const tex = finishTexture(canvas);
-        createdTextures.push(tex);
-        const mat = mesh.material as THREE.MeshBasicMaterial;
-        mat.map = tex;
-        mat.opacity = 1;
-        mat.needsUpdate = true;
-        mesh.lookAt(camera.position.x, mesh.position.y, camera.position.z);
-        invalidate();
-      });
-    }
+    //
+    // Each character is a 2.5D rig — four rasterised slices of the portrait
+    // spaced along z — that turns to look at whoever is acting. The two halves
+    // are one feature: slices with nothing to turn them are an expensive flat
+    // plane, and a turning flat plane is a sliding sticker. See npcRig.ts.
+    //
+    // `invalidate` is referenced through a closure rather than passed directly
+    // because it is declared further down; calling it at construction time would
+    // hit the temporal dead zone.
+    const npcRigs = createNpcRigSet(scene, TABLE_Y, PITCH, () => invalidate());
+
+    // Reaction bookkeeping. The prototype recovers "who just did what" by
+    // diffing snapshots; see the note in npcFocus.ts about presentation/events.
+    let prevSnapshot: TableSnapshot | null = null;
+    let lastDiscarder: number | null = null;
+    let tableEvent: TableEvent | null = null;
+    /** A table event only holds the room's attention for so long. */
+    let tableEventUntil = 0;
+    const EVENT_ATTENTION_MS = 2200;
+    /** Per-player wall-clock deadline after which a reaction decays to rest. */
+    const reactionUntil = new Map<string, number>();
+    /** Idle glances: when the next one is due, and when it should release. */
+    const glanceDue = new Map<string, number>();
+    const glanceUntil = new Map<string, number>();
+    /** Seat of each rig, so a glance can pick somebody else to look at. */
+    const seatOfPlayer = new Map<string, number>();
+
+    const GLANCE_MIN_MS = 10000;
+    const GLANCE_MAX_MS = 18000;
+    const GLANCE_HOLD_MS = 1300;
+
+    /**
+     * Only one character may hold an idle glance at a time.
+     *
+     * Three independent glancers is both worse-looking — heads swivelling in
+     * unison reads as uncanny rather than alive — and three times the cost.
+     * Under render-on-demand every easing character is a redrawing GPU, so a
+     * single token caps the idle duty cycle at one animator's worth instead of
+     * letting it compound. Measured effect is in the prototype README.
+     */
+    let glanceHolder: string | null = null;
+
+    const scheduleGlance = (playerId: string, now: number) => {
+      glanceDue.set(playerId, now + GLANCE_MIN_MS + Math.random() * (GLANCE_MAX_MS - GLANCE_MIN_MS));
+    };
+
+    /** World position a seat's character occupies. */
+    const seatPosition = (seat: number) => seatToWorld(0, SEAT_RADIUS, seat);
+
+    /**
+     * Who to glance at when nothing is happening.
+     *
+     * Weighted toward the other characters on purpose — a table where everyone
+     * only ever looks at the player is the thing this is meant to fix — but not
+     * exclusively, or the player stops existing in the scene.
+     */
+    const pickGlanceSeat = (seat: number) => {
+      if (Math.random() < 0.3) return 0;
+      const others = [1, 2, 3].filter(s => s !== seat);
+      return others[Math.floor(Math.random() * others.length)];
+    };
+
     const meshes = new Map<string, THREE.Mesh>();
     const pickable: THREE.Mesh[] = [];
     const bars = new Map<string, THREE.Mesh>();
@@ -547,16 +657,59 @@ export default function ThreeTable(props: ThreeTableProps) {
 
       // --- NPC characters at their seats.
       if (p.npcSeats) {
+        // Everything below works in seat space (0 = human, clockwise), because
+        // that is what the gaze geometry and npcFocus both speak.
+        const bySeat: string[] = [];
+        players.forEach((pl, i) => { bySeat[seatOf(i)] = pl.id; });
+        const meldsOf = (id: string) => players.find(pl => pl.id === id)?.melds.length ?? 0;
+
+        const snapshot: TableSnapshot = {
+          discards: bySeat.map(id => (game.playerDiscards?.[id] ?? []).length),
+          melds: bySeat.map(id => meldsOf(id)),
+          current: seatOf(game.currentPlayerIndex),
+          finished: isGameFinished(game),
+          winner: game.winnerId ? seatOf(players.findIndex(pl => pl.id === game.winnerId)) : null,
+        };
+
+        const event = deriveTableEvent(prevSnapshot, snapshot, lastDiscarder);
+        if (event) {
+          tableEvent = event;
+          tableEventUntil = performance.now() + EVENT_ATTENTION_MS;
+        }
+        if (event?.kind === 'discard') lastDiscarder = event.seat;
+        prevSnapshot = snapshot;
+
+        const now = performance.now();
+        const seen = new Set<string>();
         players.forEach((player, i) => {
           const seat = seatOf(i);
           if (seat === 0) return;
           const npcId = p.npcSeats?.[player.id];
           if (!npcId) return;
-          const isTheirTurn = game.currentPlayerIndex === i;
-          ensurePortrait(player.id, npcId, isTheirTurn ? 'thinking' : 'idle', seat);
-          const mesh = portraits.get(player.id);
-          if (mesh) mesh.lookAt(camera.position.x, mesh.position.y, camera.position.z);
+          seen.add(player.id);
+          seatOfPlayer.set(player.id, seat);
+          npcRigs.ensure(player.id, npcId, seat, seatPosition(seat), camera);
+          if (!glanceDue.has(player.id)) scheduleGlance(player.id, now);
+
+          // A reaction overrides the resting expression until it decays. Only
+          // the face slice re-rasterises, so this is one texture, not a rig.
+          const reaction = reactionFor(seat, event);
+          if (reaction) {
+            npcRigs.setEmotion(player.id, reaction.emotion);
+            reactionUntil.set(player.id, now + reaction.holdMs);
+          } else if ((reactionUntil.get(player.id) ?? 0) <= now) {
+            npcRigs.setEmotion(player.id, restingEmotion(seat, snapshot.current));
+          }
+
+          // Look at whoever just acted. A glance in flight owns the gaze until
+          // it releases, so a head does not snap mid-glance.
+          if ((glanceUntil.get(player.id) ?? 0) <= now) {
+            const target = gazeSeat(seat, tableEvent, snapshot.current);
+            npcRigs.setGaze(player.id, target === seat ? null : seatPosition(target));
+          }
+          npcRigs.setLeaning(player.id, snapshot.current === seat);
         });
+        npcRigs.sweep(seen);
       }
 
       // --- Exposed melds: face-up, just inside each player's hand.
@@ -625,7 +778,6 @@ export default function ThreeTable(props: ThreeTableProps) {
     // whichever of the two FOVs is tighter, and the board fills any aspect
     // ratio — wide desktop or tall phone — without cropping the hand.
     const CONTENT_RADIUS = isMax ? 7.8 : 8.7;
-    const PITCH = THREE.MathUtils.degToRad(isMax ? 39 : 50);
 
     function fitCamera(w: number, h: number) {
       camera.aspect = w / h;
@@ -655,8 +807,8 @@ export default function ThreeTable(props: ThreeTableProps) {
       players.forEach((player, i) => {
         const seat = (i - humanIndex + players.length) % players.length;
         if (seat === 0) return;
-        const { x, z } = seatToWorld(0, 9.15, seat);
-        v.set(x, 0.16, z).project(camera);
+        const { x, z } = seatToWorld(0, PLAQUE_RADIUS, seat);
+        v.set(x, TABLE_Y, z).project(camera);
         // Clamp into the canvas: on a narrow viewport the side seats project
         // past the edge, and a plaque half off-screen is worse than one nudged
         // inward. This is the DOM-overlay tax that the 2D rim layout never paid.
@@ -682,7 +834,13 @@ export default function ThreeTable(props: ThreeTableProps) {
       }
       composer?.setSize(w, h);
       bloomPass?.setSize(w, h);
-      composerTarget?.setSize(Math.floor(w * renderer.getPixelRatio()), Math.floor(h * renderer.getPixelRatio()));
+      const dw = Math.floor(w * renderer.getPixelRatio());
+      const dh = Math.floor(h * renderer.getPixelRatio());
+      composerTarget?.setSize(dw, dh);
+      // EffectComposer.setSize forwards CSS pixels to every pass, but AO is
+      // sampled against the real depth buffer — at CSS size on a 2x display it
+      // would sample half the pixels it is compositing onto.
+      gtaoPass?.setSize(dw, dh);
       emitSeatAnchors(w, h);
       invalidate();
     }
@@ -717,17 +875,68 @@ export default function ThreeTable(props: ThreeTableProps) {
         }
       }
 
+      // NPC gaze, lean, reaction decay and idle glances.
+      //
+      // This is the one thing that costs idle frames. Everything else on this
+      // board settles and then goes quiet; characters that never move again read
+      // as frozen, so glances keep them alive at roughly a 6% duty cycle.
+      const rigIds = npcRigs.ids();
+      if (rigIds.length) {
+        const current = prevSnapshot?.current ?? 0;
+        if (tableEvent && now >= tableEventUntil) tableEvent = null;
+
+        for (const id of rigIds) {
+          const seat = seatOfPlayer.get(id);
+          if (seat === undefined) continue;
+
+          const restGaze = () => {
+            const target = gazeSeat(seat, tableEvent, current);
+            npcRigs.setGaze(id, target === seat ? null : seatPosition(target));
+          };
+
+          const holding = glanceUntil.get(id) ?? 0;
+          if (holding > 0) {
+            if (now >= holding) {
+              glanceUntil.set(id, 0);
+              if (glanceHolder === id) glanceHolder = null;
+              restGaze();
+              scheduleGlance(id, now);
+            }
+          } else if (now >= (glanceDue.get(id) ?? Infinity)) {
+            // A real event, or somebody else already glancing, outranks an idle
+            // glance; just push this one back rather than dropping it.
+            if (tableEvent || glanceHolder !== null) {
+              scheduleGlance(id, now);
+            } else {
+              glanceHolder = id;
+              npcRigs.setGaze(id, seatPosition(pickGlanceSeat(seat)));
+              glanceUntil.set(id, now + GLANCE_HOLD_MS);
+            }
+          }
+
+          const reacting = reactionUntil.get(id) ?? 0;
+          if (reacting > 0 && now >= reacting) {
+            reactionUntil.set(id, 0);
+            npcRigs.setEmotion(id, restingEmotion(seat, current));
+          }
+        }
+        if (npcRigs.update(dt)) animating = true;
+      }
+
       // Render on demand. The board is static between moves, so redrawing a
       // shadow-mapped, bloomed scene 60x a second bought nothing and kept the
       // GPU hot — which is what made the frame pacing uneven in the first place.
       const w = window as unknown as Record<string, number>;
       w.__protoTicks = (w.__protoTicks ?? 0) + 1;
       if (animating || dirty > 0) {
+        if (animating) w.__protoAnimFrames = (w.__protoAnimFrames ?? 0) + 1;
         if (dirty > 0) dirty--;
         if (composer) composer.render();
         else renderer.render(scene, camera);
         w.__protoRenders = (w.__protoRenders ?? 0) + 1;
       }
+      // Wall-clock, so the effect of the dt clamp below is visible in the trace.
+      w.__protoElapsed = now;
     }
     raf = requestAnimationFrame(frame);
 
@@ -739,13 +948,14 @@ export default function ThreeTable(props: ThreeTableProps) {
         renderer.domElement.removeEventListener('click', onClick);
         geometry.dispose();
         barGeometry.dispose();
-        portraitGeometry.dispose();
-        portraits.forEach(m => { const mm = m.material as THREE.MeshBasicMaterial; mm.map?.dispose(); mm.dispose(); });
+        npcRigs.dispose();
+        boardDisposables.forEach(d => d.dispose());
         bars.forEach(b => (b.material as THREE.Material).dispose());
         sideMaterial.dispose();
         backMaterial.dispose();
         matCache.forEach(m => m.dispose());
         createdTextures.forEach(tex => tex.dispose());
+        gtaoPass?.dispose();
         composer?.dispose();
         composerTarget?.dispose();
         envRT?.dispose();

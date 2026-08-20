@@ -1,13 +1,25 @@
 /**
  * PROTOTYPE — throwaway.
  *
- * Rasterises the existing SVG CharacterPortrait rig into a texture so the NPCs
+ * Rasterises the existing SVG CharacterPortrait rig into textures so the NPCs
  * can live in the 3D scene instead of floating above it as DOM plaques.
  *
  * Deliberately reuses `components/npc/CharacterPortrait` rather than
  * re-authoring the characters: that component is 566 lines of hand-built rig
  * covering every character x emotion, and it stays the single source of truth
- * for what a character looks like. This just renders it to pixels.
+ * for what a character looks like. This only turns it into pixels.
+ *
+ * The rig is cut into four depth slices rather than rasterised whole. A single
+ * flat plane facing the camera is a postcard no matter how well it is lit —
+ * the README's "cardboard standee" finding. Four slices spaced along z give the
+ * silhouette real volume the moment the character turns, which is what the
+ * gaze behaviour in ThreeTable makes it do.
+ *
+ * The slices also pay for the reactions. Emotion is confined to the 'face'
+ * slice in the rig, so changing expression re-rasterises one texture of four
+ * and the other three stay cached for the session. Rasterising the whole rig
+ * per reaction per NPC is what would have made reactive emotion too expensive
+ * to use at all.
  */
 
 import { createElement } from 'react';
@@ -17,8 +29,39 @@ import type { NpcId, NpcEmotion } from '@/content/npcs';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
+/** Depth slices, back to front. Index is the draw order and the z order. */
+export const PORTRAIT_LAYERS = ['back', 'body', 'face', 'front'] as const;
+export type PortraitLayer = (typeof PORTRAIT_LAYERS)[number];
+
+/**
+ * Which `data-layer` groups in the rig each slice claims.
+ *
+ * Every group the rig emits must be claimed by exactly one slice or it vanishes
+ * from the 3D board with no error — the test beside this file pins that. 'aura'
+ * rides with 'back' because it is a backdrop; the scene switches it off anyway
+ * (a baked halo fights the table's own light) but a slice has to own it.
+ */
+const LAYER_GROUPS: Record<PortraitLayer, readonly string[]> = {
+  back: ['aura', 'back'],
+  body: ['body'],
+  face: ['face'],
+  front: ['front'],
+};
+
+/**
+ * Slices whose artwork changes with emotion. Only the expression rig does —
+ * hair, neck and accessory are fixed per character — and the texture cache
+ * leans on that, so `slicesAreEmotionStable` in the tests guards it.
+ */
+const EMOTION_DEPENDENT: Record<PortraitLayer, boolean> = {
+  back: false,
+  body: false,
+  face: true,
+  front: false,
+};
+
 /** Renders the portrait component to a standalone SVG document string. */
-function portraitSvg(character: NpcId, emotion: NpcEmotion): string {
+export function portraitSvg(character: NpcId, emotion: NpcEmotion): string {
   const markup = renderToStaticMarkup(
     createElement(CharacterPortrait, {
       character,
@@ -35,44 +78,136 @@ function portraitSvg(character: NpcId, emotion: NpcEmotion): string {
     : markup.replace('<svg', `<svg xmlns="${SVG_NS}"`);
 }
 
+/** Every `data-layer` name present in a rendered rig, in document order. */
+export function layerNamesIn(markup: string): string[] {
+  const doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
+  return Array.from(doc.querySelectorAll('[data-layer]')).map(
+    (el) => el.getAttribute('data-layer') as string,
+  );
+}
+
 /**
- * Rasterises a portrait to a canvas at `size` px wide.
+ * Cuts one rendered rig into a standalone SVG document per depth slice.
+ *
+ * Every slice keeps the source `viewBox`, so the slices register exactly on top
+ * of one another — without that the layers would drift apart and the parallax
+ * would read as the character coming apart.
+ *
+ * `<defs>` is cloned into every slice rather than left in one: the gradients are
+ * referenced by `url(#…)` from several layers at once, and a slice that
+ * references a gradient it does not carry paints black. That is the same class
+ * of bug as the duplicated-gradient-id one the rig already documents.
+ *
+ * `width`/`height` are overridden to the intended raster size. The rig renders
+ * at its DOM size (160x192 for 'lg'), and rasterising there before scaling up to
+ * a 512px texture is exactly the one-bilinear-tap resample that made the tile
+ * faces look crunchy. Sizing the document up front makes the browser rasterise
+ * the vectors at full texture resolution instead.
+ */
+export function sliceSvg(markup: string, size: number): Record<PortraitLayer, string> {
+  const doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
+  const root = doc.documentElement;
+  const defs = root.querySelector('defs');
+
+  const viewBox = root.getAttribute('viewBox') ?? '0 0 200 240';
+  const [, , vbW, vbH] = viewBox.split(/\s+/).map(Number);
+  const height = Math.round((size * vbH) / vbW);
+
+  const out = {} as Record<PortraitLayer, string>;
+  for (const layer of PORTRAIT_LAYERS) {
+    const claimed = LAYER_GROUPS[layer];
+    const groups = Array.from(root.querySelectorAll('[data-layer]')).filter((el) =>
+      claimed.includes(el.getAttribute('data-layer') as string),
+    );
+    const body = groups.map((g) => g.outerHTML).join('');
+    out[layer] =
+      `<svg xmlns="${SVG_NS}" viewBox="${viewBox}" width="${size}" height="${height}">` +
+      (defs ? defs.outerHTML : '') +
+      body +
+      `</svg>`;
+  }
+  return out;
+}
+
+/**
+ * Rasterises an SVG document to a canvas.
  *
  * Loads via <img> + onload rather than createImageBitmap: Chrome rejects SVG
- * blobs outright there (see tileArt.ts). The double rAF after load is the
- * guard against the same partially-rasterised SVG race that made honour tiles
- * come out black — an SVG can report loaded before it has painted.
+ * blobs outright there (see tileArt.ts). The double rAF after load is the guard
+ * against the same partially-rasterised SVG race that made honour tiles come out
+ * black — an SVG can report loaded before it has painted.
  */
-export async function renderPortraitCanvas(
-  character: NpcId,
-  emotion: NpcEmotion,
-  size = 512,
-): Promise<HTMLCanvasElement> {
-  const svg = portraitSvg(character, emotion);
+async function rasterise(svg: string, width: number, height: number): Promise<HTMLCanvasElement> {
   const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
   const url = URL.createObjectURL(blob);
 
   const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = Math.round(size * 1.2); // rig is 200x240
+  canvas.width = width;
+  canvas.height = height;
   const ctx = canvas.getContext('2d')!;
 
   try {
     const img = new Image();
-    img.width = canvas.width;
-    img.height = canvas.height;
+    img.width = width;
+    img.height = height;
     img.src = url;
     await new Promise<void>((resolve, reject) => {
       img.onload = () => resolve();
       img.onerror = () => reject(new Error('portrait svg failed to load'));
     });
-    await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())));
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+    ctx.drawImage(img, 0, 0, width, height);
   } catch {
-    /* prototype: a portrait that fails to rasterise just renders empty */
+    /* prototype: a slice that fails to rasterise just renders empty */
   } finally {
     URL.revokeObjectURL(url);
   }
 
   return canvas;
+}
+
+/**
+ * Cache key. Emotion is only part of it for the slice that actually varies with
+ * emotion, which is what keeps a reaction down to one rasterisation.
+ */
+function cacheKey(character: NpcId, emotion: NpcEmotion, layer: PortraitLayer, size: number) {
+  return EMOTION_DEPENDENT[layer]
+    ? `${character}:${emotion}:${layer}:${size}`
+    : `${character}:${layer}:${size}`;
+}
+
+const canvasCache = new Map<string, Promise<HTMLCanvasElement>>();
+
+/** One depth slice of a character, rasterised and cached. */
+export function renderPortraitLayer(
+  character: NpcId,
+  emotion: NpcEmotion,
+  layer: PortraitLayer,
+  size = 512,
+): Promise<HTMLCanvasElement> {
+  const key = cacheKey(character, emotion, layer, size);
+  let pending = canvasCache.get(key);
+  if (!pending) {
+    const slices = sliceSvg(portraitSvg(character, emotion), size);
+    const height = Math.round(size * 1.2); // rig is 200x240
+    pending = rasterise(slices[layer], size, height);
+    canvasCache.set(key, pending);
+  }
+  return pending;
+}
+
+/** All four slices of a character, back to front. */
+export function renderPortraitLayers(
+  character: NpcId,
+  emotion: NpcEmotion,
+  size = 512,
+): Promise<HTMLCanvasElement[]> {
+  return Promise.all(
+    PORTRAIT_LAYERS.map((layer) => renderPortraitLayer(character, emotion, layer, size)),
+  );
+}
+
+/** Test seam: the cache is module-level and would leak between cases. */
+export function clearPortraitCache() {
+  canvasCache.clear();
 }

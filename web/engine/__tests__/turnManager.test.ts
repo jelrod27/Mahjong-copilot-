@@ -208,7 +208,7 @@ describe('claim phase - currentPlayerIndex tracking', () => {
 });
 
 describe('claim phase - pass cycling', () => {
-  it('first pass advances to next player but stays in claim phase', () => {
+  it('a pass keeps the window open for the others and does not move the rotation', () => {
     // State: human discarded dot-5, AI 1 (index 1) is current claimer
     const discardedTile = dot(5, 1);
     const claimState: GameState = {
@@ -248,11 +248,16 @@ describe('claim phase - pass cycling', () => {
       turnTimeLimit: 20,
     };
 
-    // AI 1 passes — should advance to AI 2, stay in claim phase
+    // AI 1 passes — the window stays open for the remaining eligible players.
+    // currentPlayerIndex must not move: during a claim window it names the seat
+    // that will draw if every claim is declined, never a claimant.
     const afterPass = applyAction(claimState, 'ai_1', { type: 'PASS' });
     expect(afterPass).not.toBeNull();
     expect(afterPass!.turnPhase).toBe('claim');
-    expect(afterPass!.currentPlayerIndex).toBe(2);
+    expect(afterPass!.currentPlayerIndex).toBe(claimState.currentPlayerIndex);
+    expect(afterPass!.passedPlayers).toContain('ai_1');
+    // Having answered, AI 1 cannot act again.
+    expect(applyAction(afterPass!, 'ai_1', { type: 'PASS' })).toBeNull();
   });
 });
 
@@ -296,16 +301,16 @@ describe('claim phase - all pass ends claim', () => {
       turnTimeLimit: 20,
     };
 
-    // All three non-discarder players pass sequentially
-    let state = applyAction(claimState, 'ai_1', { type: 'PASS' })!;
+    // Pass out of turn order — a simultaneous window accepts any order.
+    let state = applyAction(claimState, 'ai_3', { type: 'PASS' })!;
     expect(state.turnPhase).toBe('claim');
-    expect(state.currentPlayerIndex).toBe(2);
+    expect(state.currentPlayerIndex).toBe(claimState.currentPlayerIndex);
+
+    state = applyAction(state, 'ai_1', { type: 'PASS' })!;
+    expect(state.turnPhase).toBe('claim');
+    expect(state.currentPlayerIndex).toBe(claimState.currentPlayerIndex);
 
     state = applyAction(state, 'ai_2', { type: 'PASS' })!;
-    expect(state.turnPhase).toBe('claim');
-    expect(state.currentPlayerIndex).toBe(3);
-
-    state = applyAction(state, 'ai_3', { type: 'PASS' })!;
     // After all pass, should advance to draw phase for next player after discarder
     expect(state.turnPhase).toBe('draw');
     expect(state.currentPlayerIndex).toBe(1);
@@ -356,9 +361,9 @@ describe('claim phase - claim ends cycle', () => {
     let state2 = applyAction(claimState, 'ai_1', {
       type: 'CLAIM', claimType: 'pung', tilesFromHand: [dot(5, 2), dot(5, 3)],
     })!;
-    // Claim is pending, advances to next claimer
+    // Claim is pending while the other eligible players still owe an answer.
     expect(state2.turnPhase).toBe('claim');
-    expect(state2.currentPlayerIndex).toBe(2);
+    expect(state2.currentPlayerIndex).toBe(claimState.currentPlayerIndex);
 
     // AI 2 and AI 3 pass
     state2 = applyAction(state2, 'ai_2', { type: 'PASS' })!;
@@ -431,11 +436,10 @@ describe('claim phase - priority resolution', () => {
       type: 'CLAIM', claimType: 'pung', tilesFromHand: [dot(5, 2), dot(5, 3)],
     })!;
 
-    // If resolveClaims is working, AI 1's pung should NOT be immediately applied
-    // because AI 2 hasn't had a chance to claim win yet.
-    // The state should still be in claim phase, advancing to AI 2
+    // AI 1's pung must NOT be applied yet — AI 2 has not answered, and the
+    // winner is decided by priority once everyone eligible has acted.
     expect(state.turnPhase).toBe('claim');
-    expect(state.currentPlayerIndex).toBe(2);
+    expect(state.currentPlayerIndex).toBe(claimState.currentPlayerIndex);
 
     // AI 2 claims win (higher priority)
     state = applyAction(state, 'ai_2', {
@@ -450,6 +454,124 @@ describe('claim phase - priority resolution', () => {
     // Now all have acted — win should take priority over pung
     expect(state.phase).toBe(GamePhase.FINISHED);
     expect(state.winnerId).toBe('ai_2');
+  });
+});
+
+describe('claim window - simultaneous semantics', () => {
+  // Human discards dot-5. ai_1 can pung it, ai_2 can win on it, ai_3 can do
+  // neither. See docs/adr/0003-simultaneous-claim-window.md.
+  const discardedTile = dot(5, 1);
+
+  const ai2WinHand = [
+    dot(1,4), dot(1,2), dot(1,3),
+    bam(2,3), bam(2,4), bam(2,2),
+    char(3,4), char(3,3), char(3,2),
+    char(7,4), char(7,3), char(7,2),
+    dot(5,4),
+  ];
+
+  function claimWindow(claimablePlayers: string[]): GameState {
+    return {
+      id: 'test-simultaneous',
+      variant: 'Hong Kong Mahjong',
+      phase: GamePhase.PLAYING,
+      turnPhase: 'claim',
+      // The seat that draws if every claim is declined — never a claimant.
+      currentPlayerIndex: 1,
+      players: [
+        makePlayer({ id: 'human-1', name: 'Human', isAI: false, seatWind: WindTile.EAST,
+          hand: [dot(6,1), dot(7,1), dot(8,1), dot(9,1), bam(1,1), bam(2,1),
+                 bam(3,1), bam(4,1), bam(5,1), bam(6,1), bam(7,1), bam(8,1), bam(9,1)] }),
+        makePlayer({ id: 'ai_1', name: 'AI 1', isAI: true, seatWind: WindTile.SOUTH,
+          hand: [dot(5,2), dot(5,3), char(1,1), char(2,1), char(3,1), char(4,1),
+                 char(5,1), char(6,1), char(8,1), char(9,1), bam(1,2), bam(2,2), bam(3,2)] }),
+        makePlayer({ id: 'ai_2', name: 'AI 2', isAI: true, seatWind: WindTile.WEST,
+          hand: ai2WinHand }),
+        makePlayer({ id: 'ai_3', name: 'AI 3', isAI: true, seatWind: WindTile.NORTH,
+          hand: [char(1,3), char(2,3), char(3,3), char(4,2), char(5,2), char(6,2),
+                 char(7,5), char(8,2), char(9,2), dot(1,5), dot(2,2), dot(3,2), dot(4,2)] }),
+      ],
+      wall: Array.from({ length: 50 }, (_, i) => bam(1, 100 + i)),
+      deadWall: Array.from({ length: 14 }, (_, i) => char(1, 100 + i)),
+      discardPile: [discardedTile],
+      playerDiscards: { 'human-1': [discardedTile], 'ai_1': [], 'ai_2': [], 'ai_3': [] },
+      lastDiscardedTile: discardedTile,
+      lastDiscardedBy: 'human-1',
+      lastAction: undefined,
+      pendingClaims: [],
+      claimablePlayers,
+      passedPlayers: [],
+      prevailingWind: WindTile.EAST,
+      finalScores: {},
+      createdAt: new Date(),
+      turnHistory: [],
+      turnTimeLimit: 20,
+    };
+  }
+
+  const pung = { type: 'CLAIM' as const, claimType: 'pung' as const, tilesFromHand: [dot(5, 2), dot(5, 3)] };
+  const win = { type: 'CLAIM' as const, claimType: 'win' as const, tilesFromHand: [] };
+
+  it('resolves by priority, not by arrival order', () => {
+    // The lower-priority pung arrives first and still loses to the win.
+    const state = claimWindow(['ai_1', 'ai_2']);
+    const pungFirst = applyAction(applyAction(state, 'ai_1', pung)!, 'ai_2', win)!;
+    // ...and the same holds when the win arrives first.
+    const winFirst = applyAction(applyAction(state, 'ai_2', win)!, 'ai_1', pung)!;
+
+    for (const resolved of [pungFirst, winFirst]) {
+      expect(resolved.phase).toBe(GamePhase.FINISHED);
+      expect(resolved.winnerId).toBe('ai_2');
+    }
+  });
+
+  it('rejects both CLAIM and PASS from a player who is not eligible', () => {
+    const state = claimWindow(['ai_1']);
+    expect(applyAction(state, 'ai_3', { type: 'PASS' })).toBeNull();
+    expect(applyAction(state, 'ai_2', win)).toBeNull();
+    expect(applyAction(state, 'human-1', { type: 'PASS' })).toBeNull();
+  });
+
+  it('rejects a second action from a player who has already claimed', () => {
+    const state = claimWindow(['ai_1', 'ai_2']);
+    const claimed = applyAction(state, 'ai_1', pung)!;
+    expect(claimed.turnPhase).toBe('claim');
+    expect(applyAction(claimed, 'ai_1', { type: 'PASS' })).toBeNull();
+    expect(applyAction(claimed, 'ai_1', pung)).toBeNull();
+  });
+
+  it('resolves as soon as the sole eligible player acts, waiting for nobody else', () => {
+    const state = claimWindow(['ai_1']);
+    const claimed = applyAction(state, 'ai_1', pung)!;
+
+    // ai_2 and ai_3 were never admitted, so the pung applies immediately.
+    expect(claimed.turnPhase).toBe('discard');
+    expect(claimed.currentPlayerIndex).toBe(1);
+    expect(claimed.players[1].melds).toHaveLength(1);
+    expect(claimed.players[1].melds[0].type).toBe('pung');
+  });
+
+  it('holds currentPlayerIndex still for the whole window', () => {
+    const state = claimWindow(['ai_1', 'ai_2', 'ai_3']);
+    let live = applyAction(state, 'ai_3', { type: 'PASS' })!;
+    expect(live.currentPlayerIndex).toBe(state.currentPlayerIndex);
+    live = applyAction(live, 'ai_1', pung)!;
+    expect(live.currentPlayerIndex).toBe(state.currentPlayerIndex);
+    expect(live.turnPhase).toBe('claim');
+  });
+
+  it('admits only a win to a rob-the-kong window', () => {
+    // A real rob-kong window admits only players who can actually rob (asserted
+    // in 'robbing the kong' below). ai_1 is admitted here purely to prove the
+    // rule itself: the tile is still in the declarer's hand, so it cannot be
+    // melded — only won.
+    const state = { ...claimWindow(['ai_1', 'ai_2']), isRobKongOpportunity: true };
+    expect(applyAction(state, 'ai_1', pung)).toBeNull();
+
+    const passed = applyAction(state, 'ai_1', { type: 'PASS' })!;
+    const robbed = applyAction(passed, 'ai_2', win)!;
+    expect(robbed.phase).toBe(GamePhase.FINISHED);
+    expect(robbed.winnerId).toBe('ai_2');
   });
 });
 
@@ -515,22 +637,14 @@ describe('robbing the kong', () => {
     const afterWin = applyAction(afterKong!, 'ai_2', {
       type: 'CLAIM', claimType: 'win', tilesFromHand: [],
     });
-    // After all players acted, the win should resolve
-    // (other players need to pass first in the deferred model)
-    if (afterWin && afterWin.turnPhase === 'claim') {
-      // Human and AI 3 pass
-      let state = afterWin;
-      if (state.currentPlayerIndex === 0) state = applyAction(state, 'human-1', { type: 'PASS' })!;
-      if (state.turnPhase === 'claim') state = applyAction(state, 'ai_3', { type: 'PASS' })!;
-      if (state.turnPhase === 'claim' && state.currentPlayerIndex === 0) state = applyAction(state, 'human-1', { type: 'PASS' })!;
-      expect(state.phase).toBe(GamePhase.FINISHED);
-      expect(state.winnerId).toBe('ai_2');
-    } else {
-      // Direct resolution
-      expect(afterWin).not.toBeNull();
-      expect(afterWin!.phase).toBe(GamePhase.FINISHED);
-      expect(afterWin!.winnerId).toBe('ai_2');
-    }
+    // A rob-the-kong window is win-only, so ai_2 is the sole eligible claimant
+    // and the win resolves the moment it is claimed. Nobody else is waited for.
+    expect(afterWin).not.toBeNull();
+    expect(afterWin!.phase).toBe(GamePhase.FINISHED);
+    expect(afterWin!.winnerId).toBe('ai_2');
+
+    // Players who could not rob were never admitted to the window.
+    expect(afterKong!.claimablePlayers).toEqual(['ai_2']);
   });
 
   it('completes the kong if nobody robs it', () => {

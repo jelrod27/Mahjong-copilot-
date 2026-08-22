@@ -38,6 +38,15 @@ vi.mock('@/engine/turnManager', () => ({
   // don't exercise winning aren't forced to stub them.
   canDeclareSelfDrawnWin: vi.fn(() => false),
   scoreSelfDrawnHand: vi.fn(() => null),
+  // Pure predicate mirrored from the real module so claim-window tests exercise
+  // real eligibility rather than a blanket `true`.
+  canActInClaimWindow: (
+    state: { claimablePlayers: string[]; passedPlayers: string[]; pendingClaims: { playerId: string }[] },
+    playerId: string,
+  ) =>
+    state.claimablePlayers.includes(playerId) &&
+    !state.passedPlayers.includes(playerId) &&
+    !state.pendingClaims.some(c => c.playerId === playerId),
 }));
 
 const advanceMatchMock = vi.fn((m: MatchState) => m);
@@ -261,14 +270,15 @@ describe('useGameController timer race / leak fixes', () => {
   });
 
   it('Plan 013: auto-pass retries when the first attempt is rejected', () => {
-    // It is genuinely the human's turn in the claim rotation, so the only
-    // thing that can reject a PASS here is the debounce / a transient engine
-    // rejection — exactly the scenario the original bug wedged on.
+    // The human genuinely holds an unanswered claim, so the only thing that can
+    // reject a PASS here is the debounce / a transient engine rejection —
+    // exactly the scenario the original bug wedged on.
     const claimGame = makeGame({
       turnPhase: 'claim',
-      currentPlayerIndex: 0,
+      currentPlayerIndex: 1,
       lastDiscardedBy: 'ai1',
       lastDiscardedTile: makeTile('d1'),
+      claimablePlayers: [HUMAN_ID],
     });
     initializeMatchMock.mockReturnValue(makeMatch(claimGame));
     getAvailableClaimsMock.mockReturnValue([
@@ -325,9 +335,10 @@ describe('useGameController timer race / leak fixes', () => {
     // swallow the forced pass and the claim window would sit expired.
     const claimGame = makeGame({
       turnPhase: 'claim',
-      currentPlayerIndex: 0,
+      currentPlayerIndex: 1,
       lastDiscardedBy: 'ai1',
       lastDiscardedTile: makeTile('d1'),
+      claimablePlayers: [HUMAN_ID],
     });
     initializeMatchMock.mockReturnValue(makeMatch(claimGame));
     getAvailableClaimsMock.mockReturnValue([
@@ -363,7 +374,7 @@ describe('useGameController timer race / leak fixes', () => {
     expect(result.current.game?.turnPhase).toBe('discard');
   });
 
-  it('Plan 013: does not spin when the claim rotation is on another seat', () => {
+  it('Plan 013: does not spin when the human is not an eligible claimant', () => {
     // The engine's handlePass rejects whenever currentPlayerIndex is not this
     // player. If the countdown expires while the rotation is still at an AI
     // seat, retrying can NEVER succeed — and a 10Hz retry also refreshes the
@@ -371,7 +382,8 @@ describe('useGameController timer race / leak fixes', () => {
     // player makes. Bounded retries are the fix; this pins it.
     const claimGame = makeGame({
       turnPhase: 'claim',
-      currentPlayerIndex: 1, // an AI seat — NOT the human
+      currentPlayerIndex: 1,
+      claimablePlayers: ['ai2'], // the human holds no legal claim on this tile
       lastDiscardedBy: 'ai2',
       lastDiscardedTile: makeTile('d1'),
     });
@@ -403,9 +415,10 @@ describe('useGameController timer race / leak fixes', () => {
   it('Plan 013: claim countdown stops once the claim phase ends (no infinite retry)', () => {
     const claimGame = makeGame({
       turnPhase: 'claim',
-      currentPlayerIndex: 0,
+      currentPlayerIndex: 1,
       lastDiscardedBy: 'ai1',
       lastDiscardedTile: makeTile('d1'),
+      claimablePlayers: [HUMAN_ID],
     });
     initializeMatchMock.mockReturnValue(makeMatch(claimGame));
     getAvailableClaimsMock.mockReturnValue([

@@ -32,6 +32,18 @@ const FAILING_IMPACTS = new Set(['serious', 'critical']);
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
 async function expectNoSeriousViolations(page: Page, phase: string) {
+  // Let entry animations settle first. Panels enter on `animate-slide-up`, which
+  // fades opacity 0 -> 1 over 300ms, while Playwright's visibility check resolves
+  // the moment the element enters layout — i.e. at opacity ~0. Scanning then
+  // measures *composited* colours instead of the design tokens, and axe reports
+  // contrast failures against colours no user ever sees.
+  //
+  // A fixed wait rather than awaiting `document.getAnimations()`: the board also
+  // runs looping animations (turn blink, confetti) whose `finished` promise never
+  // resolves, so waiting on all of them hangs. CSS animations are wall-clock
+  // driven, so 400ms clears the 300ms entry on any machine.
+  await page.waitForTimeout(400);
+
   const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
 
   const failing = results.violations.filter((v) => FAILING_IMPACTS.has(v.impact ?? ''));

@@ -371,15 +371,10 @@ function handleDiscard(state: GameState, playerIndex: number, tile: Tile): GameS
   // Check if any other player can claim
   const claims = getAllClaims(state, playerIndex, tile, newPlayers);
 
-  // Only include players who actually have claims available
-  const claimableIds = claims.length > 0
-    ? claims.map(c => c.playerId)
-    : [];
-
-  // All non-discarder players need to act during claim phase (claim or pass)
-  const allNonDiscarderIds = claims.length > 0
-    ? getClaimablePlayerIds(playerIndex, newPlayers)
-    : [];
+  // Only players who actually hold a legal claim are prompted, and only they
+  // are waited for. Players with nothing to claim never enter the window.
+  // See docs/adr/0003-simultaneous-claim-window.md.
+  const claimableIds = claims.map(c => c.playerId);
 
   const newState: GameState = {
     ...state,
@@ -392,7 +387,7 @@ function handleDiscard(state: GameState, playerIndex: number, tile: Tile): GameS
     turnHistory: [...state.turnHistory, turn],
     turnPhase: claims.length > 0 ? 'claim' : 'draw',
     pendingClaims: [],
-    claimablePlayers: allNonDiscarderIds,
+    claimablePlayers: claimableIds,
     passedPlayers: [],
     currentPlayerIndex: (playerIndex + 1) % state.players.length,
     // The kong-replacement window closes once the player discards
@@ -500,7 +495,7 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
           turnPhase: 'claim',
           lastDiscardedTile: kongTile,
           lastDiscardedBy: player.id,
-          claimablePlayers: getClaimablePlayerIds(playerIndex, state.players),
+          claimablePlayers: robbingClaims.map(c => c.playerId),
           passedPlayers: [],
           pendingClaims: [],
           currentPlayerIndex: (playerIndex + 1) % state.players.length,
@@ -543,6 +538,20 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
   return null;
 }
 
+/**
+ * Claim windows are simultaneous: any player holding a legal claim may act at
+ * any point in the window, in any order, and only those players are waited
+ * for. `resolveClaimRequests` picks the winner by claim priority and HK turn
+ * order, never by arrival order, so the sequence in which claims land cannot
+ * change the outcome. See docs/adr/0003-simultaneous-claim-window.md.
+ */
+export function canActInClaimWindow(state: GameState, playerId: string): boolean {
+  if (!state.claimablePlayers.includes(playerId)) return false;
+  if (state.passedPlayers.includes(playerId)) return false;
+  if (state.pendingClaims.some(c => c.playerId === playerId)) return false;
+  return true;
+}
+
 function handleClaim(
   state: GameState,
   playerIndex: number,
@@ -551,7 +560,7 @@ function handleClaim(
 ): GameState | null {
   if (state.turnPhase !== 'claim') return null;
   if (!state.lastDiscardedTile) return null;
-  if (state.currentPlayerIndex !== playerIndex) return null;
+  if (!canActInClaimWindow(state, state.players[playerIndex].id)) return null;
 
   const player = state.players[playerIndex];
   const discardedTile = state.lastDiscardedTile;
@@ -599,7 +608,7 @@ function handleClaim(
     tiles: tilesFromHand,
   };
 
-  return advanceClaimRound(state, playerIndex, {
+  return advanceClaimRound(state, {
     pendingClaims: [...state.pendingClaims, newPending],
     passedPlayers: state.passedPlayers,
   });
@@ -700,31 +709,19 @@ export function getClaimMode(state: GameState): ClaimMode {
   return state.isRobKongOpportunity ? 'robKong' : 'discard';
 }
 
-function nextClaimantIndex(
-  state: GameState,
-  fromIndex: number,
-  discarderIndex: number,
-  actedPlayerIds: Set<string>,
-): number {
-  let nextIndex = (fromIndex + 1) % state.players.length;
-  let checked = 0;
-  while (
-    (nextIndex === discarderIndex || actedPlayerIds.has(state.players[nextIndex].id)) &&
-    checked < state.players.length
-  ) {
-    nextIndex = (nextIndex + 1) % state.players.length;
-    checked++;
-  }
-  return nextIndex;
-}
-
 /**
  * Shared claim-round advancement for CLAIM and PASS.
- * Keeps "all acted?" / next-claimer / resolve / resume-draw in one place.
+ * Keeps "all acted?" / resolve / resume-draw in one place.
+ *
+ * INVARIANT: `currentPlayerIndex` does not move while `turnPhase === 'claim'`.
+ * Throughout a claim window it names the seat that will draw if every claim is
+ * declined — it is never a claimant. `handleDiscard` sets it to the discarder's
+ * left before the window opens, and the all-passed branch below sets the same
+ * value. Anything reading `currentPlayerIndex` to decide "whose claim is it?"
+ * is wrong; ask `canActInClaimWindow` instead.
  */
 function advanceClaimRound(
   state: GameState,
-  playerIndex: number,
   opts: {
     pendingClaims: ClaimRequest[];
     passedPlayers: string[];
@@ -744,7 +741,6 @@ function advanceClaimRound(
       ...state,
       pendingClaims: opts.pendingClaims,
       passedPlayers: opts.passedPlayers,
-      currentPlayerIndex: nextClaimantIndex(state, playerIndex, discarderIndex, actedPlayerIds),
       turnPhase: 'claim',
       turnStartedAt: new Date(),
     };
@@ -775,10 +771,10 @@ function advanceClaimRound(
 
 function handlePass(state: GameState, playerIndex: number): GameState | null {
   if (state.turnPhase !== 'claim') return null;
-  if (state.currentPlayerIndex !== playerIndex) return null;
 
   const playerId = state.players[playerIndex].id;
-  return advanceClaimRound(state, playerIndex, {
+  if (!canActInClaimWindow(state, playerId)) return null;
+  return advanceClaimRound(state, {
     pendingClaims: state.pendingClaims,
     passedPlayers: [...state.passedPlayers, playerId],
   });
@@ -985,15 +981,6 @@ export function buildWinScoringContext(state: GameState): ScoringContext | null 
 // ============================================
 // Helpers
 // ============================================
-
-function getClaimablePlayerIds(discarderIndex: number, players: Player[]): string[] {
-  const ids: string[] = [];
-  for (let i = 1; i < players.length; i++) {
-    const idx = (discarderIndex + i) % players.length;
-    ids.push(players[idx].id);
-  }
-  return ids;
-}
 
 function getAllClaims(
   state: GameState,

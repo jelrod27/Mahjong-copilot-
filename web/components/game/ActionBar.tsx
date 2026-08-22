@@ -33,7 +33,7 @@ interface ActionBarProps {
   turnPhase: TurnPhase;
   isHumanTurn: boolean;
   /** True only once the claim rotation has actually reached the human — gates the claim/pass buttons. */
-  isMyClaimTurn?: boolean;
+  canClaimNow?: boolean;
   claimTimer?: number;
   claimTimeout?: number;
   turnTimer?: number;
@@ -95,7 +95,7 @@ export default function ActionBar({
   onPass,
   turnPhase,
   isHumanTurn,
-  isMyClaimTurn = false,
+  canClaimNow = false,
   claimTimer = 0,
   claimTimeout = 10000,
   turnTimer = 0,
@@ -200,7 +200,7 @@ export default function ActionBar({
     const timerPct = claimTimer > 0 ? (claimTimer / claimTimeout) * 100 : 0;
     const timerColor = timerPct > 50 ? 'bg-info' : timerPct > 20 ? 'bg-highlight' : 'bg-accent';
 
-    if (!isMyClaimTurn) {
+    if (!canClaimNow) {
       // The engine resolves claims in rotation order — an opponent ahead of
       // the human in that rotation may still be deciding. Rendering live
       // buttons here would be a lie: tapping them does nothing until the

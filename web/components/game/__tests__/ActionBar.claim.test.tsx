@@ -48,7 +48,7 @@ const baseProps = {
   onPass: vi.fn(),
   turnPhase: 'claim' as const,
   isHumanTurn: true,
-  isMyClaimTurn: true,
+  canClaimNow: true,
 };
 
 describe('ActionBar — claim guidance (PRD GAME-06)', () => {
@@ -122,7 +122,7 @@ describe('ActionBar — claim guidance (PRD GAME-06)', () => {
     render(
       <ActionBar
         {...baseProps}
-        isMyClaimTurn={false}
+        canClaimNow={false}
         claimOptions={[pungClaim]}
         discardedTile={dragon}
       />,
@@ -138,7 +138,7 @@ describe('ActionBar — claim guidance (PRD GAME-06)', () => {
     render(
       <ActionBar
         {...baseProps}
-        isMyClaimTurn={true}
+        canClaimNow={true}
         claimOptions={[pungClaim]}
         discardedTile={dragon}
       />,
@@ -151,7 +151,7 @@ describe('ActionBar — claim guidance (PRD GAME-06)', () => {
     render(
       <ActionBar
         {...baseProps}
-        isMyClaimTurn={false}
+        canClaimNow={false}
         claimOptions={[pungClaim]}
         discardedTile={dragon}
       />,

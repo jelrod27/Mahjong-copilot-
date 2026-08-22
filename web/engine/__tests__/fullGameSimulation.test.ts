@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { initializeGame, applyAction, getLegalClaims, buildWinScoringContext, GameOptions } from '../turnManager';
+import { initializeGame, applyAction, getLegalClaims, buildWinScoringContext, canActInClaimWindow, GameOptions } from '../turnManager';
 import { initializeMatch, advanceMatch } from '../matchManager';
 import { calculateScore, calculatePayment } from '../scoring';
 import { getAIDecision, getAIClaimDecision } from '../ai';
@@ -65,15 +65,22 @@ function playHand(initial: GameState, maxSteps = 2000): GameState {
       }
       state = next;
     } else if (state.turnPhase === 'claim') {
-      // Current player in claim phase decides claim or pass
-      const claims = getLegalClaims(state, state.currentPlayerIndex);
+      // The window is simultaneous: drive whichever eligible claimant has not
+      // answered yet. `currentPlayerIndex` is the next drawer here, never a
+      // claimant, so it must not be used to pick the actor.
+      const claimantId = state.claimablePlayers.find(id => canActInClaimWindow(state, id));
+      if (!claimantId) {
+        throw new Error('Claim window open with no eligible claimant left to act');
+      }
+      const claimantIndex = state.players.findIndex(p => p.id === claimantId);
+      const claims = getLegalClaims(state, claimantIndex);
       const decision = claims.length > 0
-        ? getAIClaimDecision(state, state.currentPlayerIndex, claims)
+        ? getAIClaimDecision(state, claimantIndex, claims)
         : { action: { type: 'PASS' as const } };
-      let next = applyAction(state, current.id, decision.action);
+      let next = applyAction(state, claimantId, decision.action);
       if (!next) {
         // Claim may have been invalidated (e.g. min-faan gate); pass instead
-        next = applyAction(state, current.id, { type: 'PASS' });
+        next = applyAction(state, claimantId, { type: 'PASS' });
       }
       expect(next).not.toBeNull();
       state = next!;

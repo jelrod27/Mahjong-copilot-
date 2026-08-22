@@ -9,7 +9,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { saveGame, loadGame } from '../matchStorage';
 import { initializeMatch } from '@/engine/matchManager';
-import { applyAction, getLegalClaims } from '@/engine/turnManager';
+import { applyAction, getLegalClaims, canActInClaimWindow } from '@/engine/turnManager';
 import { getAIDecision, getAIClaimDecision } from '@/engine/ai';
 import { validateSavedGamePayload } from '../savedGameValidator';
 import type { GameState } from '@/models/GameState';
@@ -133,14 +133,19 @@ describe('matchStorage validation', () => {
       } else if (hand.turnPhase === 'discard') {
         next = applyAction(hand, current.id, getAIDecision(hand, hand.currentPlayerIndex).action);
       } else if (hand.turnPhase === 'claim') {
-        const claims = getLegalClaims(hand, hand.currentPlayerIndex);
+        // The claim window is simultaneous — drive whichever eligible claimant
+        // still owes an answer. `currentPlayerIndex` is the next drawer here.
+        const claimantId = hand.claimablePlayers.find(id => canActInClaimWindow(hand, id));
+        expect(claimantId, `step ${steps}: claim window with no eligible claimant`).toBeDefined();
+        const claimantIndex = hand.players.findIndex(p => p.id === claimantId);
+        const claims = getLegalClaims(hand, claimantIndex);
         const decision = claims.length > 0
-          ? getAIClaimDecision(hand, hand.currentPlayerIndex, claims)
+          ? getAIClaimDecision(hand, claimantIndex, claims)
           : { action: { type: 'PASS' as const } };
         // A claim can be invalidated between decision and application (the min-faan
         // gate); passing instead is legitimate, a rejected pass is not.
-        next = applyAction(hand, current.id, decision.action)
-          ?? applyAction(hand, current.id, { type: 'PASS' });
+        next = applyAction(hand, claimantId!, decision.action)
+          ?? applyAction(hand, claimantId!, { type: 'PASS' });
       } else {
         break;
       }

@@ -34,6 +34,15 @@ vi.mock('@/engine/turnManager', () => ({
   // don't exercise winning aren't forced to stub them.
   canDeclareSelfDrawnWin: vi.fn(() => false),
   scoreSelfDrawnHand: vi.fn(() => null),
+  // Pure predicate mirrored from the real module so claim-window tests exercise
+  // real eligibility rather than a blanket `true`.
+  canActInClaimWindow: (
+    state: { claimablePlayers: string[]; passedPlayers: string[]; pendingClaims: { playerId: string }[] },
+    playerId: string,
+  ) =>
+    state.claimablePlayers.includes(playerId) &&
+    !state.passedPlayers.includes(playerId) &&
+    !state.pendingClaims.some(c => c.playerId === playerId),
 }));
 
 const buildWinScoringContextMock = vi.fn(() => null);
@@ -356,17 +365,19 @@ describe('claim flow', () => {
   });
 
   /**
-   * @param currentPlayerIndex which seat the claim rotation is on. 1 (an AI
-   *   seat) is the "options armed but not yet our turn" state; 0 is the
-   *   human's own rotation turn, which is the only state where the engine
-   *   accepts a human PASS (turnManager handlePass rejects otherwise).
+   * @param humanEligible whether the human holds an unanswered legal claim.
+   *   The window is simultaneous, so this — not `currentPlayerIndex` — is what
+   *   decides whether the engine accepts a human PASS (see
+   *   turnManager.canActInClaimWindow). `currentPlayerIndex` stays on the seat
+   *   that will draw if every claim is declined.
    */
-  function makeClaimGame(currentPlayerIndex = 1) {
+  function makeClaimGame(humanEligible = false) {
     return makeGame({
       turnPhase: 'claim',
-      currentPlayerIndex,
+      currentPlayerIndex: 1,
       lastDiscardedBy: 'ai1',
       lastDiscardedTile: makeTile('d1'),
+      claimablePlayers: humanEligible ? [HUMAN_ID] : [],
     });
   }
 
@@ -386,7 +397,7 @@ describe('claim flow', () => {
 
   it('claim timeout auto-passes exactly once after 11s', () => {
     // Rotation on the human's own seat — the only state where a PASS is legal.
-    const claimGame = makeClaimGame(0);
+    const claimGame = makeClaimGame(true);
     initializeMatchMock.mockReturnValue(makeMatch(claimGame));
     getAvailableClaimsMock.mockReturnValue([
       { claimType: 'pung', tilesFromHand: [], priority: 2 },
@@ -410,7 +421,7 @@ describe('claim flow', () => {
   });
 
   it('expiry fires PASS exactly once even when ticks continue', () => {
-    const claimGame = makeClaimGame(0);
+    const claimGame = makeClaimGame(true);
     // After pass() the engine returns a state where human has already passed,
     // so the claim-detection effect cannot re-arm the timer.
     const postPassGame = makeGame({

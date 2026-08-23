@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { GameState, GamePhase } from '@/models/GameState';
 import { MatchState } from '@/models/MatchState';
 import type { AvailableClaim } from '@/engine/types';
+import { canActInClaimWindow } from '@/engine/turnManager';
 import type { Tile } from '@/models/Tile';
 import PlayerHand from './PlayerHand';
 import OpponentSeat from './OpponentSeat';
@@ -158,14 +159,17 @@ export default function GameBoard({
   const canDeclareWin = canWinProp ?? false;
   const canDeclareKong = canKongProp ?? false;
   const hasClaimOptions = hasClaimsProp ?? false;
-  // True only once the sequential claim rotation has actually reached the
-  // human — claimOptions/claimTimer are armed as soon as the claim phase
-  // starts, before AI claimants ahead of the human have acted. Derived here
-  // rather than in useGameController so there is a single definition: it
-  // depends only on gameState + humanPlayerId, both already props.
-  const isMyClaimTurn =
-    gameState.phase === GamePhase.PLAYING && gameState.turnPhase === 'claim' && isHumanTurn;
-  const showClaimHighlight = hasClaimOptions && isMyClaimTurn;
+  // True while the human still owes an answer to an open claim window. The
+  // window is simultaneous, so this is an eligibility question, not a turn
+  // question — `currentPlayerIndex` names the seat that will draw if every
+  // claim is declined. Derived here rather than in useGameController so there
+  // is a single definition: it depends only on gameState + humanPlayerId, both
+  // already props.
+  const canHumanClaimNow =
+    gameState.phase === GamePhase.PLAYING &&
+    gameState.turnPhase === 'claim' &&
+    canActInClaimWindow(gameState, humanPlayerId);
+  const showClaimHighlight = hasClaimOptions && canHumanClaimNow;
 
   const playerNames = useMemo(
     () => Object.fromEntries(gameState.players.map(p => [p.id, p.name])),
@@ -489,7 +493,7 @@ export default function GameBoard({
           onPass={onPass}
           turnPhase={gameState.turnPhase}
           isHumanTurn={isHumanTurn}
-          isMyClaimTurn={isMyClaimTurn}
+          canClaimNow={canHumanClaimNow}
           claimTimer={claimTimer}
           claimTimeout={claimTimeoutMs}
           turnTimer={turnTimer}

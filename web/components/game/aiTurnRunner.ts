@@ -25,6 +25,13 @@ export interface AiTurnRunnerOptions {
   /** Special-action pause after draw before win/kong (ms). */
   specialActionDelayMs?: number;
   claimDelayMs?: number;
+  /**
+   * Seat this chain acts for. Defaults to `game.currentPlayerIndex`, which is
+   * correct for draw and discard. During a claim window it is NOT — the window
+   * is simultaneous and `currentPlayerIndex` names the next drawer — so the
+   * caller must pass the claimant's seat explicitly.
+   */
+  seatIndex?: number;
 }
 
 type TimerHandle = ReturnType<typeof setTimeout>;
@@ -55,18 +62,22 @@ export function startAiTurn(
     timers.push(handle);
   };
 
+  const seatIndex = options.seatIndex ?? game.currentPlayerIndex;
+
   const applyWithDiscardFallback = (playerId: string, action: GameAction) => {
     const applied = options.apply(playerId, action);
     if (!applied && action.type !== 'DISCARD') {
+      // Read the fallback from this chain's own seat. `currentPlayerIndex` may
+      // already have moved on by the time a rejected action lands here.
       const live = options.getGame();
-      const aiPlayer = live?.players[live.currentPlayerIndex];
+      const aiPlayer = live?.players[seatIndex];
       const fallback = aiPlayer?.hand.find(t => t.type !== TileType.BONUS);
       if (fallback) options.apply(playerId, { type: 'DISCARD', tile: fallback });
     }
     finish();
   };
 
-  const player = game.players[game.currentPlayerIndex];
+  const player = game.players[seatIndex];
   if (!player?.isAI || game.phase !== GamePhase.PLAYING) {
     finish();
     return () => undefined;
@@ -116,9 +127,9 @@ export function startAiTurn(
         finish();
         return;
       }
-      const claims = getLegalClaims(live, live.currentPlayerIndex);
+      const claims = getLegalClaims(live, seatIndex);
       if (claims.length > 0) {
-        const decision = getAIClaimDecision(live, live.currentPlayerIndex, claims);
+        const decision = getAIClaimDecision(live, seatIndex, claims);
         const applied = options.apply(player.id, decision.action);
         if (!applied) options.apply(player.id, { type: 'PASS' });
       } else {

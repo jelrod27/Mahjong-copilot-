@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, GamePhase, ClaimType } from '@/models/GameState';
 import { MatchState, GameMode } from '@/models/MatchState';
 import { Tile, TileType, TileFactory, tilesMatch } from '@/models/Tile';
-import { applyAction, buildWinScoringContext, getLegalClaims, canDeclareSelfDrawnWin, scoreSelfDrawnHand } from '@/engine/turnManager';
+import { applyAction, buildWinScoringContext, getLegalClaims, canDeclareSelfDrawnWin, scoreSelfDrawnHand, canActInClaimWindow } from '@/engine/turnManager';
 import { advanceMatch, startNextHand } from '@/engine/matchManager';
 import { getBestClaimSubmission } from '@/engine/claiming';
 import { isWinningHand, canPlayerWin } from '@/engine/winDetection';
@@ -492,7 +492,7 @@ export default function useGameController(
   const claimBest = useCallback((): boolean => {
     const current = gameRef.current;
     if (!current || current.phase !== GamePhase.PLAYING || current.turnPhase !== 'claim') return false;
-    if (current.currentPlayerIndex !== humanIndex) return false;
+    if (!canActInClaimWindow(current, HUMAN_ID)) return false;
     if (current.lastDiscardedBy === HUMAN_ID) return false;
     const claims = getLegalClaims(current, humanIndex);
     const best = getBestClaimSubmission(claims);
@@ -881,6 +881,52 @@ export default function useGameController(
       return;
     }
 
+    const releaseAiChain = () => {
+      processingRef.current = false;
+      aiBusyRef.current = false;
+      aiCancelRef.current = null;
+      setAiEpoch(n => n + 1);
+    };
+
+    // Claim windows are simultaneous, so `currentPlayerIndex` names the seat
+    // that will draw if every claim is declined — never a claimant. Pick AI
+    // claimants off the engine's eligibility predicate instead. One seat per
+    // pass: each chain bumps aiEpoch when it finishes, which re-runs this
+    // effect for the next eligible seat. Serialising them here is invisible
+    // (each takes ~150ms) and keeps the one-in-flight-token invariant that
+    // aiTurnRunner is built around.
+    if (game.turnPhase === 'claim') {
+      if (aiBusyRef.current || processingRef.current) return;
+      // The discarder check is NOT redundant with eligibility: startAiTurn
+      // refuses to act for the discarding seat, so selecting one here starts a
+      // chain that completes without doing anything.
+      const claimSeat = game.players.findIndex(
+        p => p.isAI && p.id !== game.lastDiscardedBy && canActInClaimWindow(game, p.id),
+      );
+      if (claimSeat === -1) return; // only human claimants left to decide
+
+      processingRef.current = true;
+      aiBusyRef.current = true;
+      aiCancelRef.current = startAiTurn(game, {
+        seatIndex: claimSeat,
+        delays: { draw: effectiveDrawDelay, discard: effectiveDiscardDelay },
+        claimDelayMs: 150,
+        apply: (playerId, action) => doAction(playerId, action),
+        getGame: () => gameRef.current,
+        // Release WITHOUT bumping aiEpoch. A claim window advances on
+        // passedPlayers / pendingClaims, both already dependencies, so the next
+        // eligible seat is picked up by the state change this chain caused.
+        // Bumping the epoch instead would re-run this effect even when the
+        // chain applied nothing, re-selecting the same seat in a tight loop.
+        onComplete: () => {
+          processingRef.current = false;
+          aiBusyRef.current = false;
+          aiCancelRef.current = null;
+        },
+      });
+      return;
+    }
+
     const currentPlayer = game.players[game.currentPlayerIndex];
     if (!currentPlayer.isAI) {
       aiCancelRef.current?.();
@@ -893,10 +939,7 @@ export default function useGameController(
     // A chain is already owning this seat — ignore turnPhase churn from our own DRAW.
     if (aiBusyRef.current || processingRef.current) return;
 
-    const needsAction =
-      game.turnPhase === 'draw' ||
-      game.turnPhase === 'discard' ||
-      (game.turnPhase === 'claim' && game.lastDiscardedBy !== currentPlayer.id);
+    const needsAction = game.turnPhase === 'draw' || game.turnPhase === 'discard';
     if (!needsAction) return;
 
     processingRef.current = true;
@@ -909,14 +952,9 @@ export default function useGameController(
       claimDelayMs: 150,
       apply: (playerId, action) => doAction(playerId, action),
       getGame: () => gameRef.current,
-      onComplete: () => {
-        processingRef.current = false;
-        aiBusyRef.current = false;
-        aiCancelRef.current = null;
-        setAiEpoch(n => n + 1);
-      },
+      onComplete: releaseAiChain,
     });
-  }, [game?.currentPlayerIndex, game?.turnPhase, game?.phase, doAction, effectiveDrawDelay, effectiveDiscardDelay, aiEpoch]);
+  }, [game?.currentPlayerIndex, game?.turnPhase, game?.phase, game?.passedPlayers?.length, game?.pendingClaims?.length, doAction, effectiveDrawDelay, effectiveDiscardDelay, aiEpoch]);
 
   // === Claim detection: show options immediately when claim phase starts (don't wait for currentPlayerIndex) ===
   useEffect(() => {
@@ -930,20 +968,14 @@ export default function useGameController(
       return;
     }
 
-    // Don't show claim options if human was the discarder
+    // Don't show claim options if the human was the discarder. No auto-pass is
+    // needed here: a discarder is never admitted to the window its own discard
+    // opened (getAllClaims skips discarderIndex, and the rob-the-kong loop
+    // skips the declarer), so no answer is owed and there is nothing to
+    // unwedge. The guard that used to live here tested `currentPlayerIndex`,
+    // which under a simultaneous window names the next drawer rather than a
+    // claimant, so it could never fire.
     if (game.lastDiscardedBy === HUMAN_ID) {
-      // Still need to auto-pass if it's our turn in the rotation.
-      // forcePass, not doAction: this is engine-driven, not a human tap, so
-      // the 200ms double-tap debounce has no business rejecting it. A silent
-      // rejection here wedges the hand — claimOptions is empty by
-      // construction, so the countdown retry never covers this path and no
-      // effect dependency changes to re-run us.
-      if (game.currentPlayerIndex === humanIndex && !forcePass()) {
-        Sentry.captureException(
-          new Error('Auto-pass rejected: human seat stuck in claim phase (self-discard)'),
-          { extra: { turnPhase: game.turnPhase, currentPlayerIndex: game.currentPlayerIndex, humanIndex } },
-        );
-      }
       return;
     }
 
@@ -966,9 +998,13 @@ export default function useGameController(
       // Only start timer if not already running
       if (claimTimerRef.current <= 0) updateClaimTimer(claimTimeoutMs);
       soundManager.play('turnAlert');
-    } else if (game.currentPlayerIndex === humanIndex) {
-      // Human has no claims and it's their turn — auto-pass. Same reasoning as
-      // the self-discard branch above: forcePass so the debounce can't wedge
+    } else if (canActInClaimWindow(game, HUMAN_ID)) {
+      // The human is admitted to the window but holds nothing to claim, so
+      // claimOptions never arms for them — auto-pass, or the window waits
+      // forever. Eligibility, not rotation: `currentPlayerIndex` names the next
+      // drawer during a claim window and is never a claimant, and a save
+      // written before the window became simultaneous admits every
+      // non-discarder, claim or no claim. forcePass so the debounce can't wedge
       // the hand, and report if the engine still refuses.
       if (!forcePass()) {
         Sentry.captureException(
@@ -1014,15 +1050,16 @@ export default function useGameController(
       // stays 'claim' for other claimants still deciding — retrying further
       // would just spam rejected PASS calls at the (already-moved-on) engine.
       const live = gameRef.current;
-      // currentPlayerIndex is not optional here: engine handlePass rejects
-      // when the rotation is not on this seat (turnManager.ts), so retrying
-      // outside our turn can never succeed — it just spins at 10Hz. The timer
-      // re-arms via the claim-detection effect once the rotation arrives.
+      // The eligibility check is not optional here: engine handlePass rejects a
+      // player who is not in claimablePlayers or who has already acted, so
+      // retrying past that point can never succeed — it just spins at 10Hz.
+      // The window is simultaneous, so this asks whether the human still owes
+      // an answer, never whose turn it is.
       if (
         !live ||
         live.phase !== GamePhase.PLAYING ||
         live.turnPhase !== 'claim' ||
-        live.currentPlayerIndex !== humanIndex ||
+        !canActInClaimWindow(live, HUMAN_ID) ||
         claimOptionsRef.current.length === 0
       ) {
         updateClaimTimer(0);

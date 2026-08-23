@@ -32,6 +32,33 @@ const FAILING_IMPACTS = new Set(['serious', 'critical']);
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
 async function expectNoSeriousViolations(page: Page, phase: string) {
+  // Let entry animations settle first. Panels enter on `animate-slide-up`, which
+  // fades opacity 0 -> 1 over 300ms, while Playwright's visibility check resolves
+  // the moment the element enters layout — i.e. at opacity ~0. Scanning then
+  // measures *composited* colours instead of the design tokens, and axe reports
+  // contrast failures against colours no user ever sees.
+  //
+  // Ask the page how long its entry animations actually last, then wait that
+  // long. Deriving the span keeps this correct if a duration is ever changed,
+  // and reading it with `evaluate` rather than polling with `waitForFunction`
+  // means it cannot hang: the board runs animations that never settle (looping
+  // decor whose `finished` never resolves, and pending ones on offscreen
+  // elements), so any wait *conditional* on them going quiet times out.
+  const settleMs = await page.evaluate(() => {
+    const ends = document
+      .getAnimations()
+      .map((a) => {
+        const timing = a.effect?.getTiming();
+        if (!timing || timing.iterations === Infinity) return 0;
+        return Number(timing.delay ?? 0) + Number(timing.duration ?? 0);
+      })
+      .filter((ms) => Number.isFinite(ms));
+    return ends.length ? Math.max(...ends) : 0;
+  });
+  // Floor covers animations that start fractionally after the scan is requested;
+  // ceiling keeps a runaway value from stalling the suite.
+  await page.waitForTimeout(Math.min(Math.max(settleMs + 100, 400), 2_000));
+
   const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
 
   const failing = results.violations.filter((v) => FAILING_IMPACTS.has(v.impact ?? ''));

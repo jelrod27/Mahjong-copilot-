@@ -1,6 +1,6 @@
 # Implementation Plans
 
-Two audit rounds are recorded here.
+Four rounds are recorded here.
 
 - **Round 1 (2026-06-11, commit `efb5a21`)** — plans 001–010, all DONE. Correctness,
   security, perf, tests, debt. See "Round 1" below.
@@ -50,8 +50,10 @@ audits after PR #94 merged (`b6b570a`).
 | 025 | [Elevation ladder + glow fix](025-elevation-ladder-and-glow-fix.md) | P1 | S | — | **DONE** |
 | 026 | [Landing page redesign — Direction A, "The Table"](026-landing-page-redesign.md) | P1 | M | 025 (done) | **DONE** |
 
-Not yet written: `027` replay + verified Daily Hand leaderboard (the
-multiplayer hedge — see ROADMAP-round-3.md).
+Still unwritten and unnumbered: the replay + verified Daily Hand leaderboard
+(the multiplayer hedge — see ROADMAP-round-3.md). `027` was reassigned to the
+multiplayer architecture in Round 4 below, after the operator chose to build
+multiplayer rather than the hedge.
 
 **Headline findings behind these** (all advisor-verified):
 - The curriculum contradicts `engine/scoring.ts` on payment distribution
@@ -483,3 +485,107 @@ differences and collapsing either would visibly change half the call sites.
 
 Still open: `app/(main)/progress/page.tsx` keeps its own bar — it is a stacked
 multi-segment distribution, not a drifted `Meter`.
+
+---
+
+# Round 4 — multiplayer (2026-08-22)
+
+Design session at commit `630ba76`. This round departs from
+`ROADMAP-round-3.md` §P3, which recommended deferring multiplayer because the
+binding constraint is population rather than architecture. That assessment was
+re-verified and still stands; the operator chose to build anyway, knowingly.
+
+Vocabulary is fixed in `CONTEXT.md` at the repo root — note that **"Game" is
+banned** as a domain term, and that Seat and Occupant are deliberately separate
+concepts. Decisions are recorded as ADRs in `docs/adr/`.
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 027 | [Multiplayer architecture](027-multiplayer-architecture.md) | P2 | XL | — | **DESIGN ONLY — no code belongs to this plan** |
+| 028 | [Simultaneous claim window](028-simultaneous-claim-window.md) | P2 | M | — | **DONE** — branch `feature/simultaneous-claim-window`; see notes |
+
+Plans 029–036 are sequenced in
+[027 §Build ladder](027-multiplayer-architecture.md) but not yet written. 028
+and 029 are independently shippable and improve the product whether or not
+multiplayer follows.
+
+**Defects found during design, not yet scoped to a plan:**
+
+- `web/engine/turnManager.ts:375` — `claimableIds` assigned and never read. Its
+  comment states the correct behaviour while the state receives
+  `allNonDiscarderIds`. Fixed by 028.
+- `web/components/game/OpponentHand.tsx` — passes the **real** tile into
+  `RetroTile` and relies on `showBack` to hide it. Harmless in solo, a
+  DOM-readable leak in multiplayer. Fixed by construction in 029.
+- `web/content/glossary.ts:33` — Seat Wind defined as "for the current round";
+  it rotates per hand.
+- `web/content/glossary.ts:41` — Exhaustive Draw defined as "the round ends
+  with no winner"; the hand ends.
+
+The two glossary entries are player-facing teaching content and are the same
+hand/round confusion `CONTEXT.md` now fixes.
+
+### 028 execution notes
+
+Engine change landed as designed. `claimablePlayers` now holds only players
+holding a legal claim, `handleClaim`/`handlePass` gate on the exported
+`canActInClaimWindow` predicate instead of the rotation, and `nextClaimantIndex`
+is gone. The invariant that matters going forward: **`currentPlayerIndex` does
+not move while `turnPhase === 'claim'`** — throughout a window it names the seat
+that will draw if every claim is declined.
+
+Larger client blast radius than the plan predicted. `startAiTurn` inferred its
+seat from `currentPlayerIndex`, so the AI claim path had to take an explicit
+`seatIndex`, and the controller's AI effect previously bailed whenever
+`currentPlayerIndex` was not an AI — which after this change would have stranded
+every AI claimant. It now selects eligible AI claimants directly, one per pass,
+re-entering via `aiEpoch`.
+
+Four test drivers outside the two suites named in the plan also picked their
+actor from `currentPlayerIndex` and needed converting: `fullGameSimulation`,
+`matchStorage.validation`, `presentation/events` (sweep), and the rob-the-kong
+case in `turnManager`. None indicated an engine fault — the tile-conservation
+failures were the driver stalling before `countTiles` ran, not a conservation
+break.
+
+Two presentation expectations changed for real, not cosmetically: with a sole
+eligible claimant the meld and the discard-win now resolve on the claim itself
+rather than after the other seats pass, and no `turnChange` rides along when the
+claimant is already the next drawer.
+
+`isMyClaimTurn` was renamed `canClaimNow` (prop and local) — "turn" is the wrong
+noun once the window is simultaneous.
+
+**Verification:** 1103 unit tests across 85 files green, `npm run build` clean,
+typecheck clean, lint 0 errors (8 warnings, down from 10 on `main` — none
+added), Playwright 68/68 green. Browser pass on the **standard** table confirmed
+the claim prompt opening with tiles disabled, auto-pass firing at expiry, play
+continuing through AI seats (wall 77 → 58) and no console errors. The
+**training** table's 20s window was not exercised in the browser; it differs
+only by `CLAIM_TIMEOUT_TRAINING` and is covered by unit tests.
+
+**One e2e fix was required, and it is worth understanding.** The axe scan in
+`e2e/a11y-daily-hand.spec.ts` began failing deterministically on the "hand
+result" phase with a `color-contrast` violation on `.ds-btn-accent`. It was not
+a styling regression: the reported colours (`#8a7436` on `#3d3116`) are
+`--accent` and `--accent-foreground` composited mid-fade, because
+`animate-slide-up` runs `opacity: 0 -> 1` over 300ms while Playwright's
+visibility check resolves as soon as the element enters layout. The test had
+always raced that animation; **this plan removed the accidental delay it relied
+on** — a discard-win now resolves on the claim itself instead of after two more
+PASS round-trips, so the scan lands inside the 300ms window every time. Fixed by
+settling animations before scanning. Note for anyone tempted to await
+`document.getAnimations()` instead: the board runs looping animations (turn
+blink, confetti) whose `finished` promise never resolves, and doing so hangs the
+test to its 300s timeout.
+
+**Pre-existing flake observed, not fixed** (out of scope, mentioned per repo
+convention): `e2e/visual.spec.ts` "landing page — mobile" fails roughly 1 run in
+3 with a ~3% pixel diff, while the desktop variant passes consistently. No
+landing-page code is touched by this plan.
+
+**Not done here:** the uniform pacing floor from ADR 0003 belongs to the online
+client work (plan 033) — in solo there is no opponent to leak timing to and it
+would cost roughly 45s a hand. `npm ci` was run because `three` and
+`eslint-config-next` were missing from the working copy; package.json and the
+lockfile are untouched.

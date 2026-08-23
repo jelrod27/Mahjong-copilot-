@@ -38,20 +38,26 @@ async function expectNoSeriousViolations(page: Page, phase: string) {
   // measures *composited* colours instead of the design tokens, and axe reports
   // contrast failures against colours no user ever sees.
   //
-  // Poll the animations themselves rather than sleeping a fixed span, so this
-  // keeps working if an entry duration is ever lengthened. Looping decor (turn
-  // blink, confetti) is skipped explicitly: its `finished` promise never
-  // resolves, so awaiting `document.getAnimations()` wholesale hangs the test
-  // to its timeout.
-  await page.waitForFunction(
-    () =>
-      document.getAnimations().every((a) => {
-        if (a.effect?.getTiming().iterations === Infinity) return true;
-        return a.playState === 'finished' || a.playState === 'idle';
-      }),
-    undefined,
-    { timeout: 5_000 },
-  );
+  // Ask the page how long its entry animations actually last, then wait that
+  // long. Deriving the span keeps this correct if a duration is ever changed,
+  // and reading it with `evaluate` rather than polling with `waitForFunction`
+  // means it cannot hang: the board runs animations that never settle (looping
+  // decor whose `finished` never resolves, and pending ones on offscreen
+  // elements), so any wait *conditional* on them going quiet times out.
+  const settleMs = await page.evaluate(() => {
+    const ends = document
+      .getAnimations()
+      .map((a) => {
+        const timing = a.effect?.getTiming();
+        if (!timing || timing.iterations === Infinity) return 0;
+        return Number(timing.delay ?? 0) + Number(timing.duration ?? 0);
+      })
+      .filter((ms) => Number.isFinite(ms));
+    return ends.length ? Math.max(...ends) : 0;
+  });
+  // Floor covers animations that start fractionally after the scan is requested;
+  // ceiling keeps a runaway value from stalling the suite.
+  await page.waitForTimeout(Math.min(Math.max(settleMs + 100, 400), 2_000));
 
   const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
 

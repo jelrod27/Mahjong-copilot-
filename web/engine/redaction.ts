@@ -16,8 +16,8 @@
  * See plans/029-redaction-layer.md and plans/027-multiplayer-architecture.md.
  */
 
-import { GameState, GamePhase, ClaimRequest, Player } from '@/models/GameState';
-import { Tile, hiddenTile } from '@/models/Tile';
+import { GameState, GamePhase, ClaimRequest, MeldInfo, Player } from '@/models/GameState';
+import { Tile, hiddenTile, isHiddenTile } from '@/models/Tile';
 
 declare const redactedBrand: unique symbol;
 
@@ -36,12 +36,26 @@ function hide(tiles: Tile[], keyPrefix: string): Tile[] {
   return tiles.map((_, i) => hiddenTile(`${keyPrefix}_${i}`));
 }
 
+/**
+ * A concealed kong is laid with its outer tiles face down: the table knows a
+ * kong was declared, not which tile it was made of, until scoring. Exposed
+ * melds are genuinely public and pass through untouched.
+ */
+function redactMelds(melds: MeldInfo[], seat: number): MeldInfo[] {
+  return melds.map((meld, i) =>
+    meld.isConcealed && meld.type === 'kong'
+      ? { ...meld, tiles: hide(meld.tiles, `seat${seat}_kong${i}`) }
+      : meld,
+  );
+}
+
 function redactPlayer(player: Player, seat: number, isViewer: boolean): Player {
   if (isViewer) return player;
   return {
     ...player,
     // Length is public — a real table shows how many tiles each player holds.
     hand: hide(player.hand, `seat${seat}`),
+    melds: redactMelds(player.melds, seat),
   };
 }
 
@@ -64,12 +78,24 @@ function redactClaim(claim: ClaimRequest, viewerId: string): ClaimRequest {
  * docs/adr/0003-simultaneous-claim-window.md.
  */
 export function redactFor(state: GameState, viewerSeat: number): RedactedState {
-  if (state.phase === GamePhase.FINISHED) {
-    return state as RedactedState;
+  const viewer = state.players[viewerSeat];
+  if (!viewer) {
+    // Failing closed would hand the viewer a board of face-down tiles and look
+    // like a rendering bug. A seat index this function cannot resolve is a
+    // caller error, and it should say so where it happens.
+    throw new Error(
+      `redactFor: no seat ${viewerSeat} (state has ${state.players.length} players)`,
+    );
   }
 
-  const viewer = state.players[viewerSeat];
-  const viewerId = viewer?.id;
+  if (state.phase === GamePhase.FINISHED) {
+    // Copy, so both branches hand back something the caller may treat as its
+    // own. Returning the engine's object only at hand end would make any
+    // mutation bug appear exclusively there.
+    return { ...state } as RedactedState;
+  }
+
+  const viewerId = viewer.id;
 
   const view: GameState = {
     ...state,
@@ -80,11 +106,34 @@ export function redactFor(state: GameState, viewerSeat: number): RedactedState {
     wall: hide(state.wall, 'wall'),
     deadWall: hide(state.deadWall, 'deadWall'),
     players: state.players.map((p, i) => redactPlayer(p, i, i === viewerSeat)),
-    // Only the drawer knows what they drew.
+    // Only the drawer knows what they drew — and "the drawer" is not
+    // `currentPlayerIndex`. `handleDiscard` leaves `lastDrawnTile` set, and
+    // during a claim window `currentPlayerIndex` names the seat that will draw
+    // next (see advanceClaimRound's invariant), so keying on the turn would
+    // hand the next seat a tile still concealed in the previous player's hand.
+    // Ownership is the only gate that stays correct as the phase moves.
     lastDrawnTile:
-      state.currentPlayerIndex === viewerSeat ? state.lastDrawnTile : undefined,
+      state.lastDrawnTile && viewer.hand.some(t => t.id === state.lastDrawnTile!.id)
+        ? state.lastDrawnTile
+        : undefined,
     pendingClaims: state.pendingClaims.map(c => redactClaim(c, viewerId)),
   };
 
   return view as RedactedState;
+}
+
+/**
+ * Throw if `state` is a redacted view rather than authoritative state.
+ *
+ * `RedactedState` is assignable to `GameState`, so nothing at the type level
+ * stops a view reaching `applyAction`, `getLegalClaims` or `calculateShanten` —
+ * where every placeholder reports as a dot and the answer comes back confidently
+ * wrong. Authoritative code that accepts state from outside should call this
+ * first; it is O(1) because the wall is hidden whenever anything is.
+ */
+export function assertAuthoritative(state: GameState): void {
+  const sentinel = state.wall[0] ?? state.deadWall[0];
+  if (sentinel && isHiddenTile(sentinel)) {
+    throw new Error('Expected authoritative game state, received a redacted view');
+  }
 }

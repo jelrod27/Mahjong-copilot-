@@ -218,6 +218,21 @@ seat 0 and asserts `players[1].hand` contains only tiles satisfying
 - **`crypto.getRandomValues` is unavailable** in any target runtime under test.
   Stop rather than adding a polyfill or an import.
 
+## Open item for plan 033 (client wiring)
+
+`hide()` keys placeholders by array index, so `hidden_wall_0` denotes a
+different physical tile after every draw. `presentation/events.ts` recovers what
+visibly moved by diffing the wall arrays, which are consumed from the front — so
+a client feeding two consecutive **redacted** states into `deriveEvents` would
+compute movements from ids that no longer track tiles, and animate the wrong
+tile or none at all.
+
+The seam already exists: `PresentationEvent`'s draw variant is typed
+`tile: TileId | null`, where `null` means "a tile moved but you may not know
+which". Nothing connects redaction to it yet. **Resolve this before a client
+derives events from redacted state** — either derive events server-side and send
+them, or teach `deriveEvents` to emit `null` when it sees a hidden tile.
+
 ## Maintenance notes
 
 Redaction is a **projection, not a filter**: it never removes fields, only

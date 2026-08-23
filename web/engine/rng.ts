@@ -60,6 +60,20 @@ export function shuffleInPlace<T>(arr: T[], rng: Rng): T[] {
  *
  * Uses the `crypto` global rather than an import so this module stays
  * dependency-free and runs unchanged in browsers, Node 18+ and Workers.
+ *
+ * KNOWN BOUND, and it is lower than "cryptographically seeded" suggests:
+ * `createRng` collapses whatever it is given to 32 bits (`hashString`), and
+ * mulberry32 carries a 32-bit state, so at most 2^32 distinct shuffles are
+ * reachable out of 144!. An adversary who observes a few discards can brute
+ * force that space offline and recover the rest of the wall. This change moves
+ * the attack from "guess roughly when the hand started" to "search 2^32", which
+ * is a real improvement but not a guarantee.
+ *
+ * Widening the state is deliberately NOT done here: every seed maps to a
+ * different shuffle under a wider RNG, which would change the Daily Hand for a
+ * given date, invalidate saved games mid-match, and break every test that pins
+ * an outcome to a seed. If competitive play ever needs the full space, it needs
+ * its own plan with a migration for those three.
  */
 export function randomSeed(): string {
   const buf = new Uint32Array(2);

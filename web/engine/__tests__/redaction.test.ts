@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { initializeGame, applyAction, GameOptions } from '../turnManager';
-import { redactFor } from '../redaction';
+import { redactFor, assertAuthoritative } from '../redaction';
 import { getAIDecision } from '../ai';
 import { GameState, GamePhase, gameStateToJson } from '@/models/GameState';
 import { TileFactory, HIDDEN_TILE_ID_PREFIX, isHiddenTile } from '@/models/Tile';
@@ -26,10 +26,11 @@ function playSomeTurns(state: GameState, turns: number): GameState {
   for (let i = 0; i < turns && live.phase === GamePhase.PLAYING; i++) {
     const seat = live.currentPlayerIndex;
     const player = live.players[seat];
+    let next: GameState | null;
     if (live.turnPhase === 'draw') {
-      live = applyAction(live, player.id, { type: 'DRAW' }) ?? live;
+      next = applyAction(live, player.id, { type: 'DRAW' });
     } else if (live.turnPhase === 'discard') {
-      live = applyAction(live, player.id, getAIDecision(live, seat).action) ?? live;
+      next = applyAction(live, player.id, getAIDecision(live, seat).action);
     } else {
       // Claim window: answer for whoever still owes one.
       const claimantId = live.claimablePlayers.find(
@@ -37,8 +38,12 @@ function playSomeTurns(state: GameState, turns: number): GameState {
               !live.pendingClaims.some(c => c.playerId === id),
       );
       if (!claimantId) break;
-      live = applyAction(live, claimantId, { type: 'PASS' }) ?? live;
+      next = applyAction(live, claimantId, { type: 'PASS' });
     }
+    // Never swallow a rejection: a driver that silently stops advancing would
+    // leave every assertion below testing the deal state instead.
+    expect(next, `turn ${i} (${live.turnPhase}) was rejected`).not.toBeNull();
+    live = next!;
   }
   return live;
 }
@@ -66,8 +71,13 @@ describe('redaction — what a seat may not know', () => {
   const view = redactFor(mid, 0);
 
   it('the state under test is genuinely mid-hand', () => {
+    // The live wall is only 78 at the deal (144 - 52 dealt - 14 dead wall), so
+    // comparing against the dealt state is the only assertion that proves the
+    // driver advanced. A fixed bound above 78 would pass on the deal itself.
+    const dealt = initializeGame(options('redact-alpha'));
     expect(mid.phase).toBe(GamePhase.PLAYING);
-    expect(mid.wall.length).toBeLessThan(84);
+    expect(mid.wall.length).toBeLessThan(dealt.wall.length);
+    expect(mid.turnHistory.length).toBeGreaterThan(5);
     expect(mid.discardPile.length).toBeGreaterThan(0);
   });
 
@@ -182,6 +192,75 @@ describe('redaction — claims and endings', () => {
     expect(view.seed).toBe(finished.seed);
     expect(view.wall).toEqual(finished.wall);
     expect(view.players[0].hand).toEqual(finished.players[0].hand);
+  });
+});
+
+describe('redaction — leaks the review caught', () => {
+  const base = initializeGame(options('redact-leaks'));
+
+  it('does not hand the next drawer the tile the previous player drew', () => {
+    // handleDiscard leaves lastDrawnTile set, and during a claim window
+    // currentPlayerIndex names the seat that draws next, not the drawer. Keying
+    // on the turn would leak a tile still concealed in seat 1's hand.
+    const held = base.players[1].hand[0];
+    const claiming: GameState = {
+      ...base,
+      turnPhase: 'claim',
+      currentPlayerIndex: 2,
+      lastDrawnTile: held,
+      lastDiscardedBy: base.players[1].id,
+      claimablePlayers: [base.players[2].id],
+    };
+
+    expect(redactFor(claiming, 2).lastDrawnTile).toBeUndefined();
+    expect(redactFor(claiming, 3).lastDrawnTile).toBeUndefined();
+    // Its owner still sees it.
+    expect(redactFor(claiming, 1).lastDrawnTile).toEqual(held);
+  });
+
+  it('hides a concealed kong from everyone but its owner', () => {
+    const kongTiles = base.players[1].hand.slice(0, 4);
+    const withKong: GameState = {
+      ...base,
+      players: base.players.map((p, i) =>
+        i === 1
+          ? {
+              ...p,
+              melds: [
+                { tiles: kongTiles, type: 'kong' as const, isConcealed: true },
+                { tiles: base.players[1].hand.slice(4, 7), type: 'pung' as const, isConcealed: false },
+              ],
+            }
+          : p,
+      ),
+    };
+
+    const rival = redactFor(withKong, 0).players[1];
+    // The table knows a kong was declared, not which tile it was made of.
+    expect(rival.melds[0].type).toBe('kong');
+    expect(rival.melds[0].isConcealed).toBe(true);
+    expect(rival.melds[0].tiles).toHaveLength(4);
+    expect(rival.melds[0].tiles.every(isHiddenTile)).toBe(true);
+    // An exposed meld is genuinely public and passes through.
+    expect(rival.melds[1].tiles).toEqual(withKong.players[1].melds[1].tiles);
+    // Its owner still sees their own kong.
+    expect(redactFor(withKong, 1).players[1].melds[0].tiles).toEqual(kongTiles);
+  });
+
+  it('refuses a seat it cannot resolve rather than hiding everything', () => {
+    expect(() => redactFor(base, 4)).toThrow(/no seat 4/);
+    expect(() => redactFor(base, -1)).toThrow(/no seat -1/);
+  });
+
+  it('never hands back the engine\'s own state object', () => {
+    expect(redactFor(base, 0)).not.toBe(base);
+    const finished: GameState = { ...base, phase: GamePhase.FINISHED };
+    expect(redactFor(finished, 0)).not.toBe(finished);
+  });
+
+  it('lets authoritative code refuse a redacted view', () => {
+    expect(() => assertAuthoritative(base)).not.toThrow();
+    expect(() => assertAuthoritative(redactFor(base, 0))).toThrow(/redacted view/);
   });
 });
 

@@ -52,7 +52,17 @@ export function shuffleInPlace<T>(arr: T[], rng: Rng): T[] {
 /**
  * Generate a fresh random seed. The single sanctioned non-deterministic
  * call site in the engine: used only when the caller does not supply a seed.
+ *
+ * Cryptographically random rather than `Math.random()` + a timestamp, which is
+ * guessable by anyone who knows roughly when a hand began — fine for solo,
+ * not for competitive integrity, since the seed determines the entire shuffle.
+ * See plans/spikes/replay-format-design.md §4.
+ *
+ * Uses the `crypto` global rather than an import so this module stays
+ * dependency-free and runs unchanged in browsers, Node 18+ and Workers.
  */
 export function randomSeed(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  const buf = new Uint32Array(2);
+  crypto.getRandomValues(buf);
+  return `${buf[0].toString(36)}-${buf[1].toString(36)}`;
 }

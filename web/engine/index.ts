@@ -5,5 +5,7 @@ export { isWinningHand, canPlayerWin, findDecompositions, isThirteenOrphans, isS
 export { calculateScore } from './scoring';
 export { isSameTile, isPung, isChow, isKong, isPair, getAvailableClaims, resolveClaims } from './claiming';
 export { initializeGame, applyAction } from './turnManager';
+export { redactFor } from './redaction';
+export type { RedactedState } from './redaction';
 export type { GameOptions } from './turnManager';
 export type { GameAction, AIDecision, ScoringContext, ScoringResult, FanItem, HandDecomposition, AvailableClaim } from './types';

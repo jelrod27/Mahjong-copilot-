@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { initializeGame, applyAction, GameOptions } from '../turnManager';
+import { initializeGame, applyAction, getLegalClaims, GameOptions } from '../turnManager';
 import { GamePhase, GameState, Player } from '@/models/GameState';
 import { TileType, WindTile } from '@/models/Tile';
 import { dot, bam, char, windTile, makePlayer, flowerTile } from './testHelpers';
@@ -558,6 +558,23 @@ describe('claim window - simultaneous semantics', () => {
     live = applyAction(live, 'ai_1', pung)!;
     expect(live.currentPlayerIndex).toBe(state.currentPlayerIndex);
     expect(live.turnPhase).toBe('claim');
+  });
+
+  it('resolves a window that admits a player holding no legal claim', () => {
+    // The shape a pre-upgrade save carries: `claimablePlayers` used to be every
+    // non-discarder, so a seat can be admitted while holding nothing to claim.
+    // Such a seat still owes an answer, and the window must not resolve without
+    // it or hang waiting for a prompt that never arms.
+    const state = claimWindow(['ai_1', 'ai_3']);
+    expect(getLegalClaims(state, 3)).toEqual([]);
+
+    // ai_1 claiming is not enough — ai_3 has not answered.
+    const claimedFirst = applyAction(state, 'ai_1', pung)!;
+    expect(claimedFirst.turnPhase).toBe('claim');
+
+    const resolved = applyAction(claimedFirst, 'ai_3', { type: 'PASS' })!;
+    expect(resolved.turnPhase).toBe('discard');
+    expect(resolved.players[1].melds).toHaveLength(1);
   });
 
   it('admits only a win to a rob-the-kong window', () => {

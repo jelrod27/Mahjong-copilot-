@@ -544,8 +544,15 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
  * for. `resolveClaimRequests` picks the winner by claim priority and HK turn
  * order, never by arrival order, so the sequence in which claims land cannot
  * change the outcome. See docs/adr/0003-simultaneous-claim-window.md.
+ *
+ * Self-contained on purpose: it asserts the phase rather than trusting every
+ * resolution path to have cleared `claimablePlayers`. All three exits do clear
+ * it today, but this is exported and called from the board, the controller and
+ * several test drivers, and one future exit that forgets the reset would turn
+ * every caller into a false positive at once.
  */
 export function canActInClaimWindow(state: GameState, playerId: string): boolean {
+  if (state.turnPhase !== 'claim') return false;
   if (!state.claimablePlayers.includes(playerId)) return false;
   if (state.passedPlayers.includes(playerId)) return false;
   if (state.pendingClaims.some(c => c.playerId === playerId)) return false;

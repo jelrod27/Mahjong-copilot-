@@ -374,6 +374,32 @@ describe('useGameController timer race / leak fixes', () => {
     expect(result.current.game?.turnPhase).toBe('discard');
   });
 
+  it('does not spin when the only eligible claimant is the discarding seat', () => {
+    // Regression: startAiTurn refuses to act for the seat that discarded, so a
+    // chain started for it completes synchronously having applied nothing. If
+    // completing re-triggered the AI effect, that seat would be re-selected
+    // forever with no delay between iterations — a tight loop that exhausts
+    // memory rather than failing an assertion. Progress through a claim window
+    // must come from passedPlayers / pendingClaims changing, never from the
+    // chain's own completion.
+    const claimGame = makeGame({
+      turnPhase: 'claim',
+      currentPlayerIndex: 1,
+      lastDiscardedBy: 'ai2',
+      lastDiscardedTile: makeTile('d1'),
+      claimablePlayers: ['ai2'],
+    });
+    initializeMatchMock.mockReturnValue(makeMatch(claimGame));
+    getAvailableClaimsMock.mockReturnValue([]);
+    applyActionMock.mockReturnValue(claimGame);
+
+    renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+    act(() => { vi.advanceTimersByTime(5_000); });
+
+    expect(applyActionMock.mock.calls.length).toBeLessThan(10);
+  });
+
   it('Plan 013: does not spin when the human is not an eligible claimant', () => {
     // The engine's handlePass rejects whenever currentPlayerIndex is not this
     // player. If the countdown expires while the rotation is still at an AI

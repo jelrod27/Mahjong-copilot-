@@ -395,6 +395,48 @@ describe('claim flow', () => {
     expect(result.current.claimTimer).toBe(10000);
   });
 
+  it('auto-passes an eligible human who holds no legal claim', () => {
+    // Regression: a save written before the claim window became simultaneous
+    // admits every non-discarder, so the human can be eligible while holding
+    // nothing to claim. Nothing arms claimOptions for them, so the countdown
+    // never runs and no dependency changes — without an auto-pass here the
+    // window waits forever and the hand is unrecoverable. `currentPlayerIndex`
+    // is an AI seat throughout: it names the next drawer, never a claimant, so
+    // it must not gate this.
+    const claimGame = makeClaimGame(true);
+    expect(claimGame.currentPlayerIndex).not.toBe(0);
+    initializeMatchMock.mockReturnValue(makeMatch(claimGame));
+    getAvailableClaimsMock.mockReturnValue([]); // no legal claim for the human
+    applyActionMock.mockReturnValue(claimGame);
+
+    renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+
+    const passCalls = applyActionMock.mock.calls.filter(
+      (c) => (c as [GameState, string, { type: string }])[1] === HUMAN_ID &&
+              (c as [GameState, string, { type: string }])[2].type === 'PASS',
+    );
+    expect(passCalls.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('does not auto-pass a human who was never admitted to the window', () => {
+    // The complement: not eligible means no answer is owed, so firing a PASS
+    // would just spam the engine with rejected actions.
+    const claimGame = makeClaimGame(false);
+    initializeMatchMock.mockReturnValue(makeMatch(claimGame));
+    getAvailableClaimsMock.mockReturnValue([]);
+    applyActionMock.mockReturnValue(claimGame);
+
+    renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+
+    const passCalls = applyActionMock.mock.calls.filter(
+      (c) => (c as [GameState, string, { type: string }])[1] === HUMAN_ID &&
+              (c as [GameState, string, { type: string }])[2].type === 'PASS',
+    );
+    expect(passCalls).toHaveLength(0);
+  });
+
   it('claim timeout auto-passes exactly once after 11s', () => {
     // Rotation on the human's own seat — the only state where a PASS is legal.
     const claimGame = makeClaimGame(true);

@@ -38,11 +38,20 @@ async function expectNoSeriousViolations(page: Page, phase: string) {
   // measures *composited* colours instead of the design tokens, and axe reports
   // contrast failures against colours no user ever sees.
   //
-  // A fixed wait rather than awaiting `document.getAnimations()`: the board also
-  // runs looping animations (turn blink, confetti) whose `finished` promise never
-  // resolves, so waiting on all of them hangs. CSS animations are wall-clock
-  // driven, so 400ms clears the 300ms entry on any machine.
-  await page.waitForTimeout(400);
+  // Poll the animations themselves rather than sleeping a fixed span, so this
+  // keeps working if an entry duration is ever lengthened. Looping decor (turn
+  // blink, confetti) is skipped explicitly: its `finished` promise never
+  // resolves, so awaiting `document.getAnimations()` wholesale hangs the test
+  // to its timeout.
+  await page.waitForFunction(
+    () =>
+      document.getAnimations().every((a) => {
+        if (a.effect?.getTiming().iterations === Infinity) return true;
+        return a.playState === 'finished' || a.playState === 'idle';
+      }),
+    undefined,
+    { timeout: 5_000 },
+  );
 
   const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
 

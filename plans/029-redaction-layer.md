@@ -218,20 +218,25 @@ seat 0 and asserts `players[1].hand` contains only tiles satisfying
 - **`crypto.getRandomValues` is unavailable** in any target runtime under test.
   Stop rather than adding a polyfill or an import.
 
-## Open item for plan 033 (client wiring)
+## Event derivation from a redacted view — resolved here
 
 `hide()` keys placeholders by array index, so `hidden_wall_0` denotes a
-different physical tile after every draw. `presentation/events.ts` recovers what
-visibly moved by diffing the wall arrays, which are consumed from the front — so
-a client feeding two consecutive **redacted** states into `deriveEvents` would
-compute movements from ids that no longer track tiles, and animate the wrong
-tile or none at all.
+different physical tile after every draw, and `presentation/events.ts` recovers
+what moved by diffing the wall arrays. Deriving events from two consecutive
+**redacted** states therefore read movements off ids that no longer track tiles.
 
-The seam already exists: `PresentationEvent`'s draw variant is typed
-`tile: TileId | null`, where `null` means "a tile moved but you may not know
-which". Nothing connects redaction to it yet. **Resolve this before a client
-derives events from redacted state** — either derive events server-side and send
-them, or teach `deriveEvents` to emit `null` when it sees a hidden tile.
+`deriveEvents` now emits `null` for a wall tile the viewer may not identify —
+which is what `PresentationEvent`'s `draw` and `kongReplacement` variants were
+already typed for.
+
+The subtler half: the flower loop was driven by `drawn.tile.type === BONUS`, and
+**redaction hides bonus-ness** — a placeholder reports as a suit tile, so on a
+redacted view that test silently never fired and every flower reveal, plus its
+replacement draw, was dropped. Fixing only the ids would have left the module
+looking redaction-safe while quietly losing events. The loop is now driven by
+`players[seat].flowers`, which is public in both views and gives the same answer
+for authoritative state — the existing event tests, including the chained-flower
+ordering case, pass unchanged.
 
 ## Maintenance notes
 

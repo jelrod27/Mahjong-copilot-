@@ -19,7 +19,7 @@
  */
 
 import { GameState, GamePhase, MeldInfo, WinMethod } from '@/models/GameState';
-import { Tile, TileType } from '@/models/Tile';
+import { Tile, isHiddenTile } from '@/models/Tile';
 import { GameAction } from '@/engine/types';
 
 /** `Tile.id` — the identity of one physical tile. */
@@ -170,6 +170,16 @@ function pushTransitionEvents(previous: GameState, next: GameState, push: Push) 
 }
 
 /**
+ * A tile taken off the wall, as the viewer may know it. `null` means "a tile
+ * moved but you are not entitled to know which" — which is exactly what the
+ * `draw` and `kongReplacement` variants already allow, and what a redacted
+ * view produces.
+ */
+function wallTileId(tile: Tile): TileId | null {
+  return isHiddenTile(tile) ? null : tile.id;
+}
+
+/**
  * Walk the tiles this transition took off the walls, in the order the engine
  * took them, and name each movement.
  *
@@ -199,23 +209,34 @@ function pushWallEvents(
   if (!isKong && taken.length === 0) return;
 
   const seat = meld?.seat ?? previous.currentPlayerIndex;
-  let drawn = taken[0] ?? null;
+  const drawn = taken[0] ?? null;
 
   if (isKong) {
-    push({ kind: 'kongReplacement', seat, tile: drawn?.tile.id ?? null });
+    push({ kind: 'kongReplacement', seat, tile: drawn ? wallTileId(drawn.tile) : null });
   } else {
-    push({ kind: 'draw', seat, tile: drawn!.tile.id, source: drawn!.source });
+    push({ kind: 'draw', seat, tile: wallTileId(drawn!.tile), source: drawn!.source });
   }
 
-  let index = 1;
-  while (drawn && drawn.tile.type === TileType.BONUS) {
-    push({ kind: 'flowerReveal', seat, tile: drawn.tile.id });
-    const replacement = taken[index];
+  // Which tiles were flowers cannot be read off the wall: a redacted view
+  // replaces those tiles with placeholders, and a placeholder reports as a suit
+  // tile, so a `type === BONUS` test silently never fires and every reveal is
+  // dropped. The flowers a seat put down are public in either view, so derive
+  // the loop from those — same answer for authoritative state, and the only
+  // answer available for a redacted one.
+  const revealed = next.players[seat].flowers
+    .slice(previous.players[seat].flowers.length);
+
+  for (let i = 0; i < revealed.length; i++) {
+    push({ kind: 'flowerReveal', seat, tile: revealed[i].id });
+    const replacement = taken[i + 1];
     // No replacement left: the walls ran out mid-loop and the hand is over.
     if (!replacement) break;
-    push({ kind: 'draw', seat, tile: replacement.tile.id, source: replacement.source });
-    index++;
-    drawn = replacement;
+    push({
+      kind: 'draw',
+      seat,
+      tile: wallTileId(replacement.tile),
+      source: replacement.source,
+    });
   }
 }
 

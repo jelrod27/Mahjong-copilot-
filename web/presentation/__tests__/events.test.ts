@@ -4,6 +4,7 @@ import { GameState, GamePhase } from '@/models/GameState';
 import { Tile, TileType, WindTile } from '@/models/Tile';
 import { GameAction } from '@/engine/types';
 import { deriveEvents, PresentationEvent } from '../events';
+import { redactFor } from '@/engine/redaction';
 import { dot, bam, char, windTile, flowerTile } from '@/engine/__tests__/testHelpers';
 
 type EventOf<K extends PresentationEvent['kind']> = Extract<PresentationEvent, { kind: K }>;
@@ -391,6 +392,41 @@ describe('deriveEvents — hand endings', () => {
     const { events } = act(state, 0, { type: 'DRAW' });
 
     expect(events).toEqual([{ kind: 'handEnd', seq: 0, winner: null }]);
+  });
+});
+
+describe('deriveEvents — derived from a redacted view', () => {
+  // A client only ever holds redacted state, so the same derivation has to work
+  // when the wall is placeholders. See plans/029-redaction-layer.md.
+  it('reports a draw it may not identify as null, and still reveals flowers', () => {
+    const base = initializeGame(options({ seed: 'deal-145' }));
+    const seat = base.currentPlayerIndex;
+    const before = redactFor(base, (seat + 1) % 4);
+    const after = redactFor(
+      applyAction(base, base.players[seat].id, { type: 'DRAW' })!,
+      (seat + 1) % 4,
+    );
+
+    const events = deriveEvents(before, { type: 'DRAW' }, after, 0);
+    const draws = ofKind(events, 'draw');
+
+    expect(draws.length).toBeGreaterThan(0);
+    // The viewer is told a tile moved and from which wall, never which tile.
+    for (const draw of draws) {
+      expect(draw.tile).toBeNull();
+      expect(draw.seat).toBe(seat);
+    }
+  });
+
+  it('still names revealed flowers, which are public', () => {
+    // deal-145 puts three flowers on seat 2, so a redacted view must still be
+    // able to announce them: they sit face up in `players[].flowers`, not in
+    // the wall. Deriving flower-ness from tile type would drop all three,
+    // because a placeholder never reports as BONUS.
+    const dealt = initializeGame(options({ seed: 'deal-145' }));
+    const view = redactFor(dealt, 0);
+    expect(view.players[2].flowers).toHaveLength(3);
+    expect(view.players[2].flowers.every(f => f.type === TileType.BONUS)).toBe(true);
   });
 });
 

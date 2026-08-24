@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createRng, deterministicNoise, shuffleInPlace, randomSeed } from '../rng';
 
 describe('randomSeed', () => {
@@ -14,13 +14,28 @@ describe('randomSeed', () => {
     expect(seeds.size).toBe(1000);
   });
 
-  it('carries no timestamp an observer could narrow the search with', () => {
-    // The old implementation embedded Date.now() in base 36, which let anyone
-    // who knew roughly when a hand started guess the seed and so the shuffle.
-    const now = Date.now().toString(36);
-    const prefix = now.slice(0, 5);
-    const seeds = Array.from({ length: 200 }, () => randomSeed());
-    expect(seeds.filter(s => s.includes(prefix))).toEqual([]);
+  it('draws its entropy from the platform CSPRNG', () => {
+    // Asserted against a stubbed source rather than by sampling real output.
+    // The property that matters is *where* the entropy comes from: the previous
+    // implementation embedded Date.now(), so anyone who knew roughly when a
+    // hand started could narrow the search. Pinning the source proves that
+    // directly, where a statistical check on real seeds could only ever fail
+    // probabilistically.
+    const spy = vi
+      .spyOn(globalThis.crypto, 'getRandomValues')
+      .mockImplementation(<T extends ArrayBufferView | null>(array: T): T => {
+        const view = array as unknown as Uint32Array;
+        view[0] = 0;
+        view[1] = 4294967295;
+        return array;
+      });
+
+    try {
+      expect(randomSeed()).toBe(`0-${(4294967295).toString(36)}`);
+      expect(spy).toHaveBeenCalledOnce();
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 
@@ -39,8 +54,11 @@ describe('seeded determinism still holds', () => {
       .toEqual(shuffleInPlace(items(), createRng('shuffle-seed')));
   });
 
-  it('deterministicNoise is stable for the same parts', () => {
+  it('deterministicNoise returns the same value for the same parts', () => {
     expect(deterministicNoise('a', 1)).toBe(deterministicNoise('a', 1));
+  });
+
+  it('deterministicNoise separates different parts', () => {
     expect(deterministicNoise('a', 1)).not.toBe(deterministicNoise('a', 2));
   });
 });

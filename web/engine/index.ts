@@ -7,5 +7,7 @@ export { isSameTile, isPung, isChow, isKong, isPair, getAvailableClaims, resolve
 export { initializeGame, applyAction } from './turnManager';
 export { redactFor } from './redaction';
 export type { RedactedState } from './redaction';
+export { assertAuthoritative } from './redaction';
+export { isHiddenTile } from '@/models/Tile';
 export type { GameOptions } from './turnManager';
 export type { GameAction, AIDecision, ScoringContext, ScoringResult, FanItem, HandDecomposition, AvailableClaim } from './types';

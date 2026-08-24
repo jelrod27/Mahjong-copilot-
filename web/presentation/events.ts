@@ -273,8 +273,18 @@ function findMeldDelta(previous: GameState, next: GameState): MeldDelta | null {
     if (after.length > before.length) {
       const meldIndex = before.length;
       const meld = after[meldIndex];
-      const handIds = new Set(previous.players[seat].hand.map(t => t.id));
-      const tile = meld.tiles.find(t => !handIds.has(t.id)) ?? meld.tiles[0];
+      // An exposed meld was completed by the tile just discarded, and that tile
+      // is public in every view. Do not look for "the meld tile that was not in
+      // hand": a redacted view replaces a rival's hand with placeholders, so
+      // nothing matches, the search falls through to the meld's first tile, and
+      // a chow reports its lowest tile instead of the one that was claimed.
+      // A concealed kong is built entirely from hand and names its own first
+      // tile — which under redaction is a placeholder, i.e. face down, which is
+      // exactly what a concealed kong is.
+      const tile =
+        !meld.isConcealed && previous.lastDiscardedTile
+          ? previous.lastDiscardedTile
+          : meld.tiles[0];
       return { seat, meldIndex, claim: meldClaim(meld), tile };
     }
 

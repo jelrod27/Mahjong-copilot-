@@ -59,7 +59,13 @@ export function shuffleInPlace<T>(arr: T[], rng: Rng): T[] {
  * See plans/spikes/replay-format-design.md §4.
  *
  * Uses the `crypto` global rather than an import so this module stays
- * dependency-free and runs unchanged in browsers, Node 18+ and Workers.
+ * dependency-free and runs unchanged in browsers, Workers and Node.
+ *
+ * Node needs >= 19 for that global: Node 18 exposes Web Crypto only behind
+ * `--experimental-global-webcrypto`, so `crypto` is undefined there and every
+ * unseeded `initializeGame` would throw. `package.json` declares >= 20.9.0,
+ * which is what Next 16 requires anyway, so the floor is real rather than
+ * aspirational. Do not lower it without giving this a Node-compatible source.
  *
  * KNOWN BOUND, and it is lower than "cryptographically seeded" suggests:
  * `createRng` collapses whatever it is given to 32 bits (`hashString`), and

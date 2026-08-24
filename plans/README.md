@@ -502,12 +502,44 @@ concepts. Decisions are recorded as ADRs in `docs/adr/`.
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | 027 | [Multiplayer architecture](027-multiplayer-architecture.md) | P2 | XL | — | **DESIGN ONLY — no code belongs to this plan** |
-| 028 | [Simultaneous claim window](028-simultaneous-claim-window.md) | P2 | M | — | **DONE** — branch `feature/simultaneous-claim-window`; see notes |
+| 028 | [Simultaneous claim window](028-simultaneous-claim-window.md) | P2 | M | — | **DONE** — merged as #157; see notes |
+| 029 | [Redaction layer](029-redaction-layer.md) | P2 | M | — | **DONE** — PR #158, branch `feature/redaction-layer`; see notes |
 
-Plans 029–036 are sequenced in
+Plans 030–036 are sequenced in
 [027 §Build ladder](027-multiplayer-architecture.md) but not yet written. 028
-and 029 are independently shippable and improve the product whether or not
-multiplayer follows.
+and 029 were independently shippable and improve the product whether or not
+multiplayer follows; **030 onward do not have that property** — they need a
+Cloudflare account and a decision on where the Worker lives in this repo.
+
+### 029 execution notes
+
+**DONE.** `redactFor(state, seat)` plus a branded `RedactedState`, hidden-tile
+placeholders, `assertAuthoritative`, and the CSPRNG seed from the replay spike.
+No renderer changed, which was the plan's thesis: `OpponentHand.tsx` became
+correct without being touched.
+
+Three defects the review caught, all worth knowing about:
+
+- **`lastDrawnTile` went to the wrong seat.** Gated on `currentPlayerIndex`,
+  which plan 028 had just redefined during a claim window to mean the *next
+  drawer*. Now gated on ownership.
+- **Concealed kongs were fully exposed.** A rules error, not a code one: the
+  design table listed melds as public, but a concealed kong is laid with its
+  outer tiles face down.
+- **The flower loop in `presentation/events.ts` never fired on a redacted
+  view**, because it tested `type === BONUS` and redaction hides bonus-ness.
+  Every flower reveal and its replacement draw were silently dropped. Now driven
+  by `players[seat].flowers`, which is public in both views. This closes what
+  027 had listed as an open item for plan 033 — **033 inherits a working seam.**
+
+Two of the original tests passed for the wrong reason (a vacuous `wall.length <
+84` guard when the live wall is 78 at the deal, and a driver that swallowed
+rejected actions), which is why the leaks survived the first suite.
+
+**Known limitation, deliberately not fixed:** `createRng` collapses any seed to
+32 bits, so at most 2^32 shuffles are reachable out of 144!. Widening it would
+change the Daily Hand for every date, invalidate mid-match saves, and break
+every seed-pinned test. Documented at the call site in `rng.ts`.
 
 **Defects found during design, not yet scoped to a plan:**
 

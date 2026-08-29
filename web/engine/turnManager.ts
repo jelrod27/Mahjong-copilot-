@@ -712,7 +712,11 @@ function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameSta
     pendingClaims: [],
     claimablePlayers: [],
     passedPlayers: [],
-    turnPhase: winner.claimType === 'kong' ? 'draw' : 'discard',
+    // Every claimant discards next, kong included: the kong branch below draws
+    // its replacement before handing control back. A ternary here once said
+    // 'draw' for a kong and was overridden nine lines later, so the two lines
+    // stated opposite intentions about a claimant who has already drawn.
+    turnPhase: 'discard',
     // The claimant did not draw: clear draw-derived state so a follow-up
     // DECLARE_WIN cannot masquerade as a self-draw on a stale tile.
     lastDrawnTile: undefined,
@@ -725,7 +729,6 @@ function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameSta
     return drawReplacement(
       {
         ...newState,
-        turnPhase: 'discard',
         currentPlayerIndex: winnerIndex,
       },
       winnerIndex,

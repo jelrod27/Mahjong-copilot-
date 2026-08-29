@@ -152,8 +152,6 @@ describe('redaction — what a seat may know', () => {
     expect(view.turnHistory).toEqual(mid.turnHistory);
     expect(view.turnPhase).toBe(mid.turnPhase);
     expect(view.currentPlayerIndex).toBe(mid.currentPlayerIndex);
-    expect(view.claimablePlayers).toEqual(mid.claimablePlayers);
-    expect(view.passedPlayers).toEqual(mid.passedPlayers);
     mid.players.forEach((p, i) => {
       expect(view.players[i].melds).toEqual(p.melds);
       expect(view.players[i].flowers).toEqual(p.flowers);
@@ -197,6 +195,34 @@ describe('redaction — claims and endings', () => {
 
 describe('redaction — leaks the review caught', () => {
   const base = initializeGame(options('redact-leaks'));
+
+  it('does not name which rivals hold a legal claim on the discard', () => {
+    // `claimablePlayers` comes from `getAllClaims`, so membership *is* a
+    // statement about a rival's concealed hand: "seat 2 holds a pair of this
+    // tile". `passedPlayers` is a subset, so it says the same thing one beat
+    // later. Neither may cross the wire.
+    const window: GameState = {
+      ...base,
+      turnPhase: 'claim',
+      claimablePlayers: [base.players[0].id, base.players[2].id],
+      passedPlayers: [base.players[2].id],
+    };
+
+    const view = redactFor(window, 0);
+    // The viewer keeps their own membership — `canPlayerClaim` tests it, and
+    // the UI asks "have I already acted?".
+    expect(view.claimablePlayers).toEqual([base.players[0].id]);
+    // Seat 2's eligibility, and its decision to decline, are both gone.
+    expect(view.passedPlayers).toEqual([]);
+
+    // A seat with no claim of its own learns nothing at all.
+    const rival = redactFor(window, 1);
+    expect(rival.claimablePlayers).toEqual([]);
+    expect(rival.passedPlayers).toEqual([]);
+
+    // Seat 2 still sees its own pass, so its client can render "you passed".
+    expect(redactFor(window, 2).passedPlayers).toEqual([base.players[2].id]);
+  });
 
   it('does not hand the next drawer the tile the previous player drew', () => {
     // handleDiscard leaves lastDrawnTile set, and during a claim window

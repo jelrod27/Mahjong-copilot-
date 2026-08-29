@@ -117,6 +117,20 @@ export function redactFor(state: GameState, viewerSeat: number): RedactedState {
         ? state.lastDrawnTile
         : undefined,
     pendingClaims: state.pendingClaims.map(c => redactClaim(c, viewerId)),
+    // Who *could* claim is derived from hands: `handleDiscard` fills
+    // `claimablePlayers` from `getAllClaims`, so it names exactly the seats
+    // holding a legal chow/pung/kong/win on the live discard. Shipping it tells
+    // a rival that seat 2 holds a pair of the discard without showing a tile.
+    // Only prompted seats can pass, so `passedPlayers` is a subset of the same
+    // set and leaks the same fact one beat later.
+    //
+    // The viewer's own membership is the whole of what a client needs:
+    // `canPlayerClaim` tests `includes(playerId)` and the UI asks "have I
+    // already acted?". Length is deliberately not preserved here, unlike the
+    // tile arrays — no renderer draws these, and the count *is* the
+    // eligibility signal we are removing.
+    claimablePlayers: state.claimablePlayers.filter(id => id === viewerId),
+    passedPlayers: state.passedPlayers.filter(id => id === viewerId),
   };
 
   return view as RedactedState;

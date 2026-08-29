@@ -10,7 +10,7 @@ import { calculateShanten } from '../winDetection';
 import { canDeclareSelfDrawnWin } from '../turnManager';
 import {
   tileDangerScore, isSafeTile, tileDiscardPriority,
-  isOpponentDangerous, detectOpponentSuitFocus,
+  isOpponentDangerous, detectOpponentSuitFocus, countVisibleTiles,
 } from './aiUtils';
 import { normalizePersonality, AIPersonality } from './personality';
 
@@ -237,6 +237,10 @@ export function chooseDiscard(
   let bestTile = nonBonus[0];
   let bestScore = Infinity;
 
+  // The state does not change inside this loop, so build the visible-tile map
+  // once rather than once per candidate tile in each of the three calls below.
+  const visible = countVisibleTiles(gameState, playerIndex);
+
   for (const tile of nonBonus) {
     const remaining = hand.filter(t => t.id !== tile.id);
     const testHand = remaining.filter(t => t.type !== TileType.BONUS);
@@ -254,7 +258,7 @@ export function chooseDiscard(
     score -= priority * 1; // prefer discarding isolated/terminal tiles
 
     if (defenseWeight > 0) {
-      const baseDanger = tileDangerScore(tile, gameState, playerIndex);
+      const baseDanger = tileDangerScore(tile, gameState, playerIndex, visible);
       const focusDanger = suitFocusDanger(tile, gameState, playerIndex);
       const danger = baseDanger + focusDanger;
 
@@ -263,7 +267,7 @@ export function chooseDiscard(
         score = danger * 10 * personality.defenseBias * defenseWeight;
         score += shanten * 30;
         score -= priority * 2;
-        if (isSafeTile(tile, gameState, playerIndex)) {
+        if (isSafeTile(tile, gameState, playerIndex, visible)) {
           score -= 50;
         }
         // Keep fan-valuable tiles even when folding
@@ -271,7 +275,7 @@ export function chooseDiscard(
       } else {
         // Aggressive mode with danger awareness
         score += danger * 3 * defenseWeight;
-        if (isSafeTile(tile, gameState, playerIndex)) {
+        if (isSafeTile(tile, gameState, playerIndex, visible)) {
           score -= 20;
         }
         // When tenpai, heavily penalize dangerous discards

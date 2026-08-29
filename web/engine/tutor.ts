@@ -6,7 +6,7 @@ import { Tile, TileType, TileSuit, DragonTile, tileKey } from '@/models/Tile';
 import { GameState, MeldInfo } from '@/models/GameState';
 import { AvailableClaim, TutorAdvice, TileClassification, TileColor } from './types';
 import { calculateShanten, canPlayerWin, ALL_TILE_PROTOTYPES } from './winDetection';
-import { tileDiscardPriority, tileDangerScore, isSafeTile } from './ai/aiUtils';
+import { tileDiscardPriority, tileDangerScore, isSafeTile, countVisibleTiles } from './ai/aiUtils';
 import { getBestClaimSubmission } from './claiming';
 
 /** All 34 unique tile types for tenpai wait calculation */
@@ -102,14 +102,19 @@ function buildDiscardAdvice(
 
   const currentShanten = calculateShanten(nonBonus, melds);
 
+  // Built once for the whole scan: the state is unchanged across candidates,
+  // and this map used to be rebuilt twice per tile on the main thread inside a
+  // React effect.
+  const visible = countVisibleTiles(gameState, playerIndex);
+
   const scores: ScoredTile[] = nonBonus.map(tile => {
     const remaining = hand.filter(t => t.id !== tile.id);
     const testHand = remaining.filter(t => t.type !== TileType.BONUS);
 
     const shanten = calculateShanten(testHand, melds);
-    const danger = tileDangerScore(tile, gameState, playerIndex);
+    const danger = tileDangerScore(tile, gameState, playerIndex, visible);
     const priority = tileDiscardPriority(tile);
-    const safe = isSafeTile(tile, gameState, playerIndex);
+    const safe = isSafeTile(tile, gameState, playerIndex, visible);
 
     let score = shanten * 100 + danger * 5 - priority * 2;
     if (safe) score -= 20;

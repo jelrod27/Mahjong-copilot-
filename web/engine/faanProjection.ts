@@ -16,7 +16,7 @@ import { MeldInfo } from '@/models/GameState';
 import { WindTile } from '@/models/Tile';
 import { FanItem, ScoringContext, ScoringResult } from './types';
 import { calculateShanten, canPlayerWin } from './winDetection';
-import { calculateScore } from './scoring';
+import { calculateScore, flowerFans } from './scoring';
 
 /** A fan the player is partway toward, with what's still needed. */
 export interface ProjectedFan {
@@ -83,63 +83,10 @@ export function projectFaan(
   }
 
   // --- Flowers / No Flowers ---
-  // Mirrors the flower block in `evaluateFans` (scoring.ts) exactly. A bonus
-  // tile pays only when it matches your seat; a complete set of four pays 2 and
-  // absorbs its own seat tile; holding none at all pays 1.
-  //
-  // A per-flower fan used to be projected here that the engine never awards, so
-  // an east seat holding Orchid, Chrysanthemum and Spring was promised 4 faan
-  // and scored 1. The meter has to state the rule the engine applies, or it
-  // teaches a scoring system the game does not use.
-  if (flowers.length === 0) {
-    lockedIn.push({
-      name: 'No Flowers',
-      fan: 1,
-      description: 'No bonus tiles drawn — hand stays clean',
-    });
-  } else {
-    const flowerNames = ['Plum', 'Orchid', 'Chrysanthemum', 'Bamboo'];
-    const seasonNames = ['Spring', 'Summer', 'Autumn', 'Winter'];
-    const seatNumberMap: Record<string, number> = { east: 1, south: 2, west: 3, north: 4 };
-    const seatNumber = seatNumberMap[seatWind] ?? 0;
-
-    const flowerSet = new Set(flowers.map(f => f.flower).filter(Boolean));
-    const seasonSet = new Set(flowers.map(f => f.season).filter(Boolean));
-    const hasAllFlowers = flowerNames.every(n => flowerSet.has(n));
-    const hasAllSeasons = seasonNames.every(n => seasonSet.has(n));
-
-    if (hasAllFlowers) {
-      lockedIn.push({
-        name: 'All Four Flowers',
-        fan: 2,
-        description: 'Complete set of flower tiles',
-      });
-    }
-    if (hasAllSeasons) {
-      lockedIn.push({
-        name: 'All Four Seasons',
-        fan: 2,
-        description: 'Complete set of season tiles',
-      });
-    }
-
-    if (seatNumber > 0) {
-      for (const f of flowers) {
-        const flowerIdx = flowerNames.indexOf(f.flower ?? '');
-        const seasonIdx = seasonNames.indexOf(f.season ?? '');
-        const matchesSeat = flowerIdx + 1 === seatNumber || seasonIdx + 1 === seatNumber;
-        // A complete set already scores as a set; don't double-pay its seat tile.
-        const inCompleteSet = (flowerIdx >= 0 && hasAllFlowers) || (seasonIdx >= 0 && hasAllSeasons);
-        if (matchesSeat && !inCompleteSet) {
-          lockedIn.push({
-            name: 'Seat Flower',
-            fan: 1,
-            description: 'Flower/season matches your seat wind',
-          });
-        }
-      }
-    }
-  }
+  // The rule itself lives in `scoring.ts`. This module used to hold its own
+  // copy, the two drifted, and the meter promised a fan per bonus tile that the
+  // engine never paid. Calling the same function is what stops that recurring.
+  lockedIn.push(...flowerFans(flowers, seatWind));
 
   // --- Exposed dragon/wind pungs + kongs are already locked in ---
   for (const m of exposedMelds) {

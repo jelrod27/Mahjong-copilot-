@@ -74,6 +74,9 @@ const calculateScoreMock = vi.fn(() => ({ fan: 0, faans: [], totalFan: 0 }));
 vi.mock('@/engine/scoring', () => ({
   calculateScore: (...args: unknown[]) => calculateScoreMock(...args),
   calculatePayment: vi.fn(() => ({ winner: 0, losers: [0, 0, 0] })),
+  // Real value: the controller compares against it to pick the win sound, so a
+  // stubbed threshold would make the limit-fanfare tests assert nothing.
+  LIMIT_FAN: 10,
 }));
 
 const getAIDecisionMock = vi.fn(() => ({ action: { type: 'PASS' } }));

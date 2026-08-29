@@ -38,8 +38,16 @@ export function shantenAfterClaim(
   if (claimType === 'kong' || handAfter.length === 0) {
     return calculateShanten(handAfter, melds);
   }
+  // One candidate per distinct face. Discarding either copy of a pair leaves
+  // the same hand, and `calculateShanten` brute-forces all 34 tile prototypes
+  // through decomposition, so the duplicates were not free — this runs on the
+  // synchronous claim path while the window is counting down.
+  const seen = new Set<string>();
   let best = Infinity;
   for (const tile of handAfter) {
+    const face = tileKey(tile);
+    if (seen.has(face)) continue;
+    seen.add(face);
     best = Math.min(best, calculateShanten(handAfter.filter(t => t.id !== tile.id), melds));
   }
   return best;

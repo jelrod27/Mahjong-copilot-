@@ -97,9 +97,12 @@ export function redactFor(state: GameState, viewerSeat: number): RedactedState {
   }
 
   if (state.phase === GamePhase.FINISHED) {
-    // Copy, so both branches hand back something the caller may treat as its
-    // own. Returning the engine's object only at hand end would make any
-    // mutation bug appear exclusively there.
+    // Top-level copy, so both branches hand back a distinct object and a
+    // mutation bug cannot appear only at hand end. Note this is shallow:
+    // `players`, `wall` and every nested array are still the engine's own, so a
+    // caller must treat the contents as read-only. Deep-copying a finished
+    // state to guard against a caller that mutates tiles would cost more than
+    // it buys — nothing in the tree does.
     return { ...state } as RedactedState;
   }
 

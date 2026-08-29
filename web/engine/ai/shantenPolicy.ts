@@ -14,6 +14,35 @@ import {
 } from './aiUtils';
 import { normalizePersonality, AIPersonality } from './personality';
 
+/**
+ * Shanten of the hand a claim leaves, measured at the 13-tile-equivalent state
+ * both claim types settle at.
+ *
+ * A pung takes two tiles from hand and adds a set worth 3, so the claimant is
+ * holding 14 effective tiles and must discard before the turn passes. A kong
+ * takes three and adds a set also worth 3, leaving 13, with the replacement
+ * draw restoring the 14th. Scoring one against the other — or either against
+ * the 13-tile pre-claim baseline — compares different quantities, and the kong
+ * lost every close call by construction rather than on merit.
+ *
+ * Both are therefore scored at 13: the kong as it stands, the pung after the
+ * discard it is about to make, taking the best tile to part with.
+ */
+export function shantenAfterClaim(
+  claimType: 'pung' | 'kong',
+  handAfter: Tile[],
+  melds: MeldInfo[],
+): number {
+  if (claimType === 'kong' || handAfter.length === 0) {
+    return calculateShanten(handAfter, melds);
+  }
+  let best = Infinity;
+  for (const tile of handAfter) {
+    best = Math.min(best, calculateShanten(handAfter.filter(t => t.id !== tile.id), melds));
+  }
+  return best;
+}
+
 /** Provisional meld formed by claiming the live discard with tiles from hand. */
 export function claimMeld(
   claimType: ClaimType,
@@ -306,7 +335,7 @@ export function chooseClaim(
       .filter(t => !tiles.find(ct => ct.id === t.id))
       .filter(t => t.type !== TileType.BONUS);
     const newMelds = [...player.melds, claimMeld(claim.claimType, tiles, discarded)];
-    const newShanten = calculateShanten(handAfter, newMelds);
+    const newShanten = shantenAfterClaim(claim.claimType, handAfter, newMelds);
 
     if (newShanten < currentShanten) {
       return {

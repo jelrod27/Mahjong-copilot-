@@ -199,31 +199,14 @@ function findStandardDecompositions(
 
   if (remaining.length < 2) return;
 
-  // If we still need melds, first try extracting a pair (only when we have 0 melds extracted,
-  // since pair must be extracted exactly once). Actually, the pair can be at any position,
-  // so we should try extracting pair at the start when we have exactly 2+3*n remaining.
+  // What is left must be exactly the melds still owed plus the one pair, or no
+  // decomposition can come out of this branch. The pair itself is extracted
+  // further down, once the melds are placed — it can sit at any position, so it
+  // cannot be taken off the front here.
   const meldsNeeded = 4 - currentMelds.length;
   const expectedRemaining = meldsNeeded * 3 + 2; // melds*3 + pair(2)
 
   if (remaining.length !== expectedRemaining) return;
-
-  // Try using the first tile in a pair
-  for (let i = 1; i < remaining.length; i++) {
-    if (tilesMatch(remaining[0], remaining[i])) {
-      if (meldsNeeded === 0) {
-        // This is the pair
-        if (remaining.length === 2) {
-          results.push({
-            melds: [...currentMelds],
-            pair: [remaining[0], remaining[i]],
-          });
-        }
-      }
-      // Try extracting as pair (only if we haven't committed to all melds yet)
-      // We detect "pair extraction" by checking if remaining count matches pair scenario
-      break; // only need to try the first match
-    }
-  }
 
   // Try extracting the first tile as part of a pung
   if (remaining.length >= 3) {

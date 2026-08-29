@@ -228,6 +228,10 @@ export default function useGameController(
   useEffect(() => { matchRef.current = match; }, [match]);
   useEffect(() => { selectedTileIdRef.current = selectedTileId; }, [selectedTileId]);
 
+  // Debounces the discard voice-over. Declared here rather than beside its
+  // effect because `resetHandState` below clears it at the hand boundary.
+  const lastSpokenDiscardIdRef = useRef<string | undefined>(undefined);
+
   const resetHandState = useCallback(() => {
     setSelectedTileId(undefined);
     setSuggestedTileId(undefined);
@@ -241,6 +245,11 @@ export default function useGameController(
     setFaanProjection(null);
     processingRef.current = false;
     humanDiscardInFlightRef.current = false;
+    // Tile ids repeat across hands — `TileFactory.getAllTiles` regenerates the
+    // same `dot_7_3` strings every deal — so a stale id here would silently
+    // swallow the new hand's first discard if it happened to match the last
+    // one spoken, with no way for the player to recover the callout.
+    lastSpokenDiscardIdRef.current = undefined;
   }, [updateClaimTimer, updateClaimOptions]);
 
   const startNewGame = useCallback((newDifficulty: 'easy' | 'medium' | 'hard', newMode?: GameMode) => {
@@ -346,7 +355,12 @@ export default function useGameController(
 
   const { draw: effectiveDrawDelay, discard: effectiveDiscardDelay } =
     resolveAiDelays(difficulty, gameSpeed);
-  const humanIndex = game?.players.findIndex(p => p.id === HUMAN_ID) ?? 0;
+  // `findIndex` reports a miss as -1, which `??` does not catch — it only
+  // fires on null/undefined. A restored save whose players were written with a
+  // different human id therefore left `humanIndex` at -1, and the next read of
+  // `game.players[humanIndex].hand` threw during render. Fall back for real.
+  const foundHumanIndex = game?.players.findIndex(p => p.id === HUMAN_ID) ?? -1;
+  const humanIndex = foundHumanIndex >= 0 ? foundHumanIndex : 0;
   const isHumanTurn = game?.currentPlayerIndex === humanIndex;
   const isGameOver = game?.phase === GamePhase.FINISHED;
   const isMatchOver = match?.phase === 'finished';
@@ -660,7 +674,6 @@ export default function useGameController(
   // When a tile is discarded (by any player), optionally speak it in the
   // user's chosen language and emit a subtitle so learners see Chinese +
   // English side by side. `lastDiscardedTile.id` debounces duplicate fires.
-  const lastSpokenDiscardIdRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (tileVoice === 'off' || !game) return;
     const tile = game.lastDiscardedTile;

@@ -36,6 +36,15 @@ describe('shantenAfterClaim — like-for-like claim scoring', () => {
       .toBe(calculateShanten(handAfterKong, [pungMeld]));
   });
 
+  it('scores a chow the same way as a pung, since both leave 14', () => {
+    // A chow also commits two tiles from hand for a 3-tile meld, so it lands in
+    // the same 14-tile state a pung does. Leaving it on raw `calculateShanten`
+    // while pung and kong moved to this helper just moved the bias onto chows.
+    expect(shantenAfterClaim('chow', handAfterPung, [pungMeld]))
+      .toBe(shantenAfterClaim('pung', handAfterPung, [pungMeld]));
+    expect(shantenAfterClaim('chow', handAfterPung, [pungMeld])).toBe(0);
+  });
+
   it('never rates a claim better than the hand it actually leaves', () => {
     // The asymmetry this closes: a pung was measured at 14 effective tiles
     // against a 13-tile baseline, so it could only ever flatter itself, while

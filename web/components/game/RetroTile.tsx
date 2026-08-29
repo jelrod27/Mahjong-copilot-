@@ -1,7 +1,7 @@
 'use client';
 
 import { memo } from 'react';
-import { Tile, TileType } from '@/models/Tile';
+import { Tile, TileType, isHiddenTile } from '@/models/Tile';
 import { tileArtSrc } from '@/lib/tileArt';
 import { useTilePalette } from './TilePaletteContext';
 import { useTileDisplay } from './TileDisplayContext';
@@ -59,7 +59,10 @@ function RetroTile({
 
   const scaleRootClass = `tile-scale-root tile-size-${size}`;
 
-  if (showBack) {
+  // A redaction placeholder has no face to draw and would throw in `tileKey`
+  // below. It is face-down by definition, so it renders as a back whether or
+  // not the caller thought to ask for one.
+  if (showBack || isHiddenTile(tile)) {
     const backContent = (
       <div
         className={`${scaleRootClass} flex items-center justify-center rounded-sm border border-mahjong-wood/40`}

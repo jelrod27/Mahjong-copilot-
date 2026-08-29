@@ -3,7 +3,7 @@ import { initializeGame, applyAction, GameOptions } from '../turnManager';
 import { redactFor, assertAuthoritative } from '../redaction';
 import { getAIDecision } from '../ai';
 import { GameState, GamePhase, gameStateToJson } from '@/models/GameState';
-import { TileFactory, HIDDEN_TILE_ID_PREFIX, isHiddenTile } from '@/models/Tile';
+import { TileFactory, HIDDEN_TILE_ID_PREFIX, isHiddenTile, hiddenTile } from '@/models/Tile';
 
 const options = (seed: string): GameOptions => ({
   playerNames: ['Human', 'AI 1', 'AI 2', 'AI 3'],
@@ -318,6 +318,20 @@ describe('assertAuthoritative — the guard does not fail open', () => {
     const view = redactFor({ ...base, wall: [], deadWall: [] }, 0);
 
     expect(() => assertAuthoritative(view)).toThrow(/redacted view/);
+  });
+
+  it('catches a placeholder that is not the first tile in its array', () => {
+    // `redactFor` hides a whole array at a time, so index 0 is representative
+    // of everything it produces — but a guard should not lean on the invariant
+    // it exists to check. A genuine tile in front of a placeholder used to be
+    // enough to walk straight past it.
+    const base = initializeGame(options('redact-scan'));
+    const smuggled: GameState = {
+      ...base,
+      wall: [base.wall[0], hiddenTile('smuggled'), ...base.wall.slice(1)],
+    };
+
+    expect(() => assertAuthoritative(smuggled)).toThrow(/redacted view/);
   });
 
   it('accepts authoritative state with both walls empty', () => {

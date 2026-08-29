@@ -155,17 +155,23 @@ export function redactFor(state: GameState, viewerSeat: number): RedactedState {
  * where a placeholder carries no rank and `tileKey` throws on it. Authoritative
  * code that accepts state from outside should call this first.
  *
- * Sampling the wall alone failed open at the worst moment: once the live wall
- * is exhausted and the dead wall has been consumed by kong and flower
- * replacements, both are empty, the sentinel is `undefined`, and a redacted
- * view passed the only runtime guard the module has — exactly when
- * wall-exhaustion settlement and the last-tile win methods are being decided.
- * Concealed hands are hidden whenever the wall is, so sampling those too closes
- * it and the check stays O(seats).
+ * This scans rather than samples. Sampling `wall[0]` was wrong twice over: it
+ * failed open once the live wall was exhausted and the dead wall consumed by
+ * kong and flower replacements (both empty, sentinel `undefined`) — exactly
+ * when wall-exhaustion settlement is being decided — and it took index 0 as
+ * proof for the whole array. `redactFor` does hide tiles a whole array at a
+ * time, but a guard should not lean on the invariant it exists to check.
+ *
+ * The cost is a walk of the 144-tile set at a trust boundary, which is where
+ * this is called; it is not on any per-action path.
  */
 export function assertAuthoritative(state: GameState): void {
-  const sentinels = [state.wall[0], state.deadWall[0], ...state.players.map(p => p.hand[0])];
-  if (sentinels.some(tile => tile && isHiddenTile(tile))) {
+  const arrays: Tile[][] = [
+    state.wall,
+    state.deadWall,
+    ...state.players.flatMap(p => [p.hand, p.flowers, ...p.melds.map(m => m.tiles)]),
+  ];
+  if (arrays.some(tiles => tiles.some(isHiddenTile))) {
     throw new Error('Expected authoritative game state, received a redacted view');
   }
 }

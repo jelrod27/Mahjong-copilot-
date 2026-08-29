@@ -355,11 +355,21 @@ export default function useGameController(
 
   const { draw: effectiveDrawDelay, discard: effectiveDiscardDelay } =
     resolveAiDelays(difficulty, gameSpeed);
-  // `findIndex` reports a miss as -1, which `??` does not catch — it only
-  // fires on null/undefined. A restored save whose players were written with a
-  // different human id therefore left `humanIndex` at -1, and the next read of
-  // `game.players[humanIndex].hand` threw during render. Fall back for real.
-  const foundHumanIndex = game?.players.findIndex(p => p.id === HUMAN_ID) ?? -1;
+  // `findIndex` reports a miss as -1, which `??` does not catch — it fires only
+  // on null/undefined — so this used to leave `humanIndex` at -1 and throw a
+  // bare TypeError on the next `game.players[humanIndex].hand`.
+  //
+  // Falling back to seat 0 would be worse than the crash, not better: seat 0
+  // would be an AI, and the player would be shown its concealed hand and be
+  // able to discard, claim and pass on its behalf. `projectScene` refuses the
+  // identical condition for the identical reason ("Silently falling back to
+  // seat 0 would show one player another's hand, so this fails loudly
+  // instead"), and the two guards should not disagree. `GameErrorBoundary`
+  // catches this and shows a real message rather than a white screen.
+  const foundHumanIndex = game ? game.players.findIndex(p => p.id === HUMAN_ID) : -1;
+  if (game && foundHumanIndex === -1) {
+    throw new Error(`useGameController: no seat for "${HUMAN_ID}" in this game`);
+  }
   const humanIndex = foundHumanIndex >= 0 ? foundHumanIndex : 0;
   const isHumanTurn = game?.currentPlayerIndex === humanIndex;
   const isGameOver = game?.phase === GamePhase.FINISHED;

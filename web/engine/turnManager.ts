@@ -898,7 +898,16 @@ function isEarthlyWin(state: GameState, player: Player, isSelfDrawn: boolean): b
   if (isSelfDrawn || player.isDealer) return false;
   const dealer = state.players.find(p => p.isDealer);
   if (!dealer || state.lastDiscardedBy !== dealer.id) return false;
-  return totalDiscards(state) === 1 &&
+  // `<= 1`, not `=== 1`, because this runs against two different states. The
+  // min-faan legality gate calls it *before* the claim resolves, when the
+  // dealer's tile is still in the pool (1); final scoring calls it through
+  // `buildWinScoringContext` on the finished state, after `withoutDiscard` has
+  // taken the claimed tile off the table (0). Testing for exactly 1 made the
+  // gate admit an Earthly Hand and then scoring pay it as an ordinary win.
+  //
+  // This stays tight: no player has melded and at most one tile has ever been
+  // discarded, by the dealer, and it is the tile being won on.
+  return totalDiscards(state) <= 1 &&
     state.players.every(p => p.melds.length === 0);
 }
 

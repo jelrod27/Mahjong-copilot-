@@ -307,3 +307,21 @@ describe('redaction — purity', () => {
     expect(JSON.parse(JSON.stringify(gameStateToJson(mid)))).toEqual(before);
   });
 });
+
+describe('assertAuthoritative — the guard does not fail open', () => {
+  it('still refuses a redacted view once both walls are empty', () => {
+    // Late in a hand the live wall is exhausted and the dead wall has been
+    // consumed by kong and flower replacements. Sampling only the wall left the
+    // sentinel undefined here, so a view passed the guard at precisely the
+    // point wall-exhaustion settlement is being decided.
+    const base = initializeGame(options('redact-guard'));
+    const view = redactFor({ ...base, wall: [], deadWall: [] }, 0);
+
+    expect(() => assertAuthoritative(view)).toThrow(/redacted view/);
+  });
+
+  it('accepts authoritative state with both walls empty', () => {
+    const base = initializeGame(options('redact-guard'));
+    expect(() => assertAuthoritative({ ...base, wall: [], deadWall: [] })).not.toThrow();
+  });
+});

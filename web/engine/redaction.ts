@@ -148,14 +148,21 @@ export function redactFor(state: GameState, viewerSeat: number): RedactedState {
  * Throw if `state` is a redacted view rather than authoritative state.
  *
  * `RedactedState` is assignable to `GameState`, so nothing at the type level
- * stops a view reaching `applyAction`, `getLegalClaims` or `calculateShanten` —
- * where every placeholder reports as a dot and the answer comes back confidently
- * wrong. Authoritative code that accepts state from outside should call this
- * first; it is O(1) because the wall is hidden whenever anything is.
+ * stops a view reaching `applyAction`, `getLegalClaims` or `calculateShanten`,
+ * where a placeholder carries no rank and `tileKey` throws on it. Authoritative
+ * code that accepts state from outside should call this first.
+ *
+ * Sampling the wall alone failed open at the worst moment: once the live wall
+ * is exhausted and the dead wall has been consumed by kong and flower
+ * replacements, both are empty, the sentinel is `undefined`, and a redacted
+ * view passed the only runtime guard the module has — exactly when
+ * wall-exhaustion settlement and the last-tile win methods are being decided.
+ * Concealed hands are hidden whenever the wall is, so sampling those too closes
+ * it and the check stays O(seats).
  */
 export function assertAuthoritative(state: GameState): void {
-  const sentinel = state.wall[0] ?? state.deadWall[0];
-  if (sentinel && isHiddenTile(sentinel)) {
+  const sentinels = [state.wall[0], state.deadWall[0], ...state.players.map(p => p.hand[0])];
+  if (sentinels.some(tile => tile && isHiddenTile(tile))) {
     throw new Error('Expected authoritative game state, received a redacted view');
   }
 }

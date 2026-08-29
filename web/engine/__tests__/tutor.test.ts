@@ -381,3 +381,35 @@ describe('getTutorAdvice — claim phase', () => {
     expect(advice!.message.toLowerCase()).toMatch(/dragon|faan/);
   });
 });
+
+describe('getTutorAdvice — tenpai waits on a 14-tile hand', () => {
+  // Three chows, a pair, a gap shape (bam 4 + bam 6) and a lone wind: discard
+  // the wind and the hand is tenpai on bam 5. The player is holding 14 because
+  // they have drawn and still owe a discard, which is the normal mid-turn
+  // state — and the state in which the wait list came back empty.
+  const hand: Tile[] = [
+    bam(1, 1), bam(2, 1), bam(3, 1), bam(4, 1), bam(6, 1),
+    char(5, 1), char(6, 1), char(7, 1),
+    dot(4, 1), dot(5, 1), dot(6, 1),
+    dragonTile(DragonTile.RED, 1), dragonTile(DragonTile.RED, 2),
+    windTile(WindTile.NORTH, 1),
+  ];
+
+  const advice = getTutorAdvice(
+    makeGameState({ players: [makePlayer({ id: 'p0', name: 'You', hand })] }),
+    0,
+  );
+
+  it('recognises the hand as tenpai', () => {
+    expect(advice?.isTenpai).toBe(true);
+  });
+
+  it('names the tile it is waiting on', () => {
+    // `findTenpaiWaits` appends a prototype and asks `canPlayerWin`, which
+    // takes exactly 14 effective tiles. Handed the 14-tile hand it was testing
+    // 15 every time, so every prototype failed and the panel announced
+    // "Waiting for:" with nothing after the colon.
+    expect(advice?.tenpaiWaits ?? []).not.toHaveLength(0);
+    expect(advice?.tenpaiWaits).toContain(bam(5, 1).nameEnglish);
+  });
+});

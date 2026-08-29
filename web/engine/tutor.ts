@@ -129,8 +129,16 @@ function buildDiscardAdvice(
   // Tenpai on the current hand, or after the suggested discard (post-draw)
   const handAfterBest = nonBonus.filter(t => t.id !== best.tile.id);
   const shantenAfterBest = calculateShanten(handAfterBest, melds);
-  const tenpaiHand = currentShanten === 0 ? nonBonus
-    : shantenAfterBest === 0 ? handAfterBest
+  // `findTenpaiWaits` appends a prototype tile and asks `canPlayerWin`, which
+  // accepts exactly 14 effective tiles — so it must be handed a hand of 13.
+  // Mid-turn the player holds 14 (drawn, and still owing a discard), and
+  // passing that through unchanged made every prototype fail the count check,
+  // so the panel announced "Waiting for:" with nothing after the colon.
+  const meldTileCount = melds.reduce((sum, m) => sum + Math.min(m.tiles.length, 3), 0);
+  const isReadyHand = (tiles: Tile[]) => tiles.length + meldTileCount === 13;
+
+  const tenpaiHand = currentShanten === 0 && isReadyHand(nonBonus) ? nonBonus
+    : shantenAfterBest === 0 && isReadyHand(handAfterBest) ? handAfterBest
     : null;
   if (tenpaiHand) {
     const waits = findTenpaiWaits(tenpaiHand, melds);

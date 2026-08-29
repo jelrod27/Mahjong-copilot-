@@ -621,6 +621,33 @@ function handleClaim(
   });
 }
 
+/**
+ * Take a claimed tile off the table.
+ *
+ * `discardPile` and `playerDiscards` are two views of the same pool, so a tile
+ * that leaves one must leave the other. Removing it from only the pile left the
+ * claimed tile drawn in the discarder's row *and* in the claimant's meld, and
+ * left `tileDangerScore` and `detectOpponentSuitFocus` counting it as an
+ * unclaimed discard for the rest of the hand.
+ *
+ * On a robbed kong the tile sits in the declarer's hand rather than the pool,
+ * so both filters are no-ops — which is correct, not a missed case.
+ */
+function withoutDiscard(
+  state: GameState,
+  tile: Tile,
+): Pick<GameState, 'discardPile' | 'playerDiscards'> {
+  const discarderId = state.lastDiscardedBy;
+  const playerDiscards = { ...state.playerDiscards };
+  if (discarderId && playerDiscards[discarderId]) {
+    playerDiscards[discarderId] = playerDiscards[discarderId].filter(t => t.id !== tile.id);
+  }
+  return {
+    discardPile: state.discardPile.filter(t => t.id !== tile.id),
+    playerDiscards,
+  };
+}
+
 function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameState {
   const discardedTile = state.lastDiscardedTile!;
   const discarderIndex = state.players.findIndex(p => p.id === state.lastDiscardedBy);
@@ -632,7 +659,7 @@ function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameSta
 
   // Apply the winning claim
   if (winner.claimType === 'win') {
-    const newDiscardPile = state.discardPile.filter(t => t.id !== discardedTile.id);
+    const pool = withoutDiscard(state, discardedTile);
     // The claimed tile joins the winner's hand: keeps the finished state
     // consistent with self-draw wins (14 effective tiles in hand) and
     // conserves the 144-tile invariant. On a robbed kong the tile is still
@@ -648,7 +675,7 @@ function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameSta
     return {
       ...state,
       players: winPlayers,
-      discardPile: newDiscardPile,
+      ...pool,
       phase: GamePhase.FINISHED,
       winnerId: player.id,
       winningTile: discardedTile,
@@ -675,12 +702,12 @@ function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameSta
     ],
   };
 
-  const newDiscardPile = state.discardPile.filter(t => t.id !== discardedTile.id);
+  const pool = withoutDiscard(state, discardedTile);
 
   let newState: GameState = {
     ...state,
     players: newPlayers,
-    discardPile: newDiscardPile,
+    ...pool,
     currentPlayerIndex: winnerIndex,
     pendingClaims: [],
     claimablePlayers: [],

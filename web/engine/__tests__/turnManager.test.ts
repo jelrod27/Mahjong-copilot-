@@ -372,6 +372,15 @@ describe('claim phase - claim ends cycle', () => {
     // Now all have acted — pung claim should be resolved
     expect(state2.turnPhase).toBe('discard');
     expect(state2.currentPlayerIndex).toBe(1);
+
+    // The claimed tile is in AI 1's meld now, so it must be gone from *both*
+    // views of the discard pool. It used to leave `discardPile` only, so the
+    // per-seat rows kept drawing it in the discarder's row while it also sat
+    // in the meld, and the AI danger model kept counting it as unclaimed.
+    expect(state2.discardPile.find(t => t.id === discardedTile.id)).toBeUndefined();
+    expect(state2.playerDiscards['human-1'].find(t => t.id === discardedTile.id))
+      .toBeUndefined();
+    expect(state2.players[1].melds[0].tiles.map(t => t.id)).toContain(discardedTile.id);
   });
 });
 

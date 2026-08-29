@@ -1113,7 +1113,12 @@ export default function useGameController(
         // Pick the win sound after scoring so we know if it was a limit hand.
         // Limit hands or anything 10+ fan get the bigger fanfare; self-draws
         // get a triumphant fifth on top of the standard win arpeggio.
-        const isLimitHand = result?.handName !== undefined || (result?.totalFan ?? 0) >= 10;
+        // `handName` is set for *any* hand carrying a 3-fan item, and is
+        // 'Chicken Hand' at zero fan, so testing it fired the limit fanfare on
+        // ordinary and worthless wins alike — only 1-2 fan hands got the right
+        // sound. A limit hand is exactly LIMIT_FAN (10) or more, which the
+        // second clause already said on its own.
+        const isLimitHand = (result?.totalFan ?? 0) >= 10;
         const isSelfDrawnFinal = game.isSelfDrawn ?? false;
         soundManager.play(
           isLimitHand ? 'winLimitHand' : isSelfDrawnFinal ? 'winSelfDraw' : 'win',

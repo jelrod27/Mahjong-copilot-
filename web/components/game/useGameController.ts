@@ -11,7 +11,7 @@ import { applyAction, buildWinScoringContext, getLegalClaims, canDeclareSelfDraw
 import { advanceMatch, startNextHand } from '@/engine/matchManager';
 import { getBestClaimSubmission } from '@/engine/claiming';
 import { isWinningHand, canPlayerWin } from '@/engine/winDetection';
-import { calculateScore } from '@/engine/scoring';
+import { calculateScore, LIMIT_FAN } from '@/engine/scoring';
 import { AvailableClaim, ScoringResult, TileClassification, DEFAULT_MIN_FAAN } from '@/engine/types';
 import { calculatePayment } from '@/engine/scoring';
 import { getTutorAdvice } from '@/engine/tutor';
@@ -1134,14 +1134,15 @@ export default function useGameController(
         }
 
         // Pick the win sound after scoring so we know if it was a limit hand.
-        // Limit hands or anything 10+ fan get the bigger fanfare; self-draws
-        // get a triumphant fifth on top of the standard win arpeggio.
+        // Limit hands get the bigger fanfare; self-draws get a triumphant fifth
+        // on top of the standard win arpeggio.
+        //
         // `handName` is set for *any* hand carrying a 3-fan item, and is
         // 'Chicken Hand' at zero fan, so testing it fired the limit fanfare on
         // ordinary and worthless wins alike — only 1-2 fan hands got the right
-        // sound. A limit hand is exactly LIMIT_FAN (10) or more, which the
-        // second clause already said on its own.
-        const isLimitHand = (result?.totalFan ?? 0) >= 10;
+        // sound. The threshold comes from `scoring.ts` rather than a literal,
+        // so a table variant that moves the limit moves the fanfare with it.
+        const isLimitHand = (result?.totalFan ?? 0) >= LIMIT_FAN;
         const isSelfDrawnFinal = game.isSelfDrawn ?? false;
         soundManager.play(
           isLimitHand ? 'winLimitHand' : isSelfDrawnFinal ? 'winSelfDraw' : 'win',

@@ -10,7 +10,8 @@ import { ScoringContext, ScoringResult, FanItem, HandDecomposition, PaymentBreak
 import { findDecompositionsWithMelds, isThirteenOrphans, isSevenPairs } from './winDetection';
 
 const BASE_POINTS = 8; // base payment in HK Mahjong
-const LIMIT_FAN = 10; // limit hand threshold
+/** Limit-hand threshold. Exported so callers cannot drift from it. */
+export const LIMIT_FAN = 10;
 // Payment is monotonic in fan and capped at the limit: 8 × 2^10. A limit hand
 // must always be the most valuable hand possible.
 const MAX_PAYMENT = BASE_POINTS * Math.pow(2, LIMIT_FAN); // 8192

@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Active codebase:** `web/` only. Next.js 16 (App Router) + React 19 + TypeScript 6 + Redux Toolkit (settings/progress only) + Tailwind CSS v4 + Sentry. The root `package.json` is a proxy that forwards `dev`/`build`/`lint`/`typecheck`/`test` into `web/`.
 
-Auth, multiplayer, ranked and profile routes exist as deferred placeholders (`DeferredFeaturePage`); `/auth/callback` just redirects to `/?accounts=deferred`. There is no Supabase client in the tree — the only `supabase` strings are copy in deferred lobby pages. Archived multiplayer SQL and Elo helpers live under `docs/archive/`.
+Auth, multiplayer, ranked and profile routes exist as deferred placeholders (`DeferredFeaturePage`); `/auth/callback` just redirects to `/?accounts=deferred`. There is no Supabase client in the tree — `supabase` appears only as copy in the deferred lobby pages. Archived multiplayer SQL and Elo helpers live under `docs/archive/`.
 
 The solo game runs fully offline.
 
@@ -66,7 +66,7 @@ Pure TypeScript, zero runtime dependencies, no side effects, deterministic.
 
 ### Data flow
 
-```
+```text
 User action → engine.applyAction() → new GameState → useGameController React state → re-render
                                           ↓
                         presentation/events.ts + scene/projectScene()

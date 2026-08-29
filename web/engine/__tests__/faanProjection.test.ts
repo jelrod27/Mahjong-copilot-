@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { projectFaan } from '../faanProjection';
 import { WindTile, DragonTile, TileSuit } from '@/models/Tile';
 import { MeldInfo } from '@/models/GameState';
-import { bam, dot, char, dragonTile, windTile, flowerTile } from './testHelpers';
+import { bam, dot, char, dragonTile, windTile, flowerTile, seasonTile } from './testHelpers';
 
 const EMPTY_MELDS: MeldInfo[] = [];
 
@@ -82,6 +82,18 @@ describe('projectFaan', () => {
       // withholds No Flowers too because the hand is not clean.
       expect(names).not.toContain('No Flowers');
       expect(names).not.toContain('Flower Tiles');
+      expect(names).not.toContain('Seat Flower');
+    });
+
+    it('pays a complete set of seasons as a set, not per tile', () => {
+      const seasons = ['Spring', 'Summer', 'Autumn', 'Winter']
+        .map((n, i) => seasonTile(n, i + 1));
+      const result = projectFaan([dot(1)], EMPTY_MELDS, WindTile.EAST, WindTile.EAST, seasons);
+
+      const names = result.lockedIn.map(f => f.name);
+      expect(result.lockedIn.filter(f => f.name === 'All Four Seasons')).toHaveLength(1);
+      expect(result.lockedIn.find(f => f.name === 'All Four Seasons')?.fan).toBe(2);
+      // Spring is season #1 and matches an east seat, but the set absorbs it.
       expect(names).not.toContain('Seat Flower');
     });
 

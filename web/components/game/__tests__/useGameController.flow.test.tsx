@@ -603,6 +603,9 @@ describe('scoring and AI fallback', () => {
     // Zero fan names the hand 'Chicken Hand', which used to read as a limit.
     winWith({ totalFan: 0, faans: [], handName: 'Chicken Hand' });
 
+    // Assert the sound it *should* make, not only the one it should not —
+    // playing nothing at all would otherwise pass.
+    expect(soundManager.play).toHaveBeenCalledWith('win');
     expect(soundManager.play).not.toHaveBeenCalledWith('winLimitHand');
   });
 

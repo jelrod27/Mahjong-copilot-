@@ -4,6 +4,7 @@ import { GameState, GamePhase } from '@/models/GameState';
 import { Tile, TileType, WindTile } from '@/models/Tile';
 import { GameAction } from '@/engine/types';
 import { deriveEvents, PresentationEvent } from '../events';
+import { redactFor } from '@/engine/redaction';
 import { dot, bam, char, windTile, flowerTile } from '@/engine/__tests__/testHelpers';
 
 type EventOf<K extends PresentationEvent['kind']> = Extract<PresentationEvent, { kind: K }>;
@@ -391,6 +392,92 @@ describe('deriveEvents — hand endings', () => {
     const { events } = act(state, 0, { type: 'DRAW' });
 
     expect(events).toEqual([{ kind: 'handEnd', seq: 0, winner: null }]);
+  });
+});
+
+describe('deriveEvents — derived from a redacted view', () => {
+  // A client only ever holds redacted state, so the same derivation has to work
+  // when the wall is placeholders. See plans/029-redaction-layer.md.
+  it('reports a draw it may not identify as null, and still reveals flowers', () => {
+    const base = initializeGame(options({ seed: 'deal-145' }));
+    const seat = base.currentPlayerIndex;
+    const before = redactFor(base, (seat + 1) % 4);
+    const after = redactFor(
+      applyAction(base, base.players[seat].id, { type: 'DRAW' })!,
+      (seat + 1) % 4,
+    );
+
+    const events = deriveEvents(before, { type: 'DRAW' }, after, 0);
+    const draws = ofKind(events, 'draw');
+
+    expect(draws.length).toBeGreaterThan(0);
+    // The viewer is told a tile moved and from which wall, never which tile.
+    for (const draw of draws) {
+      expect(draw.tile).toBeNull();
+      expect(draw.seat).toBe(seat);
+    }
+  });
+
+  it('still announces a flower reveal and its replacement draw', () => {
+    // Flowers sit face up in `players[].flowers`, so a redacted view can name
+    // them even though the wall is hidden. Deriving flower-ness from tile type
+    // instead would drop the reveal *and* the replacement draw that follows it,
+    // because a placeholder never reports as BONUS — while the wall still
+    // shrinks by two, so the client would show tiles vanishing unexplained.
+    const base = initializeGame(options({ seed: 'flower-draw' }));
+    const seat = base.currentPlayerIndex;
+    const flower = base.wall.find(t => t.type === TileType.BONUS)!;
+    const staged = stackWalls(base, { wall: [flower] });
+
+    const next = applyAction(staged, staged.players[seat].id, { type: 'DRAW' })!;
+    expect(next.players[seat].flowers.length)
+      .toBe(staged.players[seat].flowers.length + 1);
+
+    const viewer = (seat + 1) % 4;
+    const events = deriveEvents(
+      redactFor(staged, viewer),
+      { type: 'DRAW' },
+      redactFor(next, viewer),
+      0,
+    );
+
+    // The flower is named — it is public. The draws around it are not.
+    const reveals = ofKind(events, 'flowerReveal');
+    expect(reveals.map(e => e.tile)).toEqual([flower.id]);
+    expect(ofKind(events, 'draw').map(e => e.tile)).toEqual([null, null]);
+    // Reveal sits between the draw that found it and the one that replaced it.
+    expect(events.map(e => e.kind)).toEqual(['draw', 'flowerReveal', 'draw']);
+  });
+
+  it('names the claimed discard, not the melds first tile', () => {
+    // findMeldDelta used to identify the claimed tile as "the meld tile that
+    // was not already in hand". A redacted view replaces a rival's hand with
+    // placeholders, so nothing matches and the search falls through to
+    // meld.tiles[0] — for a chow, the lowest tile rather than the claimed one.
+    const base = initializeGame(options({ seed: 'redacted-chow' }));
+    let state = withHand(base, 0, [dot(5, 3), ...junkHand(4).slice(0, 12)]);
+    state = withHand(state, 1, [dot(3, 1), dot(4, 1), ...junkHand(1).slice(0, 11)]);
+    state = withHand(state, 2, junkHand(2));
+    state = withHand(state, 3, junkHand(3));
+    state = { ...state, turnPhase: 'discard' as const, currentPlayerIndex: 0 };
+
+    const discarded = applyAction(state, state.players[0].id, {
+      type: 'DISCARD', tile: dot(5, 3),
+    })!;
+    const action: GameAction = {
+      type: 'CLAIM', claimType: 'chow', tilesFromHand: [dot(3, 1), dot(4, 1)],
+    };
+    const claimed = applyAction(discarded, discarded.players[1].id, action)!;
+
+    // Seat 2 is a bystander: the meld is public, seat 1's hand is not.
+    const events = deriveEvents(
+      redactFor(discarded, 2), action, redactFor(claimed, 2), 0,
+    );
+    const claim = ofKind(events, 'claim')[0];
+
+    expect(claim.claim).toBe('chow');
+    expect(claim.tile).toBe(dot(5, 3).id);
+    expect(claim.tile).not.toBe(dot(3, 1).id);
   });
 });
 

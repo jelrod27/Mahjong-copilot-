@@ -621,6 +621,33 @@ function handleClaim(
   });
 }
 
+/**
+ * Take a claimed tile off the table.
+ *
+ * `discardPile` and `playerDiscards` are two views of the same pool, so a tile
+ * that leaves one must leave the other. Removing it from only the pile left the
+ * claimed tile drawn in the discarder's row *and* in the claimant's meld, and
+ * left `tileDangerScore` and `detectOpponentSuitFocus` counting it as an
+ * unclaimed discard for the rest of the hand.
+ *
+ * On a robbed kong the tile sits in the declarer's hand rather than the pool,
+ * so both filters are no-ops — which is correct, not a missed case.
+ */
+function withoutDiscard(
+  state: GameState,
+  tile: Tile,
+): Pick<GameState, 'discardPile' | 'playerDiscards'> {
+  const discarderId = state.lastDiscardedBy;
+  const playerDiscards = { ...state.playerDiscards };
+  if (discarderId && playerDiscards[discarderId]) {
+    playerDiscards[discarderId] = playerDiscards[discarderId].filter(t => t.id !== tile.id);
+  }
+  return {
+    discardPile: state.discardPile.filter(t => t.id !== tile.id),
+    playerDiscards,
+  };
+}
+
 function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameState {
   const discardedTile = state.lastDiscardedTile!;
   const discarderIndex = state.players.findIndex(p => p.id === state.lastDiscardedBy);
@@ -632,7 +659,7 @@ function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameSta
 
   // Apply the winning claim
   if (winner.claimType === 'win') {
-    const newDiscardPile = state.discardPile.filter(t => t.id !== discardedTile.id);
+    const pool = withoutDiscard(state, discardedTile);
     // The claimed tile joins the winner's hand: keeps the finished state
     // consistent with self-draw wins (14 effective tiles in hand) and
     // conserves the 144-tile invariant. On a robbed kong the tile is still
@@ -648,7 +675,7 @@ function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameSta
     return {
       ...state,
       players: winPlayers,
-      discardPile: newDiscardPile,
+      ...pool,
       phase: GamePhase.FINISHED,
       winnerId: player.id,
       winningTile: discardedTile,
@@ -675,17 +702,21 @@ function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameSta
     ],
   };
 
-  const newDiscardPile = state.discardPile.filter(t => t.id !== discardedTile.id);
+  const pool = withoutDiscard(state, discardedTile);
 
   let newState: GameState = {
     ...state,
     players: newPlayers,
-    discardPile: newDiscardPile,
+    ...pool,
     currentPlayerIndex: winnerIndex,
     pendingClaims: [],
     claimablePlayers: [],
     passedPlayers: [],
-    turnPhase: winner.claimType === 'kong' ? 'draw' : 'discard',
+    // Every claimant discards next, kong included: the kong branch below draws
+    // its replacement before handing control back. A ternary here once said
+    // 'draw' for a kong and was overridden nine lines later, so the two lines
+    // stated opposite intentions about a claimant who has already drawn.
+    turnPhase: 'discard',
     // The claimant did not draw: clear draw-derived state so a follow-up
     // DECLARE_WIN cannot masquerade as a self-draw on a stale tile.
     lastDrawnTile: undefined,
@@ -698,7 +729,6 @@ function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameSta
     return drawReplacement(
       {
         ...newState,
-        turnPhase: 'discard',
         currentPlayerIndex: winnerIndex,
       },
       winnerIndex,
@@ -868,7 +898,16 @@ function isEarthlyWin(state: GameState, player: Player, isSelfDrawn: boolean): b
   if (isSelfDrawn || player.isDealer) return false;
   const dealer = state.players.find(p => p.isDealer);
   if (!dealer || state.lastDiscardedBy !== dealer.id) return false;
-  return totalDiscards(state) === 1 &&
+  // `<= 1`, not `=== 1`, because this runs against two different states. The
+  // min-faan legality gate calls it *before* the claim resolves, when the
+  // dealer's tile is still in the pool (1); final scoring calls it through
+  // `buildWinScoringContext` on the finished state, after `withoutDiscard` has
+  // taken the claimed tile off the table (0). Testing for exactly 1 made the
+  // gate admit an Earthly Hand and then scoring pay it as an ordinary win.
+  //
+  // This stays tight: no player has melded and at most one tile has ever been
+  // discarded, by the dealer, and it is the tile being won on.
+  return totalDiscards(state) <= 1 &&
     state.players.every(p => p.melds.length === 0);
 }
 

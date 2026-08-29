@@ -10,9 +10,48 @@ import { calculateShanten } from '../winDetection';
 import { canDeclareSelfDrawnWin } from '../turnManager';
 import {
   tileDangerScore, isSafeTile, tileDiscardPriority,
-  isOpponentDangerous, detectOpponentSuitFocus,
+  isOpponentDangerous, detectOpponentSuitFocus, countVisibleTiles,
 } from './aiUtils';
 import { normalizePersonality, AIPersonality } from './personality';
+
+/**
+ * Shanten of the hand a claim leaves, measured at the 13-tile-equivalent state
+ * both claim types settle at.
+ *
+ * A chow or pung takes two tiles from hand and adds a set worth 3, so the
+ * claimant is holding 14 effective tiles and must discard before the turn
+ * passes. A kong takes three and adds a set also worth 3, leaving 13, with the
+ * replacement draw restoring the 14th. Scoring one against another — or any of
+ * them against the 13-tile pre-claim baseline — compares different quantities,
+ * and whichever type leaves 13 loses every close call by construction rather
+ * than on merit.
+ *
+ * All three are therefore scored at 13: the kong as it stands, the chow and
+ * pung after the discard each is about to make, taking the best tile to part
+ * with.
+ */
+export function shantenAfterClaim(
+  claimType: 'chow' | 'pung' | 'kong',
+  handAfter: Tile[],
+  melds: MeldInfo[],
+): number {
+  if (claimType === 'kong' || handAfter.length === 0) {
+    return calculateShanten(handAfter, melds);
+  }
+  // One candidate per distinct face. Discarding either copy of a pair leaves
+  // the same hand, and `calculateShanten` brute-forces all 34 tile prototypes
+  // through decomposition, so the duplicates were not free — this runs on the
+  // synchronous claim path while the window is counting down.
+  const seen = new Set<string>();
+  let best = Infinity;
+  for (const tile of handAfter) {
+    const face = tileKey(tile);
+    if (seen.has(face)) continue;
+    seen.add(face);
+    best = Math.min(best, calculateShanten(handAfter.filter(t => t.id !== tile.id), melds));
+  }
+  return best;
+}
 
 /** Provisional meld formed by claiming the live discard with tiles from hand. */
 export function claimMeld(
@@ -208,6 +247,10 @@ export function chooseDiscard(
   let bestTile = nonBonus[0];
   let bestScore = Infinity;
 
+  // The state does not change inside this loop, so build the visible-tile map
+  // once rather than once per candidate tile in each of the three calls below.
+  const visible = countVisibleTiles(gameState, playerIndex);
+
   for (const tile of nonBonus) {
     const remaining = hand.filter(t => t.id !== tile.id);
     const testHand = remaining.filter(t => t.type !== TileType.BONUS);
@@ -225,7 +268,7 @@ export function chooseDiscard(
     score -= priority * 1; // prefer discarding isolated/terminal tiles
 
     if (defenseWeight > 0) {
-      const baseDanger = tileDangerScore(tile, gameState, playerIndex);
+      const baseDanger = tileDangerScore(tile, gameState, playerIndex, visible);
       const focusDanger = suitFocusDanger(tile, gameState, playerIndex);
       const danger = baseDanger + focusDanger;
 
@@ -234,7 +277,7 @@ export function chooseDiscard(
         score = danger * 10 * personality.defenseBias * defenseWeight;
         score += shanten * 30;
         score -= priority * 2;
-        if (isSafeTile(tile, gameState, playerIndex)) {
+        if (isSafeTile(tile, gameState, playerIndex, visible)) {
           score -= 50;
         }
         // Keep fan-valuable tiles even when folding
@@ -242,7 +285,7 @@ export function chooseDiscard(
       } else {
         // Aggressive mode with danger awareness
         score += danger * 3 * defenseWeight;
-        if (isSafeTile(tile, gameState, playerIndex)) {
+        if (isSafeTile(tile, gameState, playerIndex, visible)) {
           score -= 20;
         }
         // When tenpai, heavily penalize dangerous discards
@@ -306,7 +349,7 @@ export function chooseClaim(
       .filter(t => !tiles.find(ct => ct.id === t.id))
       .filter(t => t.type !== TileType.BONUS);
     const newMelds = [...player.melds, claimMeld(claim.claimType, tiles, discarded)];
-    const newShanten = calculateShanten(handAfter, newMelds);
+    const newShanten = shantenAfterClaim(claim.claimType, handAfter, newMelds);
 
     if (newShanten < currentShanten) {
       return {
@@ -346,7 +389,7 @@ export function chooseClaim(
           .filter(t => !tiles.find(ct => ct.id === t.id))
           .filter(t => t.type !== TileType.BONUS);
         const newMelds = [...player.melds, claimMeld('chow', tiles, discarded)];
-        const newShanten = calculateShanten(handAfter, newMelds);
+        const newShanten = shantenAfterClaim('chow', handAfter, newMelds);
         if (newShanten < currentShanten && (!bestChow || newShanten < bestChow.shanten)) {
           bestChow = { tiles, shanten: newShanten };
         }

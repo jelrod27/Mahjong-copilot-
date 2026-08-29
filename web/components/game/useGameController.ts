@@ -11,7 +11,7 @@ import { applyAction, buildWinScoringContext, getLegalClaims, canDeclareSelfDraw
 import { advanceMatch, startNextHand } from '@/engine/matchManager';
 import { getBestClaimSubmission } from '@/engine/claiming';
 import { isWinningHand, canPlayerWin } from '@/engine/winDetection';
-import { calculateScore } from '@/engine/scoring';
+import { calculateScore, LIMIT_FAN } from '@/engine/scoring';
 import { AvailableClaim, ScoringResult, TileClassification, DEFAULT_MIN_FAAN } from '@/engine/types';
 import { calculatePayment } from '@/engine/scoring';
 import { getTutorAdvice } from '@/engine/tutor';
@@ -228,6 +228,10 @@ export default function useGameController(
   useEffect(() => { matchRef.current = match; }, [match]);
   useEffect(() => { selectedTileIdRef.current = selectedTileId; }, [selectedTileId]);
 
+  // Debounces the discard voice-over. Declared here rather than beside its
+  // effect because `resetHandState` below clears it at the hand boundary.
+  const lastSpokenDiscardIdRef = useRef<string | undefined>(undefined);
+
   const resetHandState = useCallback(() => {
     setSelectedTileId(undefined);
     setSuggestedTileId(undefined);
@@ -241,6 +245,11 @@ export default function useGameController(
     setFaanProjection(null);
     processingRef.current = false;
     humanDiscardInFlightRef.current = false;
+    // Tile ids repeat across hands — `TileFactory.getAllTiles` regenerates the
+    // same `dot_7_3` strings every deal — so a stale id here would silently
+    // swallow the new hand's first discard if it happened to match the last
+    // one spoken, with no way for the player to recover the callout.
+    lastSpokenDiscardIdRef.current = undefined;
   }, [updateClaimTimer, updateClaimOptions]);
 
   const startNewGame = useCallback((newDifficulty: 'easy' | 'medium' | 'hard', newMode?: GameMode) => {
@@ -346,7 +355,22 @@ export default function useGameController(
 
   const { draw: effectiveDrawDelay, discard: effectiveDiscardDelay } =
     resolveAiDelays(difficulty, gameSpeed);
-  const humanIndex = game?.players.findIndex(p => p.id === HUMAN_ID) ?? 0;
+  // `findIndex` reports a miss as -1, which `??` does not catch — it fires only
+  // on null/undefined — so this used to leave `humanIndex` at -1 and throw a
+  // bare TypeError on the next `game.players[humanIndex].hand`.
+  //
+  // Falling back to seat 0 would be worse than the crash, not better: seat 0
+  // would be an AI, and the player would be shown its concealed hand and be
+  // able to discard, claim and pass on its behalf. `projectScene` refuses the
+  // identical condition for the identical reason ("Silently falling back to
+  // seat 0 would show one player another's hand, so this fails loudly
+  // instead"), and the two guards should not disagree. `GameErrorBoundary`
+  // catches this and shows a real message rather than a white screen.
+  const foundHumanIndex = game ? game.players.findIndex(p => p.id === HUMAN_ID) : -1;
+  if (game && foundHumanIndex === -1) {
+    throw new Error(`useGameController: no seat for "${HUMAN_ID}" in this game`);
+  }
+  const humanIndex = foundHumanIndex >= 0 ? foundHumanIndex : 0;
   const isHumanTurn = game?.currentPlayerIndex === humanIndex;
   const isGameOver = game?.phase === GamePhase.FINISHED;
   const isMatchOver = match?.phase === 'finished';
@@ -660,7 +684,6 @@ export default function useGameController(
   // When a tile is discarded (by any player), optionally speak it in the
   // user's chosen language and emit a subtitle so learners see Chinese +
   // English side by side. `lastDiscardedTile.id` debounces duplicate fires.
-  const lastSpokenDiscardIdRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (tileVoice === 'off' || !game) return;
     const tile = game.lastDiscardedTile;
@@ -1111,9 +1134,15 @@ export default function useGameController(
         }
 
         // Pick the win sound after scoring so we know if it was a limit hand.
-        // Limit hands or anything 10+ fan get the bigger fanfare; self-draws
-        // get a triumphant fifth on top of the standard win arpeggio.
-        const isLimitHand = result?.handName !== undefined || (result?.totalFan ?? 0) >= 10;
+        // Limit hands get the bigger fanfare; self-draws get a triumphant fifth
+        // on top of the standard win arpeggio.
+        //
+        // `handName` is set for *any* hand carrying a 3-fan item, and is
+        // 'Chicken Hand' at zero fan, so testing it fired the limit fanfare on
+        // ordinary and worthless wins alike — only 1-2 fan hands got the right
+        // sound. The threshold comes from `scoring.ts` rather than a literal,
+        // so a table variant that moves the limit moves the fanfare with it.
+        const isLimitHand = (result?.totalFan ?? 0) >= LIMIT_FAN;
         const isSelfDrawnFinal = game.isSelfDrawn ?? false;
         soundManager.play(
           isLimitHand ? 'winLimitHand' : isSelfDrawnFinal ? 'winSelfDraw' : 'win',

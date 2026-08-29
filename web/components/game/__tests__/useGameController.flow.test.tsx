@@ -16,6 +16,7 @@ import { TileSuit, TileType, WindTile, type Tile } from '@/models/Tile';
 import type { GameState } from '@/models/GameState';
 import type { MatchState } from '@/models/MatchState';
 import { SAVE_VERSION } from '@/lib/savedGameValidator';
+import soundManager from '@/lib/soundManager';
 
 // ---- Mocks ----------------------------------------------------------------
 
@@ -73,6 +74,9 @@ const calculateScoreMock = vi.fn(() => ({ fan: 0, faans: [], totalFan: 0 }));
 vi.mock('@/engine/scoring', () => ({
   calculateScore: (...args: unknown[]) => calculateScoreMock(...args),
   calculatePayment: vi.fn(() => ({ winner: 0, losers: [0, 0, 0] })),
+  // Real value: the controller compares against it to pick the win sound, so a
+  // stubbed threshold would make the limit-fanfare tests assert nothing.
+  LIMIT_FAN: 10,
 }));
 
 const getAIDecisionMock = vi.fn(() => ({ action: { type: 'PASS' } }));
@@ -566,6 +570,52 @@ describe('scoring and AI fallback', () => {
     expect(advanceMatchMock).toHaveBeenCalled();
     expect(result.current.scoringResult).not.toBeNull();
     expect(result.current.scoringResult?.totalFan).toBe(3);
+  });
+
+  /**
+   * The limit fanfare is reserved for limit hands. `handName` is set for any
+   * hand carrying a 3-fan item, and is 'Chicken Hand' at zero fan, so gating on
+   * it fired the fanfare for almost every win — only 1-2 fan hands were right.
+   */
+  function winWith(score: Record<string, unknown>) {
+    const game = makeGame();
+    initializeMatchMock.mockReturnValue(makeMatch(game));
+    applyActionMock.mockReturnValue({
+      ...game,
+      phase: GamePhase.FINISHED,
+      winnerId: HUMAN_ID,
+      winningTile: makeTile('w1'),
+      isSelfDrawn: false,
+    } as unknown as GameState);
+    buildWinScoringContextMock.mockReturnValue({ discarderIndex: 1 });
+    calculateScoreMock.mockReturnValue(score);
+
+    const { result } = renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+    act(() => { result.current.pass(); });
+  }
+
+  it('plays the ordinary win sound for a named hand below the limit', () => {
+    winWith({ totalFan: 3, faans: [], handName: 'All Pungs' });
+
+    expect(soundManager.play).toHaveBeenCalledWith('win');
+    expect(soundManager.play).not.toHaveBeenCalledWith('winLimitHand');
+  });
+
+  it('plays the ordinary win sound for a chicken hand', () => {
+    // Zero fan names the hand 'Chicken Hand', which used to read as a limit.
+    winWith({ totalFan: 0, faans: [], handName: 'Chicken Hand' });
+
+    // Assert the sound it *should* make, not only the one it should not —
+    // playing nothing at all would otherwise pass.
+    expect(soundManager.play).toHaveBeenCalledWith('win');
+    expect(soundManager.play).not.toHaveBeenCalledWith('winLimitHand');
+  });
+
+  it('plays the limit fanfare at the limit threshold', () => {
+    winWith({ totalFan: 10, faans: [], handName: 'Thirteen Orphans' });
+
+    expect(soundManager.play).toHaveBeenCalledWith('winLimitHand');
   });
 
   it('AI special-action fallback: discards a tile when DECLARE_WIN is rejected', () => {

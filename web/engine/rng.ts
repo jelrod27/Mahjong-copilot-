@@ -52,7 +52,37 @@ export function shuffleInPlace<T>(arr: T[], rng: Rng): T[] {
 /**
  * Generate a fresh random seed. The single sanctioned non-deterministic
  * call site in the engine: used only when the caller does not supply a seed.
+ *
+ * Cryptographically random rather than `Math.random()` + a timestamp, which is
+ * guessable by anyone who knows roughly when a hand began — fine for solo,
+ * not for competitive integrity, since the seed determines the entire shuffle.
+ * See plans/spikes/replay-format-design.md §4.
+ *
+ * Uses the `crypto` global rather than an import so this module stays
+ * dependency-free and runs unchanged in browsers, Workers and Node.
+ *
+ * Node needs >= 19 for that global: Node 18 exposes Web Crypto only behind
+ * `--experimental-global-webcrypto`, so `crypto` is undefined there and every
+ * unseeded `initializeGame` would throw. `package.json` declares >= 20.9.0,
+ * which is what Next 16 requires anyway, so the floor is real rather than
+ * aspirational. Do not lower it without giving this a Node-compatible source.
+ *
+ * KNOWN BOUND, and it is lower than "cryptographically seeded" suggests:
+ * `createRng` collapses whatever it is given to 32 bits (`hashString`), and
+ * mulberry32 carries a 32-bit state, so at most 2^32 distinct shuffles are
+ * reachable out of 144!. An adversary who observes a few discards can brute
+ * force that space offline and recover the rest of the wall. This change moves
+ * the attack from "guess roughly when the hand started" to "search 2^32", which
+ * is a real improvement but not a guarantee.
+ *
+ * Widening the state is deliberately NOT done here: every seed maps to a
+ * different shuffle under a wider RNG, which would change the Daily Hand for a
+ * given date, invalidate saved games mid-match, and break every test that pins
+ * an outcome to a seed. If competitive play ever needs the full space, it needs
+ * its own plan with a migration for those three.
  */
 export function randomSeed(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  const buf = new Uint32Array(2);
+  crypto.getRandomValues(buf);
+  return `${buf[0].toString(36)}-${buf[1].toString(36)}`;
 }

@@ -6,7 +6,7 @@ import { Tile, TileType, TileSuit, DragonTile, tileKey } from '@/models/Tile';
 import { GameState, MeldInfo } from '@/models/GameState';
 import { AvailableClaim, TutorAdvice, TileClassification, TileColor } from './types';
 import { calculateShanten, canPlayerWin, ALL_TILE_PROTOTYPES } from './winDetection';
-import { tileDiscardPriority, tileDangerScore, isSafeTile } from './ai/aiUtils';
+import { tileDiscardPriority, tileDangerScore, isSafeTile, countVisibleTiles } from './ai/aiUtils';
 import { getBestClaimSubmission } from './claiming';
 
 /** All 34 unique tile types for tenpai wait calculation */
@@ -102,14 +102,19 @@ function buildDiscardAdvice(
 
   const currentShanten = calculateShanten(nonBonus, melds);
 
+  // Built once for the whole scan: the state is unchanged across candidates,
+  // and this map used to be rebuilt twice per tile on the main thread inside a
+  // React effect.
+  const visible = countVisibleTiles(gameState, playerIndex);
+
   const scores: ScoredTile[] = nonBonus.map(tile => {
     const remaining = hand.filter(t => t.id !== tile.id);
     const testHand = remaining.filter(t => t.type !== TileType.BONUS);
 
     const shanten = calculateShanten(testHand, melds);
-    const danger = tileDangerScore(tile, gameState, playerIndex);
+    const danger = tileDangerScore(tile, gameState, playerIndex, visible);
     const priority = tileDiscardPriority(tile);
-    const safe = isSafeTile(tile, gameState, playerIndex);
+    const safe = isSafeTile(tile, gameState, playerIndex, visible);
 
     let score = shanten * 100 + danger * 5 - priority * 2;
     if (safe) score -= 20;
@@ -129,8 +134,16 @@ function buildDiscardAdvice(
   // Tenpai on the current hand, or after the suggested discard (post-draw)
   const handAfterBest = nonBonus.filter(t => t.id !== best.tile.id);
   const shantenAfterBest = calculateShanten(handAfterBest, melds);
-  const tenpaiHand = currentShanten === 0 ? nonBonus
-    : shantenAfterBest === 0 ? handAfterBest
+  // `findTenpaiWaits` appends a prototype tile and asks `canPlayerWin`, which
+  // accepts exactly 14 effective tiles — so it must be handed a hand of 13.
+  // Mid-turn the player holds 14 (drawn, and still owing a discard), and
+  // passing that through unchanged made every prototype fail the count check,
+  // so the panel announced "Waiting for:" with nothing after the colon.
+  const meldTileCount = melds.reduce((sum, m) => sum + Math.min(m.tiles.length, 3), 0);
+  const isReadyHand = (tiles: Tile[]) => tiles.length + meldTileCount === 13;
+
+  const tenpaiHand = currentShanten === 0 && isReadyHand(nonBonus) ? nonBonus
+    : shantenAfterBest === 0 && isReadyHand(handAfterBest) ? handAfterBest
     : null;
   if (tenpaiHand) {
     const waits = findTenpaiWaits(tenpaiHand, melds);

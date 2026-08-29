@@ -188,7 +188,19 @@ test.describe('Daily Hand — player hand semantics', () => {
 
     const selected = (await labelsOf()).find((l) => l.includes('selected'))!;
     // The announcement keeps the tile's identity and adds the state to it.
-    expect(selected).toBe(`Mahjong tile: ${tileName}. selected, Beginner Assist: GOOD.`);
+    //
+    // The grade is deliberately not pinned to one value. Beginner Assist grades
+    // are *relative* — `classifyTiles` normalises each tile's score across the
+    // hand — and the Daily Hand is seeded from the date, so which grade lands on
+    // the focused tile changes daily and with any scoring change. Asserting
+    // GOOD here made this test a tripwire for the shanten evaluator rather than
+    // for the announcement, which is what it is named for.
+    expect(selected).toMatch(
+      new RegExp(
+        `^Mahjong tile: ${tileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\. ` +
+          `selected, Beginner Assist: (GOOD|OK|KEEP)\\.$`,
+      ),
+    );
   });
 
   test('shanten-heat mode announces each tile\'s distance from winning', async ({ page }) => {

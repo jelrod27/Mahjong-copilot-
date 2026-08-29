@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { initializeGame, applyAction, getLegalClaims, GameOptions } from '../turnManager';
+import { initializeGame, applyAction, getLegalClaims, buildWinScoringContext, GameOptions } from '../turnManager';
 import { GamePhase, GameState, Player } from '@/models/GameState';
 import { TileType, WindTile } from '@/models/Tile';
 import { dot, bam, char, windTile, makePlayer, flowerTile } from './testHelpers';
@@ -372,6 +372,15 @@ describe('claim phase - claim ends cycle', () => {
     // Now all have acted — pung claim should be resolved
     expect(state2.turnPhase).toBe('discard');
     expect(state2.currentPlayerIndex).toBe(1);
+
+    // The claimed tile is in AI 1's meld now, so it must be gone from *both*
+    // views of the discard pool. It used to leave `discardPile` only, so the
+    // per-seat rows kept drawing it in the discarder's row while it also sat
+    // in the meld, and the AI danger model kept counting it as unclaimed.
+    expect(state2.discardPile.find(t => t.id === discardedTile.id)).toBeUndefined();
+    expect(state2.playerDiscards['human-1'].find(t => t.id === discardedTile.id))
+      .toBeUndefined();
+    expect(state2.players[1].melds[0].tiles.map(t => t.id)).toContain(discardedTile.id);
   });
 });
 
@@ -1125,5 +1134,82 @@ describe('kong on wall exhaustion', () => {
     // Draw result present
     expect(result!.drawResult).toBeDefined();
     expect(result!.drawResult!.reason).toBe('wallExhausted');
+  });
+});
+
+describe('Earthly Hand survives claim resolution', () => {
+  // A non-dealer winning on the dealer's very first discard, before anything
+  // else has happened, is an Earthly Hand — a 13-fan limit hand.
+  //
+  // `isEarthlyWin` tests the size of the discard pool, and that pool is read at
+  // two different moments: the min-faan legality gate runs before the claim
+  // resolves (the dealer's tile is still there), final scoring runs after, once
+  // the claimed tile has been taken off the table. Testing for exactly one
+  // discard let the gate admit the hand as a limit hand and then scoring pay it
+  // as an ordinary win.
+  const winningTile = dot(5, 1);
+
+  const claimState: GameState = {
+    id: 'test-earthly',
+    variant: 'Hong Kong Mahjong',
+    phase: GamePhase.PLAYING,
+    turnPhase: 'claim',
+    currentPlayerIndex: 1,
+    players: [
+      makePlayer({
+        id: 'human-1', name: 'Dealer', isAI: false, seatWind: WindTile.EAST, isDealer: true,
+        hand: [dot(6,1), dot(7,1), dot(8,1), dot(9,1), bam(1,1), bam(2,1),
+               bam(3,1), bam(4,1), bam(5,1), bam(6,1), bam(7,1), bam(8,1)],
+      }),
+      makePlayer({
+        id: 'ai_1', name: 'AI 1', isAI: true, seatWind: WindTile.SOUTH,
+        hand: [char(1,1), char(2,1), char(3,1), char(4,1), char(5,1), char(6,1),
+               char(8,1), char(9,1), bam(1,2), bam(2,2), bam(3,2), bam(4,2), bam(5,2)],
+      }),
+      makePlayer({
+        id: 'ai_2', name: 'AI 2', isAI: true, seatWind: WindTile.WEST,
+        hand: [
+          dot(1,4), dot(1,2), dot(1,3),
+          bam(2,3), bam(2,4), bam(2,2),
+          char(3,4), char(3,3), char(3,2),
+          char(7,4), char(7,3), char(7,2),
+          dot(5,4),
+        ],
+      }),
+      makePlayer({
+        id: 'ai_3', name: 'AI 3', isAI: true, seatWind: WindTile.NORTH,
+        hand: [char(1,3), char(2,3), char(3,5), char(4,2), char(5,2), char(6,2),
+               char(7,5), char(8,2), char(9,2), dot(1,5), dot(2,2), dot(3,2), dot(4,2)],
+      }),
+    ],
+    wall: Array.from({ length: 50 }, (_, i) => bam(1, 100 + i)),
+    deadWall: Array.from({ length: 14 }, (_, i) => char(1, 100 + i)),
+    discardPile: [winningTile],
+    playerDiscards: { 'human-1': [winningTile], 'ai_1': [], 'ai_2': [], 'ai_3': [] },
+    lastDiscardedTile: winningTile,
+    lastDiscardedBy: 'human-1',
+    lastAction: undefined,
+    pendingClaims: [],
+    claimablePlayers: ['ai_2'],
+    passedPlayers: [],
+    prevailingWind: WindTile.EAST,
+    finalScores: {},
+    createdAt: new Date(),
+    turnHistory: [],
+    turnTimeLimit: 20,
+  };
+
+  it('still scores as Earthly after the claimed tile leaves the pool', () => {
+    const finished = applyAction(claimState, 'ai_2', {
+      type: 'CLAIM', claimType: 'win', tilesFromHand: [],
+    })!;
+
+    expect(finished.phase).toBe(GamePhase.FINISHED);
+    expect(finished.winnerId).toBe('ai_2');
+    // The tile is off the table now — which is exactly what used to break this.
+    expect(finished.playerDiscards['human-1']).toHaveLength(0);
+
+    const ctx = buildWinScoringContext(finished);
+    expect(ctx?.isEarthly).toBe(true);
   });
 });

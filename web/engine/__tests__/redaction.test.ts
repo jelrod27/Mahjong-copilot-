@@ -164,7 +164,7 @@ describe('redaction — what a seat may know', () => {
 describe('redaction — claims and endings', () => {
   const base = initializeGame(options('redact-claims'));
 
-  it('hides the tiles a rival commits but keeps the viewer their own', () => {
+  it('hides a rival\'s claim entirely while the window is open', () => {
     const withClaims: GameState = {
       ...base,
       turnPhase: 'claim',
@@ -175,12 +175,21 @@ describe('redaction — claims and endings', () => {
     };
     const view = redactFor(withClaims, 0);
 
+    // The viewer keeps their own claim, tiles and all.
+    expect(view.pendingClaims).toHaveLength(1);
+    expect(view.pendingClaims[0].playerId).toBe(base.players[0].id);
     expect(view.pendingClaims[0].tiles).toEqual(withClaims.pendingClaims[0].tiles);
-    expect(view.pendingClaims[1].tiles).toEqual([]);
-    // The claim itself stays public — everyone at a table hears "pung".
-    expect(view.pendingClaims.map(c => c.claimType)).toEqual(['pung', 'pung']);
-    expect(view.pendingClaims.map(c => c.playerId))
-      .toEqual(withClaims.pendingClaims.map(c => c.playerId));
+
+    // Seat 1's claim is gone. Emptying its `tiles` was not enough: under
+    // ADR 0003 the window is simultaneous, so nothing has been announced yet,
+    // and "ai_1 claimed pung" says ai_1 holds two of the live discard — the
+    // same fact `claimablePlayers` is stripped to hide, stated more precisely.
+    expect(view.pendingClaims.some(c => c.playerId === base.players[1].id)).toBe(false);
+    expect(JSON.stringify(view.pendingClaims)).not.toContain(base.players[1].id);
+
+    // And seat 1 sees theirs rather than seat 0's.
+    const rival = redactFor(withClaims, 1);
+    expect(rival.pendingClaims.map(c => c.playerId)).toEqual([base.players[1].id]);
   });
 
   it('returns a finished hand whole, seed included, so the deal can be audited', () => {

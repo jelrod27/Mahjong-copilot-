@@ -60,13 +60,21 @@ function redactPlayer(player: Player, seat: number, isViewer: boolean): Player {
 }
 
 /**
- * The tiles a claimant commits from hand reveal part of their hand, so they
- * stay private to their owner until the window resolves. The claim itself
- * (who, and what kind) is public: everyone at a table hears "pung".
+ * A rival's pending claim is not visible while the window is open.
+ *
+ * "Everyone at a table hears pung" is true of a *resolved* claim. Under
+ * ADR 0003 this window is simultaneous: nothing has been announced yet, and
+ * seats are still deciding. Publishing `{playerId: 'ai-2', claimType: 'pung'}`
+ * tells whoever has not answered that seat 2 holds two copies of the live
+ * discard — a stronger statement about a concealed hand than the eligibility
+ * that `redactFor` strips from `claimablePlayers` two lines below, and
+ * actionable by the seat still choosing.
+ *
+ * Emptying `tiles` alone was not enough, because the claim type says what the
+ * tiles must have been.
  */
-function redactClaim(claim: ClaimRequest, viewerId: string): ClaimRequest {
-  if (claim.playerId === viewerId) return claim;
-  return { ...claim, tiles: [] };
+function redactClaims(claims: ClaimRequest[], viewerId: string): ClaimRequest[] {
+  return claims.filter(c => c.playerId === viewerId);
 }
 
 /**
@@ -116,7 +124,7 @@ export function redactFor(state: GameState, viewerSeat: number): RedactedState {
       state.lastDrawnTile && viewer.hand.some(t => t.id === state.lastDrawnTile!.id)
         ? state.lastDrawnTile
         : undefined,
-    pendingClaims: state.pendingClaims.map(c => redactClaim(c, viewerId)),
+    pendingClaims: redactClaims(state.pendingClaims, viewerId),
     // Who *could* claim is derived from hands: `handleDiscard` fills
     // `claimablePlayers` from `getAllClaims`, so it names exactly the seats
     // holding a legal chow/pung/kong/win on the live discard. Shipping it tells

@@ -532,7 +532,12 @@ function countMeldsAndPartials(
     const n = first.number;
     const suit = first.suit;
     const t2 = tiles.find(t => t.suit === suit && t.number === n + 1 && t.id !== first.id);
-    const t3 = t2 ? tiles.find(t => t.suit === suit && t.number === n + 2 && t.id !== first.id && t.id !== t2.id) : null;
+    // Found independently of `t2`. A gap shape is *defined* by the middle tile
+    // being absent, so deriving `t3` from `t2` made the gap branch below
+    // unreachable: it asks for `t3 && !t2`, and `t3` could only exist when
+    // `t2` did. `t3` carries number n+2 and `t2` n+1, so they can never be the
+    // same tile and no id check is needed to keep them apart.
+    const t3 = tiles.find(t => t.suit === suit && t.number === n + 2 && t.id !== first.id);
 
     if (t2 && t3) {
       const afterChow = removeFromArray(tiles, [first, t2, t3]);
@@ -565,14 +570,11 @@ function countMeldsAndPartials(
 
     // Try partial: gap pair (e.g. 3,5 waiting for 4)
     if (t3 && !t2) {
-      const t3direct = tiles.find(t => t.suit === suit && t.number === n + 2 && t.id !== first.id);
-      if (t3direct) {
-        const afterGap = removeFromArray(tiles, [first, t3direct]);
-        const r = countMeldsAndPartials(afterGap, setsNeeded);
-        if (r.melds > bestMelds || (r.melds === bestMelds && r.partials + 1 > bestPartials)) {
-          bestMelds = r.melds;
-          bestPartials = r.partials + 1;
-        }
+      const afterGap = removeFromArray(tiles, [first, t3]);
+      const r = countMeldsAndPartials(afterGap, setsNeeded);
+      if (r.melds > bestMelds || (r.melds === bestMelds && r.partials + 1 > bestPartials)) {
+        bestMelds = r.melds;
+        bestPartials = r.partials + 1;
       }
     }
   } else {

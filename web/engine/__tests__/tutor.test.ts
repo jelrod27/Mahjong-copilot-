@@ -413,3 +413,42 @@ describe('getTutorAdvice — tenpai waits on a 14-tile hand', () => {
     expect(advice?.tenpaiWaits).toContain(bam(5, 1).nameEnglish);
   });
 });
+
+describe('getTutorAdvice — the colour matches the advice', () => {
+  // The legend under the hand reads: green "Good — strong discard", orange
+  // "OK — neutral", red "Keep — useful tile". So the tile the tutor names as
+  // its suggested discard must come back green, and the tile it least wants
+  // discarded must come back red. These two facts live in different modules —
+  // `classifyTiles` here, the legend in GameBoard — and drifted apart, so the
+  // player was told to keep the exact tile the panel told them to throw.
+  const hand: Tile[] = [
+    bam(1, 1), bam(2, 1), bam(3, 1),
+    bam(6, 1), bam(7, 1), bam(8, 1),
+    dot(4, 1), dot(5, 1), dot(6, 1),
+    char(1, 1), char(1, 2),
+    windTile(WindTile.NORTH, 1), dragonTile(DragonTile.RED, 1),
+    char(9, 1),
+  ];
+
+  const advice = getTutorAdvice(
+    makeGameState({ players: [makePlayer({ id: 'p0', name: 'You', hand })] }),
+    0,
+  );
+
+  it('paints the suggested discard green, not red', () => {
+    const suggested = advice?.tileClassifications?.find(
+      c => c.tileId === advice?.suggestedTileId,
+    );
+
+    expect(advice?.suggestedTileId).toBeDefined();
+    expect(suggested?.color).toBe('green');
+  });
+
+  it('reserves red for tiles it does not want discarded', () => {
+    const colours = advice?.tileClassifications?.map(c => c.color) ?? [];
+    // The three complete runs are what the hand is built on; something has to
+    // be worth keeping, or the scale says nothing.
+    expect(colours).toContain('red');
+    expect(colours.filter(c => c === 'red').length).toBeLessThan(colours.length);
+  });
+});

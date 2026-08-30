@@ -253,9 +253,15 @@ function classifyTiles(scores: ScoredTile[]): TileClassification[] {
   return scores.map(s => {
     const normalized = (s.score - bestScore) / range; // 0 = best discard, 1 = worst discard (keep)
     let color: TileColor;
-    if (normalized < 0.25) color = 'red';       // recommended discard
-    else if (normalized < 0.55) color = 'orange'; // consider discarding
-    else color = 'green';                         // keep
+    // These colours are read through the legend under the hand, which says
+    // green "Good — strong discard", orange "OK — neutral", red "Keep — useful
+    // tile". The scale runs the other way: `normalized` 0 is the *lowest*
+    // score, which is `best` — the tile this very function's caller names as
+    // `suggestedTileId`. Assigning red there told the player to keep the one
+    // tile the tutor was telling them to throw, and green on their best tile.
+    if (normalized < 0.25) color = 'green';        // recommended discard
+    else if (normalized < 0.55) color = 'orange';  // neutral
+    else color = 'red';                            // useful — keep it
     return { tileId: s.tile.id, color };
   });
 }

@@ -49,6 +49,76 @@ jobs:
       - name: Production build
         run: npm run build
 
+  # Tile textures are committed build artefacts. This job re-runs the pinned
+  # encoder, proves the checked-in files are exactly what it produces, and runs
+  # the legibility gate. A failure here blocks the 3D table slice: at the
+  # shipped face resolution a character stroke is about one encoder block wide,
+  # so compression can destroy thin CJK strokes with every averaged quality
+  # number still looking healthy.
+  tile-textures:
+    name: Tile textures (encode + legibility gate)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Keyed on the pinned version, so a toolchain bump misses the cache and
+      # re-downloads rather than silently reusing the previous encoder.
+      - name: Cache KTX-Software
+        uses: actions/cache@v4
+        with:
+          path: web/scripts/tiles/.toolchain
+          key: ktx-software-4.4.2-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Install pinned encoder
+        run: npm run tiles:toolchain
+
+      - name: Re-encode textures
+        run: npm run tiles:build
+
+      # The artefacts are committed, so a rebuild that changes them means the
+      # checked-in files no longer match their sources or the pinned encoder.
+      - name: Assert committed artefacts are reproducible
+        run: |
+          if ! git diff --exit-code -- public/tiles scripts/tiles/tile-textures.manifest.json; then
+            echo "::error::Committed tile textures differ from a fresh encode. Run 'npm run tiles:build' and commit the result."
+            exit 1
+          fi
+
+      - name: Legibility gate
+        run: npm run tiles:gate
+
+      - name: Assert committed legibility evidence is current
+        run: |
+          if ! git diff --exit-code -- scripts/tiles/gate; then
+            echo "::error::Committed legibility report/contact sheet is stale. Run 'npm run tiles:gate' and commit the result."
+            exit 1
+          fi
+
+      - name: Upload legibility evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tile-legibility
+          path: |
+            web/scripts/tiles/gate/contact-sheet.png
+            web/scripts/tiles/gate/legibility-report.json
+          if-no-files-found: warn
+
   # Playwright against a local dev server, on pushes to main and on pull requests.
   e2e-local:
     name: E2E (local dev server)

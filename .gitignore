@@ -126,6 +126,10 @@ out/
 # Lock files — only ignore root RN lockfile (web/ lockfile is committed for CI/Vercel)
 /package-lock.json
 
+# Pinned encoder toolchain for the tile-texture pipeline. Downloaded on demand
+# and checksum-verified; the artefacts it produces are committed, it is not.
+web/scripts/tiles/.toolchain/
+
 # Local agent/editor tooling — machine-specific, not project config.
 # (Accidentally committed in #94; untracked in the follow-up.)
 .claude/

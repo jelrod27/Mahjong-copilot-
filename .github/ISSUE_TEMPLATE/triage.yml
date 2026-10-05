@@ -1,0 +1,46 @@
+name: Triage request
+description: Figure out whether an uncertain report is a bug, an improvement, or expected behaviour.
+labels: [triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when the right kind of work is not yet clear. Triage records a decision and evidence; it does not authorize implementation.
+
+  - type: textarea
+    id: observation
+    attributes:
+      label: What was observed or requested
+      description: Describe the behaviour, concern, or opportunity that needs classification.
+      placeholder: The AI often discards a tile that seems useful, but I am not sure whether that is a bug or a strategy choice.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Solo play / game engine
+        - Daily hand
+        - Learn / practice / reference
+        - Progress / settings
+        - Visuals / accessibility
+        - Performance / reliability
+        - Somewhere else / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context or evidence
+      description: Include steps, examples, screenshots, logs, or links if available. Partial information is fine.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: What needs to be decided
+      description: What is uncertain (for example, expected behaviour, severity, user need, or whether a change is warranted)?
+    validations:
+      required: true

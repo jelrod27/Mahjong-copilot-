@@ -1,6 +1,6 @@
-# CLAUDE.md
+# Repository guidance
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides shared guidance for coding agents working in this repository.
 
 ## Project Overview
 
@@ -111,8 +111,31 @@ Tests live in `__tests__/` directories adjacent to source; Vitest (jsdom) config
 
 - `plans/` — Numbered implementation plans with a status tracker in `plans/README.md`. Substantial work gets a plan; update the tracker table when a plan lands. `plans/spikes/` holds design spikes.
 - `docs/adr/` — Architecture decision records for choices with consequences (guest identity, Durable Objects for room authority, the simultaneous claim window).
-- `web/CLAUDE.md` is just `@AGENTS.md`, whose contents are generated and re-added by `next dev`. Commit that block with your work rather than fighting it.
+- `web/AGENTS.md` contains Next.js-specific guidance generated and re-added by `next dev`. Read and follow it before changing web app code; commit generated instruction updates when they appear.
 - CodeRabbit reviews PRs (`.coderabbit.yaml`, assertive profile, en-GB).
+
+## GitHub issue workflow
+
+GitHub Issues are the source of truth for bugs, feature requests, triage questions, and inspection/review work. Check existing open issues before creating a new one; link duplicates and related work instead of splitting the same problem across issues. Keep investigation findings in the issue so they remain useful to the maintainer and the next agent.
+
+### Issue types and readiness
+
+- **Bug** (`bug`): describe observed versus expected behaviour, reproduction steps when known, affected area/device, and relevant Sentry links. The bug report form already captures these details; incomplete reports are valid leads, not grounds for dismissal.
+- **Feature** (`enhancement`): state the user problem, intended outcome, scope/non-goals, and observable acceptance criteria. Split independent deliverables only when they can be implemented and reviewed separately.
+- **Triage** (`triage`): use when it is unclear whether a report is a bug, a product improvement, or expected behaviour. State the observation, affected area, and the question that needs answering. Triage resolves classification and next steps; it is not an implementation request.
+- **Inspection** (`inspection`): request a bounded review, audit, or investigation without presuming a code change. Specify the surface, question to answer, and expected output (findings, severity, evidence, and suggested follow-up issues).
+
+An issue is **ready for an implementation agent** only when it has the right type label, a clear outcome, actionable acceptance criteria, and no unresolved product decision. Use the existing `ready-for-agent` label to mark this gate. Keep items awaiting clarification/design unmarked; use `help wanted` only when human input is needed. Link dependencies with GitHub issue references and identify blockers in the body.
+
+### Agent workflow
+
+1. **Select:** Work from an explicitly assigned issue or one the maintainer asks you to pick. Before starting, read its full description and comments, check linked issues/PRs and the current issue state, and confirm it is open and in scope. Do not silently take ownership of arbitrary issues.
+2. **Triage:** For a `triage` issue, determine whether the report is a reproducible bug, a desired improvement, expected behaviour, or not actionable. Record evidence and reasoning in the issue; if work is warranted, create or link a separate `bug` or `enhancement` issue with actionable acceptance criteria, then summarize the disposition. For a `bug`, verify the report and try to reproduce it before proposing a fix. For a `feature`, restate the acceptance criteria and surface missing decisions. For an `inspection`, investigate the requested area and report evidence-backed findings first; make code changes only if separately requested or covered by a ready implementation issue.
+3. **Clarify:** If scope, expected behaviour, or acceptance criteria are ambiguous, post concise questions/findings on the issue and stop before implementation. Do not turn a hypothesis into a confirmed bug without evidence.
+4. **Implement:** For a ready issue, create a feature branch, make the smallest change that satisfies its criteria, and run the relevant checks. Keep the issue updated if scope changes or a blocker appears. Open a PR that references the issue (`Fixes #<number>` when the PR fully resolves it); do not close issues manually before the work is merged.
+5. **Review result:** In the PR or issue, summarize the change or investigation outcome, tests/checks run, remaining risks, and any follow-up issues. Triage issues close with a classification, concise rationale, and links to any actionable follow-up issues. Inspection issues close with a findings summary and links to actionable bug/feature issues; do not bundle unrelated fixes into an inspection.
+
+For issue triage, list open work with `gh issue list --repo jelrod27/Mahjong-copilot- --state open`. Report candidate duplicates, missing information, dependencies, and whether each issue meets the `ready-for-agent` gate. Do not edit labels, assign issues, close issues, or post comments unless the maintainer asks you to manage GitHub issues.
 
 ## Branching
 

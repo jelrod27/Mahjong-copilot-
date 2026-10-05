@@ -503,13 +503,24 @@ concepts. Decisions are recorded as ADRs in `docs/adr/`.
 |------|-------|----------|--------|------------|--------|
 | 027 | [Multiplayer architecture](027-multiplayer-architecture.md) | P2 | XL | — | **DESIGN ONLY — no code belongs to this plan** |
 | 028 | [Simultaneous claim window](028-simultaneous-claim-window.md) | P2 | M | — | **DONE** — merged as #157; see notes |
-| 029 | [Redaction layer](029-redaction-layer.md) | P2 | M | — | **DONE** — PR #158, branch `feature/redaction-layer`; see notes |
+| 029 | [Redaction layer](029-redaction-layer.md) | P2 | M | — | **DONE** — merged as #158; see notes |
+| 037 | [Verified Daily Hand leaderboard](037-verified-daily-hand-leaderboard.md) | P1 | M+L | 010, 029 | **WRITTEN — not started** |
 
 Plans 030–036 are sequenced in
 [027 §Build ladder](027-multiplayer-architecture.md) but not yet written. 028
 and 029 were independently shippable and improve the product whether or not
 multiplayer follows; **030 onward do not have that property** — they need a
 Cloudflare account and a decision on where the Worker lives in this repo.
+
+**037 is the fork in the road, and takes a number outside the reserved
+030–036 block on purpose.** It is the hedge `ROADMAP-round-3.md §P3`
+recommended and Round 4 never wrote: a verified-replay Daily Hand leaderboard.
+It restores the property 030 loses — real competition against real people, with
+twelve users and nobody online simultaneously — and its first three steps
+(action log, `replayHand`, verification tests) are owed to 031 regardless, so
+they are not spent if multiplayer follows. Only its final step needs hosting,
+and it needs a stateless endpoint rather than anything ADR 0002 chose Durable
+Objects for.
 
 ### 029 execution notes
 

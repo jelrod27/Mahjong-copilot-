@@ -5,7 +5,7 @@
 Before testing, you need:
 
 ### Required Software
-- **Node.js 18+** (check: `node --version`)
+- **Node.js 20.9+** (check: `node --version`)
 - **Xcode** (for iOS testing) - Install from Mac App Store
 - **Android Studio** (for Android testing) - Download from developer.android.com
 - **React Native CLI** - Install with: `npm install -g react-native-cli`

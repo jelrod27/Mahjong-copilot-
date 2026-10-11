@@ -48,6 +48,33 @@ function takeFromReplacementWall(
   return null;
 }
 
+function finishFourKongDraw(state: GameState): GameState | null {
+  const kongCounts = state.players.map(player =>
+    player.melds.filter(meld => meld.type === 'kong').length
+  );
+  const totalKongs = kongCounts.reduce((total, count) => total + count, 0);
+  const playersWithKongs = kongCounts.filter(count => count > 0).length;
+  if (totalKongs < 4 || playersWithKongs < 2) return null;
+
+  return {
+    ...state,
+    phase: GamePhase.FINISHED,
+    finishedAt: new Date(),
+    pendingClaims: [],
+    claimablePlayers: [],
+    passedPlayers: [],
+    isRobKongOpportunity: undefined,
+    drawResult: {
+      reason: 'fourKongs',
+      scoreChanges: state.players.map(() => 0),
+    },
+  };
+}
+
+function drawKongReplacementOrAbort(state: GameState, playerIndex: number): GameState {
+  return finishFourKongDraw(state) ?? drawReplacement(state, playerIndex, { isKongReplacement: true });
+}
+
 /**
  * Draw a replacement tile into a player's hand (kong / flower policy).
  * Empty walls → wall exhaustion on the provided state.
@@ -115,7 +142,7 @@ function applyDeferredKong(state: GameState, declarerIndex: number, kongTile: Ti
     melds: newMelds,
   };
 
-  return drawReplacement(
+  return drawKongReplacementOrAbort(
     {
       ...state,
       players: newPlayers,
@@ -127,8 +154,7 @@ function applyDeferredKong(state: GameState, declarerIndex: number, kongTile: Ti
       currentPlayerIndex: declarerIndex,
       turnStartedAt: new Date(),
     },
-    declarerIndex,
-    { isKongReplacement: true }
+    declarerIndex
   );
 }
 
@@ -445,7 +471,7 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
       ],
     };
 
-    return drawReplacement(
+    return drawKongReplacementOrAbort(
       {
         ...state,
         players: newPlayers,
@@ -457,8 +483,7 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
         currentPlayerIndex: playerIndex,
         turnStartedAt: new Date(),
       },
-      playerIndex,
-      { isKongReplacement: true }
+      playerIndex
     );
   }
 
@@ -517,7 +542,7 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
         melds: newMelds,
       };
 
-      return drawReplacement(
+      return drawKongReplacementOrAbort(
         {
           ...state,
           players: newPlayers,
@@ -529,8 +554,7 @@ function handleDeclareKong(state: GameState, playerIndex: number, tile: Tile): G
           currentPlayerIndex: playerIndex,
           turnStartedAt: new Date(),
         },
-        playerIndex,
-        { isKongReplacement: true }
+        playerIndex
       );
     }
   }
@@ -726,13 +750,12 @@ function resolveAndApplyClaim(state: GameState, claims: ClaimRequest[]): GameSta
 
   // Kong: draw replacement tile
   if (winner.claimType === 'kong') {
-    return drawReplacement(
+    return drawKongReplacementOrAbort(
       {
         ...newState,
         currentPlayerIndex: winnerIndex,
       },
-      winnerIndex,
-      { isKongReplacement: true }
+      winnerIndex
     );
   }
 

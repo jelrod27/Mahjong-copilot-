@@ -4,6 +4,9 @@ import { dirname, join } from 'path';
 
 const STORAGE = join(__dirname, '.auth', 'storage-state.json');
 const PLAY_ONBOARDING_KEY = 'mahjong_play_onboarding_v1';
+const { validateVercelPreviewBaseUrl } = require('./scripts/validate-vercel-preview.cjs') as {
+  validateVercelPreviewBaseUrl: (value: string) => string;
+};
 
 function storageStateForOrigin(origin: string) {
   return {
@@ -34,13 +37,26 @@ export default async function globalSetup(config: FullConfig) {
     baseURL.startsWith('https://') && !!process.env.PLAYWRIGHT_SKIP_WEB_SERVER;
 
   if (remoteHttps && bypass) {
+    const safeBaseURL = validateVercelPreviewBaseUrl(baseURL);
     const browser = await chromium.launch();
     const context = await browser.newContext();
+    const bypassUrl = new URL('/', safeBaseURL);
+    bypassUrl.searchParams.set('x-vercel-protection-bypass', bypass);
+    bypassUrl.searchParams.set('x-vercel-set-bypass-cookie', 'true');
+    const bypassResponse = await context.request.get(bypassUrl.toString(), {
+      timeout: 90_000,
+      maxRedirects: 0,
+    });
+    if (!bypassResponse.ok()) {
+      throw new Error(`Vercel preview bypass bootstrap returned HTTP ${bypassResponse.status()}`);
+    }
+
+    // Keep the secret out of page JavaScript and third-party subresource requests.
     const page = await context.newPage();
-    const url = new URL('/', baseURL);
-    url.searchParams.set('x-vercel-protection-bypass', bypass);
-    url.searchParams.set('x-vercel-set-bypass-cookie', 'true');
-    await page.goto(url.toString(), { waitUntil: 'domcontentloaded', timeout: 90_000 });
+    await page.goto(new URL('/', safeBaseURL).toString(), {
+      waitUntil: 'domcontentloaded',
+      timeout: 90_000,
+    });
     await page.evaluate((key) => localStorage.setItem(key, '1'), PLAY_ONBOARDING_KEY);
     await context.storageState({ path: STORAGE });
     await browser.close();

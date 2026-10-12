@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { GLOSSARY, type GlossaryEntry } from '@/content/glossary';
 import { FAN_TABLE, LIMIT_HANDS, LIMIT_FAN, MAX_PAYMENT, paymentForFan } from '@/content/scoringReference';
 import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState } from '@/components/ui/empty-state';
 
 type TabKey = 'tiles' | 'scoring' | 'hands' | 'glossary';
 
@@ -413,8 +414,12 @@ function SearchResults({ query, results }: { query: string; results: ReferenceSe
         Search results for &quot;{query.trim()}&quot;
       </p>
       {results.length === 0 ? (
-        <div className="ds-card p-4">
-          <p className="font-sans text-sm text-muted-foreground">No reference entries found. Try “dragon”, “fan”, “kong”, or “wall”.</p>
+        <div className="ds-card">
+          <EmptyState
+            title="No reference entries found."
+            body="Try “dragon”, “fan”, “kong”, or “wall”."
+            className="px-4 py-6"
+          />
         </div>
       ) : (
         results.map(result => (

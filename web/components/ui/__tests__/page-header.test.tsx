@@ -10,7 +10,7 @@ describe('PageHeader', () => {
 
   it('renders its title as the page heading', () => {
     render(<PageHeader eyebrow="REFERENCE" title="Quick Reference" />);
-    expect(screen.getByRole('heading', { name: 'Quick Reference' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Quick Reference' })).toBeInTheDocument();
   });
 
   it('renders its description when given one', () => {

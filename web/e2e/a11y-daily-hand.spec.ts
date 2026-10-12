@@ -120,7 +120,7 @@ test.describe('Daily Hand — automated accessibility scanning', () => {
     }
     expect(scannedClaim, 'the pinned Daily Hand seed should open a claim window').toBe(true);
     await expect(page.getByTestId('game-action-announcement')).toContainText(/discarded|claimed/i);
-    await expect(page.getByTestId('claim-opportunity-announcement')).toContainText(/you can now claim/i);
+    await expect(page.getByTestId('claim-opportunity-announcement')).toContainText(/available for/i);
     await expect(page.getByRole('progressbar', { name: 'Claim response time remaining' })).toHaveAttribute('aria-live', 'off');
 
     // Phase 4 — the hand result. Finish the hand from where the claim left off.

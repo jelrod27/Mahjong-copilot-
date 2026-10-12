@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { GameState, GamePhase } from '@/models/GameState';
 import { MatchState } from '@/models/MatchState';
@@ -103,7 +103,15 @@ export default function GameBoard({
   const [protoSeatAnchors, setProtoSeatAnchors] = useState<SeatAnchors>({});
 
   // Toast system — track last discard for event messages
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastNotification, setToastNotification] = useState<{ id: number; message: string | null }>({
+    id: 0,
+    message: null,
+  });
+  const toastEventIdRef = useRef(0);
+  const announceToast = useCallback((message: string) => {
+    const id = ++toastEventIdRef.current;
+    setToastNotification({ id, message });
+  }, []);
   const prevDiscardRef = useRef<string | undefined>(undefined);
   const prevMeldCountsRef = useRef<Record<string, number>>({});
 
@@ -117,8 +125,7 @@ export default function GameBoard({
         // Announces a transition, not a derived value: this fires on the edge
         // where a discard first appears, tracked through the refs above. No
         // render-time expression reproduces "this just changed".
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setToastMessage(`${discarder.name} discarded ${gameState.lastDiscardedTile?.nameEnglish}`);
+        announceToast(`${discarder.name} discarded ${gameState.lastDiscardedTile?.nameEnglish}`);
       }
     }
 
@@ -128,7 +135,9 @@ export default function GameBoard({
       if (player.melds.length > prevCount && player.id !== humanPlayerId) {
         const lastMeld = player.melds[player.melds.length - 1];
         const meldName = lastMeld.type.charAt(0).toUpperCase() + lastMeld.type.slice(1);
-        setToastMessage(`${player.name} claimed ${meldName}`);
+        const claimedTile = gameState.lastDiscardedTile;
+        const tileDescription = claimedTile ? ` of ${claimedTile.nameEnglish}` : '';
+        announceToast(`${player.name} claimed ${meldName}${tileDescription}`);
         break; // Only toast first new meld per render cycle
       }
     }
@@ -137,11 +146,11 @@ export default function GameBoard({
       gameState.players.map(p => [p.id, p.melds.length])
     );
   }, [
-    gameState.lastDiscardedTile?.id,
-    gameState.lastDiscardedTile?.nameEnglish,
+    gameState.lastDiscardedTile,
     gameState.lastDiscardedBy,
     gameState.players,
     humanPlayerId,
+    announceToast,
   ]);
 
   // Map opponents to positions: right of human = right, across = top, left = left
@@ -226,7 +235,7 @@ export default function GameBoard({
       />
 
       <div className="game-board-scene relative z-10 mx-auto flex h-full w-full max-w-[min(100%,80rem)] min-h-0 flex-col">
-      <GameToast message={toastMessage} />
+      <GameToast message={toastNotification.message} eventId={toastNotification.id} />
 
       {/* HUD strip — one slim bar on every breakpoint */}
       <div className="relative z-10 px-2 pt-1 md:px-3 md:pt-2" style={{ flex: '0 0 auto' }}>

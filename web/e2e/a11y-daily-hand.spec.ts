@@ -119,6 +119,9 @@ test.describe('Daily Hand — automated accessibility scanning', () => {
       await playDailyHandWithKeyboard(page, { maxTurns: 1 });
     }
     expect(scannedClaim, 'the pinned Daily Hand seed should open a claim window').toBe(true);
+    await expect(page.getByTestId('game-action-announcement')).toContainText(/discarded|claimed/i);
+    await expect(page.getByTestId('claim-opportunity-announcement')).toContainText(/available for/i);
+    await expect(page.getByRole('progressbar', { name: 'Claim response time remaining' })).toHaveAttribute('aria-live', 'off');
 
     // Phase 4 — the hand result. Finish the hand from where the claim left off.
     const log = await playDailyHandWithKeyboard(page);
@@ -382,6 +385,34 @@ test.describe('Daily Hand — tab order baseline', () => {
       expect(f, `tab stop ${i} should focus something inside the board`).not.toBeNull();
       await expectVisibleFocusIndicator(page, `tab stop ${i} (${f?.tag} "${f?.label}")`);
     }
+  });
+
+  test('mobile players can open and read an opponent discard from the discard-reading panel', async ({ page }) => {
+    test.setTimeout(300_000);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openDailyHand(page);
+
+    const announcement = page.getByTestId('game-action-announcement');
+    let actionMessage = '';
+    for (let turn = 0; turn < 12 && !/ discarded /i.test(actionMessage); turn++) {
+      await playDailyHandWithKeyboard(page, { maxTurns: 1 });
+      actionMessage = await announcement.innerText();
+    }
+    expect(actionMessage, 'the hand should produce an opponent discard').toMatch(/ discarded /i);
+    const [opponentName, tileName] = actionMessage.split(' discarded ');
+
+    const coachTools = page.getByRole('button', { name: /Coach tools/ });
+    await coachTools.focus();
+    await page.keyboard.press('Enter');
+    const reading = page.getByRole('button', { name: 'Expand discard reading' });
+    await expect(reading).toBeVisible();
+    await reading.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('button', { name: 'Collapse discard reading' })).toHaveAttribute('aria-expanded', 'true');
+
+    const history = page.getByTestId('discard-reading-panel');
+    await expect(history.getByText(opponentName, { exact: true })).toBeVisible();
+    await expect(history.getByRole('img', { name: `Mahjong tile: ${tileName}` })).toBeVisible();
   });
 
   test('the Discard button joins the tab order only once a tile is selected', async ({ page }) => {

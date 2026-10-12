@@ -178,3 +178,38 @@ describe('calculateShanten', () => {
     expect(calculateShanten(hand)).toBe(calculateShanten(hand, []));
   });
 });
+
+describe('calculateShanten — gap waits (kanchan)', () => {
+  it('credits a gap wait (4_6, needing 5) as a partial meld', () => {
+    // The gap branch in `countMeldsAndPartials` was unreachable: `t3` was
+    // derived from `t2`, so its guard `t3 && !t2` could never hold. A gap
+    // shape is defined by the middle tile being *absent*, so the one branch
+    // meant to score it was the one branch that could never run.
+    //
+    // Two pungs (bam 7, dot 3), a pair (dot 7), the gap (dot 4 + dot 6), and
+    // three floaters. With the gap scored the hand is 2 away; without it, 3.
+    const hand = [
+      bam(7, 1), bam(7, 2), bam(7, 3),
+      dot(3, 1), dot(3, 2), dot(3, 3),
+      dot(7, 1), dot(7, 2),
+      dot(4, 1), dot(6, 1),
+      bam(2, 1), char(7, 1), dragonTile(DragonTile.WHITE, 1),
+    ];
+    expect(calculateShanten(hand)).toBe(2);
+  });
+
+  it('scores a gap wait level with the adjacent wait it competes with', () => {
+    const withGap = [
+      bam(7, 1), bam(7, 2), bam(7, 3),
+      dot(3, 1), dot(3, 2), dot(3, 3),
+      dot(7, 1), dot(7, 2),
+      dot(4, 1), dot(6, 1),
+      bam(2, 1), char(7, 1), dragonTile(DragonTile.WHITE, 1),
+    ];
+    const withAdjacent = withGap.map(t => (t.id === dot(6, 1).id ? dot(5, 1) : t));
+
+    // Both are one tile from a chow. A gap wait is narrower — only the 5 fills
+    // it — but shanten measures distance, not how many tiles can close it.
+    expect(calculateShanten(withGap)).toBe(calculateShanten(withAdjacent));
+  });
+});

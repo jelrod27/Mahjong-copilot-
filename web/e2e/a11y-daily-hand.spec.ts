@@ -32,6 +32,33 @@ const FAILING_IMPACTS = new Set(['serious', 'critical']);
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
 async function expectNoSeriousViolations(page: Page, phase: string) {
+  // Let entry animations settle first. Panels enter on `animate-slide-up`, which
+  // fades opacity 0 -> 1 over 300ms, while Playwright's visibility check resolves
+  // the moment the element enters layout — i.e. at opacity ~0. Scanning then
+  // measures *composited* colours instead of the design tokens, and axe reports
+  // contrast failures against colours no user ever sees.
+  //
+  // Ask the page how long its entry animations actually last, then wait that
+  // long. Deriving the span keeps this correct if a duration is ever changed,
+  // and reading it with `evaluate` rather than polling with `waitForFunction`
+  // means it cannot hang: the board runs animations that never settle (looping
+  // decor whose `finished` never resolves, and pending ones on offscreen
+  // elements), so any wait *conditional* on them going quiet times out.
+  const settleMs = await page.evaluate(() => {
+    const ends = document
+      .getAnimations()
+      .map((a) => {
+        const timing = a.effect?.getTiming();
+        if (!timing || timing.iterations === Infinity) return 0;
+        return Number(timing.delay ?? 0) + Number(timing.duration ?? 0);
+      })
+      .filter((ms) => Number.isFinite(ms));
+    return ends.length ? Math.max(...ends) : 0;
+  });
+  // Floor covers animations that start fractionally after the scan is requested;
+  // ceiling keeps a runaway value from stalling the suite.
+  await page.waitForTimeout(Math.min(Math.max(settleMs + 100, 400), 2_000));
+
   const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
 
   const failing = results.violations.filter((v) => FAILING_IMPACTS.has(v.impact ?? ''));
@@ -92,6 +119,9 @@ test.describe('Daily Hand — automated accessibility scanning', () => {
       await playDailyHandWithKeyboard(page, { maxTurns: 1 });
     }
     expect(scannedClaim, 'the pinned Daily Hand seed should open a claim window').toBe(true);
+    await expect(page.getByTestId('game-action-announcement')).toContainText(/discarded|claimed/i);
+    await expect(page.getByTestId('claim-opportunity-announcement')).toContainText(/available for/i);
+    await expect(page.getByRole('progressbar', { name: 'Claim response time remaining' })).toHaveAttribute('aria-live', 'off');
 
     // Phase 4 — the hand result. Finish the hand from where the claim left off.
     const log = await playDailyHandWithKeyboard(page);
@@ -161,7 +191,19 @@ test.describe('Daily Hand — player hand semantics', () => {
 
     const selected = (await labelsOf()).find((l) => l.includes('selected'))!;
     // The announcement keeps the tile's identity and adds the state to it.
-    expect(selected).toBe(`Mahjong tile: ${tileName}. selected, Beginner Assist: GOOD.`);
+    //
+    // The grade is deliberately not pinned to one value. Beginner Assist grades
+    // are *relative* — `classifyTiles` normalises each tile's score across the
+    // hand — and the Daily Hand is seeded from the date, so which grade lands on
+    // the focused tile changes daily and with any scoring change. Asserting
+    // GOOD here made this test a tripwire for the shanten evaluator rather than
+    // for the announcement, which is what it is named for.
+    expect(selected).toMatch(
+      new RegExp(
+        `^Mahjong tile: ${tileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\. ` +
+          `selected, Beginner Assist: (GOOD|OK|KEEP)\\.$`,
+      ),
+    );
   });
 
   test('shanten-heat mode announces each tile\'s distance from winning', async ({ page }) => {
@@ -343,6 +385,34 @@ test.describe('Daily Hand — tab order baseline', () => {
       expect(f, `tab stop ${i} should focus something inside the board`).not.toBeNull();
       await expectVisibleFocusIndicator(page, `tab stop ${i} (${f?.tag} "${f?.label}")`);
     }
+  });
+
+  test('mobile players can open and read an opponent discard from the discard-reading panel', async ({ page }) => {
+    test.setTimeout(300_000);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openDailyHand(page);
+
+    const announcement = page.getByTestId('game-action-announcement');
+    let actionMessage = '';
+    for (let turn = 0; turn < 12 && !/ discarded /i.test(actionMessage); turn++) {
+      await playDailyHandWithKeyboard(page, { maxTurns: 1 });
+      actionMessage = await announcement.innerText();
+    }
+    expect(actionMessage, 'the hand should produce an opponent discard').toMatch(/ discarded /i);
+    const [opponentName, tileName] = actionMessage.split(' discarded ');
+
+    const coachTools = page.getByRole('button', { name: /Coach tools/ });
+    await coachTools.focus();
+    await page.keyboard.press('Enter');
+    const reading = page.getByRole('button', { name: 'Expand discard reading' });
+    await expect(reading).toBeVisible();
+    await reading.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('button', { name: 'Collapse discard reading' })).toHaveAttribute('aria-expanded', 'true');
+
+    const history = page.getByTestId('discard-reading-panel');
+    await expect(history.getByText(opponentName, { exact: true })).toBeVisible();
+    await expect(history.getByRole('img', { name: `Mahjong tile: ${tileName}` })).toBeVisible();
   });
 
   test('the Discard button joins the tab order only once a tile is selected', async ({ page }) => {

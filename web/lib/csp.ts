@@ -38,6 +38,22 @@ export function sentryIngestOrigin(dsn: string | undefined): string | null {
 export function buildContentSecurityPolicy({ isDev, sentryDsn }: CspOptions): string {
   const ingestOrigin = sentryIngestOrigin(sentryDsn);
 
+  // `'unsafe-inline'` is load-bearing, not an oversight, and it cannot be
+  // swapped for a nonce here.
+  //
+  // Next serves this app's pages as prerendered static HTML, and that HTML is
+  // written at build time — before any request exists to carry a nonce. It
+  // contains ten inline scripts, among them React's runtime and the
+  // `self.__next_f` hydration payload. Measured on a production build: the
+  // middleware nonce approach yields a header with a nonce and zero scripts
+  // bearing one, so every inline script is refused and the app renders but
+  // never hydrates. Nonces require dynamic rendering, which would cost this
+  // site static generation everywhere to buy it.
+  //
+  // So the honest statement of the tradeoff: script-src is weaker than it
+  // looks, and injected inline script would run. Closing it means either
+  // rendering dynamically or moving the bootstrap out of line — a real change,
+  // not a header edit.
   const scriptSrc = [
     "'self'",
     ...(isDev ? ["'unsafe-eval'"] : []),

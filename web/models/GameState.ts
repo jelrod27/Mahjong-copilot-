@@ -110,21 +110,26 @@ export interface GameState {
   minFaan?: number;
   /** Wall-exhaustion draw settlement (set when the game ends as a draw). */
   drawResult?: DrawResult;
-  /** Total number of kongs declared in this hand. Game ends in a draw when this reaches 4. */
+  /** @deprecated Legacy serialized field; four-kong detection derives from melds. */
   totalKongsDeclared?: number;
 }
 
-/**
- * Result of a wall-exhaustion draw. Captures tenpai/noten split so that
- * the match manager can apply the flat noten-penalty payments.
- */
-export interface DrawResult {
+/** Result of a completed-hand draw and any score changes to apply. */
+export type DrawResult = WallExhaustionDrawResult | FourKongDrawResult;
+
+export interface WallExhaustionDrawResult {
   reason: 'wallExhausted';
   /** Player ids that were tenpai (shanten === 0) at wall exhaustion. */
   tenpaiPlayerIds: string[];
   /** Player ids that were noten (shanten > 0) at wall exhaustion. */
   notenPlayerIds: string[];
   /** Net score delta per player index — indices match GameState.players order. */
+  scoreChanges: number[];
+}
+
+export interface FourKongDrawResult {
+  reason: 'fourKongs';
+  /** Abortive draws do not settle scores. */
   scoreChanges: number[];
 }
 

@@ -5,9 +5,6 @@ import { join } from 'path';
 const PORT = Number(process.env.PLAYWRIGHT_PORT) || 3100;
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`;
 
-/** Vercel Deployment Protection bypass (same value as Vercel "Protection Bypass for Automation"). */
-const vercelBypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
-
 export default defineConfig({
   globalSetup: require.resolve('./playwright.global-setup.ts'),
   testDir: './e2e',
@@ -24,15 +21,6 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: process.env.CI ? 'retain-on-failure' : 'off',
-    ...(vercelBypass
-      ? {
-          extraHTTPHeaders: {
-            'x-vercel-protection-bypass': vercelBypass,
-            // Vercel: persist bypass for document + subresource requests (see protection-bypass-automation docs).
-            'x-vercel-set-bypass-cookie': 'true',
-          },
-        }
-      : {}),
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: process.env.PLAYWRIGHT_SKIP_WEB_SERVER

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { projectScene } from '../projection';
+import { redactFor } from '@/engine/redaction';
 import {
   DEAD_WALL_SLOTS,
   DISCARD_COLUMNS,
@@ -585,5 +586,44 @@ describe('a real deal from the engine', () => {
         game.deadWall.length,
     );
     expect(projected).toBe(144);
+  });
+});
+
+describe('projection — a redacted view is drawable', () => {
+  // `engine/redaction.ts` promises that "no renderer changes when redaction is
+  // introduced". A rival's concealed kong is where that promise broke:
+  // `redactMelds` replaces all four tiles with placeholders, but only the outer
+  // two were drawn face down, so the inner pair reached `tileKey` — which
+  // throws on a placeholder by design — and took the whole board with it.
+  const authoritative = midHandGame();
+  const view = redactFor(authoritative, 0);
+  const kongSeat = 2;
+
+  it('projects a hidden concealed kong instead of throwing on it', () => {
+    expect(() => project(view)).not.toThrow();
+  });
+
+  it('draws every tile of a rival concealed kong blank and face down', () => {
+    const meldTiles = project(view).tiles.filter(
+      t => t.slot.kind === 'meld' && t.slot.seat === kongSeat,
+    );
+
+    expect(meldTiles).toHaveLength(4);
+    expect(meldTiles.map(t => t.face)).toEqual([null, null, null, null]);
+    for (const tile of meldTiles) {
+      expect(tile.transform.pitch).toBe(PITCH_FACE_DOWN);
+    }
+  });
+
+  it('still shows the owner their own kong', () => {
+    const ownerView = redactFor(authoritative, kongSeat);
+    // `slot.seat` is viewer-relative, so identify the kong by its tiles.
+    const kongTiles = project(ownerView, { viewerId: authoritative.players[kongSeat].id })
+      .tiles.filter(t => t.slot.kind === 'meld' && t.id.startsWith('character_7_'));
+
+    expect(kongTiles).toHaveLength(4);
+    // Redaction leaves the owner their own meld, so the inner pair stays
+    // face up — that is what tells them which kong it is.
+    expect(kongTiles.filter(t => t.face !== null)).toHaveLength(2);
   });
 });

@@ -10,7 +10,7 @@
  * renderer bug, devtools inspection or memory dump can recover it.
  */
 
-import { tileKey } from '@/models/Tile';
+import { tileKey, isHiddenTile } from '@/models/Tile';
 import type { Tile } from '@/models/Tile';
 import type { GameState, MeldInfo, Player } from '@/models/GameState';
 import { getRoster, getTableFelt, getTilePalette } from '@/lib/cosmetics';
@@ -234,6 +234,10 @@ function projectMelds(player: Player, seat: SeatId): SceneTile[] {
 }
 
 function showsMeldBack(meld: MeldInfo, index: number): boolean {
+  // Authoritative state lays a concealed kong with only its outer tiles face
+  // down. A redacted view hides all four, and a tile with no face must sit
+  // face down whatever its position, or its pitch contradicts its blank face.
+  if (isHiddenTile(meld.tiles[index])) return true;
   return meld.isConcealed && meld.type === 'kong' && (index === 0 || index === 3);
 }
 
@@ -328,7 +332,16 @@ function projectWall(game: GameState): SceneTile[] {
   });
 }
 
-function faceOf(tile: Tile): TileFace {
+/**
+ * A redacted view carries `hiddenTile` placeholders wherever the viewer is not
+ * entitled to a face, and those carry no rank, wind, dragon, flower or season —
+ * `tileKey` throws on them by design. Resolving them to a blank face here is
+ * what lets a renderer draw a redacted state unchanged, which is the promise
+ * `engine/redaction.ts` makes; the alternative is a crash on the first
+ * concealed kong.
+ */
+function faceOf(tile: Tile): TileFace | null {
+  if (isHiddenTile(tile)) return null;
   return { key: tileKey(tile), suit: tile.suit };
 }
 

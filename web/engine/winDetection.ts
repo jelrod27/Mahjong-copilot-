@@ -199,31 +199,14 @@ function findStandardDecompositions(
 
   if (remaining.length < 2) return;
 
-  // If we still need melds, first try extracting a pair (only when we have 0 melds extracted,
-  // since pair must be extracted exactly once). Actually, the pair can be at any position,
-  // so we should try extracting pair at the start when we have exactly 2+3*n remaining.
+  // What is left must be exactly the melds still owed plus the one pair, or no
+  // decomposition can come out of this branch. The pair itself is extracted
+  // further down, once the melds are placed — it can sit at any position, so it
+  // cannot be taken off the front here.
   const meldsNeeded = 4 - currentMelds.length;
   const expectedRemaining = meldsNeeded * 3 + 2; // melds*3 + pair(2)
 
   if (remaining.length !== expectedRemaining) return;
-
-  // Try using the first tile in a pair
-  for (let i = 1; i < remaining.length; i++) {
-    if (tilesMatch(remaining[0], remaining[i])) {
-      if (meldsNeeded === 0) {
-        // This is the pair
-        if (remaining.length === 2) {
-          results.push({
-            melds: [...currentMelds],
-            pair: [remaining[0], remaining[i]],
-          });
-        }
-      }
-      // Try extracting as pair (only if we haven't committed to all melds yet)
-      // We detect "pair extraction" by checking if remaining count matches pair scenario
-      break; // only need to try the first match
-    }
-  }
 
   // Try extracting the first tile as part of a pung
   if (remaining.length >= 3) {
@@ -532,7 +515,12 @@ function countMeldsAndPartials(
     const n = first.number;
     const suit = first.suit;
     const t2 = tiles.find(t => t.suit === suit && t.number === n + 1 && t.id !== first.id);
-    const t3 = t2 ? tiles.find(t => t.suit === suit && t.number === n + 2 && t.id !== first.id && t.id !== t2.id) : null;
+    // Found independently of `t2`. A gap shape is *defined* by the middle tile
+    // being absent, so deriving `t3` from `t2` made the gap branch below
+    // unreachable: it asks for `t3 && !t2`, and `t3` could only exist when
+    // `t2` did. `t3` carries number n+2 and `t2` n+1, so they can never be the
+    // same tile and no id check is needed to keep them apart.
+    const t3 = tiles.find(t => t.suit === suit && t.number === n + 2 && t.id !== first.id);
 
     if (t2 && t3) {
       const afterChow = removeFromArray(tiles, [first, t2, t3]);
@@ -565,14 +553,11 @@ function countMeldsAndPartials(
 
     // Try partial: gap pair (e.g. 3,5 waiting for 4)
     if (t3 && !t2) {
-      const t3direct = tiles.find(t => t.suit === suit && t.number === n + 2 && t.id !== first.id);
-      if (t3direct) {
-        const afterGap = removeFromArray(tiles, [first, t3direct]);
-        const r = countMeldsAndPartials(afterGap, setsNeeded);
-        if (r.melds > bestMelds || (r.melds === bestMelds && r.partials + 1 > bestPartials)) {
-          bestMelds = r.melds;
-          bestPartials = r.partials + 1;
-        }
+      const afterGap = removeFromArray(tiles, [first, t3]);
+      const r = countMeldsAndPartials(afterGap, setsNeeded);
+      if (r.melds > bestMelds || (r.melds === bestMelds && r.partials + 1 > bestPartials)) {
+        bestMelds = r.melds;
+        bestPartials = r.partials + 1;
       }
     }
   } else {

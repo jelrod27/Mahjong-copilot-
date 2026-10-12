@@ -64,6 +64,19 @@ export function flowerTile(name: string, index: number): Tile {
   };
 }
 
+export function seasonTile(name: string, index: number): Tile {
+  return {
+    id: `season_${index}`,
+    suit: TileSuit.SEASON,
+    type: TileType.BONUS,
+    season: name,
+    nameEnglish: `${name} Season`,
+    nameChinese: '',
+    nameJapanese: '',
+    assetPath: '',
+  };
+}
+
 /** Build a standard winning hand: 4 pungs + 1 pair (all dots) */
 export function buildAllPungsHand(): Tile[] {
   return [

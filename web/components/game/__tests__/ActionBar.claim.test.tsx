@@ -48,7 +48,7 @@ const baseProps = {
   onPass: vi.fn(),
   turnPhase: 'claim' as const,
   isHumanTurn: true,
-  isMyClaimTurn: true,
+  canClaimNow: true,
 };
 
 describe('ActionBar — claim guidance (PRD GAME-06)', () => {
@@ -122,7 +122,7 @@ describe('ActionBar — claim guidance (PRD GAME-06)', () => {
     render(
       <ActionBar
         {...baseProps}
-        isMyClaimTurn={false}
+        canClaimNow={false}
         claimOptions={[pungClaim]}
         discardedTile={dragon}
       />,
@@ -138,7 +138,7 @@ describe('ActionBar — claim guidance (PRD GAME-06)', () => {
     render(
       <ActionBar
         {...baseProps}
-        isMyClaimTurn={true}
+        canClaimNow={true}
         claimOptions={[pungClaim]}
         discardedTile={dragon}
       />,
@@ -151,7 +151,7 @@ describe('ActionBar — claim guidance (PRD GAME-06)', () => {
     render(
       <ActionBar
         {...baseProps}
-        isMyClaimTurn={false}
+        canClaimNow={false}
         claimOptions={[pungClaim]}
         discardedTile={dragon}
       />,
@@ -159,6 +159,22 @@ describe('ActionBar — claim guidance (PRD GAME-06)', () => {
     // The claim window opens and closes without any user action, so a screen
     // reader must be told — otherwise the state change is silent.
     expect(screen.getByTestId('claim-waiting-state')).toHaveAttribute('aria-live', 'polite');
+  });
+
+  it('announces available claims when the human can act', () => {
+    render(
+      <ActionBar
+        {...baseProps}
+        claimOptions={[pungClaim, chowClaim]}
+        discardedTile={dragon}
+      />,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'A Pung claim is available for the Red Dragon. Activate Take discard to submit it, or Pass to decline.'
+    );
+    expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
+    expect(screen.getByRole('progressbar', { name: 'Claim response time remaining' })).toHaveAttribute('aria-live', 'off');
   });
 });
 

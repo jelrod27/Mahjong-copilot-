@@ -314,3 +314,44 @@ export const tileFromJson = (json: Record<string, any>): Tile => {
   };
 };
 
+
+// ============================================
+// Hidden tiles
+// ============================================
+
+/**
+ * Marks a tile a viewer is not entitled to see. Real tile ids are built from
+ * suit and rank (see TileFactory), so nothing in the 144-tile set can collide
+ * with this prefix — `hiddenTilesNeverCollide` in the redaction tests pins that.
+ */
+export const HIDDEN_TILE_ID_PREFIX = 'hidden_';
+
+/**
+ * A face-down stand-in for a tile the viewer may not know.
+ *
+ * `key` must be stable for a given slot (`wall_0`, `seat1_3`) so React keys do
+ * not thrash between renders of the same position.
+ *
+ * `suit`/`type` carry concrete values because those enums have no unknown
+ * member and adding one would touch every exhaustive switch in the engine.
+ * Identity therefore lives in the id prefix, not the suit — ask `isHiddenTile`,
+ * never `tile.suit`. `nameEnglish` reads as "Hidden" so a placeholder that
+ * reaches a label or a screen reader announces itself rather than impersonating
+ * a real tile.
+ */
+export function hiddenTile(key: string): Tile {
+  return {
+    id: `${HIDDEN_TILE_ID_PREFIX}${key}`,
+    suit: TileSuit.DOT,
+    type: TileType.SUIT,
+    nameEnglish: 'Hidden',
+    nameChinese: '暗牌',
+    nameJapanese: '伏せ牌',
+    assetPath: '',
+  };
+}
+
+/** True when this tile is a redaction placeholder rather than a real tile. */
+export function isHiddenTile(tile: Tile): boolean {
+  return tile.id.startsWith(HIDDEN_TILE_ID_PREFIX);
+}

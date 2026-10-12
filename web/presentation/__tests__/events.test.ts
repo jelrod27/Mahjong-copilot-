@@ -4,6 +4,7 @@ import { GameState, GamePhase } from '@/models/GameState';
 import { Tile, TileType, WindTile } from '@/models/Tile';
 import { GameAction } from '@/engine/types';
 import { deriveEvents, PresentationEvent } from '../events';
+import { redactFor } from '@/engine/redaction';
 import { dot, bam, char, windTile, flowerTile } from '@/engine/__tests__/testHelpers';
 
 type EventOf<K extends PresentationEvent['kind']> = Extract<PresentationEvent, { kind: K }>;
@@ -325,27 +326,26 @@ describe('deriveEvents — discards and claims', () => {
     ]);
   });
 
-  it('emits the meld only when the claim round resolves', () => {
+  it('emits the meld when the claim round resolves on a sole claimant', () => {
     const state = tableWithClaimableDiscard();
     const discarded = act(state, 0, { type: 'DISCARD', tile: dot(5, 3) });
 
-    // The claim itself only hands the decision to the next claimant.
+    // Only seat 1 holds a legal claim on this tile, so it is the only seat
+    // admitted to the window and the round resolves the moment it claims —
+    // seats 2 and 3 are never waited for.
+    expect(discarded.next.claimablePlayers).toEqual([discarded.next.players[1].id]);
+
     const claimed = act(discarded.next, 1, {
       type: 'CLAIM',
       claimType: 'pung',
       tilesFromHand: [dot(5, 1), dot(5, 2)],
     });
-    expect(claimed.events).toEqual([{ kind: 'turnChange', seq: 0, to: 2 }]);
-
-    const passed2 = act(claimed.next, 2, { type: 'PASS' });
-    expect(passed2.events).toEqual([{ kind: 'turnChange', seq: 0, to: 3 }]);
-
-    // The last pass resolves the round: the meld forms and the turn moves to it.
-    const passed3 = act(passed2.next, 3, { type: 'PASS' });
-    expect(passed3.events).toEqual([
+    // No turnChange rides along: seat 1 was already the next drawer, and the
+    // window never moved `currentPlayerIndex` off it.
+    expect(claimed.events).toEqual([
       { kind: 'claim', seq: 0, seat: 1, claim: 'pung', tile: dot(5, 3).id, meldIndex: 0 },
-      { kind: 'turnChange', seq: 1, to: 1 },
     ]);
+    expect(claimed.next.currentPlayerIndex).toBe(discarded.next.currentPlayerIndex);
   });
 });
 
@@ -360,11 +360,10 @@ describe('deriveEvents — hand endings', () => {
 
     const discarded = act(state, 0, { type: 'DISCARD', tile: dot(5, 2) });
     const claimed = act(discarded.next, 1, { type: 'CLAIM', claimType: 'win', tilesFromHand: [] });
-    const passed2 = act(claimed.next, 2, { type: 'PASS' });
-    const passed3 = act(passed2.next, 3, { type: 'PASS' });
 
-    expect(passed3.next.phase).toBe(GamePhase.FINISHED);
-    expect(passed3.events).toEqual([
+    // Seat 1 is the only eligible claimant, so the win resolves on its claim.
+    expect(claimed.next.phase).toBe(GamePhase.FINISHED);
+    expect(claimed.events).toEqual([
       { kind: 'claim', seq: 0, seat: 1, claim: 'win', tile: dot(5, 2).id, meldIndex: -1 },
       { kind: 'handEnd', seq: 1, winner: 1, method: 'discard' },
     ]);
@@ -393,6 +392,92 @@ describe('deriveEvents — hand endings', () => {
     const { events } = act(state, 0, { type: 'DRAW' });
 
     expect(events).toEqual([{ kind: 'handEnd', seq: 0, winner: null }]);
+  });
+});
+
+describe('deriveEvents — derived from a redacted view', () => {
+  // A client only ever holds redacted state, so the same derivation has to work
+  // when the wall is placeholders. See plans/029-redaction-layer.md.
+  it('reports a draw it may not identify as null, and still reveals flowers', () => {
+    const base = initializeGame(options({ seed: 'deal-145' }));
+    const seat = base.currentPlayerIndex;
+    const before = redactFor(base, (seat + 1) % 4);
+    const after = redactFor(
+      applyAction(base, base.players[seat].id, { type: 'DRAW' })!,
+      (seat + 1) % 4,
+    );
+
+    const events = deriveEvents(before, { type: 'DRAW' }, after, 0);
+    const draws = ofKind(events, 'draw');
+
+    expect(draws.length).toBeGreaterThan(0);
+    // The viewer is told a tile moved and from which wall, never which tile.
+    for (const draw of draws) {
+      expect(draw.tile).toBeNull();
+      expect(draw.seat).toBe(seat);
+    }
+  });
+
+  it('still announces a flower reveal and its replacement draw', () => {
+    // Flowers sit face up in `players[].flowers`, so a redacted view can name
+    // them even though the wall is hidden. Deriving flower-ness from tile type
+    // instead would drop the reveal *and* the replacement draw that follows it,
+    // because a placeholder never reports as BONUS — while the wall still
+    // shrinks by two, so the client would show tiles vanishing unexplained.
+    const base = initializeGame(options({ seed: 'flower-draw' }));
+    const seat = base.currentPlayerIndex;
+    const flower = base.wall.find(t => t.type === TileType.BONUS)!;
+    const staged = stackWalls(base, { wall: [flower] });
+
+    const next = applyAction(staged, staged.players[seat].id, { type: 'DRAW' })!;
+    expect(next.players[seat].flowers.length)
+      .toBe(staged.players[seat].flowers.length + 1);
+
+    const viewer = (seat + 1) % 4;
+    const events = deriveEvents(
+      redactFor(staged, viewer),
+      { type: 'DRAW' },
+      redactFor(next, viewer),
+      0,
+    );
+
+    // The flower is named — it is public. The draws around it are not.
+    const reveals = ofKind(events, 'flowerReveal');
+    expect(reveals.map(e => e.tile)).toEqual([flower.id]);
+    expect(ofKind(events, 'draw').map(e => e.tile)).toEqual([null, null]);
+    // Reveal sits between the draw that found it and the one that replaced it.
+    expect(events.map(e => e.kind)).toEqual(['draw', 'flowerReveal', 'draw']);
+  });
+
+  it('names the claimed discard, not the melds first tile', () => {
+    // findMeldDelta used to identify the claimed tile as "the meld tile that
+    // was not already in hand". A redacted view replaces a rival's hand with
+    // placeholders, so nothing matches and the search falls through to
+    // meld.tiles[0] — for a chow, the lowest tile rather than the claimed one.
+    const base = initializeGame(options({ seed: 'redacted-chow' }));
+    let state = withHand(base, 0, [dot(5, 3), ...junkHand(4).slice(0, 12)]);
+    state = withHand(state, 1, [dot(3, 1), dot(4, 1), ...junkHand(1).slice(0, 11)]);
+    state = withHand(state, 2, junkHand(2));
+    state = withHand(state, 3, junkHand(3));
+    state = { ...state, turnPhase: 'discard' as const, currentPlayerIndex: 0 };
+
+    const discarded = applyAction(state, state.players[0].id, {
+      type: 'DISCARD', tile: dot(5, 3),
+    })!;
+    const action: GameAction = {
+      type: 'CLAIM', claimType: 'chow', tilesFromHand: [dot(3, 1), dot(4, 1)],
+    };
+    const claimed = applyAction(discarded, discarded.players[1].id, action)!;
+
+    // Seat 2 is a bystander: the meld is public, seat 1's hand is not.
+    const events = deriveEvents(
+      redactFor(discarded, 2), action, redactFor(claimed, 2), 0,
+    );
+    const claim = ofKind(events, 'claim')[0];
+
+    expect(claim.claim).toBe('chow');
+    expect(claim.tile).toBe(dot(5, 3).id);
+    expect(claim.tile).not.toBe(dot(3, 1).id);
   });
 });
 
@@ -478,7 +563,7 @@ describe('deriveEvents — invariants across a full AI hand', () => {
 
   it('holds for every transition of a full engine-driven hand', async () => {
     const { getAIDecision, getAIClaimDecision } = await import('@/engine/ai');
-    const { getLegalClaims } = await import('@/engine/turnManager');
+    const { getLegalClaims, canActInClaimWindow } = await import('@/engine/turnManager');
 
     for (const seed of ['sweep-1', 'sweep-2', 'sweep-3']) {
       let state = initializeGame(
@@ -501,7 +586,13 @@ describe('deriveEvents — invariants across a full AI hand', () => {
       let steps = 0;
       while (state.phase === GamePhase.PLAYING && steps < 2000) {
         steps++;
-        const seat = state.currentPlayerIndex;
+        // In a claim window the actor is whichever eligible claimant still owes
+        // an answer — `currentPlayerIndex` names the next drawer there.
+        const seat =
+          state.turnPhase === 'claim'
+            ? state.players.findIndex(p => canActInClaimWindow(state, p.id))
+            : state.currentPlayerIndex;
+        expect(seat).toBeGreaterThanOrEqual(0);
         const player = state.players[seat];
 
         let action: GameAction;

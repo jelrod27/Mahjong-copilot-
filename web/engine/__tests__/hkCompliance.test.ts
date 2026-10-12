@@ -279,7 +279,8 @@ describe('wall-exhaustion tenpai/noten settlement', () => {
     const draw = result!.drawResult;
     expect(draw).toBeDefined();
     expect(draw!.reason).toBe('wallExhausted');
-    expect(draw!.tenpaiPlayerIds.sort()).toEqual(['H', 'ai_2'].sort());
+    if (draw?.reason !== 'wallExhausted') throw new Error('Expected wall-exhaustion result');
+    expect(draw.tenpaiPlayerIds.sort()).toEqual(['H', 'ai_2'].sort());
     expect(draw!.notenPlayerIds.sort()).toEqual(['ai_1', 'ai_3'].sort());
 
     // Pool = 2 × 1500 = 3000; per tenpai = 1500
@@ -301,6 +302,7 @@ describe('wall-exhaustion tenpai/noten settlement', () => {
     const result = applyAction(state, 'H', { type: 'DRAW' });
     const draw = result!.drawResult!;
     expect(draw.scoreChanges).toEqual([0, 0, 0, 0]);
+    if (draw.reason !== 'wallExhausted') throw new Error('Expected wall-exhaustion result');
     expect(draw.tenpaiPlayerIds).toHaveLength(4);
     expect(draw.notenPlayerIds).toHaveLength(0);
   });
@@ -315,6 +317,7 @@ describe('wall-exhaustion tenpai/noten settlement', () => {
     const result = applyAction(state, 'H', { type: 'DRAW' });
     const draw = result!.drawResult!;
     expect(draw.scoreChanges).toEqual([0, 0, 0, 0]);
+    if (draw.reason !== 'wallExhausted') throw new Error('Expected wall-exhaustion result');
     expect(draw.notenPlayerIds).toHaveLength(4);
     expect(draw.tenpaiPlayerIds).toHaveLength(0);
   });

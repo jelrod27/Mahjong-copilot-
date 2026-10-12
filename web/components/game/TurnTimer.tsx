@@ -21,7 +21,16 @@ export default function TurnTimer({ timeRemaining, totalTime }: TurnTimerProps) 
 
   return (
     <div className="flex items-center gap-2 px-4">
-      <div className="flex-1 h-2 bg-elevated rounded-full overflow-hidden">
+      <div
+        className="flex-1 h-2 bg-elevated rounded-full overflow-hidden"
+        role="progressbar"
+        aria-label="Time to discard"
+        aria-valuemin={0}
+        aria-valuemax={Math.ceil(totalTime / 1000)}
+        aria-valuenow={seconds}
+        aria-valuetext={`${seconds} seconds remaining`}
+        aria-live="off"
+      >
         <div
           className={`h-full rounded-full transition-all duration-100 ${barColor} ${
             isCritical ? 'animate-pulse' : ''

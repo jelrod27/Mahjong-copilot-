@@ -16,7 +16,7 @@ import { MeldInfo } from '@/models/GameState';
 import { WindTile } from '@/models/Tile';
 import { FanItem, ScoringContext, ScoringResult } from './types';
 import { calculateShanten, canPlayerWin } from './winDetection';
-import { calculateScore } from './scoring';
+import { calculateScore, flowerFans } from './scoring';
 
 /** A fan the player is partway toward, with what's still needed. */
 export interface ProjectedFan {
@@ -83,35 +83,10 @@ export function projectFaan(
   }
 
   // --- Flowers / No Flowers ---
-  if (flowers.length === 0) {
-    lockedIn.push({
-      name: 'No Flowers',
-      fan: 1,
-      description: 'No bonus tiles drawn — hand stays clean',
-    });
-  } else {
-    lockedIn.push({
-      name: 'Flower Tiles',
-      fan: flowers.length,
-      description: `${flowers.length} flower/season tile${flowers.length > 1 ? 's' : ''} collected`,
-    });
-    // Seat flower match
-    const seatNumberMap: Record<string, number> = { east: 1, south: 2, west: 3, north: 4 };
-    const seatNumber = seatNumberMap[seatWind] ?? 0;
-    const flowerNames = ['Plum', 'Orchid', 'Chrysanthemum', 'Bamboo'];
-    const seasonNames = ['Spring', 'Summer', 'Autumn', 'Winter'];
-    for (const f of flowers) {
-      const flowerIdx = flowerNames.indexOf(f.flower ?? '');
-      const seasonIdx = seasonNames.indexOf(f.season ?? '');
-      if (flowerIdx + 1 === seatNumber || seasonIdx + 1 === seatNumber) {
-        lockedIn.push({
-          name: 'Seat Flower',
-          fan: 1,
-          description: 'Flower/season matches your seat wind',
-        });
-      }
-    }
-  }
+  // The rule itself lives in `scoring.ts`. This module used to hold its own
+  // copy, the two drifted, and the meter promised a fan per bonus tile that the
+  // engine never paid. Calling the same function is what stops that recurring.
+  lockedIn.push(...flowerFans(flowers, seatWind));
 
   // --- Exposed dragon/wind pungs + kongs are already locked in ---
   for (const m of exposedMelds) {

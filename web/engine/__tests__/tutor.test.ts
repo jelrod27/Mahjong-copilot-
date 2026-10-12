@@ -381,3 +381,74 @@ describe('getTutorAdvice — claim phase', () => {
     expect(advice!.message.toLowerCase()).toMatch(/dragon|faan/);
   });
 });
+
+describe('getTutorAdvice — tenpai waits on a 14-tile hand', () => {
+  // Three chows, a pair, a gap shape (bam 4 + bam 6) and a lone wind: discard
+  // the wind and the hand is tenpai on bam 5. The player is holding 14 because
+  // they have drawn and still owe a discard, which is the normal mid-turn
+  // state — and the state in which the wait list came back empty.
+  const hand: Tile[] = [
+    bam(1, 1), bam(2, 1), bam(3, 1), bam(4, 1), bam(6, 1),
+    char(5, 1), char(6, 1), char(7, 1),
+    dot(4, 1), dot(5, 1), dot(6, 1),
+    dragonTile(DragonTile.RED, 1), dragonTile(DragonTile.RED, 2),
+    windTile(WindTile.NORTH, 1),
+  ];
+
+  const advice = getTutorAdvice(
+    makeGameState({ players: [makePlayer({ id: 'p0', name: 'You', hand })] }),
+    0,
+  );
+
+  it('recognises the hand as tenpai', () => {
+    expect(advice?.isTenpai).toBe(true);
+  });
+
+  it('names the tile it is waiting on', () => {
+    // `findTenpaiWaits` appends a prototype and asks `canPlayerWin`, which
+    // takes exactly 14 effective tiles. Handed the 14-tile hand it was testing
+    // 15 every time, so every prototype failed and the panel announced
+    // "Waiting for:" with nothing after the colon.
+    expect(advice?.tenpaiWaits ?? []).not.toHaveLength(0);
+    expect(advice?.tenpaiWaits).toContain(bam(5, 1).nameEnglish);
+  });
+});
+
+describe('getTutorAdvice — the colour matches the advice', () => {
+  // The legend under the hand reads: green "Good — strong discard", orange
+  // "OK — neutral", red "Keep — useful tile". So the tile the tutor names as
+  // its suggested discard must come back green, and the tile it least wants
+  // discarded must come back red. These two facts live in different modules —
+  // `classifyTiles` here, the legend in GameBoard — and drifted apart, so the
+  // player was told to keep the exact tile the panel told them to throw.
+  const hand: Tile[] = [
+    bam(1, 1), bam(2, 1), bam(3, 1),
+    bam(6, 1), bam(7, 1), bam(8, 1),
+    dot(4, 1), dot(5, 1), dot(6, 1),
+    char(1, 1), char(1, 2),
+    windTile(WindTile.NORTH, 1), dragonTile(DragonTile.RED, 1),
+    char(9, 1),
+  ];
+
+  const advice = getTutorAdvice(
+    makeGameState({ players: [makePlayer({ id: 'p0', name: 'You', hand })] }),
+    0,
+  );
+
+  it('paints the suggested discard green, not red', () => {
+    const suggested = advice?.tileClassifications?.find(
+      c => c.tileId === advice?.suggestedTileId,
+    );
+
+    expect(advice?.suggestedTileId).toBeDefined();
+    expect(suggested?.color).toBe('green');
+  });
+
+  it('reserves red for tiles it does not want discarded', () => {
+    const colours = advice?.tileClassifications?.map(c => c.color) ?? [];
+    // The three complete runs are what the hand is built on; something has to
+    // be worth keeping, or the scale says nothing.
+    expect(colours).toContain('red');
+    expect(colours.filter(c => c === 'red').length).toBeLessThan(colours.length);
+  });
+});

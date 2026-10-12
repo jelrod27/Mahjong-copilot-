@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       preview_url:
-        description: 'Base URL (https://your-app-xxx.vercel.app)'
+        description: 'This project’s Vercel deployment URL (https://mahjong-copilot-<id>-justin-elrods-projects.vercel.app)'
         required: true
         type: string
 
@@ -30,22 +30,6 @@ jobs:
     timeout-minutes: 25
 
     steps:
-      - name: Resolve preview base URL
-        id: preview
-        env:
-          MANUAL_URL: ${{ github.event.inputs.preview_url }}
-        run: |
-          set -euo pipefail
-          BASE="${MANUAL_URL}"
-          if [ -z "${BASE}" ]; then
-            echo "::error::No preview URL (workflow input preview_url is required)."
-            exit 1
-          fi
-          # Normalize: no trailing slash (Playwright baseURL)
-          BASE="${BASE%/}"
-          echo "base_url=${BASE}" >> "${GITHUB_OUTPUT}"
-          echo "Testing against ${BASE}"
-
       - name: Checkout
         uses: actions/checkout@v7
 
@@ -55,6 +39,21 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: web/package-lock.json
+
+      - name: Validate preview base URL
+        id: preview
+        env:
+          MANUAL_URL: ${{ github.event.inputs.preview_url }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MANUAL_URL}" ]; then
+            echo "::error::No preview URL (workflow input preview_url is required)."
+            exit 1
+          fi
+          # Fail closed before any step receives the deployment-protection secret.
+          BASE="$(node web/scripts/validate-vercel-preview.cjs "${MANUAL_URL}")"
+          echo "base_url=${BASE}" >> "${GITHUB_OUTPUT}"
+          echo "Testing validated project deployment ${BASE}"
 
       - name: Install dependencies
         working-directory: web
@@ -94,7 +93,7 @@ jobs:
           CI: true
           PLAYWRIGHT_SKIP_WEB_SERVER: '1'
           PLAYWRIGHT_BASE_URL: ${{ steps.preview.outputs.base_url }}
-          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ (steps.protection.outputs.http_code == '401' || steps.protection.outputs.http_code == '403') && secrets.VERCEL_AUTOMATION_BYPASS_SECRET || '' }}
         run: npm run test:e2e
 
       - name: Upload Playwright report on failure

@@ -10,13 +10,13 @@ Auth, multiplayer, ranked play, and leaderboards are deferred (placeholder route
 
 ## Stack
 
-**Web app** (`web/`): Next.js 15 (App Router), React 18, Redux Toolkit (settings/progress), Tailwind CSS, Sentry, Vercel Analytics.
+**Web app** (`web/`): Next.js 16 (App Router), React 19, TypeScript 6, Redux Toolkit (settings/progress), Tailwind CSS v4, Sentry, Vercel Analytics.
 
 **Game engine** (`web/engine/`): Pure TypeScript, no runtime dependencies, no side effects. Framework-agnostic and fully unit-tested.
 
 ## Running locally
 
-**Requires Node.js 18.17+ (20.x recommended).**
+**Requires Node.js 20.9 or newer.**
 
 ```bash
 cd web
@@ -45,7 +45,7 @@ All commands run from `web/`.
 
 ## Testing
 
-420+ unit tests across the engine, components, hooks, and app routes (Vitest). Engine tests live under `web/engine/__tests__/`. Playwright covers end-to-end flows under `web/e2e/`.
+Unit tests across the engine, components, hooks, and app routes run with Vitest. Engine tests live under `web/engine/__tests__/`. Playwright covers end-to-end flows under `web/e2e/`.
 
 CI runs lint, typecheck, unit tests, and build on every push and pull request (`.github/workflows/ci.yml`). Playwright against a local dev server runs on pushes to `main`. A separate workflow can run e2e against Vercel previews on demand.
 

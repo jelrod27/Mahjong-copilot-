@@ -12,6 +12,6 @@
     "test:e2e": "npm run test:e2e --prefix web"
   },
   "engines": {
-    "node": ">=18.17"
+    "node": ">=20.9.0"
   }
 }

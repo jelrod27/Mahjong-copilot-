@@ -54,8 +54,19 @@ export function countVisibleTiles(gameState: GameState, playerIndex: number): Ma
  * Check if a tile is "safe" — all 4 copies are visible, or it was recently
  * discarded by the target player (they won't win off their own discard).
  */
-export function isSafeTile(tile: Tile, gameState: GameState, playerIndex: number): boolean {
-  const visible = countVisibleTiles(gameState, playerIndex);
+/**
+ * `visible` is optional so a caller evaluating many candidate tiles against one
+ * unchanged state can build the map once and pass it in. Both this and
+ * `tileDangerScore` are called per candidate tile inside the discard loops, and
+ * each rebuilt the map from the hand, the whole discard pile, every meld of all
+ * four players and everyone's flowers — roughly 28 full scans per decision.
+ */
+export function isSafeTile(
+  tile: Tile,
+  gameState: GameState,
+  playerIndex: number,
+  visible: Map<string, number> = countVisibleTiles(gameState, playerIndex),
+): boolean {
   const key = tileKey(tile);
   const count = visible.get(key) || 0;
 
@@ -78,8 +89,8 @@ export function tileDangerScore(
   tile: Tile,
   gameState: GameState,
   playerIndex: number,
+  visible: Map<string, number> = countVisibleTiles(gameState, playerIndex),
 ): number {
-  const visible = countVisibleTiles(gameState, playerIndex);
   const key = tileKey(tile);
   const visibleCount = visible.get(key) || 0;
 

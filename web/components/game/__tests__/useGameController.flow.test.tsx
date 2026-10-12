@@ -16,6 +16,7 @@ import { TileSuit, TileType, WindTile, type Tile } from '@/models/Tile';
 import type { GameState } from '@/models/GameState';
 import type { MatchState } from '@/models/MatchState';
 import { SAVE_VERSION } from '@/lib/savedGameValidator';
+import soundManager from '@/lib/soundManager';
 
 // ---- Mocks ----------------------------------------------------------------
 
@@ -34,6 +35,15 @@ vi.mock('@/engine/turnManager', () => ({
   // don't exercise winning aren't forced to stub them.
   canDeclareSelfDrawnWin: vi.fn(() => false),
   scoreSelfDrawnHand: vi.fn(() => null),
+  // Pure predicate mirrored from the real module so claim-window tests exercise
+  // real eligibility rather than a blanket `true`.
+  canActInClaimWindow: (
+    state: { claimablePlayers: string[]; passedPlayers: string[]; pendingClaims: { playerId: string }[] },
+    playerId: string,
+  ) =>
+    state.claimablePlayers.includes(playerId) &&
+    !state.passedPlayers.includes(playerId) &&
+    !state.pendingClaims.some(c => c.playerId === playerId),
 }));
 
 const buildWinScoringContextMock = vi.fn(() => null);
@@ -64,6 +74,9 @@ const calculateScoreMock = vi.fn(() => ({ fan: 0, faans: [], totalFan: 0 }));
 vi.mock('@/engine/scoring', () => ({
   calculateScore: (...args: unknown[]) => calculateScoreMock(...args),
   calculatePayment: vi.fn(() => ({ winner: 0, losers: [0, 0, 0] })),
+  // Real value: the controller compares against it to pick the win sound, so a
+  // stubbed threshold would make the limit-fanfare tests assert nothing.
+  LIMIT_FAN: 10,
 }));
 
 const getAIDecisionMock = vi.fn(() => ({ action: { type: 'PASS' } }));
@@ -356,17 +369,19 @@ describe('claim flow', () => {
   });
 
   /**
-   * @param currentPlayerIndex which seat the claim rotation is on. 1 (an AI
-   *   seat) is the "options armed but not yet our turn" state; 0 is the
-   *   human's own rotation turn, which is the only state where the engine
-   *   accepts a human PASS (turnManager handlePass rejects otherwise).
+   * @param humanEligible whether the human holds an unanswered legal claim.
+   *   The window is simultaneous, so this — not `currentPlayerIndex` — is what
+   *   decides whether the engine accepts a human PASS (see
+   *   turnManager.canActInClaimWindow). `currentPlayerIndex` stays on the seat
+   *   that will draw if every claim is declined.
    */
-  function makeClaimGame(currentPlayerIndex = 1) {
+  function makeClaimGame(humanEligible = false) {
     return makeGame({
       turnPhase: 'claim',
-      currentPlayerIndex,
+      currentPlayerIndex: 1,
       lastDiscardedBy: 'ai1',
       lastDiscardedTile: makeTile('d1'),
+      claimablePlayers: humanEligible ? [HUMAN_ID] : [],
     });
   }
 
@@ -384,9 +399,51 @@ describe('claim flow', () => {
     expect(result.current.claimTimer).toBe(10000);
   });
 
+  it('auto-passes an eligible human who holds no legal claim', () => {
+    // Regression: a save written before the claim window became simultaneous
+    // admits every non-discarder, so the human can be eligible while holding
+    // nothing to claim. Nothing arms claimOptions for them, so the countdown
+    // never runs and no dependency changes — without an auto-pass here the
+    // window waits forever and the hand is unrecoverable. `currentPlayerIndex`
+    // is an AI seat throughout: it names the next drawer, never a claimant, so
+    // it must not gate this.
+    const claimGame = makeClaimGame(true);
+    expect(claimGame.currentPlayerIndex).not.toBe(0);
+    initializeMatchMock.mockReturnValue(makeMatch(claimGame));
+    getAvailableClaimsMock.mockReturnValue([]); // no legal claim for the human
+    applyActionMock.mockReturnValue(claimGame);
+
+    renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+
+    const passCalls = applyActionMock.mock.calls.filter(
+      (c) => (c as [GameState, string, { type: string }])[1] === HUMAN_ID &&
+              (c as [GameState, string, { type: string }])[2].type === 'PASS',
+    );
+    expect(passCalls.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('does not auto-pass a human who was never admitted to the window', () => {
+    // The complement: not eligible means no answer is owed, so firing a PASS
+    // would just spam the engine with rejected actions.
+    const claimGame = makeClaimGame(false);
+    initializeMatchMock.mockReturnValue(makeMatch(claimGame));
+    getAvailableClaimsMock.mockReturnValue([]);
+    applyActionMock.mockReturnValue(claimGame);
+
+    renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+
+    const passCalls = applyActionMock.mock.calls.filter(
+      (c) => (c as [GameState, string, { type: string }])[1] === HUMAN_ID &&
+              (c as [GameState, string, { type: string }])[2].type === 'PASS',
+    );
+    expect(passCalls).toHaveLength(0);
+  });
+
   it('claim timeout auto-passes exactly once after 11s', () => {
     // Rotation on the human's own seat — the only state where a PASS is legal.
-    const claimGame = makeClaimGame(0);
+    const claimGame = makeClaimGame(true);
     initializeMatchMock.mockReturnValue(makeMatch(claimGame));
     getAvailableClaimsMock.mockReturnValue([
       { claimType: 'pung', tilesFromHand: [], priority: 2 },
@@ -410,7 +467,7 @@ describe('claim flow', () => {
   });
 
   it('expiry fires PASS exactly once even when ticks continue', () => {
-    const claimGame = makeClaimGame(0);
+    const claimGame = makeClaimGame(true);
     // After pass() the engine returns a state where human has already passed,
     // so the claim-detection effect cannot re-arm the timer.
     const postPassGame = makeGame({
@@ -513,6 +570,52 @@ describe('scoring and AI fallback', () => {
     expect(advanceMatchMock).toHaveBeenCalled();
     expect(result.current.scoringResult).not.toBeNull();
     expect(result.current.scoringResult?.totalFan).toBe(3);
+  });
+
+  /**
+   * The limit fanfare is reserved for limit hands. `handName` is set for any
+   * hand carrying a 3-fan item, and is 'Chicken Hand' at zero fan, so gating on
+   * it fired the fanfare for almost every win — only 1-2 fan hands were right.
+   */
+  function winWith(score: Record<string, unknown>) {
+    const game = makeGame();
+    initializeMatchMock.mockReturnValue(makeMatch(game));
+    applyActionMock.mockReturnValue({
+      ...game,
+      phase: GamePhase.FINISHED,
+      winnerId: HUMAN_ID,
+      winningTile: makeTile('w1'),
+      isSelfDrawn: false,
+    } as unknown as GameState);
+    buildWinScoringContextMock.mockReturnValue({ discarderIndex: 1 });
+    calculateScoreMock.mockReturnValue(score);
+
+    const { result } = renderHook(() => useGameController('easy', 'quick'));
+    act(() => { vi.advanceTimersByTime(0); });
+    act(() => { result.current.pass(); });
+  }
+
+  it('plays the ordinary win sound for a named hand below the limit', () => {
+    winWith({ totalFan: 3, faans: [], handName: 'All Pungs' });
+
+    expect(soundManager.play).toHaveBeenCalledWith('win');
+    expect(soundManager.play).not.toHaveBeenCalledWith('winLimitHand');
+  });
+
+  it('plays the ordinary win sound for a chicken hand', () => {
+    // Zero fan names the hand 'Chicken Hand', which used to read as a limit.
+    winWith({ totalFan: 0, faans: [], handName: 'Chicken Hand' });
+
+    // Assert the sound it *should* make, not only the one it should not —
+    // playing nothing at all would otherwise pass.
+    expect(soundManager.play).toHaveBeenCalledWith('win');
+    expect(soundManager.play).not.toHaveBeenCalledWith('winLimitHand');
+  });
+
+  it('plays the limit fanfare at the limit threshold', () => {
+    winWith({ totalFan: 10, faans: [], handName: 'Thirteen Orphans' });
+
+    expect(soundManager.play).toHaveBeenCalledWith('winLimitHand');
   });
 
   it('AI special-action fallback: discards a tile when DECLARE_WIN is rejected', () => {

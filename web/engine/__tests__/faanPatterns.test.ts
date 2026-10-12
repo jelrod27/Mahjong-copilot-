@@ -25,13 +25,8 @@ import { ScoringContext } from '../types';
 
 /**
  * Limit-hand payout produced by the current engine: BASE (8) * 2^LIMIT_FAN (10)
- * = 8192. NOTE: CLAUDE.md and the scoring.ts file header still describe limit
- * hands as "capped at 256". That 256 ceiling (8 * 2^5) was replaced in the
- * working tree by the full 8 * 2^10 = 8192 limit. The replacement is deliberate
- * and internally consistent (the in-code comment states a limit hand "must
- * always be the most valuable hand possible"), but the docs are now stale.
- * These tests pin the actual engine output (8192); the doc mismatch is surfaced
- * in the run summary rather than asserted as 256.
+ * = 8192. The scoring.ts implementation caps limit hands at 8 * 2^10 = 8192;
+ * these tests pin that engine output.
  */
 const LIMIT_POINTS = 8 * Math.pow(2, 10); // 8192
 

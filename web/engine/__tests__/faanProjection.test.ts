@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { projectFaan } from '../faanProjection';
 import { WindTile, DragonTile, TileSuit } from '@/models/Tile';
 import { MeldInfo } from '@/models/GameState';
-import { bam, dot, char, dragonTile, windTile, flowerTile } from './testHelpers';
+import { bam, dot, char, dragonTile, windTile, flowerTile, seasonTile } from './testHelpers';
 
 const EMPTY_MELDS: MeldInfo[] = [];
 
@@ -59,15 +59,54 @@ describe('projectFaan', () => {
       expect(names).toContain('Prevailing Wind');
     });
 
-    it('flowers replace No Flowers with a Flower Tiles entry', () => {
+    it('drops No Flowers and pays only for the flower that matches the seat', () => {
       const hand = [dot(1), dot(2), dot(3)];
+      // East is seat 1. Plum is flower #1 and matches; Orchid (#2) pays nothing.
       const flowers = [flowerTile('Plum', 1), flowerTile('Orchid', 2)];
       const result = projectFaan(hand, EMPTY_MELDS, WindTile.EAST, WindTile.EAST, flowers);
 
       const names = result.lockedIn.map(f => f.name);
       expect(names).not.toContain('No Flowers');
-      const flowerEntry = result.lockedIn.find(f => f.name === 'Flower Tiles');
-      expect(flowerEntry?.fan).toBe(2);
+      // `scoring.ts` has no per-flower fan. Projecting one promised faan the
+      // hand could never score — the meter said 2, the hand paid 1.
+      expect(names).not.toContain('Flower Tiles');
+      expect(names.filter(n => n === 'Seat Flower')).toHaveLength(1);
+    });
+
+    it('pays nothing at all for flowers that match neither seat nor a set', () => {
+      const flowers = [flowerTile('Orchid', 1), flowerTile('Chrysanthemum', 2)];
+      const result = projectFaan([dot(1)], EMPTY_MELDS, WindTile.EAST, WindTile.EAST, flowers);
+
+      const names = result.lockedIn.map(f => f.name);
+      // East seat, neither flower matches: `evaluateFans` awards zero here, and
+      // withholds No Flowers too because the hand is not clean.
+      expect(names).not.toContain('No Flowers');
+      expect(names).not.toContain('Flower Tiles');
+      expect(names).not.toContain('Seat Flower');
+    });
+
+    it('pays a complete set of seasons as a set, not per tile', () => {
+      const seasons = ['Spring', 'Summer', 'Autumn', 'Winter']
+        .map((n, i) => seasonTile(n, i + 1));
+      const result = projectFaan([dot(1)], EMPTY_MELDS, WindTile.EAST, WindTile.EAST, seasons);
+
+      const names = result.lockedIn.map(f => f.name);
+      expect(result.lockedIn.filter(f => f.name === 'All Four Seasons')).toHaveLength(1);
+      expect(result.lockedIn.find(f => f.name === 'All Four Seasons')?.fan).toBe(2);
+      // Spring is season #1 and matches an east seat, but the set absorbs it.
+      expect(names).not.toContain('Seat Flower');
+    });
+
+    it('pays a complete set as a set, not per tile', () => {
+      const flowers = ['Plum', 'Orchid', 'Chrysanthemum', 'Bamboo']
+        .map((n, i) => flowerTile(n, i + 1));
+      const result = projectFaan([dot(1)], EMPTY_MELDS, WindTile.EAST, WindTile.EAST, flowers);
+
+      const names = result.lockedIn.map(f => f.name);
+      expect(result.lockedIn.find(f => f.name === 'All Four Flowers')?.fan).toBe(2);
+      // Plum is flower #1 and matches an east seat, but a complete set absorbs
+      // its own seat tile rather than paying for it twice.
+      expect(names).not.toContain('Seat Flower');
     });
 
     it('awards Seat Flower when a flower matches seat position', () => {

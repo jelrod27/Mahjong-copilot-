@@ -10,7 +10,8 @@ import { ScoringContext, ScoringResult, FanItem, HandDecomposition, PaymentBreak
 import { findDecompositionsWithMelds, isThirteenOrphans, isSevenPairs } from './winDetection';
 
 const BASE_POINTS = 8; // base payment in HK Mahjong
-const LIMIT_FAN = 10; // limit hand threshold
+/** Limit-hand threshold. Exported so callers cannot drift from it. */
+export const LIMIT_FAN = 10;
 // Payment is monotonic in fan and capped at the limit: 8 × 2^10. A limit hand
 // must always be the most valuable hand possible.
 const MAX_PAYMENT = BASE_POINTS * Math.pow(2, LIMIT_FAN); // 8192
@@ -85,6 +86,55 @@ export function calculateScore(
   }
 
   return bestResult;
+}
+
+/**
+ * The fans a hand's bonus tiles are worth, HK standard: a flower or season pays
+ * only when it matches your seat (1 fan each), a complete set of four flowers
+ * or four seasons pays 2 and absorbs its own seat tile, and holding none at all
+ * pays 1.
+ *
+ * Exported because `faanProjection.ts` has to state the same rule to the player
+ * in real time. It used to hold its own copy, the two drifted, and the live
+ * meter promised faan the engine would not pay. One rule, one place.
+ */
+export function flowerFans(flowers: Tile[], seatWind: string): FanItem[] {
+  if (flowers.length === 0) {
+    return [{ name: 'No Flowers', fan: 1, description: 'No bonus tiles collected' }];
+  }
+
+  const fans: FanItem[] = [];
+  const flowerNames = ['Plum', 'Orchid', 'Chrysanthemum', 'Bamboo'];
+  const seasonNames = ['Spring', 'Summer', 'Autumn', 'Winter'];
+  const seatNumberMap: Record<string, number> = { east: 1, south: 2, west: 3, north: 4 };
+  const seatNumber = seatNumberMap[seatWind] ?? 0;
+
+  const flowerSet = new Set(flowers.map(f => f.flower).filter(Boolean));
+  const seasonSet = new Set(flowers.map(f => f.season).filter(Boolean));
+  const hasAllFlowers = flowerNames.every(n => flowerSet.has(n));
+  const hasAllSeasons = seasonNames.every(n => seasonSet.has(n));
+
+  if (hasAllFlowers) {
+    fans.push({ name: 'All Four Flowers', fan: 2, description: 'Complete set of flower tiles' });
+  }
+  if (hasAllSeasons) {
+    fans.push({ name: 'All Four Seasons', fan: 2, description: 'Complete set of season tiles' });
+  }
+
+  if (seatNumber > 0) {
+    for (const f of flowers) {
+      const flowerIdx = flowerNames.indexOf(f.flower ?? '');
+      const seasonIdx = seasonNames.indexOf(f.season ?? '');
+      const matchesSeat = flowerIdx + 1 === seatNumber || seasonIdx + 1 === seatNumber;
+      // A complete set already scores as a set; don't double-pay its seat tile
+      const inCompleteSet = (flowerIdx >= 0 && hasAllFlowers) || (seasonIdx >= 0 && hasAllSeasons);
+      if (matchesSeat && !inCompleteSet) {
+        fans.push({ name: 'Seat Flower', fan: 1, description: 'Flower/season matches seat wind' });
+      }
+    }
+  }
+
+  return fans;
 }
 
 function evaluateFans(
@@ -206,42 +256,7 @@ function evaluateFans(
     fans.push({ name: 'Mixed One Suit', fan: 3, description: 'One suit plus honors' });
   }
 
-  // Flowers, HK standard: a flower scores only when it matches your seat
-  // (1 fan each); a complete set of all 4 flowers or all 4 seasons is 2 fan;
-  // holding no bonus tiles at all is itself worth 1 fan.
-  if (context.flowers.length === 0) {
-    fans.push({ name: 'No Flowers', fan: 1, description: 'No bonus tiles collected' });
-  } else {
-    const flowerNames = ['Plum', 'Orchid', 'Chrysanthemum', 'Bamboo'];
-    const seasonNames = ['Spring', 'Summer', 'Autumn', 'Winter'];
-    const seatNumberMap: Record<string, number> = { east: 1, south: 2, west: 3, north: 4 };
-    const seatNumber = seatNumberMap[context.seatWind] ?? 0;
-
-    const flowerSet = new Set(context.flowers.map(f => f.flower).filter(Boolean));
-    const seasonSet = new Set(context.flowers.map(f => f.season).filter(Boolean));
-    const hasAllFlowers = flowerNames.every(n => flowerSet.has(n));
-    const hasAllSeasons = seasonNames.every(n => seasonSet.has(n));
-
-    if (hasAllFlowers) {
-      fans.push({ name: 'All Four Flowers', fan: 2, description: 'Complete set of flower tiles' });
-    }
-    if (hasAllSeasons) {
-      fans.push({ name: 'All Four Seasons', fan: 2, description: 'Complete set of season tiles' });
-    }
-
-    if (seatNumber > 0) {
-      for (const f of context.flowers) {
-        const flowerIdx = flowerNames.indexOf(f.flower ?? '');
-        const seasonIdx = seasonNames.indexOf(f.season ?? '');
-        const matchesSeat = flowerIdx + 1 === seatNumber || seasonIdx + 1 === seatNumber;
-        // A complete set already scores as a set; don't double-pay its seat tile
-        const inCompleteSet = (flowerIdx >= 0 && hasAllFlowers) || (seasonIdx >= 0 && hasAllSeasons);
-        if (matchesSeat && !inCompleteSet) {
-          fans.push({ name: 'Seat Flower', fan: 1, description: 'Flower/season matches seat wind' });
-        }
-      }
-    }
-  }
+  fans.push(...flowerFans(context.flowers, context.seatWind));
 
   // Win-method bonuses
   if (context.winMethod === 'robKong') {

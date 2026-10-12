@@ -4,30 +4,23 @@ import { useState, useEffect } from 'react';
 
 interface GameToastProps {
   message: string | null;
+  /** Increments for every game action, even when consecutive messages match. */
+  eventId: number;
 }
 
 /**
- * A brief toast notification that auto-dismisses after 2 seconds.
+ * A brief visual toast plus a persistent live region for opponent actions.
  * Appears at the top of the game board.
  */
-export default function GameToast({ message }: GameToastProps) {
-  // The message is rendered straight from the prop rather than mirrored into
-  // state, so the toast can never be left showing text the parent has already
-  // replaced. Only the dismissal is state, and it resets whenever a new
-  // message arrives — including the same text arriving again after a null.
-  const [shownMessage, setShownMessage] = useState(message);
-  const [dismissed, setDismissed] = useState(false);
-
-  if (message !== shownMessage) {
-    setShownMessage(message);
-    setDismissed(false);
-  }
+export default function GameToast({ message, eventId }: GameToastProps) {
+  const [dismissedEventId, setDismissedEventId] = useState<number | null>(null);
+  const dismissed = dismissedEventId === eventId;
 
   useEffect(() => {
     if (!message) return;
-    const timer = setTimeout(() => setDismissed(true), 2000);
+    const timer = setTimeout(() => setDismissedEventId(eventId), 2000);
     return () => clearTimeout(timer);
-  }, [message]);
+  }, [eventId, message]);
 
   return (
     <>
@@ -38,10 +31,14 @@ export default function GameToast({ message }: GameToastProps) {
         aria-live="polite"
         aria-atomic="true"
       >
-        {message}
+        {message && <span key={eventId}>{message}</span>}
       </div>
       {message && !dismissed && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none" aria-hidden="true">
+        <div
+          key={eventId}
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
+          aria-hidden="true"
+        >
           <div className="max-w-md rounded-xl border border-white/15 bg-background/85 px-4 py-2.5 shadow-ds-md backdrop-blur-md animate-fade-in">
             <span className="font-sans text-sm text-foreground">
               {message}

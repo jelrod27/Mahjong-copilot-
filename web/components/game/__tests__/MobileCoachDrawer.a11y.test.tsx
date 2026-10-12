@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import MobileCoachDrawer from '../MobileCoachDrawer';
 import { initializeGame } from '@/engine/turnManager';
 import { dot } from '@/engine/__tests__/testHelpers';
@@ -24,14 +25,18 @@ const game = {
 };
 
 describe('MobileCoachDrawer accessibility', () => {
-  it('makes opponent discard history available through a keyboard-operable disclosure', () => {
+  it('makes opponent discard history available through keyboard-operable disclosures', async () => {
+    const user = userEvent.setup();
     render(<MobileCoachDrawer game={game} humanPlayerId="human-1" faanProjection={null} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Coach tools/ }));
+    const coachTools = screen.getByRole('button', { name: /Coach tools/ });
+    coachTools.focus();
+    await user.keyboard('{Enter}');
     const discardReading = screen.getByRole('button', { name: 'Expand discard reading' });
     expect(discardReading).toHaveAttribute('aria-expanded', 'false');
 
-    fireEvent.click(discardReading);
+    discardReading.focus();
+    await user.keyboard('{Enter}');
     expect(screen.getByRole('button', { name: 'Collapse discard reading' })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText('AI 1')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Mahjong tile: 1 dot' })).toBeInTheDocument();

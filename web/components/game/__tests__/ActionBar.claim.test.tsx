@@ -170,10 +170,10 @@ describe('ActionBar — claim guidance (PRD GAME-06)', () => {
       />,
     );
 
-    expect(screen.getByTestId('claim-opportunity-announcement')).toHaveTextContent(
-      'You can now claim the Red Dragon with pung or chow. Choose an option or pass.',
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'A Pung claim is available for the Red Dragon. Activate Take discard to submit it, or Pass to decline.'
     );
-    expect(screen.getByTestId('claim-opportunity-announcement')).toHaveAttribute('aria-live', 'polite');
+    expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
     expect(screen.getByRole('progressbar', { name: 'Claim response time remaining' })).toHaveAttribute('aria-live', 'off');
   });
 });

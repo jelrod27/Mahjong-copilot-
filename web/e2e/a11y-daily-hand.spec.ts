@@ -387,16 +387,32 @@ test.describe('Daily Hand — tab order baseline', () => {
     }
   });
 
-  test('mobile players can open and read the discard-reading panel', async ({ page }) => {
+  test('mobile players can open and read an opponent discard from the discard-reading panel', async ({ page }) => {
+    test.setTimeout(300_000);
     await page.setViewportSize({ width: 390, height: 844 });
     await openDailyHand(page);
 
-    await page.getByRole('button', { name: /Coach tools/ }).click();
+    const announcement = page.getByTestId('game-action-announcement');
+    let actionMessage = '';
+    for (let turn = 0; turn < 12 && !/ discarded /i.test(actionMessage); turn++) {
+      await playDailyHandWithKeyboard(page, { maxTurns: 1 });
+      actionMessage = await announcement.innerText();
+    }
+    expect(actionMessage, 'the hand should produce an opponent discard').toMatch(/ discarded /i);
+    const [opponentName, tileName] = actionMessage.split(' discarded ');
+
+    const coachTools = page.getByRole('button', { name: /Coach tools/ });
+    await coachTools.focus();
+    await page.keyboard.press('Enter');
     const reading = page.getByRole('button', { name: 'Expand discard reading' });
     await expect(reading).toBeVisible();
-    await reading.click();
+    await reading.focus();
+    await page.keyboard.press('Enter');
     await expect(page.getByRole('button', { name: 'Collapse discard reading' })).toHaveAttribute('aria-expanded', 'true');
-    await expect(page.getByText(/No discards yet|discards/i).first()).toBeVisible();
+
+    const history = page.getByTestId('discard-reading-panel');
+    await expect(history.getByText(opponentName, { exact: true })).toBeVisible();
+    await expect(history.getByRole('img', { name: `Mahjong tile: ${tileName}` })).toBeVisible();
   });
 
   test('the Discard button joins the tab order only once a tile is selected', async ({ page }) => {

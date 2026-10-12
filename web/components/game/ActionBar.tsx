@@ -199,7 +199,25 @@ export default function ActionBar({
   if (turnPhase === 'claim' && hasClaimOptions && claimOptions.length > 0) {
     const timerPct = claimTimer > 0 ? (claimTimer / claimTimeout) * 100 : 0;
     const timerColor = timerPct > 50 ? 'bg-info' : timerPct > 20 ? 'bg-highlight' : 'bg-accent';
+    const best = getBestClaimSubmission(claimOptions);
+    const chowClaim = claimOptions.find((claim) => claim.claimType === 'chow');
+    const hasMultipleChows = chowClaim && chowClaim.tilesFromHand.length > 1;
+    const bestIsChow = best?.claimType === 'chow';
+    const primaryLabel = best?.claimType === 'win' ? 'Declare Mahjong' : 'Take discard';
     const tileName = discardedTile?.nameEnglish;
+    const spokenTileName = tileName
+      ? `the ${tileName.charAt(0).toUpperCase()}${tileName.slice(1)}`
+      : 'this discard';
+    const bestClaimName = best
+      ? best.claimType.charAt(0).toUpperCase() + best.claimType.slice(1)
+      : null;
+    const claimOpportunityText = bestIsChow && hasMultipleChows
+      ? `A Chow is available for ${spokenTileName}. Choose a sequence or pass.`
+      : best?.claimType === 'win'
+        ? `You can win with ${spokenTileName}. Activate ${primaryLabel} to finish the hand, or Pass to decline.`
+        : bestClaimName
+          ? `A ${bestClaimName} claim is available for ${spokenTileName}. Activate ${primaryLabel} to submit it, or Pass to decline.`
+          : `A claim is available for ${spokenTileName}. Activate ${primaryLabel} to submit it, or Pass to decline.`;
     const claimOpportunityAnnouncement = canClaimNow ? (
       <p
         className="sr-only"
@@ -208,9 +226,7 @@ export default function ActionBar({
         aria-live="polite"
         aria-atomic="true"
       >
-        You can now claim {tileName ? `the ${tileName.charAt(0).toUpperCase()}${tileName.slice(1)}` : 'this discard'} with{' '}
-        {[...new Set(claimOptions.map(claim => claim.claimType === 'win' ? 'mahjong' : claim.claimType))].join(' or ')}.
-        {' '}Choose an option or pass.
+        {claimOpportunityText}
       </p>
     ) : null;
     const claimCountdownProps = {
@@ -249,12 +265,6 @@ export default function ActionBar({
       );
     }
 
-    const best = getBestClaimSubmission(claimOptions);
-
-    const chowClaim = claimOptions.find((c) => c.claimType === 'chow');
-    const hasMultipleChows = chowClaim && chowClaim.tilesFromHand.length > 1;
-    const bestIsChow = best?.claimType === 'chow';
-
     if (bestIsChow && hasMultipleChows && discardedTile) {
       return (
         <div className="space-y-2 py-1 md:space-y-3 md:py-2 md:px-1">
@@ -274,8 +284,6 @@ export default function ActionBar({
         </div>
       );
     }
-
-    const primaryLabel = best?.claimType === 'win' ? 'Declare Mahjong' : 'Take discard';
 
     return (
       <div className="space-y-3 py-1 md:space-y-4 md:py-2 md:px-1">

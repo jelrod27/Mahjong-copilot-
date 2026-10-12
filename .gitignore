@@ -133,3 +133,4 @@ out/
 .cursor/
 CURSOR.md
 skills-lock.json
+.vercel

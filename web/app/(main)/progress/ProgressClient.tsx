@@ -5,6 +5,8 @@ import { TrendingUp } from 'lucide-react';
 import { loadStats, GameStats, QuizMode } from '@/lib/gameStats';
 import { getAchievements, Achievement } from '@/lib/achievements';
 import { useBrowserValue } from '@/hooks/useBrowserValue';
+import { EmptyState } from '@/components/ui/empty-state';
+import { LoadingState } from '@/components/ui/loading-state';
 
 const QUIZ_LABELS: Record<QuizMode, string> = {
   'tile-quiz': 'Tile Quiz',
@@ -63,7 +65,7 @@ export default function ProgressPage() {
   if (!stats) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="font-display text-info ds-text-glow text-sm">LOADING...</div>
+        <LoadingState label="Loading…" />
       </div>
     );
   }
@@ -123,17 +125,17 @@ export default function ProgressPage() {
       )}
 
       {!hasPlayed ? (
-        <div className="ds-panel p-6 text-center">
-          <div className="font-display text-xs text-highlight mb-2">NO GAMES YET</div>
-          <p className="font-sans text-sm text-muted-foreground">
-            Play your first game to start tracking stats!
-          </p>
-          <Link
-            href="/play"
-            className="inline-block mt-4 ds-btn-success font-display text-xs"
-          >
-            [ PLAY NOW ]
-          </Link>
+        <div className="ds-panel p-6">
+          <EmptyState
+            title="NO GAMES YET"
+            body="Play your first game to start tracking stats!"
+            className="px-0 py-0"
+            action={
+              <Link href="/play" className="inline-block ds-btn-success font-display text-xs">
+                [ PLAY NOW ]
+              </Link>
+            }
+          />
         </div>
       ) : (
         <div className="space-y-4">

@@ -199,6 +199,29 @@ export default function ActionBar({
   if (turnPhase === 'claim' && hasClaimOptions && claimOptions.length > 0) {
     const timerPct = claimTimer > 0 ? (claimTimer / claimTimeout) * 100 : 0;
     const timerColor = timerPct > 50 ? 'bg-info' : timerPct > 20 ? 'bg-highlight' : 'bg-accent';
+    const tileName = discardedTile?.nameEnglish;
+    const claimOpportunityAnnouncement = canClaimNow ? (
+      <p
+        className="sr-only"
+        data-testid="claim-opportunity-announcement"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        You can now claim {tileName ? `the ${tileName.charAt(0).toUpperCase()}${tileName.slice(1)}` : 'this discard'} with{' '}
+        {[...new Set(claimOptions.map(claim => claim.claimType === 'win' ? 'mahjong' : claim.claimType))].join(' or ')}.
+        {' '}Choose an option or pass.
+      </p>
+    ) : null;
+    const claimCountdownProps = {
+      role: 'progressbar' as const,
+      'aria-label': 'Claim response time remaining',
+      'aria-valuemin': 0,
+      'aria-valuemax': 100,
+      'aria-valuenow': Math.max(0, Math.min(100, Math.round(timerPct))),
+      'aria-valuetext': `${Math.ceil(claimTimer / 1000)} seconds remaining`,
+      'aria-live': 'off' as const,
+    };
 
     if (!canClaimNow) {
       // The engine resolves claims in rotation order — an opponent ahead of
@@ -208,7 +231,7 @@ export default function ActionBar({
       // dead-looking one still invites the tap.
       return (
         <div className="space-y-3 py-1 md:space-y-4 md:py-2 md:px-1">
-          <div className="mx-1 h-1.5 overflow-hidden rounded-full bg-elevated">
+          <div className="mx-1 h-1.5 overflow-hidden rounded-full bg-elevated" {...claimCountdownProps}>
             <div
               className={`h-full rounded-full transition-all duration-100 ${timerColor}`}
               style={{ width: `${timerPct}%` }}
@@ -235,12 +258,13 @@ export default function ActionBar({
     if (bestIsChow && hasMultipleChows && discardedTile) {
       return (
         <div className="space-y-2 py-1 md:space-y-3 md:py-2 md:px-1">
-          <div className="mx-1 h-1 overflow-hidden rounded-full bg-elevated">
+          <div className="mx-1 h-1 overflow-hidden rounded-full bg-elevated" {...claimCountdownProps}>
             <div
               className={`h-full rounded-full transition-all duration-100 ${timerColor}`}
               style={{ width: `${timerPct}%` }}
             />
           </div>
+          {claimOpportunityAnnouncement}
           <ChowSelector
             options={chowClaim!.tilesFromHand}
             discardedTile={discardedTile}
@@ -255,12 +279,13 @@ export default function ActionBar({
 
     return (
       <div className="space-y-3 py-1 md:space-y-4 md:py-2 md:px-1">
-        <div className="mx-1 h-1.5 overflow-hidden rounded-full bg-elevated">
+        <div className="mx-1 h-1.5 overflow-hidden rounded-full bg-elevated" {...claimCountdownProps}>
           <div
             className={`h-full rounded-full transition-all duration-100 ${timerColor}`}
             style={{ width: `${timerPct}%` }}
           />
         </div>
+        {claimOpportunityAnnouncement}
         <div className="flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
           <button
             type="button"

@@ -119,6 +119,9 @@ test.describe('Daily Hand — automated accessibility scanning', () => {
       await playDailyHandWithKeyboard(page, { maxTurns: 1 });
     }
     expect(scannedClaim, 'the pinned Daily Hand seed should open a claim window').toBe(true);
+    await expect(page.getByTestId('game-action-announcement')).toContainText(/discarded|claimed/i);
+    await expect(page.getByTestId('claim-opportunity-announcement')).toContainText(/you can now claim/i);
+    await expect(page.getByRole('progressbar', { name: 'Claim response time remaining' })).toHaveAttribute('aria-live', 'off');
 
     // Phase 4 — the hand result. Finish the hand from where the claim left off.
     const log = await playDailyHandWithKeyboard(page);
@@ -382,6 +385,18 @@ test.describe('Daily Hand — tab order baseline', () => {
       expect(f, `tab stop ${i} should focus something inside the board`).not.toBeNull();
       await expectVisibleFocusIndicator(page, `tab stop ${i} (${f?.tag} "${f?.label}")`);
     }
+  });
+
+  test('mobile players can open and read the discard-reading panel', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openDailyHand(page);
+
+    await page.getByRole('button', { name: /Coach tools/ }).click();
+    const reading = page.getByRole('button', { name: 'Expand discard reading' });
+    await expect(reading).toBeVisible();
+    await reading.click();
+    await expect(page.getByRole('button', { name: 'Collapse discard reading' })).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByText(/No discards yet|discards/i).first()).toBeVisible();
   });
 
   test('the Discard button joins the tab order only once a tile is selected', async ({ page }) => {

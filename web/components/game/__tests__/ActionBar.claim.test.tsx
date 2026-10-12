@@ -160,6 +160,22 @@ describe('ActionBar — claim guidance (PRD GAME-06)', () => {
     // reader must be told — otherwise the state change is silent.
     expect(screen.getByTestId('claim-waiting-state')).toHaveAttribute('aria-live', 'polite');
   });
+
+  it('announces available claims when the human can act', () => {
+    render(
+      <ActionBar
+        {...baseProps}
+        claimOptions={[pungClaim, chowClaim]}
+        discardedTile={dragon}
+      />,
+    );
+
+    expect(screen.getByTestId('claim-opportunity-announcement')).toHaveTextContent(
+      'You can now claim the Red Dragon with pung or chow. Choose an option or pass.',
+    );
+    expect(screen.getByTestId('claim-opportunity-announcement')).toHaveAttribute('aria-live', 'polite');
+    expect(screen.getByRole('progressbar', { name: 'Claim response time remaining' })).toHaveAttribute('aria-live', 'off');
+  });
 });
 
 describe('ActionBar — rejected-action feedback', () => {

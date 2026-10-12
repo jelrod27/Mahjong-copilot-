@@ -128,7 +128,9 @@ export default function GameBoard({
       if (player.melds.length > prevCount && player.id !== humanPlayerId) {
         const lastMeld = player.melds[player.melds.length - 1];
         const meldName = lastMeld.type.charAt(0).toUpperCase() + lastMeld.type.slice(1);
-        setToastMessage(`${player.name} claimed ${meldName}`);
+        const claimedTile = lastMeld.tiles[0];
+        const tileDescription = claimedTile ? ` of ${claimedTile.nameEnglish}` : '';
+        setToastMessage(`${player.name} claimed ${meldName}${tileDescription}`);
         break; // Only toast first new meld per render cycle
       }
     }

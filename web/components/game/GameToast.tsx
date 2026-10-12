@@ -29,15 +29,26 @@ export default function GameToast({ message }: GameToastProps) {
     return () => clearTimeout(timer);
   }, [message]);
 
-  if (!message || dismissed) return null;
-
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-      <div className="max-w-md rounded-xl border border-white/15 bg-background/85 px-4 py-2.5 shadow-ds-md backdrop-blur-md animate-fade-in">
-        <span className="font-sans text-sm text-foreground">
-          {message}
-        </span>
+    <>
+      <div
+        className="sr-only"
+        data-testid="game-action-announcement"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {message}
       </div>
-    </div>
+      {message && !dismissed && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none" aria-hidden="true">
+          <div className="max-w-md rounded-xl border border-white/15 bg-background/85 px-4 py-2.5 shadow-ds-md backdrop-blur-md animate-fade-in">
+            <span className="font-sans text-sm text-foreground">
+              {message}
+            </span>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

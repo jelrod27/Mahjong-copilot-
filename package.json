@@ -12,6 +12,6 @@
     "test:e2e": "npm run test:e2e --prefix web"
   },
   "engines": {
-    "node": ">=20.9.0"
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   }
 }

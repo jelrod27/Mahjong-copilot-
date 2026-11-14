@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -6,6 +7,14 @@ test.describe.configure({ mode: 'serial' });
 async function expectGameBoardReady(page: Page) {
   await expect(page.getByTestId('game-board-root')).toBeVisible({ timeout: 60_000 });
   await expect(page.getByTestId('game-phase-banner')).toBeVisible({ timeout: 60_000 });
+}
+
+async function expectDialogContrast(page: Page) {
+  const results = await new AxeBuilder({ page })
+    .include('[role="dialog"]')
+    .withRules(['color-contrast'])
+    .analyze();
+  expect(results.violations).toEqual([]);
 }
 
 test.describe('Solo play', () => {
@@ -25,6 +34,57 @@ test.describe('Solo play', () => {
     await page.goto('/play/game?difficulty=easy');
     await expectGameBoardReady(page);
   });
+
+  for (const launch of [
+    { testId: 'start-game-button', url: '/play/game?difficulty=easy&mode=quick&minFaan=1', mobile: false },
+    { testId: 'training-table-button', url: '/play/game?table=training&mode=quick&difficulty=easy&minFaan=0', mobile: true },
+  ]) {
+    test(`${launch.testId}: keeps the saved match until replacement is confirmed`, async ({ page }, testInfo) => {
+      if (launch.mobile) await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto('/play/game?difficulty=easy');
+      await expectGameBoardReady(page);
+      const saveKey = 'mahjong_match_in_progress';
+      await expect.poll(() => page.evaluate(key => localStorage.getItem(key), saveKey)).not.toBeNull();
+      await page.goto('/play');
+      const saved = await page.evaluate(key => localStorage.getItem(key), saveKey);
+      expect(saved).not.toBeNull();
+      const oldGameId = JSON.parse(saved!).game.id;
+      const button = page.getByTestId(launch.testId);
+
+      await button.click();
+      const dialog = page.getByRole('dialog', { name: /replace.*saved match/i });
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+      await expectDialogContrast(page);
+      const replace = dialog.getByRole('button', { name: 'Replace saved match' });
+      await replace.hover();
+      await replace.evaluate(async button => {
+        await Promise.all(button.getAnimations().map(animation => animation.finished));
+      });
+      await expectDialogContrast(page);
+      await page.screenshot({ path: testInfo.outputPath('saved-match-confirmation.png') });
+      await page.keyboard.press('Escape');
+      await expect(dialog).toBeHidden();
+      await expect(button).toBeFocused();
+      expect(await page.evaluate(key => localStorage.getItem(key), saveKey)).toBe(saved);
+      await expect(page).toHaveURL(/\/play$/);
+
+      await button.click();
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
+      await expect(dialog).toBeHidden();
+      expect(await page.evaluate(key => localStorage.getItem(key), saveKey)).toBe(saved);
+
+      await button.click();
+      await dialog.getByRole('button', { name: 'Replace saved match' }).click();
+      await expect(page).toHaveURL(launch.url);
+      await expectGameBoardReady(page);
+      await expect.poll(() => page.evaluate(({ key, oldGameId }) => {
+        const raw = localStorage.getItem(key);
+        const id = raw ? JSON.parse(raw).game?.id : null;
+        return typeof id === 'string' && id !== oldGameId;
+      }, { key: saveKey, oldGameId })).toBe(true);
+    });
+  }
 });
 
 test.describe('Practice mode', () => {

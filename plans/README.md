@@ -2,6 +2,14 @@
 
 Four rounds are recorded here.
 
+## Solo polish — 2026-11-14
+
+| Plan | Title | Status |
+|------|-------|--------|
+| 037 | [Protect saved matches](037-protect-saved-matches.md) | **DONE** |
+
+Numbers 030–036 remain reserved for the multiplayer build ladder below.
+
 - **Round 1 (2026-06-11, commit `efb5a21`)** — plans 001–010, all DONE. Correctness,
   security, perf, tests, debt. See "Round 1" below.
 - **Round 2 (2026-07-25, commit `700769d`)** — plans 011–019. **UX, game feel,

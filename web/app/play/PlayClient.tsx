@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { GameMode } from '@/models/MatchState';
 import { canResume as hasResumableGame, clearSavedGame } from '@/lib/matchStorage';
 import { useBrowserValue } from '@/hooks/useBrowserValue';
+import { Modal } from '@/components/ui/modal';
+import { Button } from '@/components/ui/button';
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 type MinFaan = 0 | 1 | 3;
@@ -22,14 +24,29 @@ export default function PlayPage() {
   // Beginner-friendly default: any scoring hand wins. 3-faan HK competition
   // rules remain a one-tap opt-in (and the upper Jade Parlour floors enforce it).
   const [minFaan, setMinFaan] = useState<MinFaan>(1);
+  const [pendingGameUrl, setPendingGameUrl] = useState<string | null>(null);
   // hasSavedGame() only checks that a blob exists; canResume() also rejects
   // a match whose phase is 'finished'. Using the weaker one showed "Resume
   // saved game" after a completed match and routed to a dead game.
   const canResume = useBrowserValue(hasResumableGame, false);
 
-  const handleStart = () => {
+  const startGame = (url: string) => {
     clearSavedGame();
-    router.push(`/play/game?difficulty=${difficulty}&mode=${mode}&minFaan=${minFaan}`);
+    setPendingGameUrl(null);
+    router.push(url);
+  };
+
+  const requestStart = (url: string) => {
+    // Storage can change in another tab after the page's initial snapshot.
+    if (hasResumableGame()) {
+      setPendingGameUrl(url);
+      return;
+    }
+    startGame(url);
+  };
+
+  const handleStart = () => {
+    requestStart(`/play/game?difficulty=${difficulty}&mode=${mode}&minFaan=${minFaan}`);
   };
 
   const handleResume = () => {
@@ -37,8 +54,7 @@ export default function PlayPage() {
   };
 
   const handleTrainingTable = () => {
-    clearSavedGame();
-    router.push('/play/game?table=training&mode=quick&difficulty=easy&minFaan=0');
+    requestStart('/play/game?table=training&mode=quick&difficulty=easy&minFaan=0');
   };
 
   return (
@@ -192,6 +208,35 @@ export default function PlayPage() {
           <p>• Score based on fan (bonus patterns)</p>
         </div>
       </div>
+
+      <Modal
+        open={pendingGameUrl !== null}
+        onOpenChange={open => { if (!open) setPendingGameUrl(null); }}
+        ariaLabelledBy="replace-match-title"
+        ariaDescribedBy="replace-match-description"
+        className="items-center"
+      >
+        <div className="ds-panel w-full max-w-sm p-5">
+          <h2 id="replace-match-title" className="font-display text-sm text-highlight">
+            Replace your saved match?
+          </h2>
+          <p id="replace-match-description" className="mt-3 font-sans text-sm text-muted-foreground">
+            You have a match in progress. Starting a new match will replace it. Your progress in the saved match will be lost.
+          </p>
+          <div className="mt-5 flex flex-col gap-2">
+            <Button size="lg" variant="outline" onClick={() => setPendingGameUrl(null)}>
+              Cancel
+            </Button>
+            <Button
+              size="lg"
+              className="bg-destructive/80 hover:bg-destructive/70"
+              onClick={() => { if (pendingGameUrl) startGame(pendingGameUrl); }}
+            >
+              Replace saved match
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

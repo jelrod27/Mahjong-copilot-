@@ -90,10 +90,15 @@ test.describe('Visual regression', () => {
       await page.setViewportSize(viewport);
       await page.addInitScript(() => window.localStorage.clear());
       await page.goto('/');
-      await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toBeVisible();
+      // The server renders a generic Play label and placeholder tiles. Wait for
+      // the fresh-profile CTA before capturing the actual landing experience.
+      await expect(page.getByRole('link', { name: 'Play your first hand' })).toBeVisible();
       await waitForFonts(page);
 
-      await expect(page).toHaveScreenshot(`landing-${name}.png`, { maxDiffPixelRatio: 0.02 });
+      await expect(page).toHaveScreenshot(`landing-${name}.png`, {
+        maxDiffPixelRatio: 0.02,
+        animations: 'disabled',
+      });
     });
 
     test(`learn page — ${name}`, async ({ page }) => {

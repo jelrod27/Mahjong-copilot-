@@ -10,7 +10,7 @@ import { Lock } from 'lucide-react';
 import CharacterPortrait from '@/components/npc/CharacterPortrait';
 import { NPCS } from '@/content/npcs';
 import {
-  PARLOUR_FLOORS, getParlourProgress, isFloorUnlocked, ParlourProgress,
+  PARLOUR_FLOORS, getFloor, getParlourProgress, isFloorUnlocked, ParlourProgress,
 } from '@/lib/parlour';
 import { Meter } from '@/components/ui/meter';
 import { useBrowserValue } from '@/hooks/useBrowserValue';
@@ -21,6 +21,7 @@ export default function ParlourPage() {
 
   const cleared = progress?.highestCleared ?? 0;
   const litFloors = cleared;
+  const nextFloor = progress ? getFloor(cleared + 1) : undefined;
   const gamGreeting = cleared === 0
     ? 'The Parlour only sleeps. Wake it up. One floor at a time.'
     : cleared >= PARLOUR_FLOORS.length
@@ -56,6 +57,20 @@ export default function ParlourPage() {
           <p className="font-sans text-xs leading-snug text-muted-foreground">{gamGreeting}</p>
         </div>
       </div>
+
+      {nextFloor && (
+        <div className="ds-card-elevated mb-4 p-3">
+          <p className="mb-2 text-sm text-muted-foreground">
+            Next challenge: <span className="font-semibold text-foreground">{nextFloor.name}</span>
+          </p>
+          <Link
+            href={`/play/game?floor=${nextFloor.floor}`}
+            className="ds-btn-accent inline-flex min-h-11 items-center px-4 text-sm"
+          >
+            Continue to Floor {nextFloor.floor}
+          </Link>
+        </div>
+      )}
 
       {/* Floors, top of the building first */}
       <div className="space-y-2">

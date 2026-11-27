@@ -24,7 +24,8 @@ import musicEngine from '@/lib/musicEngine';
 import { GamePhase } from '@/models/GameState';
 import { getFloor, floorSupportCast, isFloorUnlocked, recordFloorAttempt, recordFloorWin } from '@/lib/parlour';
 import DailyResultDialog from '@/components/daily/DailyResultDialog';
-import { getDailyState, recordDailyResult, DailyState } from '@/lib/dailyHand';
+import { recordDailyResult, DailyState } from '@/lib/dailyHand';
+import { recordCompletedMatch } from '@/lib/completedMatchStats';
 import { computeFinalRankings } from '@/engine/matchManager';
 import { useEffect, useRef } from 'react';
 import { resolveBeginnerAssist } from '@/lib/beginnerAssist';
@@ -133,6 +134,7 @@ function GameSession({ searchParams, floorDef }: GameEntryProps & { floorDef: Re
     dailyMode,
     displayMode,
     gameSpeed,
+    dailyMode ? undefined : recordCompletedMatch,
   );
 
   // Daily Hand outcome: derive from the single hand and record once.

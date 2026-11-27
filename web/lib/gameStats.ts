@@ -4,6 +4,7 @@
  */
 
 const STORAGE_KEY = '16bit-mahjong-stats';
+const RECENT_COMPLETION_LIMIT = 100;
 
 export type QuizMode = 'tile-quiz' | 'scoring-quiz' | 'hand-recognition';
 
@@ -42,6 +43,8 @@ export interface GameStats {
   lastPlayedAt: string | null;
   /** Practice-quiz completions, keyed by quiz mode. Absent entries mean "not yet played". */
   quizzes: Partial<QuizStats>;
+  /** Recent final-hand IDs, stored alongside the stats they were counted in. */
+  recentCompletionIds?: string[];
 }
 
 const DEFAULT_STATS: GameStats = {
@@ -107,8 +110,14 @@ export interface MatchResult {
   bestHandNameThisMatch: string | null;
 }
 
-export function recordMatchResult(result: MatchResult): GameStats {
+export function recordMatchResult(result: MatchResult, completionId?: string): GameStats {
   const stats = loadStats();
+
+  if (completionId) {
+    const recent = Array.isArray(stats.recentCompletionIds) ? stats.recentCompletionIds : [];
+    if (recent.includes(completionId)) return stats;
+    stats.recentCompletionIds = [...recent.slice(1 - RECENT_COMPLETION_LIMIT), completionId];
+  }
 
   stats.gamesPlayed++;
   stats.totalHandsPlayed += result.totalHandsPlayed;

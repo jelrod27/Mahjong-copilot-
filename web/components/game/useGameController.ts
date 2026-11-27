@@ -172,6 +172,7 @@ export default function useGameController(
   dailyMode: boolean = false,
   displayMode: DisplayMode = 'tutor',
   gameSpeed: GameSpeed = 'normal',
+  onMatchFinished?: (match: MatchState, finalHandId: string) => void,
 ): GameController {
   const claimTimeoutMs = claimTimeoutForPreset(tablePreset);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>(initialDifficulty);
@@ -1161,8 +1162,16 @@ export default function useGameController(
 
     // Advance the match
     const advancedMatch = advanceMatch(currentMatch, game, result);
-    setMatch(advancedMatch);
     matchRef.current = advancedMatch;
+    if (advancedMatch.phase === 'finished' && onMatchFinished) {
+      try {
+        onMatchFinished(advancedMatch, game.id);
+      } catch (error) {
+        // A stats failure must not block the end of the match.
+        Sentry.captureException(error);
+      }
+    }
+    setMatch(advancedMatch);
   }, [game?.phase, game?.winnerId]);
 
   return {

@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import MatchOverScreen from '../MatchOverScreen';
 import type { HandResult, MatchState } from '@/models/MatchState';
 import { loadStats } from '@/lib/gameStats';
+import { recordCompletedMatch } from '@/lib/completedMatchStats';
 
 /**
  * Build a finished match where playerScores drive final placement
@@ -37,18 +38,26 @@ function winningHand(winnerId: string, totalFan: number, handName: string): Hand
   };
 }
 
+function renderRecap(match: MatchState, onPlayAgain = vi.fn()) {
+  recordCompletedMatch(match, 'final-hand-1');
+  return render(<MatchOverScreen match={match} onPlayAgain={onPlayAgain} onBackToMenu={vi.fn()} />);
+}
+
 describe('MatchOverScreen progress arc', () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
-  it('records the match and leads with the progress arc', async () => {
-    render(<MatchOverScreen match={finishedMatch(200)} onPlayAgain={vi.fn()} onBackToMenu={vi.fn()} />);
+  it('shows recorded progress without writing the match again on mount', async () => {
+    const match = finishedMatch(200);
+    const recap = renderRecap(match);
 
     const arc = await screen.findByTestId('match-progress-arc');
     expect(arc).toBeInTheDocument();
-    // First-place finish starts a top-2 streak of 1.
     expect(screen.getByTestId('streak-value')).toHaveTextContent('1');
+    recap.unmount();
+    render(<MatchOverScreen match={match} onPlayAgain={vi.fn()} onBackToMenu={vi.fn()} />);
+    expect(loadStats().gamesPlayed).toBe(1);
   });
 
   it('credits only the player’s own winning hands to their best hand', () => {
@@ -57,12 +66,12 @@ describe('MatchOverScreen progress arc', () => {
       winningHand(match.humanPlayerId, 3, 'All Pungs'),
       winningHand('ai_1', 10, 'Big Three Dragons'),
     ];
-    render(<MatchOverScreen match={match} onPlayAgain={vi.fn()} onBackToMenu={vi.fn()} />);
+    recordCompletedMatch(match, 'final-hand-1');
     expect(loadStats()).toMatchObject({ bestFan: 3, bestHandName: 'All Pungs' });
   });
 
   it('shows the next tier to chase with live progress', async () => {
-    render(<MatchOverScreen match={finishedMatch(200)} onPlayAgain={vi.fn()} onBackToMenu={vi.fn()} />);
+    renderRecap(finishedMatch(200));
 
     const tier = await screen.findByTestId('tier-progress');
     // After one match played, the next goal is "Finding Your Feet" (3 matches).
@@ -71,7 +80,7 @@ describe('MatchOverScreen progress arc', () => {
   });
 
   it('reports a reset streak after a bottom-half finish', async () => {
-    render(<MatchOverScreen match={finishedMatch(10)} onPlayAgain={vi.fn()} onBackToMenu={vi.fn()} />);
+    renderRecap(finishedMatch(10));
 
     await screen.findByTestId('match-progress-arc');
     expect(screen.getByTestId('streak-value')).toHaveTextContent('0');
@@ -80,7 +89,7 @@ describe('MatchOverScreen progress arc', () => {
 
   it('keeps Play again wired as a single tap', async () => {
     const onPlayAgain = vi.fn();
-    render(<MatchOverScreen match={finishedMatch(200)} onPlayAgain={onPlayAgain} onBackToMenu={vi.fn()} />);
+    renderRecap(finishedMatch(200), onPlayAgain);
 
     // Click works before the 300ms reveal finishes: the path stays one tap.
     fireEvent.click(screen.getByRole('button', { name: /play again/i }));
@@ -90,7 +99,7 @@ describe('MatchOverScreen progress arc', () => {
   });
 
   it('celebrates a first-place finish with confetti once revealed', async () => {
-    render(<MatchOverScreen match={finishedMatch(200)} onPlayAgain={vi.fn()} onBackToMenu={vi.fn()} />);
+    renderRecap(finishedMatch(200));
 
     // Confetti is gated behind the 300ms reveal timer; wait past it.
     await new Promise(resolve => setTimeout(resolve, 400));
@@ -98,7 +107,7 @@ describe('MatchOverScreen progress arc', () => {
   });
 
   it('does not show confetti for a non-winning finish', async () => {
-    render(<MatchOverScreen match={finishedMatch(10)} onPlayAgain={vi.fn()} onBackToMenu={vi.fn()} />);
+    renderRecap(finishedMatch(10));
 
     await new Promise(resolve => setTimeout(resolve, 400));
     expect(screen.queryByTestId('confetti')).not.toBeInTheDocument();

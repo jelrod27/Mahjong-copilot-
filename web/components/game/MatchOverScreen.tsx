@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Trophy, Flame } from 'lucide-react';
 import { MatchState } from '@/models/MatchState';
 import { computeFinalRankings } from '@/engine/matchManager';
-import { recordMatchResult, type GameStats } from '@/lib/gameStats';
+import { loadStats } from '@/lib/gameStats';
+import { useBrowserValue } from '@/hooks/useBrowserValue';
 import { getGraduationStatus } from '@/lib/graduation';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import Confetti from './Confetti';
@@ -44,40 +45,14 @@ export default function MatchOverScreen({
   match, onPlayAgain, onBackToMenu,
 }: MatchOverScreenProps) {
   const [showContent, setShowContent] = useState(false);
-  const [stats, setStats] = useState<GameStats | null>(null);
+  const stats = useBrowserValue<ReturnType<typeof loadStats> | null>(loadStats, null);
   const rankings = computeFinalRankings(match);
   const humanRank = rankings.find(r => r.playerIndex === 0)?.rank ?? 4;
-  const statsSavedRef = useRef(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowContent(true), 300);
     return () => clearTimeout(timer);
   }, []);
-
-  useEffect(() => {
-    if (statsSavedRef.current) return;
-    statsSavedRef.current = true;
-
-    let bestFan = 0;
-    let bestHandName: string | null = null;
-    for (const hr of match.handResults) {
-      if (hr.winnerId === match.humanPlayerId && hr.scoringResult && hr.scoringResult.totalFan > bestFan) {
-        bestFan = hr.scoringResult.totalFan;
-        bestHandName = hr.scoringResult.handName ?? null;
-      }
-    }
-
-    // Single write path. Capture the post-match stats so the recap reports
-    // against numbers that already include this match (streak, tiers, rates).
-    setStats(recordMatchResult({
-      difficulty: match.difficulty,
-      mode: match.mode,
-      humanPlacement: humanRank,
-      totalHandsPlayed: match.totalHandsPlayed,
-      bestFanThisMatch: bestFan,
-      bestHandNameThisMatch: bestHandName,
-    }));
-  }, [match, humanRank]);
 
   const rankColors = ['text-highlight', 'text-info', 'text-foreground', 'text-muted-foreground'];
   const rankLabels = ['1st', '2nd', '3rd', '4th'];

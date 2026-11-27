@@ -53,10 +53,9 @@ test.describe('Beginner smoke — offline solo path', () => {
     // 2. Navigate to Play (URL-driven; nav widget varies between desktop
     //    sidebar and mobile bottom nav and isn't what this smoke is verifying).
     await page.goto('/play');
-    await expect(page.getByText('SELECT DIFFICULTY')).toBeVisible();
+    await expect(page.getByTestId('training-table-button')).toBeVisible();
 
     // 3. Start an Easy solo game
-    await page.getByRole('button', { name: /EASY — Random AI/i }).click();
     await page.getByTestId('start-game-button').click();
     await expect(page).toHaveURL(/\/play\/game\?difficulty=easy/);
 

@@ -14,6 +14,12 @@ import {
 } from './savedGameValidator';
 
 const MATCH_KEY = 'mahjong_match_in_progress';
+export type MatchSaveSlot = 'solo' | 'daily' | `parlour-${number}`;
+
+function keyFor(slot: MatchSaveSlot): string {
+  // Keep the original key for existing solo saves and backwards compatibility.
+  return slot === 'solo' ? MATCH_KEY : `${MATCH_KEY}:${slot}`;
+}
 
 export interface SavedGame {
   match: MatchState | null;
@@ -50,9 +56,9 @@ function migrateSavedPayload(parsed: unknown): Record<string, unknown> | null {
  * after the payload validated, and swallows its own errors: a failed write leaves the
  * original save readable, so a full quota must never cost the player their match.
  */
-function persistMigration(migrated: Record<string, unknown>): void {
+function persistMigration(migrated: Record<string, unknown>, slot: MatchSaveSlot): void {
   try {
-    localStorage.setItem(MATCH_KEY, JSON.stringify(migrated));
+    localStorage.setItem(keyFor(slot), JSON.stringify(migrated));
   } catch {
     // Quota exceeded or private mode — the in-memory migration still stands.
   }
@@ -72,7 +78,7 @@ export function hasSavedGame(): boolean {
   }
 }
 
-export function saveGame(match: MatchState | null, game: GameState | null): void {
+export function saveGame(match: MatchState | null, game: GameState | null, slot: MatchSaveSlot = 'solo'): void {
   if (!isBrowser()) return;
   try {
     const payload: SavedGame = {
@@ -81,7 +87,7 @@ export function saveGame(match: MatchState | null, game: GameState | null): void
       savedAt: new Date().toISOString(),
       version: SAVE_VERSION,
     };
-    localStorage.setItem(MATCH_KEY, JSON.stringify(payload));
+    localStorage.setItem(keyFor(slot), JSON.stringify(payload));
   } catch {
     // Storage quota exceeded or private mode — silently ignore.
   }
@@ -92,10 +98,10 @@ export function saveGame(match: MatchState | null, game: GameState | null): void
  * resume path wants — a screen merely asking whether a save exists should not pay
  * for a full serialise and write.
  */
-function readSavedGame(persist: boolean): SavedGame | null {
+function readSavedGame(persist: boolean, slot: MatchSaveSlot): SavedGame | null {
   if (!isBrowser()) return null;
   try {
-    const raw = localStorage.getItem(MATCH_KEY);
+    const raw = localStorage.getItem(keyFor(slot));
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
 
@@ -103,23 +109,23 @@ function readSavedGame(persist: boolean): SavedGame | null {
     // migrator, and the shape rules below are only ever applied to a payload the
     // migrator has brought up to the current format.
     if (!isObject(parsed) || !isSupportedSaveVersion(parsed)) {
-      clearSavedGame();
+      clearSavedGame(slot);
       return null;
     }
 
     const migrated = migrateSavedPayload(parsed);
     if (!migrated) {
-      clearSavedGame();
+      clearSavedGame(slot);
       return null;
     }
 
     const validation = validateSavedGamePayload(migrated);
     if (!validation.ok) {
-      clearSavedGame();
+      clearSavedGame(slot);
       return null;
     }
 
-    if (persist && migrated !== parsed) persistMigration(migrated);
+    if (persist && migrated !== parsed) persistMigration(migrated, slot);
 
     // Deserialize dates and tile objects
     const rawMatch = migrated['match'];
@@ -140,19 +146,19 @@ function readSavedGame(persist: boolean): SavedGame | null {
       presentationLog: readPresentationLog(migrated),
     };
   } catch {
-    clearSavedGame();
+    clearSavedGame(slot);
     return null;
   }
 }
 
-export function loadGame(): SavedGame | null {
-  return readSavedGame(true);
+export function loadGame(slot: MatchSaveSlot = 'solo'): SavedGame | null {
+  return readSavedGame(true, slot);
 }
 
-export function clearSavedGame(): void {
+export function clearSavedGame(slot: MatchSaveSlot = 'solo'): void {
   if (!isBrowser()) return;
   try {
-    localStorage.removeItem(MATCH_KEY);
+    localStorage.removeItem(keyFor(slot));
   } catch {
     // ignore
   }
@@ -164,7 +170,7 @@ export function clearSavedGame(): void {
 export function canResume(): boolean {
   // Reads without persisting: this runs in a mount effect on the /play landing
   // screen, which only decides whether to offer Resume.
-  const saved = readSavedGame(false);
+  const saved = readSavedGame(false, 'solo');
   if (!saved || !saved.match) return false;
   if (saved.match.phase === 'finished') return false;
   return true;

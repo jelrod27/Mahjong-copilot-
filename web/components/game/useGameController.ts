@@ -20,7 +20,8 @@ import type { DisplayMode, GameSpeed } from '@/store/actions/settingsActions';
 import { projectFaan, FaanProjection } from '@/engine/faanProjection';
 import soundManager from '@/lib/soundManager';
 import { speakTile, TileVoiceLanguage } from '@/lib/tileVoice';
-import { saveGame, loadGame, clearSavedGame, hasSavedGame, canResume } from '@/lib/matchStorage';
+import { saveGame, loadGame, clearSavedGame, type MatchSaveSlot } from '@/lib/matchStorage';
+import { dailySeed } from '@/lib/dailyHand';
 import { NpcRosterMode } from '@/lib/rosterRotation';
 import { RosterId } from '@/lib/cosmetics';
 import * as Sentry from '@sentry/nextjs';
@@ -275,7 +276,7 @@ export default function useGameController(
       }
     }
 
-    const gameMode = newMode ?? mode;
+    const gameMode = newMode ?? matchRef.current?.mode ?? initialMode;
     const launched = launchStandardMatch({
       difficulty: newDifficulty,
       mode: gameMode,
@@ -289,13 +290,20 @@ export default function useGameController(
     setMatch(launched.match);
     setGame(launched.match.currentHand);
     resetHandState();
-  }, [mode, resetHandState, initialMinFaan, npcRosterMode, fixedNpcRoster, onMatchRosterResolved, parlourFloor, dailyMode]);
+  }, [initialMode, resetHandState, initialMinFaan, npcRosterMode, fixedNpcRoster, onMatchRosterResolved, parlourFloor, dailyMode]);
 
-  // Initialize game on mount — resume saved match if one exists and is active.
-  // Parlour floor matches always start fresh.
+  const saveSlot: MatchSaveSlot = parlourFloor ? `parlour-${parlourFloor}` : dailyMode ? 'daily' : 'solo';
+  const readActiveSave = useCallback(() => {
+    const saved = loadGame(saveSlot);
+    if (!saved?.match || saved.match.phase === 'finished') return null;
+    if (dailyMode && saved.game?.seed !== dailySeed()) return null;
+    return { ...saved, match: saved.match };
+  }, [saveSlot, dailyMode]);
+
+  // Only resume the requested table's save; a new Daily Hand starts each day.
   useEffect(() => {
-    const saved = (parlourFloor || dailyMode) ? null : loadGame();
-    if (saved?.match && saved.match.phase !== 'finished') {
+    const saved = readActiveSave();
+    if (saved) {
       // Restores a match from localStorage on mount. The saved blob is not
       // reachable during render and this deliberately runs once.
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -306,12 +314,12 @@ export default function useGameController(
     } else {
       startNewGame(initialDifficulty, initialMode);
     }
-  }, [initialDifficulty, initialMode, startNewGame, parlourFloor, dailyMode]);
+  }, [initialDifficulty, initialMode, startNewGame, readActiveSave]);
 
   /** Try to resume a saved match from localStorage. Returns true on success. */
   const resumeGame = useCallback((): boolean => {
-    const saved = loadGame();
-    if (!saved || !saved.match) return false;
+    const saved = readActiveSave();
+    if (!saved) return false;
 
     setMatch(saved.match);
     setGame(saved.game ?? saved.match.currentHand ?? null);
@@ -321,27 +329,22 @@ export default function useGameController(
     setMode(saved.match.mode);
 
     return true;
-  }, []);
+  }, [readActiveSave]);
 
   /** Clear any saved match and reset to a fresh game. */
   const clearSavedGameAndReset = useCallback(() => {
-    clearSavedGame();
+    clearSavedGame(saveSlot);
     startNewGame(initialDifficulty, initialMode);
-  }, [initialDifficulty, initialMode, startNewGame]);
+  }, [initialDifficulty, initialMode, startNewGame, saveSlot]);
 
-  // Auto-save match + game after every state change
-  useEffect(() => {
-    if (match) {
-      saveGame(match, game);
-    }
-  }, [match, game]);
-
-  // Clear saved game when match ends (win, draw, or abort)
+  // Neither saving nor finishing this table may change another table's save.
   useEffect(() => {
     if (match?.phase === 'finished') {
-      clearSavedGame();
+      clearSavedGame(saveSlot);
+    } else if (match) {
+      saveGame(match, game, saveSlot);
     }
-  }, [match?.phase]);
+  }, [match, game, saveSlot]);
 
   const continueToNextHand = useCallback(() => {
     const currentMatch = matchRef.current;

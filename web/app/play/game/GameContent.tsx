@@ -32,6 +32,11 @@ const URL_MODES = ['quick', 'full'] as const;
 
 export default function GameContent() {
   const searchParams = useSearchParams();
+  // Query-only navigation must not carry a previous table's controller into a new save slot.
+  return <GameSession key={searchParams.toString()} searchParams={searchParams} />;
+}
+
+function GameSession({ searchParams }: { searchParams: ReturnType<typeof useSearchParams> }) {
   const router = useRouter();
   const rawDifficulty = searchParams.get('difficulty');
   const difficulty: (typeof URL_DIFFICULTIES)[number] = (URL_DIFFICULTIES as readonly string[]).includes(

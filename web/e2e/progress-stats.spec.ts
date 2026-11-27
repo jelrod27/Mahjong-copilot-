@@ -35,6 +35,7 @@ test.describe('Progress tracking', () => {
         totalHandsPlayed: 12,
         bestFan: 3,
         bestHandName: 'All Pungs',
+        bestHandSource: 'player',
         placementCounts: [1, 1, 1, 0] as [number, number, number, number],
         byDifficulty: {
           easy: { played: 2, won: 1 },

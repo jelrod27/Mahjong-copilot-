@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import MatchOverScreen from '../MatchOverScreen';
-import type { MatchState } from '@/models/MatchState';
+import type { HandResult, MatchState } from '@/models/MatchState';
+import { loadStats } from '@/lib/gameStats';
 
 /**
  * Build a finished match where playerScores drive final placement
@@ -28,6 +29,14 @@ function finishedMatch(humanScore: number): MatchState {
   };
 }
 
+function winningHand(winnerId: string, totalFan: number, handName: string): HandResult {
+  return {
+    handNumber: 1, round: 'east' as HandResult['round'], dealerIndex: 0,
+    winnerId, isSelfDrawn: false, scoreChanges: [0, 0, 0, 0],
+    scoringResult: { fans: [], totalFan, basePoints: 8, totalPoints: 64, handName, melds: [], pair: [] },
+  };
+}
+
 describe('MatchOverScreen progress arc', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -40,6 +49,16 @@ describe('MatchOverScreen progress arc', () => {
     expect(arc).toBeInTheDocument();
     // First-place finish starts a top-2 streak of 1.
     expect(screen.getByTestId('streak-value')).toHaveTextContent('1');
+  });
+
+  it('credits only the player’s own winning hands to their best hand', () => {
+    const match = finishedMatch(200);
+    match.handResults = [
+      winningHand(match.humanPlayerId, 3, 'All Pungs'),
+      winningHand('ai_1', 10, 'Big Three Dragons'),
+    ];
+    render(<MatchOverScreen match={match} onPlayAgain={vi.fn()} onBackToMenu={vi.fn()} />);
+    expect(loadStats()).toMatchObject({ bestFan: 3, bestHandName: 'All Pungs' });
   });
 
   it('shows the next tier to chase with live progress', async () => {

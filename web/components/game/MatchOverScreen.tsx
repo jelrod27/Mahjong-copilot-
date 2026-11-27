@@ -61,7 +61,7 @@ export default function MatchOverScreen({
     let bestFan = 0;
     let bestHandName: string | null = null;
     for (const hr of match.handResults) {
-      if (hr.scoringResult && hr.scoringResult.totalFan > bestFan) {
+      if (hr.winnerId === match.humanPlayerId && hr.scoringResult && hr.scoringResult.totalFan > bestFan) {
         bestFan = hr.scoringResult.totalFan;
         bestHandName = hr.scoringResult.handName ?? null;
       }

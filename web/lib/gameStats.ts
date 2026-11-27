@@ -22,6 +22,8 @@ export interface GameStats {
   totalHandsPlayed: number;
   bestFan: number;
   bestHandName: string | null;
+  /** Older records cannot distinguish a player's hand from an AI opponent's. */
+  bestHandSource?: 'player';
   byDifficulty: {
     easy: { played: number; won: number };
     medium: { played: number; won: number };
@@ -75,8 +77,13 @@ export function loadStats(): GameStats {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return cloneDefaults();
     const parsed = JSON.parse(raw);
-    // Merge with defaults to handle missing fields from older versions
-    return { ...cloneDefaults(), ...parsed };
+    // Preserve older aggregates, but do not credit an unattributed best hand.
+    const stats: GameStats = { ...cloneDefaults(), ...parsed };
+    if (stats.bestHandSource !== 'player') {
+      stats.bestFan = 0;
+      stats.bestHandName = null;
+    }
+    return stats;
   } catch {
     return { ...DEFAULT_STATS };
   }
@@ -147,6 +154,7 @@ export function recordMatchResult(result: MatchResult): GameStats {
   if (result.bestFanThisMatch > stats.bestFan) {
     stats.bestFan = result.bestFanThisMatch;
     stats.bestHandName = result.bestHandNameThisMatch;
+    stats.bestHandSource = 'player';
   }
 
   saveStats(stats);

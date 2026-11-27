@@ -300,8 +300,12 @@ export default function useGameController(
     return { ...saved, match: saved.match };
   }, [saveSlot, dailyMode]);
 
-  // Only resume the requested table's save; a new Daily Hand starts each day.
+  // GameEntry remounts this controller when the requested table changes.
+  // Strict Mode and settings updates must not start another match on this mount.
+  const initialized = useRef(false);
   useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
     const saved = readActiveSave();
     if (saved) {
       // Restores a match from localStorage on mount. The saved blob is not
@@ -1164,7 +1168,10 @@ export default function useGameController(
   return {
     game, match, selectedTileId, suggestedTileId, tutorAdvice, tenpaiStatus,
     tileClassifications, heatOverlays, claimOptions, claimTimer, turnTimer, turnTimeout, isGameOver, isMatchOver,
-    scoringResult, faanProjection, claimTimeoutMs, tablePreset,
+    scoringResult: match?.phase === 'betweenHands'
+      ? match.handResults.at(-1)?.scoringResult ?? null
+      : scoringResult,
+    faanProjection, claimTimeoutMs, tablePreset,
     selectTile, discardSelected, sortHand, declareKong, declareWin,
     submitClaim, submitChow, claimBest, pass, startNewGame, continueToNextHand,
     resumeGame, clearSavedGame: clearSavedGameAndReset,

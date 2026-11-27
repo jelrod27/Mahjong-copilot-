@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const mainRoutes: { path: string; expectText: string | RegExp }[] = [
   { path: '/learn', expectText: /LEARN MAHJONG|Hong Kong Mahjong/i },
-  { path: '/play', expectText: 'SELECT DIFFICULTY' },
+  { path: '/play', expectText: 'Customize game' },
   // Each page's post-redesign identifying copy.
   { path: '/practice', expectText: 'Sharpen Your Skills' },
   { path: '/reference', expectText: 'Quick Reference' },

@@ -318,6 +318,35 @@ describe('saved-game resume', () => {
     expect(initializeMatchMock).toHaveBeenCalled();
   });
 
+  it('does not deal twice when React replays the mount effects', () => {
+    initializeMatchMock.mockReturnValue(makeMatch(makeGame()));
+    renderHook(() => useGameController('easy', 'quick', false, false), { reactStrictMode: true });
+    expect(initializeMatchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores the latest hand score and payments from a Parlour save', () => {
+    const game = makeGame({ phase: GamePhase.FINISHED });
+    const scoringResult = {
+      fans: [], totalFan: 3, basePoints: 8, totalPoints: 64, melds: [], pair: [],
+      payment: { payments: [{ fromPlayerIndex: 1, toPlayerIndex: 0, amount: 64 }] },
+    };
+    const match = {
+      ...makeMatch(game), phase: 'betweenHands', totalHandsPlayed: 1,
+      handResults: [{
+        handNumber: 1, round: WindTile.EAST, dealerIndex: 0, winnerId: HUMAN_ID,
+        isSelfDrawn: false, scoringResult, scoreChanges: [64, -64, 0, 0],
+      }],
+    };
+    localStorage.setItem('mahjong_match_in_progress:parlour-1', JSON.stringify({
+      match, game, savedAt: new Date().toISOString(), version: SAVE_VERSION,
+    }));
+    const { result } = renderHook(() => useGameController(
+      'easy', 'quick', true, true, undefined, 'off', 'standard', 'auto', 'default', undefined, 1,
+    ));
+    expect(result.current.match?.phase).toBe('betweenHands');
+    expect(result.current.scoringResult).toEqual(scoringResult);
+  });
+
   it('skips resume when saved match is finished', () => {
     const game = makeGame();
     const match = makeMatch(game);

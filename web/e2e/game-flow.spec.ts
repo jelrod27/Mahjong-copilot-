@@ -13,7 +13,7 @@ test.describe('Quick Game flow', () => {
     await page.goto('/play');
     await expect(page.getByRole('heading', { name: 'HONG KONG' })).toBeVisible();
 
-    // Select Easy difficulty (should be default, but click to be sure)
+    await page.getByText('Customize game', { exact: true }).click();
     await page.getByRole('button', { name: /EASY — Random AI/i }).click();
 
     // Quick Game mode should be selected by default
@@ -91,6 +91,7 @@ test.describe('Full Game mode', () => {
     await page.goto('/play');
 
     // Select Full Game mode
+    await page.getByText('Customize game', { exact: true }).click();
     await page.getByText('FULL GAME').click();
     await page.getByRole('button', { name: /EASY — Random AI/i }).click();
     await page.getByTestId('start-game-button').click();

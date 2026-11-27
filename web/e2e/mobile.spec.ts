@@ -14,14 +14,16 @@ test.describe('Mobile viewport tests', () => {
     await page.setViewportSize(MOBILE_VIEWPORT);
   });
 
-  test('play page: title and buttons visible at mobile size', async ({ page }) => {
+  test('play page: first game and training are in view before customizing', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
     await page.goto('/play');
 
-    await expect(page.getByRole('heading', { name: 'HONG KONG' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'MAHJONG' })).toBeVisible();
-    await expect(page.getByTestId('start-game-button')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'HONG KONG MAHJONG' })).toBeVisible();
+    await expect(page.getByTestId('start-game-button')).toBeInViewport({ ratio: 1 });
+    await expect(page.getByTestId('training-table-button')).toBeInViewport({ ratio: 1 });
+    await expect(page.getByRole('button', { name: /EASY/i })).toBeHidden();
 
-    // Difficulty buttons should be visible
+    await page.getByText('Customize game', { exact: true }).click();
     await expect(page.getByRole('button', { name: /EASY/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /MEDIUM/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /HARD/i })).toBeVisible();

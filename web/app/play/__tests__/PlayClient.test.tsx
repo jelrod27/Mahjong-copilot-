@@ -52,6 +52,7 @@ describe('saved match protection', () => {
     seedSave();
     const user = userEvent.setup();
     render(<PlayClient />);
+    await user.click(screen.getByText('Customize game', { exact: true }));
     await user.click(screen.getByRole('button', { name: /FULL GAME/ }));
     await user.click(screen.getByRole('button', { name: /MEDIUM — Smart AI/ }));
     await user.click(screen.getByRole('button', { name: /STANDARD \(3 FAAN\)/ }));

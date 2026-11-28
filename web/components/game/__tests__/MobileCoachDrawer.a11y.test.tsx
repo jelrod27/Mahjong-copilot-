@@ -32,12 +32,12 @@ describe('MobileCoachDrawer accessibility', () => {
     const coachTools = screen.getByRole('button', { name: /Coach tools/ });
     coachTools.focus();
     await user.keyboard('{Enter}');
-    const discardReading = screen.getByRole('button', { name: 'Expand discard reading' });
+    const discardReading = screen.getByRole('button', { name: 'Reading, Expand discard reading' });
     expect(discardReading).toHaveAttribute('aria-expanded', 'false');
 
     discardReading.focus();
     await user.keyboard('{Enter}');
-    expect(screen.getByRole('button', { name: 'Collapse discard reading' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: 'Reading, Collapse discard reading' })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText('AI 1')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Mahjong tile: 1 dot' })).toBeInTheDocument();
   });

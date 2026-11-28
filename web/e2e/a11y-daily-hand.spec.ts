@@ -201,7 +201,7 @@ test.describe('Daily Hand — player hand semantics', () => {
     expect(selected).toMatch(
       new RegExp(
         `^Mahjong tile: ${tileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\. ` +
-          `selected, Beginner Assist: (GOOD|OK|KEEP)\\.$`,
+          `selected, Beginner Assist: (GOOD|OK|KEEP)\\.(?: Number \\d+\\.)?$`,
       ),
     );
   });
@@ -370,8 +370,8 @@ test.describe('Daily Hand — tab order baseline', () => {
       'Leave game and return to play menu',
       'Discard pool',
       'Discard tip',
-      'Expand faan meter',
-      'Expand discard reading',
+      'Faan, Expand faan meter',
+      'Reading, Expand discard reading',
       'Sort hand by suit and number',
     ]);
   });
@@ -404,11 +404,11 @@ test.describe('Daily Hand — tab order baseline', () => {
     const coachTools = page.getByRole('button', { name: /Coach tools/ });
     await coachTools.focus();
     await page.keyboard.press('Enter');
-    const reading = page.getByRole('button', { name: 'Expand discard reading' });
+    const reading = page.getByRole('button', { name: 'Reading, Expand discard reading' });
     await expect(reading).toBeVisible();
     await reading.focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByRole('button', { name: 'Collapse discard reading' })).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByRole('button', { name: 'Reading, Collapse discard reading' })).toHaveAttribute('aria-expanded', 'true');
 
     const history = page.getByTestId('discard-reading-panel');
     await expect(history.getByText(opponentName, { exact: true })).toBeVisible();

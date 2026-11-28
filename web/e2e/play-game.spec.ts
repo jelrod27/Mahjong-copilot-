@@ -22,6 +22,7 @@ test.describe('Solo play', () => {
     await page.goto('/play');
     await expect(page.getByRole('heading', { name: 'HONG KONG' })).toBeVisible();
 
+    await page.getByText('Customize game', { exact: true }).click();
     await page.getByRole('button', { name: /MEDIUM — Smart AI/i }).click();
     await page.getByRole('button', { name: /EASY — Random AI/i }).click();
     await page.getByTestId('start-game-button').click();

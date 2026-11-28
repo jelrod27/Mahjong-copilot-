@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { TrendingUp } from 'lucide-react';
 import { loadStats, GameStats, QuizMode } from '@/lib/gameStats';
+import { getDailyState, type DailyState } from '@/lib/dailyHand';
 import { getAchievements, Achievement } from '@/lib/achievements';
 import { useBrowserValue } from '@/hooks/useBrowserValue';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -58,8 +59,43 @@ function PlacementBar({ counts }: { counts: [number, number, number, number] }) 
 // Stable identity: useSyncExternalStore compares snapshots by reference.
 const NO_ACHIEVEMENTS: Achievement[] = [];
 
+function DailyHandProgress({ todayResult: result, streak, bestStreak }: DailyState) {
+  const change = result?.scoreChange ?? 0;
+  const signedPoints = `${change > 0 ? '+' : change < 0 ? '−' : ''}${Math.abs(change)} points`;
+
+  return (
+    <section aria-labelledby="daily-hand-heading" className="ds-panel mb-4 space-y-3 p-3">
+      <h2 id="daily-hand-heading" className="font-display text-sm text-info">Daily Hand</h2>
+      {result ? (
+        <div>
+          <p className="text-xs text-muted-foreground">Today&apos;s result</p>
+          <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
+            <span className="font-semibold">{result.outcome === 'win' ? 'Win' : result.outcome === 'draw' ? 'Draw' : 'Loss'}</span>
+            <span className="text-muted-foreground">{signedPoints}</span>
+          </div>
+        </div>
+      ) : (
+        <Link href="/play/game?daily=1" className="ds-btn-accent inline-flex min-h-11 items-center px-3 text-sm">
+          Play today&apos;s hand
+        </Link>
+      )}
+      <dl className="grid grid-cols-2 gap-2 text-sm">
+        <div>
+          <dt className="text-xs text-muted-foreground">Current streak</dt>
+          <dd>{streak} {streak === 1 ? 'day' : 'days'}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-muted-foreground">Best streak</dt>
+          <dd>{bestStreak} {bestStreak === 1 ? 'day' : 'days'}</dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
 export default function ProgressPage() {
   const stats = useBrowserValue<GameStats | null>(loadStats, null);
+  const daily = useBrowserValue<DailyState | null>(getDailyState, null);
   const achievements = useBrowserValue<Achievement[]>(getAchievements, NO_ACHIEVEMENTS);
 
   if (!stats) {
@@ -105,6 +141,8 @@ export default function ProgressPage() {
         </div>
       </div>
 
+      {daily && <DailyHandProgress {...daily} />}
+
       {/* Practice quiz stats — shown whenever any quiz has been completed */}
       {hasQuizzed && (
         <div className="ds-panel p-3 mb-4" data-testid="quiz-stats">
@@ -127,8 +165,8 @@ export default function ProgressPage() {
       {!hasPlayed ? (
         <div className="ds-panel p-6">
           <EmptyState
-            title="NO GAMES YET"
-            body="Play your first game to start tracking stats!"
+            title={daily?.playedToday ? 'NO SOLO OR PARLOUR MATCHES YET' : 'NO GAMES YET'}
+            body="Play a solo or Parlour match to start tracking match stats."
             className="px-0 py-0"
             action={
               <Link href="/play" className="inline-block ds-btn-success font-display text-xs">

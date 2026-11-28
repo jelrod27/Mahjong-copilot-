@@ -2,6 +2,8 @@
 
 import { useCallback, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useBrowserValue } from '@/hooks/useBrowserValue';
 import useGameController, { type TablePreset } from '@/components/game/useGameController';
 import GameBoard from '@/components/game/GameBoard';
 import GameErrorBoundary from '@/components/game/GameErrorBoundary';
@@ -20,9 +22,10 @@ import BootOverlay from '@/components/game/BootOverlay';
 import FloorDialog from '@/components/parlour/FloorDialog';
 import musicEngine from '@/lib/musicEngine';
 import { GamePhase } from '@/models/GameState';
-import { getFloor, floorSupportCast, recordFloorAttempt, recordFloorWin } from '@/lib/parlour';
+import { getFloor, floorSupportCast, isFloorUnlocked, recordFloorAttempt, recordFloorWin } from '@/lib/parlour';
 import DailyResultDialog from '@/components/daily/DailyResultDialog';
-import { getDailyState, recordDailyResult, DailyState } from '@/lib/dailyHand';
+import { recordDailyResult, DailyState } from '@/lib/dailyHand';
+import { recordCompletedMatch } from '@/lib/completedMatchStats';
 import { computeFinalRankings } from '@/engine/matchManager';
 import { useEffect, useRef } from 'react';
 import { resolveBeginnerAssist } from '@/lib/beginnerAssist';
@@ -32,6 +35,38 @@ const URL_MODES = ['quick', 'full'] as const;
 
 export default function GameContent() {
   const searchParams = useSearchParams();
+  // Query-only navigation must not carry a previous table's controller into a new save slot.
+  return <GameEntry key={searchParams.toString()} searchParams={searchParams} />;
+}
+
+type GameEntryProps = { searchParams: ReturnType<typeof useSearchParams> };
+
+function GameEntry({ searchParams }: GameEntryProps) {
+  const rawFloor = searchParams.get('floor');
+  const floorDef = rawFloor && /^[1-9]$/.test(rawFloor) ? getFloor(Number(rawFloor)) : undefined;
+  const floorUnlocked = useBrowserValue<boolean | null>(
+    () => !floorDef || isFloorUnlocked(floorDef.floor),
+    floorDef ? null : true,
+  );
+
+  if (floorUnlocked === null) {
+    return <p className="p-6 text-center text-muted-foreground" role="status">Checking Parlour progress…</p>;
+  }
+  if (!floorUnlocked) {
+    return (
+      <div className="mx-auto max-w-sm space-y-4 p-6 text-center">
+        <h1 className="font-display text-xl">This floor is locked</h1>
+        <p className="text-muted-foreground">Win the earlier floors to unlock this challenge.</p>
+        <Link className="ds-btn-accent inline-flex min-h-11 items-center px-4" href="/parlour">
+          Back to the Jade Parlour
+        </Link>
+      </div>
+    );
+  }
+  return <GameSession searchParams={searchParams} floorDef={floorDef} />;
+}
+
+function GameSession({ searchParams, floorDef }: GameEntryProps & { floorDef: ReturnType<typeof getFloor> }) {
   const router = useRouter();
   const rawDifficulty = searchParams.get('difficulty');
   const difficulty: (typeof URL_DIFFICULTIES)[number] = (URL_DIFFICULTIES as readonly string[]).includes(
@@ -49,9 +84,6 @@ export default function GameContent() {
   const minFaan = rawMinFaan === '0' || rawMinFaan === '1' || rawMinFaan === '3'
     ? Number(rawMinFaan)
     : undefined;
-  // Parlour floor match: ?floor=N overrides difficulty/minFaan/seats
-  const rawFloor = searchParams.get('floor');
-  const floorDef = rawFloor && /^[1-9]$/.test(rawFloor) ? getFloor(Number(rawFloor)) : undefined;
   // Daily Hand: ?daily=1 — one seeded single hand, same for everyone today
   const dailyMode = !floorDef && searchParams.get('daily') === '1';
   const tablePreset: TablePreset = searchParams.get('table') === 'training' ? 'training' : 'standard';
@@ -102,6 +134,7 @@ export default function GameContent() {
     dailyMode,
     displayMode,
     gameSpeed,
+    dailyMode ? undefined : recordCompletedMatch,
   );
 
   // Daily Hand outcome: derive from the single hand and record once.

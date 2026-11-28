@@ -70,6 +70,19 @@ describe('gameStats', () => {
     expect(stats.byMode.quick.won).toBe(1);
   });
 
+  it('preserves older totals but replaces an unattributed best hand with the next player record', () => {
+    localStorage.setItem('16bit-mahjong-stats', JSON.stringify({
+      gamesPlayed: 7, gamesWon: 2, bestFan: 10, bestHandName: 'Big Three Dragons',
+    }));
+    expect(loadStats()).toMatchObject({ gamesPlayed: 7, gamesWon: 2, bestFan: 0, bestHandName: null });
+
+    recordMatchResult({
+      mode: 'quick', difficulty: 'easy', humanPlacement: 2, totalHandsPlayed: 4,
+      bestFanThisMatch: 3, bestHandNameThisMatch: 'All Pungs',
+    });
+    expect(loadStats()).toMatchObject({ gamesPlayed: 8, gamesWon: 2, bestFan: 3, bestHandName: 'All Pungs' });
+  });
+
   it('recordMatchResult updates best fan when new record', () => {
     localStorage.setItem('16bit-mahjong-stats', JSON.stringify(CLEAN_STATS));
     // First match with 2 fan

@@ -1,12 +1,27 @@
-import { test, expect, type Page } from '@playwright/test';
-
-/** Wait for game board to be mounted and turn indicator visible. */
-async function expectGameBoardReady(page: Page) {
-  await expect(page.getByTestId('game-board-root')).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByTestId('game-phase-banner')).toBeVisible({ timeout: 60_000 });
-}
+import { test, expect } from '@playwright/test';
 
 test.describe('Progress tracking', () => {
+  test('the completed Daily Hand leads to its result and streak on Progress', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-01-03T12:00:00Z'));
+    await page.addInitScript(() => {
+      const result = { outcome: 'loss', fan: 0, points: 0, scoreChange: -32 };
+      localStorage.setItem('16bit-mahjong-daily', JSON.stringify({
+        results: { '2026-01-02': result, '2026-01-03': result }, bestStreak: 4,
+      }));
+    });
+    await page.goto('/');
+    const dailyLink = page.getByRole('link', { name: /Daily Hand.*DONE/i });
+    await expect(dailyLink).toHaveAttribute('href', '/progress');
+    await dailyLink.click();
+
+    const card = page.getByRole('region', { name: 'Daily Hand' });
+    await expect(card.getByText('Loss', { exact: true })).toBeVisible();
+    await expect(card.getByText('−32 points')).toBeVisible();
+    await expect(card.getByText('2 days', { exact: true })).toBeVisible();
+    await expect(card.getByText('4 days', { exact: true })).toBeVisible();
+    await expect(page.getByText('NO SOLO OR PARLOUR MATCHES YET')).toBeVisible();
+  });
+
   test('shows "NO GAMES YET" when no stats exist', async ({ page }) => {
     // Clear any stored stats before navigating
     await page.goto('/progress');
@@ -16,13 +31,14 @@ test.describe('Progress tracking', () => {
     await expect(page.getByRole('heading', { name: 'YOUR PROGRESS' })).toBeVisible();
     await expect(page.getByText('NO GAMES YET')).toBeVisible();
     await expect(
-      page.getByText('Play your first game to start tracking stats!'),
+      page.getByText('Play a solo or Parlour match to start tracking match stats.'),
     ).toBeVisible();
 
     // "PLAY NOW" link should send players back into solo play
     const playNowLink = page.getByRole('link', { name: /PLAY NOW/i });
     await expect(playNowLink).toBeVisible();
     await expect(playNowLink).toHaveAttribute('href', '/play');
+    await expect(page.getByRole('link', { name: "Play today's hand" })).toHaveAttribute('href', '/play/game?daily=1');
   });
 
   test('progress page loads and shows stats structure after games are played', async ({ page }) => {
@@ -35,6 +51,7 @@ test.describe('Progress tracking', () => {
         totalHandsPlayed: 12,
         bestFan: 3,
         bestHandName: 'All Pungs',
+        bestHandSource: 'player',
         placementCounts: [1, 1, 1, 0] as [number, number, number, number],
         byDifficulty: {
           easy: { played: 2, won: 1 },

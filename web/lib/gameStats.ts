@@ -4,6 +4,7 @@
  */
 
 const STORAGE_KEY = '16bit-mahjong-stats';
+const RECENT_COMPLETION_LIMIT = 100;
 
 export type QuizMode = 'tile-quiz' | 'scoring-quiz' | 'hand-recognition';
 
@@ -22,6 +23,8 @@ export interface GameStats {
   totalHandsPlayed: number;
   bestFan: number;
   bestHandName: string | null;
+  /** Older records cannot distinguish a player's hand from an AI opponent's. */
+  bestHandSource?: 'player';
   byDifficulty: {
     easy: { played: number; won: number };
     medium: { played: number; won: number };
@@ -40,6 +43,8 @@ export interface GameStats {
   lastPlayedAt: string | null;
   /** Practice-quiz completions, keyed by quiz mode. Absent entries mean "not yet played". */
   quizzes: Partial<QuizStats>;
+  /** Recent final-hand IDs, stored alongside the stats they were counted in. */
+  recentCompletionIds?: string[];
 }
 
 const DEFAULT_STATS: GameStats = {
@@ -75,8 +80,13 @@ export function loadStats(): GameStats {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return cloneDefaults();
     const parsed = JSON.parse(raw);
-    // Merge with defaults to handle missing fields from older versions
-    return { ...cloneDefaults(), ...parsed };
+    // Preserve older aggregates, but do not credit an unattributed best hand.
+    const stats: GameStats = { ...cloneDefaults(), ...parsed };
+    if (stats.bestHandSource !== 'player') {
+      stats.bestFan = 0;
+      stats.bestHandName = null;
+    }
+    return stats;
   } catch {
     return { ...DEFAULT_STATS };
   }
@@ -100,8 +110,14 @@ export interface MatchResult {
   bestHandNameThisMatch: string | null;
 }
 
-export function recordMatchResult(result: MatchResult): GameStats {
+export function recordMatchResult(result: MatchResult, completionId?: string): GameStats {
   const stats = loadStats();
+
+  if (completionId) {
+    const recent = Array.isArray(stats.recentCompletionIds) ? stats.recentCompletionIds : [];
+    if (recent.includes(completionId)) return stats;
+    stats.recentCompletionIds = [...recent.slice(1 - RECENT_COMPLETION_LIMIT), completionId];
+  }
 
   stats.gamesPlayed++;
   stats.totalHandsPlayed += result.totalHandsPlayed;
@@ -147,6 +163,7 @@ export function recordMatchResult(result: MatchResult): GameStats {
   if (result.bestFanThisMatch > stats.bestFan) {
     stats.bestFan = result.bestFanThisMatch;
     stats.bestHandName = result.bestHandNameThisMatch;
+    stats.bestHandSource = 'player';
   }
 
   saveStats(stats);

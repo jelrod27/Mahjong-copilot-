@@ -49,8 +49,8 @@ Order of the nine non-tile stops:
 4. `Leave game and return to play menu`
 5. `Discard pool` (scrollable region)
 6. `Discard tip` (scrollable region)
-7. `Expand faan meter`
-8. `Expand discard reading`
+7. `Faan, Expand faan meter`
+8. `Reading, Expand discard reading`
 9. `Sort hand by suit and number`
 
 …followed by the 14 hand tiles, contiguously and last.

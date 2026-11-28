@@ -55,7 +55,8 @@ function RetroTile({
     tutorLabel ? `Beginner Assist: ${tutorLabel}` : null,
     heatOverlay?.ariaLabel ?? null,
   ].filter(Boolean).join(', ');
-  const tileAriaLabel = `Mahjong tile: ${tile.nameEnglish}${accessibilityState ? `. ${accessibilityState}.` : ''}`;
+  const visibleRank = showNumerals && tile.type === TileType.SUIT ? tile.number : undefined;
+  const tileAriaLabel = `Mahjong tile: ${tile.nameEnglish}${accessibilityState ? `. ${accessibilityState}.` : ''}${visibleRank === undefined ? '' : ` Number ${visibleRank}.`}`;
 
   const scaleRootClass = `tile-scale-root tile-size-${size}`;
 

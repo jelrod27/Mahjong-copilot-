@@ -42,7 +42,7 @@ export default function FaanMeter({ projection, minFaan = 3, compact = false }: 
       onClick={() => setExpanded(v => !v)}
       className="w-full flex items-center justify-between gap-2 px-2 py-1 hover:bg-background/40 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-info/50 rounded-sm"
       aria-expanded={expanded}
-      aria-label={expanded ? 'Collapse faan meter' : 'Expand faan meter'}
+      aria-label={expanded ? 'Faan, Collapse faan meter' : 'Faan, Expand faan meter'}
     >
       <span className="flex items-center gap-1 font-display text-[8px] md:text-[10px] text-highlight tracking-widest uppercase">
         <Target size={12} className="text-highlight" aria-hidden />
